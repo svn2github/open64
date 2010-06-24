@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -168,7 +170,8 @@ HEADER_DIRS = \
   $(BE_BE_DIR)		\
   $(IPA_IPL_DIR)	\
   $(BE_PROMPF_DIR)	\
-  $(BUILD_TOT)/include
+  $(BUILD_TOT)/include  \
+  $(TARGDIR)/be
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
@@ -286,7 +289,8 @@ BE_LNOPT_NLX_CXX_SRCS = \
   cross_snl.cxx			\
   cross_cache.cxx		\
   lnotarget.cxx			\
-  init.cxx	
+  init.cxx			\
+  array_copy.cxx
 
 ifeq ($(BUILD_TARGET), X8664)
 BE_LNOPT_NLX_CXX_SRCS += simd.cxx
@@ -438,7 +442,7 @@ lno.so:  $(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_PCH_OBJS) \
 	$(link.c++f) -o lno.so $(STD_DSO_LOADOPTS) $(EXPORT_LIST) \
          $(LNOPT_OBJS) $(LNOPT_CXX_OBJS) $(LNOPT_PCH_OBJS) \
          $(LNOPT_DSOS) $(LLDLIBS) -show
-	if [ ! -l be.so ]; then ln -sf $(TARG_BE)/be.so .; fi
+	if [ ! -l be.so ]; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 	if [ ! -l wopt.so ]; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
 	if [ ! -l ipl.so ]; then ln -sf $(TARG_IPL_DIR)/ipl.so .; fi
 	if [ ! -l be ]; then ln -sf $(TARG_BE)/be .; fi
@@ -455,7 +459,7 @@ wopt.so:
 	if ! test -e wopt.so; then ln -sf $(TARG_OPT_DIR)/wopt.so .; fi
 
 be.so:	
-	if ! test -e be.so; then ln -sf $(TARG_BE)/be.so .; fi
+	if ! test -e be.so; then ln -sf $(TARG_BE_DIR)/be.so .; fi
 
 ipl.so:	
 	if ! test -e ipl.so; then ln -sf $(TARG_IPL_DIR)/ipl.so .; fi

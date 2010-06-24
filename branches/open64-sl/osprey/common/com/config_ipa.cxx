@@ -324,6 +324,12 @@ BOOL IPA_Enable_Old_Type_Merge = TRUE;  //jczhang: Not enabled in SL
 BOOL IPA_Enable_Devirtualization = FALSE;
 BOOL IPA_Enable_Fast_Static_Analysis_VF = TRUE;
 
+/* assert whole program mode to enable more aggressive ipo */
+BOOL IPA_Enable_Whole_Program_Mode = FALSE;
+BOOL IPA_Enable_Whole_Program_Mode_Set = FALSE;
+
+BOOL IPA_Enable_Scale = FALSE;
+
 static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL,	OV_VISIBLE,	FALSE, "addressing",	"",
 	  0, 0, 0,		&IPA_Enable_Addressing,	NULL,
@@ -606,9 +612,17 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_BOOL, OV_INTERNAL,    FALSE, "ipa_enable_old_type_merge", "",
       0, 0, 0,              &IPA_Enable_Old_Type_Merge, NULL,
       "Use the old type merge phase in IPA"},
-    { OVK_BOOL, OV_INTERNAL,    FALSE, "devirtualization", "",
-      0, 0, 0,              &IPA_Enable_Devirtualization, NULL,
+    { OVK_BOOL, OV_INTERNAL,    TRUE, "devirtual_CHA", "",
+      0, 0, 0,              &IPA_Enable_Fast_Static_Analysis_VF, NULL,
       "Use devirtualization phase"},
+    { OVK_BOOL, OV_VISIBLE,     FALSE, "whole_program_mode", "",
+      0, 0, 0,              &IPA_Enable_Whole_Program_Mode,
+                            &IPA_Enable_Whole_Program_Mode_Set,
+      "Assert whole program mode"},
+    { OVK_BOOL, OV_VISIBLE,     FALSE, "scale", "",
+      0, 0, 0,              &IPA_Enable_Scale, NULL,
+      "Enable multi-core scalability optimizations"},
+
 #ifdef TARG_X8664
     { OVK_UINT32, OV_INTERNAL,	FALSE, "optimize_struct",	"",
 	  1, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,

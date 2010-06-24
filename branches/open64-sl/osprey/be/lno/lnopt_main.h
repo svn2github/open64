@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -135,6 +135,10 @@
 //	mBOOL Has_Exits
 //
 //		Any gotos/returns leaving the loop
+//
+//	mBOOL Has_EH_Regions
+//
+//		Has EH regions in the loop
 //
 //	mBOOL Has_Gotos_This_Level
 //
@@ -718,6 +722,8 @@
 
 #include "dep_graph.h"
 
+#include "cxx_hash.h"
+
 #ifdef KEY // bug 7422
 #define LNO_MAX_DO_LOOP_DEPTH 64
 #else
@@ -727,6 +733,8 @@ extern WN_MAP Parent_Map;  /* contains the mapping for the */
 			   /* parent pointers for all nodes */
 extern WN_MAP LNO_Info_Map;
 extern WN_MAP Array_Dependence_Map;
+// the map to keep track of deleted loop (because of unroll etc.)
+extern HASH_TABLE<WN*, BOOL> *Deleted_Loop_Map;
 extern MEM_POOL LNO_default_pool;
 extern MEM_POOL LNO_local_pool;
 extern INT snl_debug; 
@@ -850,6 +858,7 @@ public:
   mBOOL Has_Conditional;
   mBOOL Has_Gotos_This_Level;
   mBOOL Has_Exits;
+  mBOOL Has_EH_Regions;
   mBOOL Is_Inner;
   mBOOL Has_Bad_Mem;
   mBOOL Is_Ivdep; 
@@ -881,6 +890,7 @@ public:
   mBOOL Not_Enough_Parallel_Work; 
   mBOOL Inside_Critical_Section;
   mBOOL Has_Barriers; 
+  mBOOL Multiversion_Alias;
   mINT8 Required_Unroll;
   mINT32 Tile_Size; 
   double Work_Estimate; 
@@ -1002,6 +1012,12 @@ inline BOOL Do_Loop_Has_Exits (WN *wn)
 {
   DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
   return(dli && dli->Has_Exits);
+}
+
+inline BOOL Do_Loop_Has_EH_Regions (WN *wn)
+{
+  DO_LOOP_INFO *dli = Get_Do_Loop_Info(wn);
+  return(dli && dli->Has_EH_Regions);
 }
 
 inline BOOL Do_Loop_Is_Inner (WN *wn)
@@ -1149,6 +1165,7 @@ inline REGION_INFO* Get_Region_Info(const WN* wn)
 #define TT_CALL_INFO		    0x01000000
 #define TT_SHACKLE_DEBUG            0x02000000
 #define TT_CROSS_LOOP               0x04000000
+#define TT_STRUCT_ARRAY_COPY        0x08000000
 
 #ifdef TARG_X8664
 extern BOOL Minvariant_Removal_For_Simd;

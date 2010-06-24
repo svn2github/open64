@@ -4317,13 +4317,6 @@ static void gen_dv_stride_mult(opnd_type	*stride_opnd,
    }
    else {
       res_sm_unit_in_bits = sm_unit_in_bits(exp_desc->type_idx);
-#if 0 /* OSP_467, #5, do not adjust the size because 
-	 we patch the stride_multi_unit_in_bits during the compiler initialization */
-# ifdef _WHIRL_HOST64_TARGET64
-      if (res_sm_unit_in_bits > 32)
-        res_sm_unit_in_bits = 32;
-# endif /* _WHIRL_HOST64_TARGET64 */
-#endif
    }
 
    /* src_sm_unit_in_bits describes the sm unit for the arrays bd entry */
@@ -7262,11 +7255,6 @@ void	transform_char_sequence_ref(opnd_type		*top_opnd,
    size_offset_type	num_chars;
    opnd_type   		opnd;
 
-# if 0
-   int			attr_idx;
-   int			bd_idx;
-   int			i;
-# endif
 
    TRACE (Func_Entry, "transform_char_sequence_ref", NULL);
 
@@ -7388,71 +7376,6 @@ REFERENCE:
 
    size_offset_binary_calc(&length, &num_chars, Div_Opr, &num_chars);
 
-# if 0
-   while (TYP_TYPE(type_idx) == Structure) {
-
-      attr_idx = SN_ATTR_IDX(ATT_FIRST_CPNT_IDX(TYP_IDX(type_idx)));
-
-      NTR_IR_TBL(ir_idx);
-      IR_OPR(ir_idx) = Struct_Opr;
-      IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(attr_idx);
-      IR_LINE_NUM(ir_idx) = line;
-      IR_COL_NUM(ir_idx) = col;  
-      COPY_OPND(IR_OPND_L(ir_idx), (*top_opnd));
-      OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
-      OPND_IDX((*top_opnd)) = ir_idx;
-
-      IR_FLD_R(ir_idx) = AT_Tbl_Idx;
-      IR_IDX_R(ir_idx) = attr_idx;
-      IR_LINE_NUM_R(ir_idx) = line;
-      IR_COL_NUM_R(ir_idx)  = col;
-
-      if (ATD_ARRAY_IDX(attr_idx) != NULL_IDX) {
-         bd_idx = ATD_ARRAY_IDX(attr_idx);
-
-         NTR_IR_TBL(ir_idx);
-         IR_OPR(ir_idx) = Subscript_Opr;
-         IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(attr_idx);
-         IR_LINE_NUM(ir_idx) = line;
-         IR_COL_NUM(ir_idx) = col;
-         COPY_OPND(IR_OPND_L(ir_idx), (*top_opnd));
-         OPND_FLD((*top_opnd)) = IR_Tbl_Idx;
-         OPND_IDX((*top_opnd)) = ir_idx;
-
-         NTR_IR_LIST_TBL(list_idx);
-         IR_FLD_R(ir_idx) = IL_Tbl_Idx;
-         IR_IDX_R(ir_idx) = list_idx;
-         IR_LIST_CNT_R(ir_idx) = BD_RANK(bd_idx);
-
-         IL_FLD(list_idx) = BD_LB_FLD(bd_idx, 1);
-         IL_IDX(list_idx) = BD_LB_IDX(bd_idx, 1);
-         IL_LINE_NUM(list_idx) = line;
-         IL_COL_NUM(list_idx)  = col;
-
-         if (IL_FLD(list_idx) == AT_Tbl_Idx) {
-            ADD_TMP_TO_SHARED_LIST(IL_IDX(list_idx));
-         }
-
-         for (i = 2; i <= BD_RANK(bd_idx); i++) {
-
-            NTR_IR_LIST_TBL(IL_NEXT_LIST_IDX(list_idx));
-            IL_PREV_LIST_IDX(IL_NEXT_LIST_IDX(list_idx)) = list_idx;
-            list_idx = IL_NEXT_LIST_IDX(list_idx);
-
-            IL_FLD(list_idx) = BD_LB_FLD(bd_idx, i);
-            IL_IDX(list_idx) = BD_LB_IDX(bd_idx, i);
-            IL_LINE_NUM(list_idx) = line;
-            IL_COL_NUM(list_idx)  = col;
-
-            if (IL_FLD(list_idx) == AT_Tbl_Idx) {
-               ADD_TMP_TO_SHARED_LIST(IL_IDX(list_idx));
-            }
-         }
-      }
-
-      type_idx = ATD_TYPE_IDX(attr_idx);
-   }
-# endif
 
    NTR_IR_TBL(ir_idx);
    IR_OPR(ir_idx) = Substring_Opr;
@@ -9629,11 +9552,6 @@ void gen_runtime_bounds(int	sub_idx)
             IR_BOUNDS_DONE(sub_idx) = TRUE;
          }
       }
-# if 0
-      else if (IL_VECTOR_SUBSCRIPT(list_idx)) {
-         /* not supported yet. These are pulled off of IO */
-      }
-# endif
       else if (IL_FLD(list_idx) != CN_Tbl_Idx ||
                OPND_FLD(lb_opnd) != CN_Tbl_Idx ||
                OPND_FLD(ub_opnd) != CN_Tbl_Idx) {

@@ -174,6 +174,34 @@ OPT_FEEDBACK::Get_edge_type(IDTYPE nx_src, IDTYPE nx_dst) const
   return FB_EDGE_UNINIT;
 }
 
+// Set the type of the given edge.
+void
+OPT_FEEDBACK::Set_edge_type(IDTYPE ex, FB_EDGE_TYPE type)
+{
+  OPT_FB_EDGE& edge = _fb_opt_edges[ex];
+  edge.edge_type = type;
+}
+
+// Get the edge between the given pair of nodes.
+IDTYPE
+OPT_FEEDBACK::Get_edge(IDTYPE nx_src, IDTYPE nx_dst) const
+{
+  VALIDATE_EDGE( nx_src, nx_dst, "Get_edge_type" );
+  Is_True( Edge_has_freq( nx_src, nx_dst ),
+	   ( "OPT_FEEDBACK::Get_edge_freq: edge (%d --> %d) not found",
+	     nx_src, nx_dst ) );
+
+  const OPT_FB_NODE& node = _fb_opt_nodes[nx_src];
+  for ( INT t = node.outgoing_edges.size() - 1; t >= 0; t-- ) {
+    IDTYPE ex = node.outgoing_edges[t];
+    const OPT_FB_EDGE& edge = _fb_opt_edges[ex];
+    if (edge.destination == nx_dst)
+      return ex;
+  }
+  FmtAssert(FALSE, ( "OPT_FEEDBACK::Get_edge edge not found"));
+  return IDTYPE_NULL;
+}
+
 // Returns the unique successor, or IDTYPE_NULL if none.
 IDTYPE
 OPT_FEEDBACK::Get_node_successor( IDTYPE nx ) const
@@ -740,21 +768,26 @@ OPT_FEEDBACK::Freq_propagate_node_out( IDTYPE nx )
   }
 }
 
+// Propagate edge frequency for the given node.
+void
+OPT_FEEDBACK::Freq_propagate(IDTYPE nx)
+{
+  OPT_FB_NODE& node = _fb_opt_nodes[nx];
+  if ( node.unknown_in < 2 ) {
+    Freq_propagate_node_in( nx );
+  }
+  if ( node.unknown_out < 2 ) {
+    Freq_propagate_node_out( nx );
+  }
+}
 
 void
 OPT_FEEDBACK::Freq_propagate()
 {
   for ( IDTYPE nx = _fb_opt_nodes.size() - 1; nx > 0; nx-- ) {
-    OPT_FB_NODE& node = _fb_opt_nodes[nx];
-    if ( node.unknown_in < 2 ) {
-      Freq_propagate_node_in( nx );
-    }
-    if ( node.unknown_out < 2 ) {
-      Freq_propagate_node_out( nx );
-    }
+    Freq_propagate(nx);
   }
 }
-
 
 // ====================================================================
 // Construction of OPT_FEEDBACK from CFG and Cur_PU_Feedback

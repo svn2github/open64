@@ -233,14 +233,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
          /* Only a variable can be data initialized, equivalenced, */
          /*      in a common block,  in auxiliary or saved.        */
 
-# if 0
-
-         if (name_obj_ntry & (1 << Name_Variable))) {
-            msg_num = name_msg_num[new_obj][Name_Variable];
-            msg_str = name_str[Name_Variable];
-            goto ISSUE_ERR;
-         }
-# endif
 #ifdef KEY /* Bug 14150 */
          if (AT_BIND_ATTR(attr_idx) && 
                   (attr_obj_ntry & (1 << Attr_Bind))) {
@@ -1136,10 +1128,6 @@ boolean	fnd_semantic_err(obj_type	new_obj,
             break;
 # ifdef _DEBUG
          default:
-# if 0
-            PRINTMSG(line, 257, Internal, column,
-                     ATP_PROC(attr_idx), "ATP_PROC");
-# endif
             break;
 # endif
          }        /* End switch */

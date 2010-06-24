@@ -56,7 +56,7 @@ enum _sec_kind {
   _SEC_TEXT,
   _SEC_DATA,
   _SEC_SDATA,
-#if defined(KEY) && !defined(TARG_SL)
+#if defined(KEY) && !defined(TARG_SL) && !defined(TARG_PPC32)
   _SEC_LDATA_MIPS_LOCAL,	// bug 12619
 #endif
   _SEC_LDATA,
@@ -73,7 +73,7 @@ enum _sec_kind {
   _SEC_EH_REGION,
   _SEC_EH_REGION_SUPP,
   _SEC_DISTR_ARRAY,
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
   _SEC_DATA_REL_RO,
 #endif
 #ifdef TARG_SL

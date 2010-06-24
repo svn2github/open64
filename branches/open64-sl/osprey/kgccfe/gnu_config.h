@@ -52,3 +52,10 @@
 #if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA)
 #include "gnu/i386/config.h"
 #endif /* TARG_IA32 */
+#if defined TARG_PPC32
+#include "gnu/rs6000/config.h"
+#endif // TARG_PPC32
+#ifdef TARG_LOONGSON
+#include "gnu/loongson/config.h"
+#endif
+

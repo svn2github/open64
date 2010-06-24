@@ -5348,15 +5348,6 @@ parse_options_and_default_flags (argc, argv)
 	}
     }
 
-#if 0
-  // undo fix of bug 2254
-  if (key_exceptions)
-  {
-      set_param_value ("max-inline-insns", 440);
-      set_param_value ("max-inline-insns-single", 220);
-      set_param_value ("min-inline-insns", 80);
-  }
-#endif
 
   if (flag_pie)
     flag_pic = flag_pie;

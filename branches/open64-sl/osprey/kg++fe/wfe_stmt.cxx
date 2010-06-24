@@ -1101,7 +1101,7 @@ static char *operand_constraint_array[MAX_RECOG_OPERANDS];
 static BOOL
 constraint_by_address (const char *s)
 {
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
   if (strchr (s, 'm')) {
 #else
   if (strchr (s, 'm') || strchr (s, 'g')) {
@@ -2721,10 +2721,6 @@ Tid_For_Handler (tree handler)
   while (TREE_CODE(t) != COMPOUND_STMT)
     t = TREE_CHAIN(t);
   t = COMPOUND_BODY(t);
-#if 0   /* START_CATCH_STMT no longer exists */
-  while (TREE_CODE(t) != START_CATCH_STMT)
-    t = TREE_CHAIN(t);
-#endif
   t = TREE_TYPE(t);
   return t ? ST_st_idx(Get_ST (TREE_OPERAND(t, 0))) : 0;
 }
@@ -3288,11 +3284,7 @@ WFE_Expand_Try (tree stmt)
 
 #ifdef KEY
 // FIXME: handle temp cleanups for return from handler.
-#if 0 
-  vector<TEMP_CLEANUP_INFO> *temp_cleanup = Get_Temp_Cleanup_Info ();
-#else
   vector<TEMP_CLEANUP_INFO> *temp_cleanup = 0;
-#endif
   int handler_count=0;
   WN * region_body;
   if (key_exceptions)
@@ -3513,25 +3505,11 @@ Call_Named_Function (ST * st)
 void
 Call_Throw (void)
 {
-#if 0
-  static ST * st = NULL;
-  if (st == NULL) {
-    st = Function_ST_For_String("__throw");
-  }
-  Call_Named_Function (st);
-#endif
 }
 
 void
 Call_Rethrow (void)
 {
-#if 0
-  static ST * st = NULL;
-  if (st == NULL) {
-    st = Function_ST_For_String ("__rethrow");
-  }
-  Call_Named_Function (st);
-#endif
 }
 
 void Call_Terminate (void)
@@ -3543,13 +3521,6 @@ void Call_Terminate (void)
   }
   Call_Named_Function (st);
 #else
-#if 0
-  static ST * st = NULL;
-  if (st == NULL) {
-    st = Function_ST_For_String ("terminate__Fv");
-  }
-  Call_Named_Function (st);
-#endif
 #endif // KEY
 }
 
@@ -3700,12 +3671,6 @@ WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 	  else // catch-all, so do not compare filter
       		WFE_Stmt_Append (WN_CreateGoto ((ST_IDX) NULL, 
 				HANDLER_LABEL(t_copy)), Get_Srcpos());
-#if 0
-// we shouldn't need the following sort call
-// TODO: verify and remove it.
-	  sort (type_filter_vector.begin(), type_filter_vector.end(), 
-		cmp_types());
-#endif
         }
         else 
 	{
@@ -3756,12 +3721,6 @@ WFE_Expand_Handlers_Or_Cleanup (const HANDLER_INFO &handler_info)
 // We will see if control reaches here.
 // Let me comment this out, may need to do something else later.
       //Fail_FmtAssertion ("Handle it");
-#if 0
-      // Don't do anything for TREE_CODE(t) == BIND_EXPR.
-      // Clean up this code once it stabilizes.
-      WFE_One_Stmt (t);
-      Call_Rethrow();
-#endif
   }    
 }
 
@@ -3886,10 +3845,6 @@ WFE_Expand_DO (tree stmt)
   incr = FOR_EXPR(stmt);
   cond = FOR_COND(stmt);
   body = FOR_BODY(stmt);
-#if 0
-  for (init = FOR_INIT_STMT(stmt); init; init = TREE_CHAIN(init))
-	WFE_Expand_Stmt(init);
-#endif
   expand_start_do_loop (init, cond, incr);
   while (body)
   {
@@ -3934,12 +3889,6 @@ WFE_Expand_Stmt(tree stmt, WN* target_wn)
 #endif /* WFE_DEBUG */
 
 #ifdef KEY
-#if 0
- // Close a region before any stmt, we may be able to relax this restriction.
- // We at least want to close it on seeing a cleanup_stmt.
- if (opt_regions && Check_For_Call_Region ())
-   Did_Not_Terminate_Region = FALSE;
-#endif
 #endif
 
  if (TREE_CODE(stmt) == LABEL_DECL)

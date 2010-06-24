@@ -49,7 +49,6 @@
  * ====================================================================
  */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <unistd.h>
 #if defined(BUILD_OS_DARWIN)
@@ -231,12 +230,6 @@ Process_Command_Line (INT argc, char **argv)
     
     IPA_Enable_BarrierFarg = FALSE;
 
-#if 0
-    /* Start timers if we're tracing: */
-    if ( Tracing_Enabled ) {
-      Initialize_Timing (TRUE); /* Compile when timers actually in use */
-    }
-#endif
 
     if ( Get_Trace ( TKIND_ALLOC, TP_INLINE ) ) {
       MEM_Tracing_Enable ();
@@ -286,10 +279,6 @@ Process_Command_Line (INT argc, char **argv)
       List_Phase_Numbers ();
     }
 
-#if 0 /* Compile when timers actually in use */
-    if (Get_Trace (TKIND_INFO, TINFO_TIME))
-      Tim_File = TFile;
-#endif
 
 }
 
@@ -353,9 +342,6 @@ main (INT argc, char **argv)
       Init_Operator_To_Opcode_Table();
       BOOL close_output = Inliner(Irb_File_Name, Irb_Output_Name);
  
-#if 0
-      Finish_Compilation_Timing ( Tim_File, Src_File_Name );  /* Compile when timers actually in use */
-#endif
 
       if ( Get_Trace ( TKIND_ALLOC, TP_IPA ) ) {
 	fprintf ( TFile,

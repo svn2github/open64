@@ -205,14 +205,6 @@ const  char  *Name() const { return "AGGR_COPY"; }
 void
 Simplify_bool_expr(COMP_UNIT *cu)
 {
-#if 0
-  // not finished
-  {
-    AGGR_COPY aggr_copy;
-    UPDATE<AGGR_COPY, PER_PU_CACHE, TRACK_CUR_VERSION> UPDATE_copy(cu, &aggr_copy, TRUE);
-    UPDATE_copy.Process_PU();
-  }
-#endif
 
   {
     BOOL_SIMP bool_simp;
@@ -226,13 +218,6 @@ Simplify_bool_expr(COMP_UNIT *cu)
     }
   }
 
-#if 0
-  {
-    GVN gvn(cu, TRUE);
-    UPDATE<GVN> UPDATE_gvn(cu, &gvn, TRUE);
-    UPDATE_gvn.Process_PU();
-  }
-#endif
 }
 
 

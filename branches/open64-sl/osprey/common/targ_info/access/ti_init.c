@@ -74,7 +74,7 @@ const char * sanity_check_targ_so_name_p;
  * ====================================================================
  */
 void
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_PPC32)
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath, char* version)
 #else
 TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *tpath)
@@ -112,13 +112,6 @@ TI_Initialize(ABI_PROPERTIES_ABI tabi, ISA_SUBSET tisa, PROCESSOR tproc, char *t
     ISA_HAZARD_Initialize();
     ISA_REGISTER_Initialize();
 
-#if 0
-    // For bug 13044, sanity check that we have loaded the proper information.
-    // This cannot be used for target "core" because we use core.so which
-    // actually loads in em64t.so. TODO: fix this sanity check scenario.
-    FmtAssert (!strcmp(targ_so_name, sanity_check_targ_so_name),
-     ("TI_Initialize did not load proper information from %s", targ_so_name));
-#endif
 
     initialized = TRUE;
   }

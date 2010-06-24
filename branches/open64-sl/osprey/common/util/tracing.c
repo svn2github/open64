@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -668,6 +668,7 @@ Set_Trace_File (
     TFile_internal = fopen ( filename, "w" );	/* Truncate */
 #endif
     if ( TFile_internal != NULL ) {
+      setvbuf(TFile_internal,NULL,_IONBF,0);
       TFile_Name = filename;
       Non_stdout_TFile = TRUE;
       Set_Error_Trace (TFile_internal);

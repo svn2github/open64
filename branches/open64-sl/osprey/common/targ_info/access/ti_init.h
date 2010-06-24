@@ -75,7 +75,7 @@ static const char ti_init_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0
 extern "C" {
 #endif
 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_PPC32)
 extern void
 TI_Initialize (ABI_PROPERTIES_ABI, ISA_SUBSET, PROCESSOR, char *tpath, char* version);
 #else

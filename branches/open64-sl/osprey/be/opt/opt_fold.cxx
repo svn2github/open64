@@ -71,7 +71,6 @@
 static char *rcs_id = opt_fold_CXX"$Revision: 1.9 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include "defs.h"
 #include "errors.h"
@@ -467,7 +466,7 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
 
       CODEREP *k0 = SIMPNODE_kid0(cr); // could be CK_OP or CK_IVAR
       found = check_convert(cr, &k0, 0);
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
       // Bug 5935 - disable simplification because if it is a SQRT(RECIP)
       // when the type is F8 because there is no x86 instruction for translating
       // F8RSQRT.

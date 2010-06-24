@@ -92,15 +92,6 @@ main()
 			  TOP_movt, TOP_movf, TOP_movti, TOP_movfi,
 			  TOP_movtn, TOP_movfn, TOP_movtin, TOP_movfin,
 			  TOP_UNDEFINED);
-#if 0
-  /* One operand / one result */
-  ISA_PRINT_TYPE opr = ISA_Print_Type_Create("opr", "%s\t%s,%s");
-  Name();
-  Operand(0);
-  Result(0);
-  Instruction_Print_Group(opr,
-			  TOP_UNDEFINED);
-#endif
 
   /* No results / two operands */
   ISA_PRINT_TYPE opop = ISA_Print_Type_Create("opop", "%s\t%s,%s");
@@ -188,15 +179,6 @@ main()
 			  TOP_shlad,
 			  TOP_UNDEFINED);
 
-#if 0
-  /* Two inout */
-  ISA_PRINT_TYPE ioio = ISA_Print_Type_Create("ioio", "%s\t%s,%s");
-  Name();
-  Result(0);
-  Result(1);
-  Instruction_Print_Group(ioio,
-			  TOP_UNDEFINED);
-#endif
   ISA_Print_End();
 }
 

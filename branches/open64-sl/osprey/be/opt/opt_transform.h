@@ -379,29 +379,11 @@ struct CACHE_TEMPLATE : public PER_PU_CACHE {
 };
 
 
-#if 0
-struct SHARED_CACHE : public CACHE_TEMPLATE<UINT32> {
-  static UINT32 _next_key;
-  UINT32 Alloc_key() { 
-    if (_next_key == 0) Clear_visited(); 
-    return _next_key++;
-  }
-};
-
-SHARED_CACHE::_next_key = 1;
-
-STMTREP   *Get_cache_key(STMTREP *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return stmt; }
-BB_NODE   *Get_cache_key(BB_NODE *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return bb; }
-COMP_UNIT *Get_cache_key(COMP_UNIT *, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return NULL; }
-INT32      Get_cache_key(INT32, STMTREP *stmt, BB_NODE *bb, INT32 temp_key) { return temp_key; }
-
-#else
 
 inline STMTREP   *Get_cache_key(STMTREP *, STMTREP *stmt, BB_NODE *bb) { return stmt; }
 inline BB_NODE   *Get_cache_key(BB_NODE *, STMTREP *stmt, BB_NODE *bb) { return bb; }
 inline COMP_UNIT *Get_cache_key(COMP_UNIT *, STMTREP *stmt, BB_NODE *bb) { return NULL; }
 
-#endif
 
 
 typedef CACHE_TEMPLATE<STMTREP*>   PER_SR_CACHE;

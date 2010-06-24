@@ -89,11 +89,20 @@ HOSTDEFS += -DPREFIX=\"$(OPEN64_INSTALL_PREFIX)\"
 HOSTDEFS += -DGCC_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
 HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -DTARGET_NAME=\"ppc32-linux\"
+endif
 ifeq ($(BUILD_TARGET), MIPS)
 HOSTDEFS += -DTARGET_NAME=\"key-linux\"
 endif
 ifeq ($(BUILD_TARGET), SL)
 HOSTDEFS += -DTARGET_NAME=\"sl-linux\"
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -DTARGET_NAME=\"$(OPEN64_TARGET)\"
+HOSTDEFS += -DPREFIX=\"$(OPEN64_INSTALL_PREFIX)\"
+HOSTDEFS += -DGCC_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
+HOSTDEFS += -DGPLUSPLUS_INCLUDE_DIR=\"$(OPEN64_INCLUDE_DIR)\"
 endif
 
 
@@ -134,6 +143,10 @@ ifeq ($(BUILD_TARGET), SL)
 TARGDEFS += -DTARG_SL
 endif
 
+ifeq ($(BUILD_OS), LINUX)
+TARGDEFS = -D__MIPS_AND_IA64_ELF_H
+endif
+
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -167,6 +180,13 @@ endif
 ifeq ($(BUILD_TARGET), SL)
 GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/sl
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/ppc32
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+GNU_TARG_DIR = $(GNU_DIR)/loongson
+GNU_CONFIG_TARG_DIR = $(GNU_CONFIG_DIR)/loongson
+endif
 
 GNU_CP_DIR		= $(BUILD_BASE)/cp
 
@@ -192,7 +212,8 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR)\
-  $(BUILD_TOT)/include/gnu
+  $(BUILD_TOT)/include/gnu\
+  $(TARGDIR)/g++fe/gnu
 
 SRC_DIRS +=		\
   $(GNU_CP_DIR)
@@ -357,7 +378,13 @@ endif
 ifeq ($(BUILD_TARGET), SL)
   GNU_SRCS += mips.c
 endif
-
+ifeq ($(BUILD_TARGET), PPC32)
+  GNU_SRCS += rs6000-c.c \
+              rs6000.c
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+  GNU_SRCS += $(GNU_CONFIG_DIR)/loongson/mips.c
+endif
 
 # Move lex.c down to after parse.c since it needs the generated parse.h
 GNU_CP_UNIQ_SRCS =	\

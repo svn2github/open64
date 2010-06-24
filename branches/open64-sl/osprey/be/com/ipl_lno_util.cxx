@@ -39,7 +39,6 @@
 
 //* -*-Mode: c++;-*- (Tell emacs to use c++ mode) */
 
-#define __STDC_LIMIT_MACROS
 #ifdef __MINGW32__
 #include <WINDOWS.h>
 #endif /* __MINGW32__ */

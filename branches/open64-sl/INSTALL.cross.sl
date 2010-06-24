@@ -33,7 +33,7 @@
 #
 #
 echo $TOOLROOT
-
+abs_top_builddir=$1
 
 
 VER_MAJOR="1"
@@ -62,9 +62,9 @@ ROOT=${TOOLROOT}/
 INTERPOSE=${TARG_HOST}-orc-${TARG_OS}
 [ "$BUILD_HOST" = "$TARG_HOST" ] &&  INTERPOSE="" ; 
 
-AREA="osprey/targ${BUILD_HOST}_${TARG_HOST}"
-GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
-GNUFE42_AREA="osprey-gcc-4.2.0/targ${BUILD_HOST}_${TARG_HOST}"
+AREA="$abs_top_builddir/osprey/targdir"
+#GNUFE_AREA="osprey-gcc/targ${BUILD_HOST}_${TARG_HOST}"
+GNUFE42_AREA="$abs_top_builddir/osprey-gcc-4.2.0/"
 
 PHASEPATH=${ROOT}/usr/bin
 NATIVE_LIB_DIR=${COMP_TARGET_ROOT}/usr/${INTERPOSE}/lib
@@ -126,13 +126,13 @@ INSTALL_FE () {
     INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
 
     # GNU 4.0.2 based FE
-    INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
-    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
+#    INSTALL_EXEC_SUB ${AREA}/wgen/wgen ${PHASEPATH}/wgen
+#    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1 ${PHASEPATH}/cc1
+#    INSTALL_EXEC_SUB ${GNUFE_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus
     # GNU 4.2.0 based FE
-    INSTALL_EXEC_SUB ${AREA}/wgen_4_2_0/wgen42 ${PHASEPATH}/wgen42
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc142 ${PHASEPATH}/cc142
-    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus42 ${PHASEPATH}/cc1plus42
+    INSTALL_EXEC_SUB ${AREA}/wgen/wgen42 ${PHASEPATH}/wgen42
+    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1 ${PHASEPATH}/cc142
+    INSTALL_EXEC_SUB ${GNUFE42_AREA}/gcc/cc1plus ${PHASEPATH}/cc1plus42
 
     # Currently we do not install fortran 90 front-end
     #INSTALL_EXEC_SUB ${AREA}/crayf90/sgi/mfef90   ${PHASEPATH}/mfef90

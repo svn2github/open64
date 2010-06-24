@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. PathScale, LLC.  All rights reserved.
  */
 /*
@@ -197,91 +201,6 @@ void WGEN_check_reduction(WN* wn_r, bool chkflag)
       chkflag=true;
     }
 }
-#if 0
-void WGEN_check_default(WN* wn_d, bool chkflag)
-{
-  /* bool flag; 
-   if(WN_pragma_arg1(wn_d)==default_none)
-   	{ 
-   	   if(ST_is_thread_private(*WN_st(wn_d)) || ST_is_const_var(* WN_st(wn_d)) )
-   	   	{
-   	   		flag=true;
-   	   		break;   	   	
-   	   		}
-   	}
-   if(flag==false)
-   	printf("Default(none) clause error, cannot match one of five restriction!\n");
-   else return; 
-   */
-}
-
-/////////////////////////
-//////  check PARALLEL directive
-void WGEN_check_parallel ( WN *parallel_wn)
-{
-    // to check for parallel directive node represented by parallel_wn 
-    // not to check the clause part of the parallel directive
-    // only check the current block, not necessory to check into lower nested levels
- 
-    bool chkflag=false;     //set false for find error flag
-    char * msg = NULL;
-      //set space for error checking content
-    CHECK_STMT* cs1;
-    WN* wn1,*wn2;
-    
-    cs1=WGEN_CS_top();   //get top of stack (this parallel directive)
-    wn1=cs1->wn_prag;   //get its prama list
-    wn2=WN_first(wn1);
-
-    while(wn2!=NULL)
-    {
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-  
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
-      	{
-         msg = "A threadprivate variable must not appear\
-	 in any clause except the copyin,\
-		copyprivate, schedule, num_threads,or the if clause.";
-	 
-		  chkflag=true;
-	  
-      	}
-      }
-      //for private clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-      	WGEN_check_private(wn2,chkflag);
-      //for firstpravate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-      	WGEN_check_firstprivate(wn2,chkflag);
-      //for reduction clause:
-      if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WGEN_check_reduction(wn2,chkflag);
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WGEN_check_default(wn2,chkflag);
-      //for copyin clause:
-      if(WN_pragma(wn2)==WN_PRAGMA_COPYIN)
-      	{ 
-          if (!ST_is_thread_private(* WN_st(wn2)))
-	  {
-          	msg = "A variable that is specified\
-		in the copyin clause must be a threadprivate variable.";
-            chkflag=true;
-	  }
-      	}
-     wn2=WN_next(wn2);
-    }      
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-};
-#endif
 
 // Given a function decl, this function returns TRUE if it is a constructor
 // AND not a copy constructor AND ( it either takes no arguments OR all
@@ -978,175 +897,6 @@ void WGEN_expand_end_parallel ()
 };
 
 
-#if 0
-/////////////////////
-///////  for directive
-
-void WGEN_check_for ( WN *for_wn)
-{
-    // to check for "for" directive node represented by for_wn 
-    // not to check the clause part of the for directive
-    // only check the current block, not necessory to check into lower nested levels
-
-    bool chkflag=false;
-
-    WN* wn1,*wn2,*wn3,*wn4;
-    CHECK_STMT *cs1,*cs2;
-    char * msg = NULL;
-   
-    if (WN_operator(for_wn)!=OPR_BLOCK)
-    {
-    	fprintf(stderr,"WGEN_check_for can't deal with Non-block item!\n");
-    	chkflag=true;
-    }
-    else if (WN_first (for_wn) &&
-             WN_operator (WN_first (for_wn)) == OPR_DO_LOOP)
-    { // check that loop iteration variable is not threadprivate
-      ST * index_st = WN_st (WN_index (WN_first (for_wn)));
-      if (ST_is_thread_private (index_st))
-      {
-        msg = "A for loop iteration variable may not appear in a threadprivate directive.";
-        chkflag = true;
-      }
-    }
-    //solve directive nesting problem: for, sections, and single directives that bind 
-    //to the same parallel are not allowed to be nested inside each other.
-    if( WGEN_bind_to_same(wgen_omp_for,wgen_omp_for,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_for,wgen_omp_sections,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_for,wgen_omp_single,wgen_omp_parallel) )
-    {
-    	msg = "for, sections, and single directives\
-	that bind to the \
-    	same parallel are not allowed to be nested inside each other."; 
-      chkflag=true;
-    }
-    //solve directive nesting problem:for, sections, and single directives are not 
-    //permitted in the dynamic extent of critical, ordered, and master regions if the
-    // directives bind to the same parallel as the regions.
-    if( WGEN_bind_to_same(wgen_omp_for,wgen_omp_critical,wgen_omp_parallel)|| 
-        WGEN_bind_to_same(wgen_omp_for,wgen_omp_ordered,wgen_omp_parallel)|| 
-        WGEN_bind_to_same(wgen_omp_for,wgen_omp_master,wgen_omp_parallel) )
-    {
-    	msg = "for, sections, and single directives\
-	are not permitted in the dynamic extent of critical, ordered,\
-	and master regions if the directives\
-    	bind to the same parallel as the regions.";
-       chkflag=true;
-    }
-
-    //deal with parallel reduction clause:
-    //printf("begin check reduction:::\n");
-    cs1=WGEN_CS_Find_Rtn(wgen_omp_parallel);
-    cs2=WGEN_CS_top();
-    bool fg1,fg2,fg3,fg4,fg5;
-    fg1=fg2=fg3=fg4=fg5=false;
-    if(cs1)
-    {
-       //printf("Enter cs1 ... c1 is %d, c2 is %d \n",cs1->kind,cs2->kind);
-      // printf("checking .... cflag cs1 : %d\n",cs1->cflag);
-       fg1=WGEN_Check_Cflag(cs1, clause_reduction);
-       fg2=WGEN_Check_Cflag(cs1, clause_private);
-       fg3=WGEN_Check_Cflag(cs2, clause_private);
-       fg4=WGEN_Check_Cflag(cs2,clause_firstprivate);
-       fg5=WGEN_Check_Cflag(cs2,clause_lastprivate);
-       //printf("a=%d,b=%d\n",a,b );
-       if(fg1&&(fg3||fg4||fg5)||fg2&&(fg4||fg5))
-       {
-           wn1=cs1->wn_prag;
-           wn2=cs2->wn_prag;
-           wn3=WN_first(wn1);
-           wn4=WN_first(wn2);
-           while(wn3!=NULL)
-           {
-             if(WN_pragma(wn3)!=WN_PRAGMA_REDUCTION&&
-             	WN_pragma(wn3)!=WN_PRAGMA_LOCAL)
-             	{ 
-             	  wn3=WN_next(wn3);
-             	  continue;
-             	}
-             //printf("reduction clause detected \n");
-             while(wn4!=NULL)
-             {
-                if(WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_pragma(wn3)==WN_PRAGMA_REDUCTION
-                	&&WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that appear in the reduction clause of a parallel  \
-                  	    directive cannot be specified in a private clause on a work-sharing \
-                  	    directive that binds to the parallel construct.";
-                  chkflag=true;
-                }
-                if(WN_pragma(wn4)==WN_PRAGMA_FIRSTPRIVATE&&
-                	WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that are private within a parallel region or that appear  \
-                  	   in the reduction clause of a parallel directive cannot be specified in a \
-                  	   firstprivateclause on for directive that binds to the parallel  construct.";
-                  chkflag=true;
-                }
-                if(WN_pragma(wn4)==WN_PRAGMA_LASTLOCAL&&
-                	WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that are private within a parallel region or that appear  \
-                  	   in the reduction clause of a parallel directive cannot be specified in a \
-                  	   lastprivate clause on a for directive that binds to the parallel  construct.";
-                  chkflag=true;
-                }
-                wn4=WN_next(wn4);
-             }
-             wn3=WN_next(wn3);
-           } 
-           
-       }
-    }
-    	
-    cs1=WGEN_CS_top();
-    wn1=cs1->wn_prag;
-    wn2=WN_first(wn1);
-    while(wn2!=NULL)
-    {
-
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
-      	{
-          msg = "A threadprivate variable must not appear in any clause except the copyin, \
-				copyprivate, schedule, num_threads,or the if clause.";
-	     chkflag=true;
-      	}
-      }
-      
-       //for private clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-      WGEN_check_private(wn2,chkflag);
-      //for firstprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-      WGEN_check_firstprivate(wn2,chkflag);
-       //for lastprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LASTLOCAL)
-      WGEN_check_lastprivate(wn2,chkflag);
-      //for reduction clause
-      if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WGEN_check_reduction(wn2,chkflag);
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WGEN_check_default(wn2,chkflag);
-      
-      wn2=WN_next(wn2);
-  
-    }       
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-    return;
-   
-};
-
-#endif
 
 static WN * Setup_MP_Enclosing_Region (void);
 
@@ -1226,177 +976,28 @@ void WGEN_expand_end_for ( )
 //    WGEN_check_for (wn);
     WGEN_Stmt_Pop (wgen_stmk_scope);
 
-    if (lang_cplus)
-    {
-      WN *wn = WGEN_Stmt_Top ();
-      // Output DO loop side-effects
-      for (INT i=0; i<doloop_side_effects.size(); i++)
-        WN_INSERT_BlockFirst (wn, doloop_side_effects[i]);
-      doloop_side_effects.clear ();
+    WN *wn = WGEN_Stmt_Top ();
+    WN *anchor = WN_first(wn);
 
-      // Note the FOR is still in stack. If there is no enclosing
-      // (parallel) region, then process and pop the enclosing EH
-      // region.
-      if (!WGEN_CS_enclose())
-      {
-        WGEN_maybe_call_dtors (wn);
-        WGEN_maybe_localize_vars (wn);
-        WGEN_maybe_do_eh_cleanups ();
-        // Pop enclosing EH region body.
-        WGEN_Stmt_Pop (wgen_stmk_region_body);
-      }
+    // Output DO loop side-effects
+    for (INT i=0; i<doloop_side_effects.size(); i++)
+      WN_INSERT_BlockBefore(wn, anchor, doloop_side_effects[i]);
+    doloop_side_effects.clear ();
+
+    // Note the FOR is still in stack. If there is no enclosing
+    // (parallel) region, then process and pop the enclosing EH
+    // region.
+    if (lang_cplus && !WGEN_CS_enclose())
+    {
+      WGEN_maybe_call_dtors (wn);
+      WGEN_maybe_localize_vars (wn);
+      WGEN_maybe_do_eh_cleanups ();
+      // Pop enclosing EH region body.
+      WGEN_Stmt_Pop (wgen_stmk_region_body);
     }
     WGEN_CS_pop(wgen_omp_for);
 }
 
-#if 0
-
-/////////////////////
-///////  sections directive
-
-void WGEN_check_sections ( WN *sections_wn)
-{
-    bool chkflag=false;
-    char * msg = NULL;
-
-
-    WN* wn1,*wn2,*wn3,*wn4;
-    CHECK_STMT *cs1,*cs2;
-
-    // to check for "sections" directive node represented by sections_wn 
-    // not to check the clause part of the sections directive
-    // only check the current block, not necessory to check into lower nested levels
-    
-    //solve directive nesting problem: for, sections, and single directives that bind 
-    //to the same parallel are not allowed to be nested inside each other.
-    if( WGEN_bind_to_same(wgen_omp_sections,wgen_omp_for,wgen_omp_parallel) ||
-        WGEN_bind_to_same(wgen_omp_sections,wgen_omp_single,wgen_omp_parallel) )
-    {
-    	msg = "for, sections, and single directives that bind to the same parallel  \
-    	   are not allowed to be nested inside each other."; 
-    	chkflag=true;
-    }
-    //solve directive nesting problem:for, sections, and single directives are not 
-    //permitted in the dynamic extent of critical, ordered, and master regions if the
-    // directives bind to the same parallel as the regions.
-    if( WGEN_bind_to_same(wgen_omp_sections,wgen_omp_critical,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_sections,wgen_omp_ordered,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_sections,wgen_omp_master,wgen_omp_parallel))
-        
-    {
-    	msg = "for, sections, and single directives are not permitted in  \
-    	the dynamic extent of critical, ordered, and master regions if the directives \
-    	bind to the same parallel as the regions."; 
-    	chkflag=true;
-    }
-
-    //deal with parallel reduction clause:
-    cs1=WGEN_CS_Find_Rtn(wgen_omp_parallel);
-    cs2=WGEN_CS_top();
-    bool fg1,fg2,fg3,fg4,fg5;
-    fg1=fg2=fg3=fg4=fg5=false;
-    if(cs1)
-    {
-       //printf("Enter cs1 ... c1 is %d, c2 is %d \n",cs1->kind,cs2->kind);
-      // printf("checking .... cflag cs1 : %d\n",cs1->cflag);
-       fg1=WGEN_Check_Cflag(cs1, clause_reduction);
-       fg2=WGEN_Check_Cflag(cs1, clause_private);
-       fg3=WGEN_Check_Cflag(cs2, clause_private);
-       fg4=WGEN_Check_Cflag(cs2,clause_firstprivate);
-       fg5=WGEN_Check_Cflag(cs2,clause_lastprivate);
-       //printf("a=%d,b=%d\n",a,b );
-       if(fg1&&(fg3||fg4||fg5)||fg2&&(fg4||fg5))
-       {	
-           wn1=cs1->wn_prag;
-           wn2=cs2->wn_prag;
-           wn3=WN_first(wn1);
-           wn4=WN_first(wn2);
-           while(wn3!=NULL)
-           {
-             if(WN_pragma(wn3)!=WN_PRAGMA_REDUCTION&&
-             	WN_pragma(wn3)!=WN_PRAGMA_LOCAL)
-             	{ 
-             	  wn3=WN_next(wn3);
-             	  continue;
-             	}
-             while(wn4!=NULL)
-             {
-                if(  WN_pragma(wn4)==WN_PRAGMA_LOCAL&&WN_pragma(wn3)==WN_PRAGMA_REDUCTION
-                	&&WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that appear in the reduction clause of a parallel  \
-                  	    directive cannot be specified in a private clause on a work-sharing  \
-                  	    directive that binds to the parallel construct.";
-                 chkflag=true;
-                }
-                if(WN_pragma(wn4)==WN_PRAGMA_FIRSTPRIVATE&&
-                	WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                  msg = "Variables that are private within a parallel region or that appear  \
-                  	   in the reduction clause of a parallel directive cannot be specified in a  \
-                  	   firstprivate clause on for directive that binds to the parallel construct.";
-                  chkflag=true;
-                }
-                if(WN_pragma(wn4)==WN_PRAGMA_LASTLOCAL&&
-                	WN_st_idx(wn3)==WN_st_idx(wn4))
-                {
-                 msg = "Variables that are private within a parallel region or that appear  \
-                  	   in the reduction clause of a parallel directive cannot be specified in a  \
-                  	   lastprivate clause on a for directive that binds to the parallel construct.";
-                  chkflag=true;
-                }
-                wn4=WN_next(wn4);
-             }
-             wn3=WN_next(wn3);
-           } 
-           
-       }
-    }
-    cs1=WGEN_CS_top();
-    wn1=cs1->wn_prag;
-    wn2=WN_first(wn1);
-    while(wn2!=NULL)
-    {
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
-      	{
-          msg = "A threadprivate variable must not appear in any clause except the copyin, \
-				copyprivate, schedule, num_threads,or the if clause.";
-	      chkflag=true;
-      	}
-      }
-       //for private clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-      WGEN_check_private(wn2,chkflag);
-      //for firstprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-      WGEN_check_firstprivate(wn2,chkflag);
-       //for lastprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LASTLOCAL)
-      WGEN_check_lastprivate(wn2,chkflag);
-       //for reduction clause
-      if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WGEN_check_reduction(wn2,chkflag);
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WGEN_check_default(wn2,chkflag);
-      
-      wn2=WN_next(wn2);
-  
-    }      
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-    return;
-};
-
-#endif
 
 // Called from WGEN_expand_start_sections and WGEN_expand_start_for,
 // to enclose the SECTIONS/DO region inside an EH region. The properties
@@ -1511,28 +1112,8 @@ void WGEN_expand_start_sections (gs_t stmt)
 
   gs_t clauses = gs_omp_sections_clauses (stmt);
 
-#if 0 // clean up
-  // For a sections clause, private and firstprivate pragmas on non-pod
-  // objects should be promoted to the enclosing parallel region. So
-  // pass the enclosing region, if any, as the second argument to
-  // WGEN_process_omp_clause (instead of the region just being created).
-  CHECK_STMT * enclosing = WGEN_CS_enclose();
-  if (enclosing)
-  {
-    region = enclosing->region;
-
-    FmtAssert (region, ("NULL enclosing region of SECTIONS clause"));
-    // sanity check, must be a parallel region.
-    WN * first_pragma = WN_first(WN_region_pragmas(region));
-    FmtAssert (WN_region_kind(region) == REGION_KIND_MP &&
-               first_pragma &&
-               WN_pragma(first_pragma) == WN_PRAGMA_PARALLEL_BEGIN,
-               ("Unexpected parent region of SECTIONS clause"));
-  }
-#else
   if (lang_cplus)
     region = enclosing_region;
-#endif
 
   for (; clauses; clauses = gs_omp_clause_chain(clauses))
     WGEN_process_omp_clause(clauses, region);
@@ -1572,34 +1153,12 @@ void WGEN_expand_start_section ()
        WGEN_CS_push(wgen_omp_section,SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
 }
 
-#if 0
-void WGEN_check_section ( )
-{
-  int i;
-  bool chkflag=false;
-  char * msg = NULL;
-
-  if(WGEN_CS_Find (wgen_omp_sections) >= 0 ||
-     WGEN_CS_Find (wgen_omp_parallel_sections) >= 0)
-    return;   //check passed
-
-  msg = "Section directive appeared outside the lexical extent of  \
-	     	     directive sections or directive parallel sections.";
-  chkflag=true;
-  WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-  return;
-}
-#endif
 
 void WGEN_expand_end_section ( )
 {
 // If a block not required for a pragma_section, the following lines can be removed and
 // left this function doing nothing
        WN *wn = WGEN_Stmt_Top ();
-#if 0
-       /* Do we need this check now? */
-       WGEN_check_section();
-#endif
        WGEN_Stmt_Pop (wgen_stmk_scope);
        WGEN_Stmt_Append (wn, Get_Srcpos());
        
@@ -1611,10 +1170,6 @@ static void WGEN_generate_non_pod_lastlocal_finalization (void);
 
 void WGEN_expand_end_sections ( )
 {
-#if 0
-    /* Do we need this check now? */
-    WGEN_check_sections (wn);
-#endif
     WGEN_generate_non_pod_lastlocal_finalization ();
     WGEN_Stmt_Pop (wgen_stmk_scope);
 
@@ -1635,236 +1190,6 @@ void WGEN_expand_end_sections ( )
 }
 
 
-#if 0
-/////////////////////////
-//////  single directive
-
-void WGEN_check_single ()
-{ 
-    bool chkflag=false;
-    char * msg = NULL;
-
-
-    WN* wn1,*wn2,*wn3,*wn4,*wn5,*wn6;
-    CHECK_STMT *cs1,*cs2,*cs3;
-    bool fg1,fg2,fg3,fg4;
-    int find=-1;
-    
-    // to check for "sections" directive node represented by sections_wn 
-    // not to check the clause part of the sections directive
-    // only check the current block, not necessory to check into lower nested levels
-    
-    //solve directive nesting problem: for, sections, and single directives that bind 
-    //to the same parallel are not  allowed to be nested inside each other.
-    if( WGEN_bind_to_same(wgen_omp_single,wgen_omp_for,wgen_omp_parallel) ||
-        WGEN_bind_to_same(wgen_omp_single,wgen_omp_sections,wgen_omp_parallel) )
-    {
-    	msg="for, sections, and single directives that bind to the same\n"
-            "\tparallel are not allowed to be nested inside each other."; 
-    	chkflag=true;
-    }
-    //solve directive nesting problem:for, sections, and single directives are not 
-    //permitted in the dynamic extent of critical, ordered, and master regions if the
-    // directives bind to the same parallel as the regions.
-    if( WGEN_bind_to_same(wgen_omp_single,wgen_omp_critical,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_single,wgen_omp_ordered,wgen_omp_parallel)||
-        WGEN_bind_to_same(wgen_omp_single,wgen_omp_master,wgen_omp_parallel))
-        
-    {
-    	msg="for, sections, and single directives are not permitted in\n"
-    	    "\tthe dynamic extent of critical, ordered, and master regions\n"
-            "\tif the directives bind to the same parallel as the regions.";  
-    	chkflag=true;
-    }    
-    //deal with copyprivate 
-    fg1=fg2=fg3=fg4=false;
-
-    cs1=WGEN_CS_top();
-    fg1=WGEN_Check_Cflag(cs1, clause_copyprivate);
-
-    if(fg1 && (WGEN_CS_Find(wgen_omp_parallel) >= 0))
-    {
-      cs2=WGEN_CS_enclose();
-      cs3=WGEN_CS_Find_Rtn(wgen_omp_parallel);
-      wn1=cs1->wn_prag;
-      wn2=cs2->wn_prag;
-      wn3=WN_first(wn1);
-      wn4=WN_first(wn2);
-      wn5=cs3->wn_prag;
-      wn6=WN_first(wn5);
-
-      if((cs2!=NULL)&&(cs2->kind>=wgen_omp_parallel&&cs2->kind<=wgen_omp_parallel_for))
-      {
-        while(wn3!=NULL)
-        {
-          // Shouldn't wn4 be initialized in each iteration of this loop? 
-          if(WN_pragma(wn3)!=WN_PRAGMA_COPYPRIVATE)
-          { 
-            wn3=WN_next(wn3);
-            continue;
-          }
-          if (ST_is_thread_private (WN_st (wn3)))
-            fg2 = true;
-          if (!fg2)
-            while(wn4!=NULL)
-            {
-              if(WN_pragma(wn4) == WN_PRAGMA_LOCAL &&
-                 WN_st_idx(wn3) == WN_st_idx(wn4))
-              {
-                fg2=true;
-                break;
-              }
-              wn4=WN_next(wn4);
-            }
-
-          if(fg2==false)
-          {
-            msg="A single directive with copyprivate clause encountered in\n"
-               	"\tthe dynamic extent of parallel region, but the variables\n"
-                "\tspecified copyprivate are not threadprivate, or private\n"
-                "\tin the enclosing context.";
-            chkflag=true;
-          }  
-
-          wn3=WN_next(wn3);    
-        }
-      }
-    }
-	
-    fg1=WGEN_Check_Cflag(cs1, clause_copyprivate);
-    fg2=WGEN_Check_Cflag(cs1, clause_private);
-    fg3=WGEN_Check_Cflag(cs1, clause_firstprivate);
-
-    if(fg1 && (fg2 || fg3))
-    {
-       wn1=cs1->wn_prag;
-       wn2=wn3=WN_first(wn1);
-       while(wn2)
-       {
-         if(WN_pragma(wn2)==WN_PRAGMA_COPYPRIVATE)
-           break;
-         wn2=WN_next(wn2);
-       }
-       if(wn2!=NULL)
-       {
-         while(wn3)
-         {
-       	   if((WN_pragma(wn3)==WN_PRAGMA_LOCAL||WN_pragma(wn3)==WN_PRAGMA_FIRSTPRIVATE)
-       	 	&&WN_st(wn2)==WN_st(wn3))
-       	   {
-       	      msg="A variable that is specified copyprivate cannot appear in\n"
-       	      	  "\tprivate or firstprivate clause in the same single directive.";
-       	      chkflag=true;
-       	   }	
-       	   wn3=WN_next(wn3);
-         }
-       }
-    }
-
-    //deal with parallel reduction and private clause:
-    cs1=WGEN_CS_Find_Rtn(wgen_omp_parallel);
-    cs2=WGEN_CS_top();
-    
-    fg1 = fg2 = fg3 = fg4 = false;
-    if(cs1)
-    {
-       fg1=WGEN_Check_Cflag(cs1, clause_reduction);
-       fg2=WGEN_Check_Cflag(cs1, clause_private);
-       fg3=WGEN_Check_Cflag(cs2, clause_private);
-       fg4=WGEN_Check_Cflag(cs2,clause_firstprivate);
- 
-       if(fg1 && (fg3 || fg4) || fg2 && fg4)
-       {
-         wn1=cs1->wn_prag;
-         wn2=cs2->wn_prag;
-         wn3=WN_first(wn1);
-         wn4=WN_first(wn2);
-         while(wn3!=NULL)
-         {
-           if(WN_pragma(wn3) != WN_PRAGMA_REDUCTION &&
-              WN_pragma(wn3) != WN_PRAGMA_LOCAL)
-           {
-             wn3=WN_next(wn3);
-             continue;
-           }
-           while(wn4!=NULL)
-           {
-             if(WN_pragma(wn4) == WN_PRAGMA_LOCAL &&
-                WN_pragma(wn3) == WN_PRAGMA_REDUCTION &&
-                WN_st_idx(wn3) == WN_st_idx(wn4))
-             {
-               msg="Variables that appear in the reduction clause of a\n"
-                   "\tparallel directive cannot be specified in a private\n"
-                   "\tclause on a work-sharing directive that binds to\n"
-                   "\tthe parallel construct.";
-               chkflag=true;
-             }
-             if(WN_pragma(wn4) == WN_PRAGMA_FIRSTPRIVATE &&
-                WN_st_idx(wn3) == WN_st_idx(wn4))
-             {
-               msg="Variables that are private within a parallel region or\n"
-                   "\tthat appear in the reduction clause of a parallel\n"
-                   "\tdirective cannot be specified in a firstprivate\n"
-                   "\tclause on for directive that binds to the parallel\n"
-                   "\t construct.";
-               chkflag=true;
-             }
-             wn4=WN_next(wn4);
-           }
-           wn3=WN_next(wn3);
-         } 
-       }
-    }
-    //check for thread private variables:
-    cs1=WGEN_CS_top();
-    wn1=cs1->wn_prag;
-    wn2=WN_first(wn1);
-    //printf("wn pragma is %d \n",WN_pragma(wn2));
-    while(wn2!=NULL)
-    {
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2) != WN_PRAGMA_COPYIN &&
-           WN_pragma(wn2) != WN_PRAGMA_COPYPRIVATE &&
-           WN_pragma(wn2) != WN_PRAGMA_MPSCHEDTYPE &&
-           WN_pragma(wn2) != WN_PRAGMA_IF &&
-           WN_pragma(wn2) != WN_PRAGMA_NUMTHREADS)
-      	{
-          msg="A threadprivate variable must not appear in any clause\n"
-              "\texcept the copyin, copyprivate, schedule, num_threads,\n"
-              "\tor the if clause.";
-	  chkflag=true;
-      	}
-      }
-      //for private clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-        WGEN_check_private(wn2,chkflag);
-
-      //for firstprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-        WGEN_check_firstprivate(wn2,chkflag);
-
-      //for reduction clause
-      if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-        WGEN_check_reduction(wn2,chkflag);
-
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-        WGEN_check_default(wn2,chkflag);
-      
-      wn2=WN_next(wn2);
-    }
-    
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-    return;
-}
-
-#endif
 
 void WGEN_expand_start_single (gs_t stmt)
 {
@@ -1922,143 +1247,6 @@ void WGEN_expand_end_single ()
     WGEN_CS_pop(wgen_omp_single);
 }
 
-#if 0
-
-/////////////////////////
-//////  parallel_for directive
-
-
-void WGEN_check_parallel_for ( WN *parallel_for_wn)
-{
-    // to check for parallel_for directive node represented by parallel_for_wn 
-    // not to check the clause part of the parallel_for directive
-    // only check the current block, not necessory to check into lower nested levels
-
-    //directive parallel for combined the restrictions of directive parallel and for:
-    bool chkflag=false;
-
-   
-    char * msg = NULL;
-    CHECK_STMT* cs1;
-    WN* wn1,*wn2,*wn3;
-    bool fg1,fg2,fg3,fg4;
-    fg1=fg2=fg3=fg4=false;
-    
-    if (WN_operator(parallel_for_wn)!=OPR_BLOCK)
-    {
-    	fprintf(stderr,"WGEN_check_parallel_for can't deal with Non-block item!\n");
-	chkflag = true;
-    }
-    else if (WN_first (parallel_for_wn) &&
-             WN_operator (WN_first (parallel_for_wn)) == OPR_DO_LOOP)
-    { // check that loop iteration variable is not threadprivate
-      ST * index_st = WN_st (WN_index (WN_first (parallel_for_wn)));
-      if (ST_is_thread_private (index_st))
-      {
-        msg = "Warning: A for loop iteration variable may not appear in a threadprivate directive.";
-        chkflag = true;
-      }
-    }
-    
-  //check for thread private variables:
-    cs1=WGEN_CS_top();
-    wn1=cs1->wn_prag;
-    wn2=wn3=WN_first(wn1);
-    while(wn2!=NULL)
-    {
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-      //for private clause
-      if (WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-        WGEN_check_private(wn2,chkflag);
-      //for firstprivate clause
-      if (WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-        WGEN_check_firstprivate(wn2,chkflag);
-       //for lastprivate clause
-      if (WN_pragma(wn2)==WN_PRAGMA_LASTLOCAL)
-        WGEN_check_lastprivate(wn2,chkflag);
-      //for reduction clause
-      if (WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WGEN_check_reduction(wn2,chkflag);
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WGEN_check_default(wn2,chkflag);
-       
-      //for copyin clause:
-      if(WN_pragma(wn2) == WN_PRAGMA_COPYIN &&
-         !ST_is_thread_private(* WN_st(wn2)))
-      	{ 
-          msg = "A variable that is specified in the copyin clause  \
-				must be a threadprivate variable.";
-	  chkflag=true;
-      	}
-      //for threadprivate clause
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
-      	{
-          msg = "A threadprivate variable must not appear in any clause except the copyin, \
-				copyprivate, schedule, num_threads, or the if clause.";
-	      chkflag=true;
-      	}
-      }  
-      //check for parallel reduction clause
-        if(WN_pragma(wn2)!=WN_PRAGMA_REDUCTION&&
-             	WN_pragma(wn2)!=WN_PRAGMA_LOCAL)
-         { 
-            wn2=WN_next(wn2);
-            continue;
-         }
-       fg1=WGEN_Check_Cflag(cs1, clause_reduction);
-       fg2=WGEN_Check_Cflag(cs1, clause_private);
-       fg3=WGEN_Check_Cflag(cs1,clause_firstprivate);
-       fg4=WGEN_Check_Cflag(cs1,clause_lastprivate); 
-      if(!(fg1&&(fg2||fg3||fg4)||fg2&&(fg3||fg4)))
-      {
-	wn2 = WN_next (wn2);
-      	continue;
-      }
-      while(wn3!=NULL)
-      	{
-      	  if( WN_pragma(wn3)==WN_PRAGMA_LOCAL&&WN_pragma(wn2)==WN_PRAGMA_REDUCTION
-                	&&WN_st(wn3)==WN_st(wn2))
-          {
-            msg = "Variables that appear in the reduction clause of a parallel  \
-                  directive cannot  be specified in a private clause on a work-sharing  \
-                 directive that binds to the parallel construct.";
-            chkflag=true;     
-          }
-          if( WN_pragma(wn3)==WN_PRAGMA_FIRSTPRIVATE&&
-                	WN_st(wn3)==WN_st(wn2))
-            {
-             msg = "Variables that are private within a parallel region or that appear  \
-                  in the  reduction clause of a parallel directive cannot be specified in a  \
-                  firstprivateclause on for directive that binds to the parallel  construct.";
-             chkflag=true;     
-            }
-          if( WN_pragma(wn3)==WN_PRAGMA_LASTLOCAL&&
-                	WN_st(wn3)==WN_st(wn2))
-            {
-              msg = "Variables that are private within a parallel region or that appear  \
-                  	in the  reduction clause of a parallel directive cannot be specified in a  \
-                  	lastprivate clause on a for directive that binds to the parallel  construct.";
-               chkflag=true;   
-            }
-          wn3=WN_next(wn3);
-      	} 
-       
-       wn2=WN_next(wn2);
-      }
-      WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-
-}    
-
-#endif
  
 void WGEN_expand_start_parallel_for (gs_t stmt)
 {
@@ -2118,120 +1306,6 @@ void WGEN_expand_end_parallel_for ()
 /////////////////////////
 //////  parallel_sections directive
 
-#if 0
-
-void WGEN_check_parallel_sections ( WN *parallel_sections_wn)
-{
-    // to check for parallel_sections directive node represented by parallel_sections_wn 
-    // not to check the clause part of the parallel_sections directive
-    // only check the current block, not necessory to check into lower nested levels
-
-    bool chkflag=false;
-    char * msg = NULL;
-
-    
-    CHECK_STMT* cs1;
-    WN* wn1,*wn2,*wn3;
-    bool fg1,fg2,fg3,fg4;
-    fg1=fg2=fg3=fg4=false;
-    
-    cs1=WGEN_CS_top();
-    wn1=cs1->wn_prag;
-    wn2=wn3=WN_first(wn1);
-    while(wn2!=NULL)
-    {
-      if(WN_st(wn2)==NULL)
-      {
-        wn2=WN_next(wn2);
-        continue;
-      }
-      //for private clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LOCAL)
-      WGEN_check_private(wn2,chkflag);
-      //for firstprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_FIRSTPRIVATE)
-      WGEN_check_firstprivate(wn2,chkflag);
-       //for lastprivate clause
-      if(WN_pragma(wn2)==WN_PRAGMA_LASTLOCAL)
-      WGEN_check_lastprivate(wn2,chkflag);
-      //for reduction clause
-      if(WN_pragma(wn2)==WN_PRAGMA_REDUCTION)
-      	WGEN_check_reduction(wn2,chkflag);
-      //for default clause
-      if(WN_pragma(wn2)==WN_PRAGMA_DEFAULT)
-      	WGEN_check_default(wn2,chkflag);
-      
-      
-      //for copyin clause:
-      if(WN_pragma(wn2)==WN_PRAGMA_COPYIN)
-      	{ 
-          if(!ST_is_thread_private(* WN_st(wn2)))
-          	msg = "A variable that is specified in the copyin clause  \
-          	     must be a threadprivate variable.";
-      	}
-      if(ST_is_thread_private(* WN_st(wn2)) )
-      {
-      	if(WN_pragma(wn2)!=WN_PRAGMA_COPYIN&&WN_pragma(wn2)!=WN_PRAGMA_COPYPRIVATE
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_MPSCHEDTYPE&&WN_pragma(wn2)!=WN_PRAGMA_IF
-      	  &&WN_pragma(wn2)!=WN_PRAGMA_NUMTHREADS)
-      	{
-          msg = "A threadprivate variable must not appear in any clause except the copyin, \
-				copyprivate, schedule, num_threads,or the if clause.";
-	      chkflag=true;
-      	}
-      }    
-      //check for parallel reduction clause
-        if(WN_pragma(wn2)!=WN_PRAGMA_REDUCTION&&
-             	WN_pragma(wn2)!=WN_PRAGMA_LOCAL)
-         { 
-            wn2=WN_next(wn2);
-            continue;
-         }
-       fg1=WGEN_Check_Cflag(cs1, clause_reduction);
-       fg2=WGEN_Check_Cflag(cs1, clause_private);
-       fg3=WGEN_Check_Cflag(cs1,clause_firstprivate);
-       fg4=WGEN_Check_Cflag(cs1,clause_lastprivate); 
-      if(!(fg1&&(fg2||fg3||fg4)||fg2&&(fg3||fg4)))
-      {
-	wn2 = WN_next (wn2);
-      	continue;
-      }
-      while(wn3!=NULL)
-      	{
-      	  if( WN_pragma(wn3)==WN_PRAGMA_LOCAL&&WN_pragma(wn2)==WN_PRAGMA_REDUCTION
-                	&&WN_st(wn3)==WN_st(wn2))
-          {
-            msg = "Variables that appear in the reduction clause of a parallel  \
-                  directive cannot  be specified in a private clause on a work-sharing  \
-                 directive that binds to the  parallel construct.";
-            chkflag=true;     
-          }
-          if( WN_pragma(wn3)==WN_PRAGMA_FIRSTPRIVATE&&
-                	WN_st(wn3)==WN_st(wn2))
-            {
-             msg = "Variables that are private within a parallel region or that appear  \
-                  in the  reduction clause of a parallel directive cannot be specified in a  \
-                  firstprivateclause on for directive that binds to the parallel  construct.";
-             chkflag=true;     
-            }
-          if( WN_pragma(wn3)==WN_PRAGMA_LASTLOCAL&&
-                	WN_st(wn3)==WN_st(wn2))
-            {
-               msg = "Variables that are private within a parallel region or that appear  \
-                  	in the  reduction clause of a parallel directive cannot be specified in a  \
-                  	lastprivate clause on a for directive that binds to the parallel construct.";
-               chkflag=true;   
-            }
-          wn3=WN_next(wn3);
-      	} 
-       
-       wn2=WN_next(wn2);
-      }
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-}  
-
-
-#endif
 
 void WGEN_expand_start_parallel_sections (gs_t stmt)
 {
@@ -2345,27 +1419,6 @@ void WGEN_expand_end_master ()
       WGEN_CS_pop(wgen_omp_master);
 };
 
-#if 0
-
-///////// critical directive ////////
-void WGEN_check_critical(char* name)
-{
-     bool chkflag=false;
-     char * msg = NULL;
-  
-     
-	 if(WGEN_CS_Find_fgname(wgen_omp_critical, name)>-1)
-	 {
-	   msg = "Critical directives with the same name are not  \
-	       allowed to be nested inside each other.";
-	   chkflag=true;
-	 }
-	 WGEN_omp_error(WGEN_CS_top(), chkflag, msg);  
-	 return;
-	
-}
-
-#endif
 
 void  WGEN_expand_start_critical (ST *region_phrase,char* critical_name)
 {
@@ -2394,10 +1447,6 @@ void  WGEN_expand_start_critical (ST *region_phrase,char* critical_name)
        // Check for the same critical name first, before setting the name,
        // since we don't want to find ourself for a match
 
-#if 0
-       /* Do we need this check any more? */
-       if (critical_name) WGEN_check_critical(critical_name);
-#endif
        WGEN_Set_Nameflag(critical_name);
 
        /////required?///////
@@ -2612,10 +1661,6 @@ void WGEN_expand_end_atomic ()
        WN *wn = WGEN_Stmt_Top ();
        WN * ptr = check_atomic(wn);
        WGEN_Stmt_Pop (wgen_stmk_scope);
-#if 0
-       // Remove this call later. This fix has been moved to omp-lowering
-       format_rhs_atomic_stmt (wn);
-#endif
        WGEN_Stmt_Append (wn, Get_Srcpos());
        if (ptr)
          adjust_atomic(ptr);
@@ -2623,42 +1668,6 @@ void WGEN_expand_end_atomic ()
 }
 
 
-#if 0
-
-///////// ordered directive ////////
-void WGEN_check_ordered()
-{ /*(1) An ordered directive must not be in the dynamic extent of a for directive
-	that does not have the ordered clause specified.
-    	(2) An iteration of a loop with a for construct must not execute the same ordered
-       directive more than once, and it must not execute more than one ordered directive.  */
-   bool chkflag=false;
-   char * msg = NULL;
-
-   if ((WGEN_CS_Find (wgen_omp_for) >=0 &&
-        WGEN_CS_Find_Cflag(wgen_omp_for,clause_ordered) < 0) ||
-       (WGEN_CS_Find (wgen_omp_parallel_for) >= 0 &&
-      	WGEN_CS_Find_Cflag(wgen_omp_parallel_for,clause_ordered) < 0))
-      {
-      	msg = "An ordered directive must not be in the dynamic extent  \
-      	   of a for directive that does not have the ordered clause specified.";
-      	chkflag=true;
-      }
-      	
-    //ordered directives are not allowed in the dynamic extent of critical
-    //regions  if the directives bind to the same parallel as the regions.
-   if( WGEN_CS_Find(wgen_omp_critical)>WGEN_CS_Find(wgen_omp_parallel)
-        && WGEN_CS_Find(wgen_omp_parallel)>=0)     
-    {
-     msg = "Ordered directives are not allowed in the dynamic extent of  \
-    	critical regions if the directives bind to the same parallel as the regions.";   
-     chkflag=true;
-    }
-    WGEN_omp_error(WGEN_CS_top(), chkflag, msg);
-    return;
-      
-}
-
-#endif
 
 void  WGEN_expand_start_ordered (void)
 {
@@ -2699,63 +1708,6 @@ void  WGEN_expand_end_ordered (void)
 }
 
 
-#if 0
-///////// barrier directive ////////
-
-void WGEN_check_barrier ( )
-{
-//   (1)  A barrier directive may not appear as the immediate subordinate of a C/C++ control statement
-//         (if, switch, while, do, for), and it can not be labeled (with either a user or a
-//         case/default label). 
-//   (2) The smallest statement that contains a barrier directive must be a block (or
-//         compound-statement).
-
-        //deal with (1) listed above
-       bool chkflag=false;
-       char * msg = NULL;
- 
-       CHECK_STMT* cs = WGEN_CS_top ();
-       SRCPOS srcpos = Get_Srcpos();
-       WGEN_Set_LFnum(cs, SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
-
-       
-       if(WGEN_is_top(wgen_cscf))
-       {
-         msg = "A barrier directive appeared as the immediate  \
-           	subordinate of a C/C++ control statement if, switch, while, do, for.";
-           chkflag=true;
-      	}
-
-       WN* wn1;                     //deal with (2) listed above
-       wn1=WGEN_Stmt_Top();
-       if(WN_operator(wn1)!=OPR_BLOCK)
-       {
-  	   msg = "The smallest statement that contains a barrier directive must be a block (or \
-		         compound-statement).";
-		chkflag=true;
-       }
-       //barrier directives are not permitted in the dynamic extent of for, ordered,
-       // sections, single, master, and critical regions if the directives bind to the 
-       //same parallel as the regions.
-       if( WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_for,wgen_omp_parallel)||
-       	   WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_ordered,wgen_omp_parallel)||
-           WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_sections,wgen_omp_parallel)||
-           WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_single,wgen_omp_parallel)||
-           WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_master,wgen_omp_parallel)||
-           WGEN_bind_to_same(wgen_omp_barrier,wgen_omp_critical,wgen_omp_parallel))
-        
-    {
-      msg = "Barrier directives are not permitted in the dynamic extent of for, ordered, \
-          sections, single, master, and critical regions if the directives bind to the  \
-          same parallel as the regions."; 
-        chkflag=true;
-    }
-    WGEN_omp_error(cs, chkflag, msg);   
-    return;
-       
-};
-
-#endif
 
 void  WGEN_expand_barrier ()
 {
@@ -2781,133 +1733,6 @@ void  WGEN_expand_barrier ()
 }
 
 
-#if 0
-///////// flush directive ////////
-
-void WGEN_check_flush ( )
-{
-//   (1)  A flush directive may not appear as the immediate subordinate of a C/C++ control statement
-//         (if, switch, while, do, for), and it can not be labeled (with either a user or a
-//         case/default label). 
-//   (2) The smallest statement that contains a flush directive must be a block (or
-//         compound-statement).
-     bool chkflag=false;
-     char * msg = NULL;
-
-     CHECK_STMT* cs = WGEN_CS_top ();
-     SRCPOS srcpos = Get_Srcpos();
-     WGEN_Set_LFnum(cs, SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
-
-   
-     if(WGEN_is_top(wgen_cscf))
-       {
-         msg = "A barrier directive appeared as the immediate subordinate of a C/C++ control statement.";
-         chkflag=true;
-      	}
-
-       WN* wn1;                     //deal with (2) listed above
-       wn1=WGEN_Stmt_Top();
-       if(WN_operator(wn1)!=OPR_BLOCK)
-       {
-  	    msg = "The smallest statement that contains a barrier directive must be a block (or \
-		         compound-statement).";
-		chkflag=true;
-       }
-   WGEN_omp_error(cs, chkflag, msg);     	
-       
-}
-
-void  WGEN_expand_flush (WN_list *flush_variables)
-{
-       WN * sync,  * wn1,  * wn2;
-       WN * wn;
-       ST * st;
-       WN_list * wn_list;
-       UINT num =0, i = 0 ;
-
-       sync = WN_Create_Intrinsic(OPC_VINTRINSIC_CALL,
-       INTRN_SYNCHRONIZE,0,NULL);
-
-       for (wn_list = flush_variables; wn_list != NULL; wn_list = wn_list->next) 
-       	  num++;
-      
-       wn1 = WN_CreateBarrier(TRUE, num);
-       wn2 = WN_CreateBarrier(FALSE, num); 
-
-       for (wn_list = flush_variables; wn_list != NULL; wn_list = wn_list->next) 
-         {
-            wn = wn_list->wn;
-            st = WN_st(wn);
-            if (Barrier_Lvalues_On) {
-              WN_kid(wn1,i) = wn;
-              WN_kid(wn2,i) = wn;
-            }
-            else {
-              WN_kid(wn1,i) = WN_CreateIdname(0,st);
-              WN_kid(wn2,i) = WN_CreateIdname(0,st);
-            }
-            i++;
-         }   
-
-       WGEN_Stmt_Append (wn1, Get_Srcpos());
-       WGEN_Stmt_Append (sync, Get_Srcpos());
-       WGEN_Stmt_Append (wn2, Get_Srcpos());
-       //////////////// OPENMP CHECK STACK /////////////
-       SRCPOS srcpos = Get_Srcpos();
-       WGEN_CS_push(wgen_omp_flush,SRCPOS_linenum(srcpos), SRCPOS_filenum(srcpos));
-       WGEN_check_flush();
-       WGEN_CS_pop(wgen_omp_flush);
-       
-}
-
-///////// threadprivate directive ////////
-void WGEN_check_threadprivate(ST_list* threadprivate_variables)
-{
-    bool chkflag=false;
-
-
-    ST* st;
-    ST_list *st_list;
-    SYMTAB_IDX si1,si2;
-
-    si1=PU_lexical_level(Get_Current_PU());
-
-    st_list=threadprivate_variables;
-    while(st_list!=NULL)
-    {
-      st=st_list->st;
-      if(ST_is_thread_private(* st))
-      {
-        si2=ST_level(st);
-      	if(si1!=si2&&ST_storage_class(*st)==SCLASS_PSTATIC)
-      	{
-          fprintf(stderr,"Warning: A threadprivate directive for static block-scope variables must appear in \
- 				the   scope of the variable and not in a nested scope.\n");
-	      chkflag=true;
-      	}
-      }
-     st_list=st_list->next;  
-    }
-    /*printf("entering check threadprivate:: \n");
-    st_list=threadprivate_variables;
-    while(st_list!=NULL)
-    {
-      s=st_list->st;
-      if(ST_is_thread_private(* s))
-      {
-      	if(!ST_is_not_used(*s))
-      	{
-          printf("Warning: The threadprivate directive must lexically  precede all references 
-          	to any of the variables in its list.\n");
-	  
-      	}
-      }
-     st_list=st_list->next;  
-    }   */
-   // WGEN_omp_error(wgen_omp_threadprivate, chkflag );
-    
-}
-#endif
 
 // Generate OMP non-pod finalization code required for lastprivate
 // variables.

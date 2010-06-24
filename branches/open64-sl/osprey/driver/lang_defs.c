@@ -54,6 +54,8 @@
 #include <ctype.h>
 #endif
 
+extern int external_gcc;
+
 char *ldpath_for_pixie = NULL;
 
 /*
@@ -180,6 +182,8 @@ static phase_info_t phase_info[] = {
    {'a',  0x0000002000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* gcc */
 #elif defined(TARG_SL)
    {'a',  0x0000002000000000LL, NAMEPREFIX "as", BINPATH, FALSE, FALSE},  /* as*/
+#elif defined(TARG_LOONGSON)
+   {'a',  0x0000002000000000LL,	"as", PHASEPATH, FALSE, FALSE}, /* as */
 #else
    {'a',  0x0000002000000000LL,	"as",	BINPATH,	FALSE, TRUE},	/* gas */
 #endif
@@ -191,8 +195,12 @@ static phase_info_t phase_info[] = {
 #else
    {'j',  0x0000010000000000LL, "ipa_link", BINPATH, TRUE, FALSE}, /* ipa_link */
 #endif
+#ifdef TARG_LOONGSON
+   {'l',  0x0000020000000000LL,	"collect2", GNUPHASEPATH,TRUE, FALSE},	/* collect */
+#else
    {'l',  0x0000020000000000LL,	"ld", BINPATH, TRUE, TRUE},	/* collect */
-#if defined(TARG_X8664) || ( defined(KEY) && !defined(CROSS_COMPILATION))
+#endif
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) || ( defined(KEY) && !defined(CROSS_COMPILATION))
    /* on x8664, we alwayse use gcc/g++ as the linker */
    {'l',  0x0000040000000000LL,	NAMEPREFIX "gcc", BINPATH, FALSE, TRUE}, /* ld */
    {'l',  0x0000080000000000LL,	NAMEPREFIX "g++", BINPATH, FALSE, TRUE}, /* ldplus */
@@ -456,10 +464,25 @@ char *
 get_phase_dir (phases_t index)
 {
 #if defined(__linux__) || defined(__APPLE__)
-	if (index == P_ipa_link) {
-	  return phase_info[index].dir;
-	}
-	else if(phase_info[index].find_dir_by_path) {
+	char *name = phase_info[index].name;
+
+    if (external_gcc != TRUE) {
+
+        /* Construct the path to the internal gcc binaries. */
+        if (strcmp(name, "gcc") == 0 || strcmp(name, "g++") == 0) {
+            char *root_dir = directory_path(get_executable_dir());
+            char *bin_dir = concat_path(root_dir, INTERNAL_GCC_BIN);
+            char *gcc_path = concat_path(bin_dir, name);
+
+            if (is_executable(gcc_path)) {
+                free(gcc_path);
+                return bin_dir;
+            }
+            free(gcc_path);
+            free(bin_dir);
+        }
+    }
+	if (phase_info[index].find_dir_by_path) {
 		char cmd[PATH_BUF_LEN];
 		char result[PATH_BUF_LEN];
 
@@ -469,7 +492,7 @@ get_phase_dir (phases_t index)
 		return string_copy(result);
 	}
 #endif
-	  return phase_info[index].dir;
+	return phase_info[index].dir;
 }
 
 void
@@ -694,4 +717,16 @@ get_source_lang (source_kind_t sk)
 		return invoked_lang;
 	}
 	return L_NONE;
+}
+
+void
+override_phase(int phase, char *phase_name, char *new_path, char *new_name)
+{
+	phase_info[phase].set_ld_library_path = FALSE;
+	if (new_path != NULL) {
+		phase_info[phase].find_dir_by_path = FALSE;
+		phase_info[phase].dir = string_copy(new_path);
+	}
+	if (new_name != NULL)
+		phase_info[phase].name = string_copy(new_name);
 }

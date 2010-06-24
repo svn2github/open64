@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -185,7 +189,11 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
     case OPR_CVTL:
       {
-	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()) {
+	if (WOPT_Enable_Cvt_Folding && ! emitter->For_preopt()
+	    /* when exp->Offset() are 8, 16 , 32, 64 , load and then cvtl can be fold into
+	     I8I1load  U8U2load ... etc*/
+	    && (exp->Offset() == 8 || exp->Offset() == 16 
+		|| exp->Offset() == 32 || exp->Offset() == 64 )) {
 	  CODEREP *kid = exp->Get_opnd(0);
 	  WN      *opnd;
 	  actual_type = Actual_cvtl_type(exp->Op(), exp->Offset());
@@ -249,21 +257,6 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	    if (new_type) actual_type = new_type;
 	  }
 
-#if 0 // the analysis in No_truncation_by_value_size  assumes state 
-      // before BDCE, so this code has to be disabled now
-	  if (actual_type == actual_opnd_type ||
-	      (WOPT_Enable_Min_Type &&
-	       kid->Kind() == CK_VAR &&
-	       MTYPE_is_integral( actual_opnd_type ) &&
-	       No_truncation_by_value_size(actual_type, 
-					   MTYPE_is_signed(actual_type), 
-					   kid, emitter->Opt_stab() )
-	       )
-	      ) {
-	    wn = opnd;
-	    connect_cr_to_wn = FALSE;
-	  } else 
-#endif
 	  {
 	    BOOL enabled = WN_Simplifier_Enable(TRUE);
 	    wn = WN_CreateCvtl(exp->Op(), (INT16)exp->Offset(), opnd);
@@ -278,6 +271,22 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 
 	} else {
 	  WN *opnd = Gen_exp_wn(exp->Get_opnd(0), emitter);
+#if defined(TARG_X8664)
+          // cannot remove CVTL when loading value from return register,
+          // the return value needs to be zero/sign extended in order to
+          // mask off the possible trash value in upper part of the
+          // register
+          
+          if (WN_operator(opnd) == OPR_LDID && 
+                WN_st_idx(opnd) != (ST_IDX) 0 && (ST_class(WN_st(opnd)) == CLASS_PREG)) {
+            if (WN_st(opnd) == Return_Val_Preg ||
+                 ( Preg_Is_Dedicated(WN_offset(opnd)) && Preg_Offset_Is_Int(WN_offset(opnd)) &&
+                   Is_Return_Preg(WN_offset(opnd)) )) {
+               wn = WN_CreateCvtl(exp->Op(), (INT16)exp->Offset(), opnd);
+               break;
+            }
+          }
+#endif // TARG_X8664
 	  actual_type = Actual_cvtl_type(exp->Op(), exp->Offset());
 	  actual_opnd_type = Actual_result_type(opnd);
 
@@ -372,9 +381,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
               if (ty == MTYPE_I1 || ty == MTYPE_I2 || ty == MTYPE_U1 || ty == MTYPE_U2)
                 WN_kid(wn, i) = WN_Int_Type_Conversion( WN_kid(WN_kid(wn, i),0), ty );
               else if (
-#if 1 // bug 13104
 		       ! MTYPE_is_float(exp->Asm_input_rtype()) &&
-#endif
 		       exp->Asm_input_rtype() != exp->Asm_input_dsctype()) {
                 WN_set_rtype(WN_kid(wn, i), exp->Asm_input_rtype());
                 WN_set_desc(WN_kid(wn, i), exp->Asm_input_dsctype());
@@ -416,7 +423,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       wn = WN_Tas(exp->Dtyp(), 
 		  exp->Ty_index(), 
 		  Gen_exp_wn(exp->Get_opnd(0), emitter));
-#ifdef TARG_X8664 // bug 11752: make sure operand type has same size
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 11752: make sure operand type has same size
       if (MTYPE_byte_size(WN_rtype(wn)) > MTYPE_byte_size(WN_rtype(WN_kid0(wn))) &&
           WN_operator(WN_kid0(wn)) == OPR_INTCONST)
         WN_set_rtype(WN_kid0(wn), Mtype_TransferSize(MTYPE_I8, WN_rtype(WN_kid0(wn))));
@@ -484,23 +491,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	      	   MTYPE_byte_size(exp->Dtyp()) == 4) {
 	    if (WN_operator(opnd0) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd0)) == 8) {
-#if 0
-	      Is_True(( WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0),
-	      	      ("Inconsistent INTCONST type"));
-#else
 	      if ((WN_const_val(opnd0) << 32 >> 32) == WN_const_val(opnd0))
 	        WN_set_rtype(opnd0, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd0)));
-#endif
 	    }
 	    if (WN_operator(opnd1) == OPR_INTCONST && 
 		MTYPE_byte_size(WN_rtype(opnd1)) == 8) {
-#if 0 // umlau6.f of sixtrack hits this assertion
-	      Is_True((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1),
-	      	      ("Inconsistent INTCONST type"));
-#else
 	      if ((WN_const_val(opnd1) << 32 >> 32) == WN_const_val(opnd1))
 	        WN_set_rtype(opnd1, Mtype_TransferSize(exp->Dtyp(), WN_rtype(opnd1)));
-#endif
 	    }
 	    if (OPCODE_is_load(WN_opcode(opnd0)) && 
 		MTYPE_byte_size(WN_rtype(opnd0)) == 8 &&
@@ -754,7 +751,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 #if defined(TARG_SL)
   // set flag for vbuf offset wn node. 
   if (exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
-    WN_Set_is_internal_mem_ofst(wn);
+    WN_Set_is_internal_mem_ofst(wn, TRUE);
   }
 
   extern INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc);
@@ -861,10 +858,8 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       rwn = WN_CreateCompgoto(num_entries, rhs_wn, block_wn, default_wn, 0);
     }
 #ifdef TARG_SL //fork_joint
-     if (srep->Fork_stmt_flags())
-	 	WN_Set_is_compgoto_para(rwn);
-     else if(srep->Minor_fork_stmt_flags()) 
-	 	WN_Set_is_compgoto_for_minor(rwn);
+     WN_Set_is_compgoto_para(rwn, srep->Fork_stmt_flags());
+     WN_Set_is_compgoto_for_minor(rwn, srep->Minor_fork_stmt_flags());
 #endif 
     break;
 
@@ -945,8 +940,13 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       {
 	mINT16 kidcount = WN_kid_count (rwn);
 	WN * kid = WN_kid (rwn, kidcount - 1 );
+        // cannot replace ICALL with a CALL if the types
+        // are not match:
+        //   extern void foo(void);  
+        //   int i = ((int (*))foo)();
 	if (WN_operator (kid) == OPR_LDA &&
-	    ST_class (WN_st (kid)) == CLASS_FUNC)
+	    ST_class (WN_st (kid)) == CLASS_FUNC &&
+            srep->Ty() == ST_type(WN_st (kid)) )
 	{
 	  WN_set_operator (rwn, OPR_CALL);
 	  WN_st_idx (rwn) = ST_st_idx (WN_st (kid));
@@ -1165,17 +1165,16 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       WN_set_field_id(rwn, lhs->I_field_id());
 #if defined(TARG_SL)
       // support vbuf istore automatic expansion 
-      if(srep->SL2_internal_mem_ofst())
-        WN_Set_is_internal_mem_ofst(rwn); 
+      WN_Set_is_internal_mem_ofst(rwn, srep->SL2_internal_mem_ofst());  
 #endif 
-#ifdef TARG_X8664 // bug 6910
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&
 	  WN_operator(rhs_wn) == OPR_INTCONST &&
 	  MTYPE_byte_size(WN_rtype(rhs_wn)) < MTYPE_byte_size(lhs->Dsctyp()) &&
 	  lhs->Dsctyp() != MTYPE_BS /* bug 14453 */)
 	WN_set_rtype(rhs_wn, Mtype_TransferSize(lhs->Dsctyp(), WN_rtype(rhs_wn)));
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON) 
       if (Is_Target_32bit() && MTYPE_byte_size(WN_rtype(rhs_wn)) == 8 &&
 	  WN_operator(rhs_wn) == OPR_INTCONST && 
 	  MTYPE_byte_size(lhs->Dsctyp()) < 8 &&

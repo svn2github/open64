@@ -74,6 +74,11 @@ extern "C" {
 // with the enumeration in common/com/ia32/config_targ.h
 #undef TARGET_PENTIUM
 #endif /* TARG_IA32 */
+#if defined(TARG_PPC32)
+// the definition in gnu/config/ppc32/rs6000.h causes problem
+// with the enumeration in common/com/ppc32/config_targ.h
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 
 #ifdef KEY 
 #ifdef TARG_MIPS
@@ -374,7 +379,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif 
 		  break;
 
-#if !defined(TARG_X8664) && !defined(TARG_IA64) && !defined(TARG_MIPS)
+#if !defined(TARG_X8664) && !defined(TARG_IA64) && !defined(TARG_MIPS) && !defined(TARG_LOONGSON)
 #ifdef _LP64
 		case 16:  mtype = MTYPE_I8; break;
 #endif /* _LP64 */
@@ -456,7 +461,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #if defined(TARG_IA64)
 		case 12:
 		case 16: mtype = MTYPE_F10; break;
-#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA)
+#elif defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_NVISA) || defined(TARG_LOONGSON)
 		case 12:
 		case 16: mtype = MTYPE_FQ; break;
 #else
@@ -474,7 +479,7 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 #endif
 		case  8: mtype = MTYPE_C4; break;
 		case 16: mtype = MTYPE_C8; break;
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_LOONGSON)
 		case 32: mtype = MTYPE_CQ; break;
 #endif /* TARG_MIPS */
 #ifdef TARG_IA64

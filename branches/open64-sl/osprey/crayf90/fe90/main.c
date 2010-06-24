@@ -84,9 +84,6 @@ extern	void	print_buffered_messages (void);
 |* function prototypes of static functions declared in this file *|
 \*****************************************************************/
  
-# if 0
-static void check_license (void);
-# endif
 
 # ifdef _DEBUG
 static void check_defines_compatibility (void);
@@ -673,9 +670,6 @@ static void init_compiler (int	 argc,
    check_enums_for_change();	        /* Some enums must not be changed.    */
 # endif
 
-# if 0
-   check_license();
-# endif
 
    /* allocate memory for data structures required across compilation units.  */
    /* These must preceed process_cmd_line.                                    */
@@ -1001,44 +995,6 @@ static void init_date_time_info (void)
 |*      NOTHING								      *|
 |*									      *|
 \******************************************************************************/
-# if 0
-
-static void check_license (void)
- 
-{
-# define	CRAY_LM_NQE	1
-# define	CRAY_LM_DPE	2
-# define	CRAY_LM_F90E	3
-
-# define	LM_NOWAIT	0
-# define	LM_WAIT		1
-
-   extern	int	cray_lm_checkout(int, char *, int, int, char *, double);
-		int	ignore		= 0;
-		double	version		= 1.0;
-
-
-   TRACE (Func_Entry, "check_license", NULL);
-
-# if defined(_TARGET_OS_UNICOS) || defined(_TARGET_OS_MAX)
-   if (cray_lm_checkout(CRAY_LM_DPE, "", LM_NOWAIT, ignore, "", version)) {
-# else
-   if (cray_lm_checkout(CRAY_LM_F90E, "", LM_NOWAIT, ignore, "", version)) {
-# endif
-
-      /* This compiler is not licensed on this hardware. */
-
-      PRINTMSG(0, 631, Log_Error, 0);
-      exit_compiler(RC_USER_ERROR);
-   }
-
-   TRACE (Func_Exit, "check_license", NULL);
-
-   return;
-
-}  /* check_license */
-
-# endif
 
 
 /******************************************************************************\
@@ -1095,18 +1051,6 @@ static void check_defines_compatibility(void)
             "_TARGET_BYTE_ADDRESS");
 # endif
 
-# if 0
-  /* Make sure at least one defines of a pair is set. */
-
-# if !defined(_MODULE_TO_DOT_o) && !defined(_MODULE_TO_DOT_M)
-
-   if (!on_off_flags.module_to_mod) {  /* Need -em or one of these defined */
-      PRINTMSG(1, 1116, Internal, 0,
-               "_MODULE_TO_DOT_o",
-               "_MODULE_TO_DOT_M");
-   }
-# endif
-# endif
 
 # if !defined(_HEAP_REQUEST_IN_BYTES) && !defined(_HEAP_REQUEST_IN_WORDS)
    PRINTMSG(1, 1116, Internal, 0,
@@ -1770,16 +1714,6 @@ static void check_enums_for_change(void)
        Omp_In_Parallel_Opr != 454 ||
        Io_Item_Type_Code_Opr != 479 ||
        Copyin_Bound_Opr != 484) { /* modified by jhs, 02.8.31 */
-# if 0
-      printf("Char_Opr %d\n ", Char_Opr);
-      printf("Stop_Opr %d\n ", Stop_Opr);
-      printf("Aloc_Opr %d\n ", Aloc_Opr);
-      printf("Prefertask_Cdir_Opr %d\n ", Prefertask_Cdir_Opr);
-      printf("Local_Pe_Dim_Opr %d\n ", Local_Pe_Dim_Opr);
-      printf("Fetch_And_Nand_Opr %d\n ", Fetch_And_Nand_Opr);
-      printf("Omp_In_Parallel_Opr %d\n ", Omp_In_Parallel_Opr);
-      printf("Copyin_Bound_Opr %d\n ", Copyin_Bound_Opr);
-# endif
 
       PRINTMSG(1, 1643, Internal, 0, "Operator");
    }

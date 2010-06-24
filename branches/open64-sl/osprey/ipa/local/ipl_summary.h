@@ -938,6 +938,8 @@ public:
 	return u2._value_index;
     }
 
+    mUINT16 Get_state() const { return _state;}
+
     void Set_actual_index (mINT32 a)	{ _actual_index = a; }
     INT Get_actual_index () const	{ return _actual_index; }
 
@@ -1000,6 +1002,7 @@ public:
     UINT64 Get_vptr_offset() { return _vptr_offset; } 
   
     void Set_is_virtual_call() { _state |= IPL_IS_VIRTUAL_CALL; } 
+    void Reset_is_virtual_call() { _state &= ~IPL_IS_VIRTUAL_CALL; }
     BOOL Is_virtual_call() { return _state & IPL_IS_VIRTUAL_CALL; } 
 
     /* operations */

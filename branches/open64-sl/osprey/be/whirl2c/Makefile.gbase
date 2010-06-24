@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -141,7 +143,8 @@ HEADER_DIRS = \
   $(BE_BE_DIR)		\
   $(BE_CG_DIR)		\
   $(BE_OPT_DIR)		\
-  $(BE_LNO_DIR)
+  $(BE_LNO_DIR) 	\
+  $(TARGDIR)/be
 
 
 #----------------------------------------------------------------------

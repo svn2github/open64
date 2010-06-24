@@ -4944,7 +4944,6 @@ compute_bucket_count (struct bfd_link_info *info)
 	     the chains.  */
 	  max = (2 + nsyms) * (bed->s->arch_size / 8);
 
-# if 1
 	  /* Variant 1: optimize for short chains.  We add the squares
 	     of all the chain lengths (which favors many small chain
 	     over a few long chains).  */
@@ -4954,18 +4953,6 @@ compute_bucket_count (struct bfd_link_info *info)
 	  /* This adds penalties for the overall size of the table.  */
 	  fact = i / (BFD_TARGET_PAGESIZE / (bed->s->arch_size / 8)) + 1;
 	  max *= fact * fact;
-# else
-	  /* Variant 2: Optimize a lot more for small table.  Here we
-	     also add squares of the size but we also add penalties for
-	     empty slots (the +1 term).  */
-	  for (j = 0; j < i; ++j)
-	    max += (1 + counts[j]) * (1 + counts[j]);
-
-	  /* The overall size of the table is considered, but not as
-	     strong as in variant 1, where it is squared.  */
-	  fact = i / (BFD_TARGET_PAGESIZE / (bed->s->arch_size / 8)) + 1;
-	  max *= fact;
-# endif
 
 	  /* Compare with current best results.  */
 	  if (max < best_chlen)

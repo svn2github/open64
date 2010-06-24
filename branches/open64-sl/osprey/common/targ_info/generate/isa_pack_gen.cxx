@@ -504,6 +504,7 @@ void ISA_Pack_End(void)
   bool only_zero_opndpos;
   const char *info_index_type;
 
+#ifndef TARG_LOONGSON
   for (err = false, top = 0; top < TOP_count; ++top) {
     bool is_dummy = TOP_is_dummy((TOP)top);
     bool is_simulated = TOP_is_simulated((TOP)top);
@@ -524,6 +525,7 @@ void ISA_Pack_End(void)
     }
   }
   if (err) exit(EXIT_FAILURE);
+#endif
 
   // setup types and formats depending on instruction size.
   if (inst_bits > 32) {

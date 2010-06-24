@@ -87,7 +87,6 @@
 
 // For the interface to clients, see opt_alias_class.h
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <set>
 #include <math.h>
@@ -700,10 +699,6 @@ ALIAS_CLASS_REP::Process_pending(ALIAS_CLASSIFICATION &ac)
   Is_True(Is_pointer_class(),
 	  ("ACR::Process_pending: Must be pointer class"));
 
-#if 0
-  fprintf(TFile, "Process pending for ");
-  Print(TFile);
-#endif
 
   while (_pending != NULL) {
     ALIAS_CLASS_REP *item = _pending->Node()->Alias_class();
@@ -1043,6 +1038,8 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	}
 	return AC_PTR_OBJ_PAIR(lda_class, ldid_class);
       }
+    case OPR_LDA_LABEL:
+      return AC_PTR_OBJ_PAIR(Const_addr_class(), Global_class());
     case OPR_INTCONST:
       // TODO: Maybe find a way to
       // assign base_id's to integer constants so we can match them up
@@ -1369,8 +1366,7 @@ ALIAS_CLASSIFICATION::Expr_may_contain_pointer (WN* const expr) {
 
   if (MTYPE_byte_size (res) < Pointer_Size ||
       (MTYPE_is_void (res)    || MTYPE_is_float (res) || 
-       MTYPE_is_complex (res) || MTYPE_is_vector (res) || 
-       MTYPE_is_boolean (res))) {
+       MTYPE_is_complex (res) || MTYPE_is_vector (res))) {
      return FALSE;
   }
    
@@ -1554,12 +1550,10 @@ ALIAS_CLASSIFICATION::Callee_changes_no_points_to(const WN *const call_wn,
   else if (WN_Call_Does_Mem_Free(call_wn)) {
     return TRUE;
   }
-#if 1
   else if ((WN_operator(call_wn) == OPR_CALL) &&
 	   (strcmp("free", ST_name(WN_st(call_wn))) == 0)) {
     return TRUE;
   }
-#endif
   else if (Callee_returns_new_memory(call_wn)) {
     return TRUE;
   }
@@ -2247,13 +2241,6 @@ ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
       // gives the alias class member corresponding to the WN.
       ALIAS_CLASS_MEMBER *acm =
 	(ALIAS_CLASS_MEMBER *) WN_MAP_Get(Indir_classification_map(), wn);
-#if 0
-      if (Tracing()) {
-	fprintf(TFile, "Got 0x%p from indir map %u on\n", acm,
-		Indir_classification_map());
-	Dump_wn_tree(TFile, wn);
-      }
-#endif
       ALIAS_CLASS_REP    *acr = acm->Alias_class();
 
       if (Tracing()) {

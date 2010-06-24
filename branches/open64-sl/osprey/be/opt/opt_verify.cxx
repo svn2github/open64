@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -756,11 +760,7 @@ COMP_UNIT::Verify_CODEMAP(void)
 // Check that the given coderep's Defbb() dominates the bb where the
 // coderep is used.
 BOOL
-#if defined(TARG_NVISA)
 Def_before_use(CODEREP *cr, const BB_NODE *use_bb)
-#else
-Def_before_use(const CODEREP *cr, const BB_NODE *use_bb)
-#endif
 {
   // Defbb() is not set for zero versions since their points of
   // definition are unknown.
@@ -793,7 +793,6 @@ Def_before_use(const CODEREP *cr, const BB_NODE *use_bb)
     return TRUE;
   case CK_OP:
     {
-#if defined(TARG_NVISA)
         /* If this node has been visited and has the same BB
          * return true. If there was a use before the def it would
          * have been flaged on the first traversal.
@@ -815,7 +814,6 @@ Def_before_use(const CODEREP *cr, const BB_NODE *use_bb)
             cr->Set_isop_flag(ISOP_DEF_BEFORE_VISITED);
             cr->Set_ISOP_def_before_use_cache(use_bb);
         }
-#endif
       for (INT j = 0; j < cr->Kid_count(); j++)
 	if (!Def_before_use(cr->Opnd(j), use_bb)) {
 	  DevWarn("Def_before_use: inserted use before def (Opnd(%d))", j);
@@ -999,7 +997,6 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
     
   case CK_OP:
     {
-#if defined(TARG_NVISA)
         /* Here if the node has been visited we simply return
          *  as any corrective action should have been taken previously.
          *  otherwise we set visited and continue.
@@ -1011,7 +1008,6 @@ Verify_version_expr(CODEREP *expr, OPT_STAB *opt_stab, BB_NODE *bb, INT32 linenu
             return;
         else
             expr->Set_isop_flag (ISOP_VERIFY_EXPR_VISITED);
-#endif
       for (INT32 i = 0; i < expr->Kid_count(); i++) {
 	Verify_version_expr(expr->Opnd(i), opt_stab, bb, linenum); 
       }
@@ -1215,11 +1211,6 @@ CODEMAP::Verify_hashing(void)
       case CK_RCONST:
 	// Make this into assertion after bug fixes
 	if (hash_idx != Hash(cr)) {
-#if 0	  
-	  DevWarn("CODEMAP::Verify_hashing:  cr%d does not belong to hash bucket %d, "
-		  "should be in bucket %d.",
-		  cr->Coderep_id(), hash_idx, Hash(cr));
-#endif
 	}
       }
     }

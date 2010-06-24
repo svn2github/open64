@@ -1031,7 +1031,7 @@ extern void Fission_DU_Update(DU_MANAGER* Du_Mgr, REDUCTION_MANAGER* Red_Mgr,
           }
 
           DEF_LIST* def_list=Du_Mgr->Ud_Get_Def(use);
-          if (def_list->Loop_stmt()==loops[0])
+          if (def_list && def_list->Loop_stmt()==loops[0])
             def_list->Set_loop_stmt(loops[i]);
         }
         if (red_type!=RED_NONE)
@@ -1253,30 +1253,6 @@ static BOOL Generate_Pragma_Dependence_For_Statement_Dependence_Graph(
     VINDEX16 v=sdg->Get_Vertex(wn);
     VINDEX16 v1;
     UINT level = Do_Loop_Depth(parent_loop)+1;
-#if 0
-// do not put in edges between pragmas and stmt before them
-    WN* before=wn;
-    v1=0;
-    do {
-      before=WN_prev(before);
-      if (before)
-        v1=sdg->Get_Vertex(before);
-    } while (before && !v1);
-    if (v1) {
-      EINDEX16 e;
-      if (!(e=sdg->Get_Edge(v1,v))) {
-        e=sdg->Add_Edge(v1,v,level);
-        if (!e)
-          return 0;
-      }
-      sdg->Set_Level_Property(e,HAS_ALL_ZERO);
-      if (!(e=sdg->Get_Edge(v,v1))) {
-        e=sdg->Add_Edge(v,v1,level);
-        if (!e)
-          return 0;
-      }
-    }
-#endif
     WN* after=wn;
     v1=0;
     do {

@@ -74,6 +74,9 @@ extern "C" {
 #endif // KEY
 }
 #undef TARGET_PENTIUM // hack around macro definition in gnu
+#if defined(TARG_PPC32)
+#undef TARGET_POWERPC
+#endif /* TARG_PPC32 */
 #include "glob.h"
 #include "wn.h"
 #include "wn_util.h"
@@ -1711,9 +1714,17 @@ WFE_Add_Aggregate_Init_Real (REAL_VALUE_TYPE real, INT size)
 #if (SIZEOF_LONG != 4)
       for (int i = 0; i < 4; i++)
 	rbuf_w[i] = buffer[i];
+#ifdef TARG_LOONGSON
+      tc = Host_To_Targ_Quad (*(QUAD_TYPE *) rbuf_w);
+#else
       tc = Host_To_Targ_Quad (*(long double *) rbuf_w);
+#endif
+#else
+#ifdef TARG_LOONGSON
+      tc = Host_To_Targ_Quad (*(QUAD_TYPE *) buffer);
 #else
       tc = Host_To_Targ_Quad (*(long double *) buffer);
+#endif
 #endif
       break;
 #endif
@@ -1771,10 +1782,25 @@ WFE_Add_Aggregate_Init_Complex (REAL_VALUE_TYPE rval, REAL_VALUE_TYPE ival, INT 
         WFE_Convert_Internal_Real_to_IEEE_Double (ival));
       break;
     case 32:
+#ifdef TARG_LOONGSON
+      long     buffer [4];
+      REAL_VALUE_TO_TARGET_LONG_DOUBLE (rval, buffer);
+      WFE_Convert_To_Host_Order(buffer);
+      INT32 rbuf_w[4]; // this is needed when long is 64-bit
+      int i;
+      for (i = 0; i < 4; i++)
+             rbuf_w[i] = buffer[i];
+      QUAD_TYPE qval;
+      for(i = 0; i < 4; i++)
+             qval.qval[i] = rbuf_w[i];
+      rtc = Host_To_Targ_Quad (qval);
+      itc = Host_To_Targ_Quad (qval);
+#else
       rtc = Host_To_Targ_Quad (
         WFE_Convert_Internal_Real_to_IEEE_Double_Extended (rval));
       itc = Host_To_Targ_Quad (
         WFE_Convert_Internal_Real_to_IEEE_Double_Extended (ival));
+#endif
       break;
     default:
       FmtAssert(FALSE, ("WFE_Add_Aggregate_Init_Complex unexpected size"));
@@ -2058,23 +2084,6 @@ Add_Initv_For_Tree (tree val, UINT size)
 			TREE_STRING_POINTER(val), size);
 #endif
 		break;
-#if 0
-	case PLUS_EXPR:
-		if ( TREE_CODE(TREE_OPERAND(val,0)) == ADDR_EXPR
-		     && TREE_CODE(TREE_OPERAND(val,1)) == INTEGER_CST)
-		{
-			tree addr_kid = TREE_OPERAND(TREE_OPERAND(val,0),0);
-			FmtAssert(TREE_CODE(addr_kid) == VAR_DECL
-				  || TREE_CODE(addr_kid) == FUNCTION_DECL,
-				("expected decl under plus_expr"));
-			WFE_Add_Aggregate_Init_Symoff ( Get_ST (addr_kid),
-			Get_Integer_Value(TREE_OPERAND(val,1)) );
-		}
-		else
-			FmtAssert(FALSE, ("unexpected tree code %s", 
-				tree_code_name[TREE_CODE(val)]));
-		break;
-#endif
 	case NOP_EXPR:
 		tree kid;
 		kid = TREE_OPERAND(val,0);
@@ -3439,54 +3448,6 @@ WFE_Assemble_Alias (tree decl, tree target)
 */
 } /* WFE_Assemble_Alias */
 
-#if 0
-void
-WFE_Assemble_Constructor (char *name)
-{
-  DevWarn ("__attribute__ ((constructor)) encountered at line %d", lineno);
-  tree func_decl = lookup_name (get_identifier (name), 1);
-  ST *func_st = Get_ST (func_decl);
-  INITV_IDX initv = New_INITV ();
-  INITV_Init_Symoff (initv, func_st, 0, 1);
-  ST *init_st = New_ST (GLOBAL_SYMTAB);
-  ST_Init (init_st, Save_Str2i ("__ctors", "_", ++__ctors),
-           CLASS_VAR, SCLASS_FSTATIC,
-           EXPORT_LOCAL, Make_Pointer_Type (ST_pu_type (func_st), FALSE));
-  Set_ST_is_initialized (init_st);
-  INITO_IDX inito = New_INITO (init_st, initv);
-  ST_ATTR_IDX st_attr_idx;
-  ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
-  ST_ATTR_Init (st_attr, ST_st_idx (init_st), ST_ATTR_SECTION_NAME,
-                Save_Str (".ctors"));
-  Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
-  Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
-  Set_ST_addr_saved (func_st);
-}
-
-void
-WFE_Assemble_Destructor (char *name)
-{
-  DevWarn ("__attribute__ ((destructor)) encountered at line %d", lineno);
-  tree func_decl = lookup_name (get_identifier (name), 1);
-  ST *func_st = Get_ST (func_decl);
-  INITV_IDX initv = New_INITV ();
-  INITV_Init_Symoff (initv, func_st, 0, 1);
-  ST *init_st = New_ST (GLOBAL_SYMTAB);
-  ST_Init (init_st, Save_Str2i ("__dtors", "_", ++__dtors),
-           CLASS_VAR, SCLASS_FSTATIC,
-           EXPORT_LOCAL, Make_Pointer_Type (ST_pu_type (func_st), FALSE));
-  Set_ST_is_initialized (init_st);
-  INITO_IDX inito = New_INITO (init_st, initv);
-  ST_ATTR_IDX st_attr_idx;
-  ST_ATTR&    st_attr = New_ST_ATTR (GLOBAL_SYMTAB, st_attr_idx);
-  ST_ATTR_Init (st_attr, ST_st_idx (init_st), ST_ATTR_SECTION_NAME,
-                Save_Str (".dtors"));
-  Set_PU_no_inline (Pu_Table [ST_pu (func_st)]);
-  Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);
-  Set_ST_addr_saved (func_st);
-}
-
-#endif
 
 ST *
 WFE_Get_Return_Address_ST (int level)
@@ -3757,16 +3718,6 @@ WFE_Process_Template_Decl (tree decl)
 {
 //fprintf(stderr, "TEMPLATE_DECL: %s\n", IDENTIFIER_POINTER(DECL_NAME(decl)));
   tree gentemp = most_general_template(decl);
-#if 0
-  for (tree t = DECL_TEMPLATE_SPECIALIZATIONS(gentemp);
-       t; t = TREE_CHAIN(t))
-    if (TREE_CODE(TREE_VALUE(t)) == FUNCTION_DECL &&
-        DECL_SAVED_TREE(TREE_VALUE(t))            &&
-        !DECL_EXTERNAL(TREE_VALUE(t))             &&
-        !uses_template_parms (TREE_VALUE(t)))
-      st = Get_ST (TREE_VALUE(t));
-    DECL_TEMPLATE_SPECIALIZATIONS(gentemp) = 0; // don't do these twice
-#endif
   for (tree t = DECL_TEMPLATE_INSTANTIATIONS(gentemp);
        t; t = TREE_CHAIN(t)) {
     tree val = TREE_VALUE(t);

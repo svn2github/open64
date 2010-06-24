@@ -117,6 +117,9 @@ typedef vector<FB_Info_Value>   FB_Value_Vector;
 #ifdef KEY
 typedef vector<FB_Info_Value_FP_Bin>   FB_Value_FP_Bin_Vector;
 #endif
+#ifdef TARG_LOONGSON
+typedef vector<FB_Info_Cache>   FB_Cache_Vector;
+#endif
 #endif
 
 struct PU_Profile_Handle
@@ -133,6 +136,9 @@ struct PU_Profile_Handle
     FB_Value_Vector     Value_Profile_Table;
 #ifdef KEY
     FB_Value_FP_Bin_Vector  Value_FP_Bin_Profile_Table;
+#endif
+#ifdef TARG_LOONGSON
+    FB_Cache_Vector	Cache_Profile_Table;
 #endif
     FB_Value_Vector     Stride_Profile_Table; 
   
@@ -251,6 +257,11 @@ struct PU_Profile_Handle
     FB_Value_Vector& Get_Stride_Table() {
        return Stride_Profile_Table;
     }
+#ifdef TARG_LOONGSON
+    FB_Cache_Vector& Get_Cache_Table() {
+       return Cache_Profile_Table;
+    }
+#endif
 
 };
 
@@ -441,6 +452,9 @@ extern FB_Info_Value_FP_Bin& Get_Value_FP_Bin_Profile(PU_PROFILE_HANDLE pu_handl
 #endif
 extern FB_Info_Value& Get_Stride_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
 
+#ifdef TARG_LOONGSON
+extern FB_Info_Cache& Get_Cache_Profile(PU_PROFILE_HANDLE pu_handle, INT32 id);
+#endif
 
 #endif // _BUILD_INSTR
 

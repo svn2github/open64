@@ -2263,14 +2263,6 @@ build_function_call (tree function, tree params)
   /* fntype now gets the type of function pointed to.  */
   fntype = TREE_TYPE (fntype);
 
-#if defined(TARG_SL) 
-  /* Convert the parameters to the types declared in the
-     function prototype, or apply default promotions.  */
- 
-  coerced_params
-    = convert_arguments (TYPE_ARG_TYPES (fntype), params, function, fundecl);
-#endif
-
   /* Check that the function is called through a compatible prototype.
      If it is not, replace the call by a trap, wrapped up in a compound
      expression if necessary.  This has the nice side-effect to prevent
@@ -2295,17 +2287,6 @@ build_function_call (tree function, tree params)
 	 Call abort to encourage the user to fix the program.  */
       inform ("if this code is reached, the program will abort");
 
-#if defined(TARG_SL)
-      /* Fix gcc bug */
-      /* Before the abort, allow the function arguments to exit or
-         call longjmp.  */
-      int i;
-      tree temp;
-      for (temp = coerced_params; temp; temp = TREE_CHAIN(temp)) {
-        trap = build2 (COMPOUND_EXPR, void_type_node, TREE_VALUE(temp), trap);
-      }
-#endif
-
       if (VOID_TYPE_P (return_type))
 	return trap;
       else
@@ -2322,13 +2303,11 @@ build_function_call (tree function, tree params)
 	}
     }
 
-#if !defined(TARG_SL)
   /* Convert the parameters to the types declared in the
      function prototype, or apply default promotions.  */
 
   coerced_params
     = convert_arguments (TYPE_ARG_TYPES (fntype), params, function, fundecl);
-#endif
 
   if (coerced_params == error_mark_node)
     return error_mark_node;

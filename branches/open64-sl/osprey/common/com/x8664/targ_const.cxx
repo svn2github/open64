@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -89,7 +93,6 @@
 
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define USE_STANDARD_TYPES 1
 #include <limits.h>
@@ -922,12 +925,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
 #endif     
-#if 1 // bug 11745
     case OPC_I8U8CVT:
     case OPC_U8I8CVT:
     case OPC_I4U4CVT:
     case OPC_U4I4CVT:
-#endif
     case OPC_I8I4CVT:
     case OPC_I8U4CVT:
     case OPC_U8I4CVT:
@@ -3226,6 +3227,7 @@ Host_To_Targ(TYPE_ID ty, INT64 v)
     case MTYPE_V16I4:
     case MTYPE_V16I2:
     case MTYPE_V16I1:
+    case MTYPE_V8I8:
     case MTYPE_V8I4:
     case MTYPE_V8I2:
     case MTYPE_V8I1:
@@ -3323,6 +3325,11 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     (c).vals.ival.v2 = (t).vals.ival.v0;
     (c).vals.ival.v3 = (t).vals.ival.v0;
     break;
+  case MTYPE_V8I8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.llval.ll0 = (t).vals.i0;
+    break;
   case MTYPE_V16I1:
     TCON_clear(c);
     TCON_ty(c) = ty;
@@ -3381,6 +3388,94 @@ Create_Simd_Const (TYPE_ID ty, TCON t)
     (c).vals.ival.v2 = (t).vals.ival.v0;
     (c).vals.ival.v3 = (t).vals.ival.v1;
     break;
+  case MTYPE_V32I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v2 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v3 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v4 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v5 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v6 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    (c).vals.ival.v7 = (((t).vals.ival.v0)<<24)|(((t).vals.ival.v0)<<16)|
+      (((t).vals.ival.v0)<<8)|((t).vals.ival.v0);
+    break;
+  case MTYPE_V32I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0);
+    (c).vals.ival.v1 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v2 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v3 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v4 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0);
+    (c).vals.ival.v5 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v6 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    (c).vals.ival.v7 = (((t).vals.ival.v0)<<16)|((t).vals.ival.v0); 
+    break;
+  case MTYPE_V32I4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v0;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v0;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v0;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v0;
+    break;
+  case MTYPE_V32I8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.llval.ll0 = (t).vals.i0;
+    (c).vals.llval.ll1 = (t).vals.i0;
+    (c).vals.llval.ll2 = (t).vals.i0;
+    (c).vals.llval.ll3 = (t).vals.i0;
+    break;
+  case MTYPE_V32F4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v0;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v0;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v0;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v0;
+    break;
+  case MTYPE_V32F8:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v1;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v1;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v1;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v1;
+    break;
+  case MTYPE_V32C4:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v0 = (t).vals.ival.v0;
+    (c).vals.ival.v1 = (t).vals.ival.v1;
+    (c).vals.ival.v2 = (t).vals.ival.v0;
+    (c).vals.ival.v3 = (t).vals.ival.v1;
+    (c).vals.ival.v4 = (t).vals.ival.v0;
+    (c).vals.ival.v5 = (t).vals.ival.v1;
+    (c).vals.ival.v6 = (t).vals.ival.v0;
+    (c).vals.ival.v7 = (t).vals.ival.v1;
+    break;
   }
 
   return c;
@@ -3426,6 +3521,52 @@ Create_Simd_Prog_Const (TYPE_ID ty, INT64 val)
     TCON_ty(c) = MTYPE_V16I8;
     (c).vals.llval.ll0 = val;
     (c).vals.llval.ll1 = val+1;
+    break;
+  case MTYPE_V32I1:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v7 = ((val+31)<<24)|((val+30)<<16)|((val+29)<<8)|(val+28);
+    (c).vals.ival.v6 = ((val+27)<<24)|((val+26)<<16)|((val+25)<<8)|(val+24);
+    (c).vals.ival.v5 = ((val+23)<<24)|((val+22)<<16)|((val+21)<<8)|(val+20);
+    (c).vals.ival.v4 = ((val+19)<<24)|((val+18)<<16)|((val+17)<<8)|(val+16);
+    (c).vals.ival.v3 = ((val+15)<<24)|((val+14)<<16)|((val+13)<<8)|(val+12);
+    (c).vals.ival.v2 = ((val+11)<<24)|((val+10)<<16)|((val+9)<<8)|(val+8);
+    (c).vals.ival.v1 = ((val+7)<<24)|((val+6)<<16)|((val+5)<<8)|(val+4);
+    (c).vals.ival.v0 = ((val+3)<<24)|((val+2)<<16)|((val+1)<<8)|val;
+    break;
+  case MTYPE_V32I2:
+    TCON_clear(c);
+    TCON_ty(c) = ty;
+    (c).vals.ival.v7 = ((val+15)<<16)|(val+14);
+    (c).vals.ival.v6 = ((val+13)<<16)|(val+12); 
+    (c).vals.ival.v5 = ((val+11)<<16)|(val+10); 
+    (c).vals.ival.v4 = ((val+9)<<16)|(val+8); 
+    (c).vals.ival.v3 = ((val+7)<<16)|(val+6);
+    (c).vals.ival.v2 = ((val+5)<<16)|(val+4); 
+    (c).vals.ival.v1 = ((val+3)<<16)|(val+2); 
+    (c).vals.ival.v0 = ((val+1)<<16)|val; 
+    break;
+  case MTYPE_V32F4:
+  case MTYPE_V32I4:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V32I4;
+    (c).vals.ival.v7 = (val+7);
+    (c).vals.ival.v6 = (val+6);
+    (c).vals.ival.v5 = (val+5);
+    (c).vals.ival.v4 = (val+4);
+    (c).vals.ival.v3 = (val+3);
+    (c).vals.ival.v2 = (val+2);
+    (c).vals.ival.v1 = (val+1);
+    (c).vals.ival.v0 = val;
+    break;
+  case MTYPE_V32F8:
+  case MTYPE_V32I8:
+    TCON_clear(c);
+    TCON_ty(c) = MTYPE_V32I8;
+    (c).vals.llval.ll3 = val+3;
+    (c).vals.llval.ll2 = val+2;
+    (c).vals.llval.ll1 = val+1;
+    (c).vals.llval.ll0 = val;
     break;
   default: 
     FmtAssert(FALSE, ("NYI"));
@@ -4688,110 +4829,6 @@ Str_To_Tcon(TYPE_ID ty, char *buf)
   return c;
 } /* Str_To_Tcon */
 
-#if 0 /*foo*/
-/* 
- * Bit_Str_To_Tcon
- * 
- * This routine is passed a sequence of bytes in buf[0], buf[1], ... 
- * which have the following semantics:  the byte in buf[0] is the least 
- * significant byte; the byte in buf[1] is the next least significant 
- * byte; etc until we run out of bytes for an object of be_type "ty".  
- * We must make a TCON which preserves the byte ordering regardless of 
- * target endianness.  Hence if the user does:
- *       i = '00001001'x
- * i had better get the value 4097.
- * It is the callers responsibility to provide us with "n" bytes of 
- * valid "buf" if the betype corresponding to "ty" requires "n" bytes 
- * of target representation.  In other words, MTYPE_I1 only requires 
- * that buf[0] be valid, but MTYPE_F8 requires that buf[0] through 
- * buf[7] be valid.  The caller must do any zero padding in buf as 
- * required so that buf[0] is the LSByte of the constant.
- * TODO:  is MTYPE_I1, buf[0] == 0xff supposed to be 255 or -1?
- *        Targ_To_Host doesn't care what we do, does anybody else?
- */
-
-TCON
-Bit_Str_To_Tcon ( TYPE_ID ty, char *arg_buf )
-{
-  static TCON c;
-  unsigned char *buf;
-  UINT temp;
-  
-  buf = (unsigned char *)arg_buf; /* zero-extend our arg bytes */
-  TCON_ty(c) = ty;
-
-  switch (ty) {
-    case MTYPE_I1:
-    case MTYPE_U1: /* We want to sign-extend here; we'll truncate later */
-      TCON_v0(c) = buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_I2:
-    case MTYPE_U2: /* We want to sign-extend here; we'll truncate later */
-      TCON_v0(c) = (buf[1] << 8) | buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_I4:
-    case MTYPE_U4:
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_F4:
-      /* user is trying to give floating constant in binary, octal, hex,
-       * etc.  He had better know the floating point format.
-       */
-      temp = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      Set_TCON_R4(c, *((float *)&temp));
-      TCON_v1(c) = 0;
-      break;
-
-    case MTYPE_F8:
-      /* We must be careful about which word gets which set of 4 bytes
-       * here.  buf[0] must go into the most significant byte of
-       * TCON_R8.  Since the current code is written to use the host's
-       * representation as the internal representation, we must make
-       * sure we put it in the proper place depending on the host's
-       * endianness.
-       */
-#if HOST_IS_BIG_ENDIAN
-      TCON_v1(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v0(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-#else
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-#endif
-      break;
-
-    case MTYPE_FQ:
-      /* We must be careful about which word gets which set of 4 bytes
-       * here.  buf[0] must go into the most significant byte of
-       * TCON_R8.  Since the current code is written to use the host's
-       * representation as the internal representation, we must make
-       * sure we put it in the proper place depending on the host's
-       * endianness.
-       */
-#if HOST_IS_BIG_ENDIAN
-      TCON_v3(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v2(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-      TCON_v1(c) = (buf[11] << 24) | (buf[10] << 16) | (buf[9] << 8) | buf[8];
-      TCON_v0(c) = (buf[15] << 24) | (buf[14] << 16) | (buf[13] << 8) | buf[12];
-#else
-      TCON_v0(c) = (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
-      TCON_v1(c) = (buf[7] << 24) | (buf[6] << 16) | (buf[5] << 8) | buf[4];
-      TCON_v2(c) = (buf[11] << 24) | (buf[10] << 16) | (buf[9] << 8) | buf[8];
-      TCON_v3(c) = (buf[15] << 24) | (buf[14] << 16) | (buf[13] << 8) | buf[12];
-#endif
-      break;
-
-    default:
-      ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Bit_Str_To_Tcon" );
-  }
-  return c;
-} /* Bit_Str_To_Tcon */
-#endif /*foo*/
 
 #endif /* HAS_TCON_TO_STR */
 
@@ -5197,6 +5234,9 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_M8I4:
       hash += TCON_v0(*t) + TCON_v1(*t);
       break;
+    case MTYPE_V8I8:
+      hash += TCON_ll0(*t);
+      break;
 #endif
     case MTYPE_V16I1:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
@@ -5213,6 +5253,26 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_V16F4:
     case MTYPE_V16F8:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+      break;
+    case MTYPE_V32I1:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I2:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I4:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t) +
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
+      break;
+    case MTYPE_V32I8:
+      hash += TCON_ll0(*t) + TCON_ll1(*t) + TCON_ll2(*t) + TCON_ll3(*t);
+      break;
+    case MTYPE_V32F4:
+    case MTYPE_V32F8:
+      hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
+              TCON_v4(*t) + TCON_v5(*t) + TCON_v6(*t) + TCON_v7(*t);
       break;
     default:
       ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(*t)), "Hash_TCON" );

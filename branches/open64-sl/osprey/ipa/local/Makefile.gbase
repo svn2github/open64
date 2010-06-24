@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
 #
 #  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
@@ -109,6 +111,12 @@ endif
 ifeq ($(BUILD_TARGET), NVISA)
 HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+HOSTDEFS += -D__MIPS_AND_IA64_ELF_H
+endif
 
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
@@ -159,6 +167,7 @@ HEADER_DIRS = \
   $(BE_VHO_DIR)		\
   $(BE_REGION_DIR)      \
   $(TARGDIR)/be         \
+  $(BUILD_SRC_AREA)/be  \
   $(BUILD_TOT)/include
 
 IPA_LOCAL_CXX_SRCS = \

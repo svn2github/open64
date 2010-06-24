@@ -108,10 +108,6 @@ extern ST *WGEN_Get_Return_Address_ST (int level);
 
 /* call this routine to save the SP for first alloca in a scope */
 extern ST *WGEN_Alloca_0 (void);
-#if 0
-/* call this routine to assign ST for VLA as well as allocate space for it */
-extern ST *WGEN_Alloca_ST (gs_t decl);
-#endif
 /* call this routine to deallocate STs for VLA */
 extern void WGEN_Dealloca (ST *, vector<ST*> *);
 

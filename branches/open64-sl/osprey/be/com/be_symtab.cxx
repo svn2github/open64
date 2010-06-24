@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -105,11 +109,9 @@ ST_is_const_initialized (const ST* st)
     if (BE_ST_unknown_const(st))
       return FALSE;
 
-#if defined(TARG_NVISA) || defined(TARG_SL)
     // if is extern const, then is same as unknown const
     if (ST_sclass(st) == SCLASS_EXTERN)
 	return FALSE;
-#endif
 
 #ifdef TARG_NVISA
     if (ST_in_shared_mem(st))

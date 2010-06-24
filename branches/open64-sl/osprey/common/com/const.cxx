@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007 QLogic Corporation.  All Rights Reserved.
  */
 
@@ -240,6 +244,9 @@ Make_Const ( TCON c )
       break;
     case MTYPE_V8I4:
       opc = OPC_V8I4CONST;
+      break;
+    case MTYPE_V8I8:
+      opc = OPC_V8I8CONST;
       break;
     case MTYPE_V16I1:
       opc = OPC_V16I1CONST;

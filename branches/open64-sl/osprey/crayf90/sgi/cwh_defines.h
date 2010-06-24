@@ -225,7 +225,7 @@ extern MEM_POOL *FE_Mempool;
 #ifdef TARG_IA64 
 #define RESULT_SIZE 64
 #endif
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 #define RESULT_SIZE 16
 #endif
 

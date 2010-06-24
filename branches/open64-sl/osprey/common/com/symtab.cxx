@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1337,7 +1341,8 @@ Create_Preg_explicit(TYPE_ID mtype, const char *name,
 PREG_NUM
 Create_Preg (TYPE_ID mtype, const char *name)
 {
-  return Create_Preg_explicit(mtype, name, Scope_tab, CURRENT_SYMTAB);
+  PREG_NUM preg_num = Create_Preg_explicit(mtype, name, Scope_tab, CURRENT_SYMTAB);
+  return preg_num;
 }
 
 // uses the real preg size because simulated pregs might take more than one
@@ -1352,7 +1357,7 @@ Preg_Increment (TYPE_ID mtype)
 #ifdef TARG_IA64
     case MTYPE_C10:
 #endif
-#ifndef TARG_X8664
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     case MTYPE_FQ:
 #endif
 	return 2;
@@ -1763,6 +1768,8 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (TY_has_sseregister_parm(ty_idx)) fprintf (f, " sseregisterparm");
 	    INT register_parms = TY_register_parm(ty_idx);
 	    if (register_parms) fprintf (f, " %d-registerparm", register_parms);
+            if (TY_has_stdcall(ty_idx))    fprintf (f, " stdcall");
+            if (TY_has_fastcall(ty_idx))   fprintf (f, " fastcall");
 #endif
 	    fprintf (f, "\n");
 	}
@@ -2152,7 +2159,6 @@ FILE_INFO::Print (FILE *f) const
     
 
 
-#if 1 // Fix 10-26-2002: Enhancement to reset addr_saved flag before Mainopt
 struct clear_addr_flag_op
 {
     clear_addr_flag_op() {};
@@ -2168,7 +2174,6 @@ Clear_local_symtab_addr_flags(const SCOPE& scope)
 {
   For_all_entries (*scope.st_tab, clear_addr_flag_op(), 1);
 }
-#endif
 
 // function object used in "For_all"
 template <class T>

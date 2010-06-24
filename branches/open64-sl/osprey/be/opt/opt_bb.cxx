@@ -341,6 +341,16 @@ BB_NODE::Nth_pred( INT32 n ) const
   return NULL;
 }
 
+// Return the last successor.
+BB_NODE *
+BB_NODE::Last_succ()
+{
+  BB_NODE * last_succ = NULL;
+  for ( BB_LIST *succs = Succ(); succs != NULL; succs = succs->Next()) {
+    last_succ = succs->Node();
+  }
+  return last_succ;
+}
 
 BB_NODE *
 BB_NODE::Nth_succ( INT32 n ) const
@@ -1142,7 +1152,10 @@ BB_LOOP::Print(FILE *fp) const
     fprintf(fp, "not a well-formed loop\n");
   if (End() != NULL) {
     fprintf(fp, "SCF: START %d, END %d, BODY %d, MERGE %d\n",
-	    Start()->Id(), End()->Id(), Body()->Id(), Merge()->Id());
+	    Start() ? Start()->Id() : 0,
+        End() ? End()->Id() : 0, 
+        Body() ? Body()->Id() : 0 , 
+        Merge() ? Merge()->Id() : 0);
   }
 
   BOOL in_mainopt = Start() && Start()->Kind() == BB_DOHEAD;
@@ -1345,15 +1358,45 @@ INT32 BB_NODE::Code_size_est(void) const
   STMTREP_CONST_ITER stmt_iter(&_stmtlist);
   const STMTREP *stmt;
   INT32 size = 0;
+
+  INT32 mm_count = 0;
+  INT32 sl_count = 0;
+
   FOR_ALL_NODE(stmt, stmt_iter, Init()) {
     size++;
     if (OPERATOR_is_call(stmt->Opr()))
       size += 10;
-    else if (stmt->Opr() == OPR_ISTORE) {
-      if (stmt->Rhs()->Kind() == CK_OP && stmt->Rhs()->Opr() == OPR_SELECT)
-        size += 19;
-    }
-  }
+    else if (stmt->Opr() == OPR_ISTORE)
+    {
+      CODEREP *rhs = stmt->Rhs();
+      INT32 cf = 0;
+      INT32 c_minmax = 0;
+      switch (rhs->Kind())
+      {
+        case CK_OP:
+          if (stmt->Rhs()->Opr() == OPR_SELECT)
+          {
+             cf = 1;
+             sl_count += 1;
+          } 
+          c_minmax = stmt->Rhs()->Count_MinMax();
+          break;
+
+        case CK_IVAR:
+          c_minmax = stmt->Rhs()->Count_MinMax();
+          break;
+
+        default:
+          continue;
+      }
+      if (c_minmax > 0)
+      {
+        cf += c_minmax;
+        mm_count += c_minmax;
+      }
+      size += cf*19 + c_minmax;
+    }     
+  }         
   return size;
 }
 
@@ -1446,7 +1489,8 @@ BB_NODE::Compare_Trees(BB_NODE * bb)
       if (WN_Simp_Compare_Trees(WN_kid0(stmt1), WN_kid0(stmt2)) != 0)
 	return FALSE;
     }
-    else if (WN_Simp_Compare_Trees(stmt1, stmt2) != 0)
+    else if ((opr != OPR_LABEL) && (opr != OPR_PRAGMA)
+	     && WN_Simp_Compare_Trees(stmt1, stmt2) != 0)
       return FALSE;      
 
     stmt1 = WN_next(stmt1);
@@ -1492,9 +1536,9 @@ Has_same_shape(WN * wn1, WN * wn2)
   return TRUE;
 }
 
-// Count number of real statements in this BB_NODE.
+// Count number of executable statements in this BB_NODE.
 int
-BB_NODE::Real_stmt_count()
+BB_NODE::Executable_stmt_count()
 {
   WN * tmp;
   int count = 0;
@@ -1509,6 +1553,30 @@ BB_NODE::Real_stmt_count()
   }
 
   return count;
+}
+
+// Remove predecessors.
+void
+BB_NODE::Remove_preds(MEM_POOL * pool)
+{
+  BB_LIST * bb_list = _pred;
+  while (bb_list) {
+    BB_NODE * bb = bb_list->Node();
+    bb_list = bb_list->Remove(bb, pool);
+  }
+  _pred = NULL;
+}
+
+// Remove succcessors.
+void
+BB_NODE::Remove_succs(MEM_POOL * pool)
+{
+  BB_LIST * bb_list = _succ;
+  while (bb_list) {
+    BB_NODE * bb = bb_list->Node();
+    bb_list = bb_list->Remove(bb, pool);
+  }
+  _succ = NULL;
 }
 
 // Reset/clear fields.
@@ -1528,11 +1596,12 @@ SC_NODE::Clear()
 }
 
 // Unmask given value from this SC_NODE's flag.
+// See SC_NODE_FLAG for values of bitmask.
 void
-SC_NODE::Remove_flag(int i)
+SC_NODE::Remove_flag(int bitmask)
 {
-  if (_flag >= i)
-    _flag -= i;
+  if (Has_flag(bitmask))
+    _flag -= bitmask;
 }
 
 // Append given sc as this SC_NODE's last kid.
@@ -1560,6 +1629,61 @@ SC_NODE::Prepend_kid(SC_NODE *sc)
   else {
     FmtAssert(!kids->Contains(sc), ("Repeated kids"));
     kids = kids->Prepend(sc,pool);
+  }
+}
+
+// Insert given node before this node.
+void
+SC_NODE::Insert_before(SC_NODE * sc)
+{
+  SC_NODE * sc_parent = this->Parent();
+  SC_NODE * sc_prev = this->Prev_sibling();
+
+  sc->Set_parent(sc_parent);
+
+  if (sc_prev == NULL)
+    sc_parent->Prepend_kid(sc);
+  else {
+    SC_LIST * sc_list = sc_parent->Kids();
+    SC_LIST_ITER sc_list_iter;
+    SC_NODE * sc_tmp;
+    sc_parent->Set_kids(NULL);
+
+    FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init(sc_list)) {
+      sc_parent->Append_kid(sc_tmp);
+      if (sc_tmp == sc_prev)
+	sc_parent->Append_kid(sc);
+    }
+
+    while (sc_list) {
+      sc_tmp = sc_list->Node();
+      sc_list = sc_list->Remove(sc_tmp, pool);
+    }
+  }
+}
+
+// Insert given node after this node.
+void
+SC_NODE::Insert_after(SC_NODE * sc)
+{
+  SC_NODE * sc_parent = this->Parent();
+  
+  sc->Set_parent(sc_parent);
+
+  SC_LIST * sc_list = sc_parent->Kids();
+  SC_LIST_ITER sc_list_iter;
+  SC_NODE * sc_tmp;
+  sc_parent->Set_kids(NULL);
+
+  FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init(sc_list)) {
+    sc_parent->Append_kid(sc_tmp);
+    if (sc_tmp == this)
+      sc_parent->Append_kid(sc);
+  }
+
+  while (sc_list) {
+    sc_tmp = sc_list->Node();
+    sc_list = sc_list->Remove(sc_tmp, pool);
   }
 }
 
@@ -1649,6 +1773,39 @@ SC_NODE::Next_sibling()
   }
 
   return NULL;
+}
+
+// Return next SC_NODE in the SC tree that immediately succeeds this SC_NODE in source order.
+SC_NODE *
+SC_NODE::Next_in_tree()
+{
+  SC_NODE * cur = this;
+
+  while (cur) {
+    if (cur->Next_sibling())
+      return cur->Next_sibling();
+    cur = cur->Parent();
+  }
+
+  return NULL;
+}
+
+// Get this node's outermost nesting SC_IF that is bounded by sc_bound
+SC_NODE *
+SC_NODE::Get_nesting_if(SC_NODE * sc_bound)
+{
+  SC_NODE * sc_tmp = this->Parent();
+  SC_NODE * ret_val = NULL;
+
+  if (sc_bound->Is_pred_in_tree(this)) {
+    while (sc_tmp && (sc_tmp != sc_bound)) {
+      if (sc_tmp->Type() == SC_IF)
+	ret_val = sc_tmp;
+      sc_tmp = sc_tmp->Parent();
+    }
+  }
+
+  return ret_val;
 }
 
 // Return closest next sibling SC_NODE of the given type
@@ -1771,6 +1928,38 @@ SC_NODE::First_bb()
   return NULL;
 }
 
+// Walk upward in the ancestor sub-tree of this node and look for real nodes that
+// are not boundary delimiters.
+SC_NODE *
+SC_NODE::Get_real_parent()
+{
+  SC_NODE * ret_val = NULL;
+
+  if (parent) {
+    SC_NODE * c_node = parent;
+    SC_TYPE c_type = c_node->Type();
+
+    while (ret_val == NULL) {
+      switch (c_type) {
+      case SC_THEN:
+      case SC_ELSE:
+      case SC_LP_START:
+      case SC_LP_COND:
+      case SC_LP_STEP:
+      case SC_LP_BACKEDGE:
+      case SC_LP_BODY:
+	c_node = c_node->Parent();
+	c_type = c_node->Type();
+	break;
+      default:
+	ret_val = c_node;
+      }
+    }
+  }
+
+  return ret_val;
+}
+
 // Obtain the last BB_NODE in source order for the SC tree rooted at this SC_NODE.
 BB_NODE *
 SC_NODE::Last_bb()
@@ -1887,6 +2076,18 @@ SC_NODE::Exit()
   }
 
   return exit;
+}
+
+// Get loop index if this node is a SC_LOOP.
+WN *
+SC_NODE::Index()
+{
+  if (type == SC_LOOP) {
+    BB_LOOP * loop_info = Loopinfo();
+    return loop_info->Index();
+  }
+
+  return NULL;
 }
 
 // Obtain the head block of a if-region or a loop-region.
@@ -2075,6 +2276,7 @@ SC_NODE::Is_member(BB_NODE * bb)
 }
 
 // Query whether this SC_NODE has a single-entry and a single-exit.
+// Return the single-entry and single-exit in the given parameters.
 BOOL
 SC_NODE::Is_sese()
 {
@@ -2106,7 +2308,7 @@ SC_NODE::Is_sese()
     if (Is_well_behaved()) {
       bb_head = Head();
       bb_merge = Merge();
-      
+
       if (bb_head->Is_dom(this)
 	  && bb_merge->Is_postdom(this))
 	ret_val= TRUE;
@@ -2127,6 +2329,16 @@ SC_NODE::Is_sese()
 	  ret_val = TRUE;
       }
     }
+
+    break;
+
+  case SC_LP_BODY:
+    bb_first = this->First_bb();
+    bb_tmp = this->Last_bb();
+
+    if (bb_first->Is_dom(this)
+	&& bb_tmp->Is_postdom(this))
+      ret_val = TRUE;
 
     break;
     
@@ -2158,6 +2370,10 @@ SC_NODE::Is_pred_in_tree(SC_NODE * sc)
 SC_NODE *
 SC_NODE::Find_lcp(SC_NODE * sc)
 {
+  if ((this->Parent() == NULL)
+      || (sc->Parent() == NULL))
+    return NULL;
+
   if (Is_pred_in_tree(sc))
     return this;
   else if (sc->Is_pred_in_tree(this))
@@ -2231,14 +2447,16 @@ SC_NODE::Has_same_loop_struct(SC_NODE * sc)
 // Query this SC_NODE and the sc have symmetric path.
 // Find LCP, for every pair of noded on the path from LCP to this SC_NODE, and 
 // on the path from LCP to the sc, the following condition must be satisfied:
-// - Same type, and the type must be SC_IF or a SC_LOOP.
+// - Same type, and the type must be {SC_IF, SC_LOOP, SC_THEN, SC_ELSE}.
 // - If the type is a SC_IF, condition expression should have the same shape.
 // - If the type is a SC_LOOP, loop structure should be the same
 // - Two pathes have the same length.
-
-
+//
+// If "check_buddy" is TRUE, 
+// - allow type mismatch at lcp's immediate children under the condition that the lcp is a SC_IF.
+// - disallow SC_LOOP on the path.
 BOOL
-SC_NODE::Has_symmetric_path(SC_NODE * sc)
+SC_NODE::Has_symmetric_path(SC_NODE * sc, BOOL check_buddy)
 {
   SC_NODE * sc1 = this;
   SC_NODE * sc2 = sc;
@@ -2258,10 +2476,17 @@ SC_NODE::Has_symmetric_path(SC_NODE * sc)
       SC_TYPE type1 = sc1->Type();
       SC_TYPE type2 = sc2->Type();
 
-      if (type1 != type2)
+      if (type1 != type2) {
+	if (!check_buddy || (sc1->Parent() != lcp)
+	    || (lcp->Type() != SC_IF))
+	  return FALSE;
+      }
+      else if (check_buddy && (sc != sc2)
+	       && (type1 == SC_LOOP))
 	return FALSE;
       
-      if ((type1 != SC_IF) && (type1 != SC_LOOP))
+      if ((type1 != SC_IF) && (type1 != SC_LOOP)
+	  && (type1 != SC_THEN) && (type1 != SC_ELSE))
 	return FALSE;
       
       if (type1 == SC_IF) {
@@ -2319,27 +2544,27 @@ SC_NODE::Num_of_loops(SC_NODE * sc_root, BOOL this_is_exc, BOOL root_is_exc)
 
 // Count number of statements for all BB_NODEs in the SC tree rooted at this SC_NODE.
 int
-SC_NODE::Real_stmt_count()
+SC_NODE::Executable_stmt_count()
 {
   int count = 0;
   BB_NODE * bb = Get_bb_rep();
   
   if (bb)
-    count += bb->Real_stmt_count();
+    count += bb->Executable_stmt_count();
 
   BB_LIST * bb_list = Get_bbs();
   BB_LIST_ITER bb_list_iter(bb_list);
   BB_NODE * bb_tmp;
 
   FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init()) {
-    count += (bb_tmp->Real_stmt_count());
+    count += (bb_tmp->Executable_stmt_count());
   }
 
   SC_LIST_ITER sc_list_iter(kids);
   SC_NODE * sc_tmp;
 
   FOR_ALL_ELEM(sc_tmp, sc_list_iter, Init()) {
-    count += (sc_tmp->Real_stmt_count());
+    count += (sc_tmp->Executable_stmt_count());
   }
 
   return count;
@@ -2362,6 +2587,24 @@ SC_NODE::Has_loop()
   }
 
   return FALSE;
+}
+
+// Query whether this SC_NODE contains empty blocks.
+BOOL
+SC_NODE::Is_empty_block()
+{
+  if ((type != SC_BLOCK) || (Executable_stmt_count() > 0))
+    return FALSE;
+
+  BB_NODE * tmp;
+  BB_LIST_ITER bb_list_iter(Get_bbs());
+
+  FOR_ALL_ELEM(tmp, bb_list_iter, Init()) {
+    if (tmp->Kind() != BB_GOTO)
+      return FALSE;
+  }
+
+  return TRUE;
 }
 
 // Dump a SC_NODE.  If dump_tree is TRUE, dump the SC tree

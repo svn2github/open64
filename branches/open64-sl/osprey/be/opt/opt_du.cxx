@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -365,10 +365,8 @@ DU_MANAGER::Ud_Add_Def(WN *use, WN *def)
 	!OPCODE_is_stmt(WN_opcode(use)))
     {
       if (!Aliased(_alias_mgr, use, def)) {
-	ErrMsg(EC_Development_Warning, "DU_MANAGER::Ud_Add_Def",
-	   "Use and Def are not aliased");
-	dump_wn(def);
-	dump_wn(use);
+	DevWarn("DU_MANAGER::Ud_Add_Def: Use %d [%p] and Def %d [%p] are not aliased",
+		WN_map_id(use), use, WN_map_id(def), def);
       }
     }
   }

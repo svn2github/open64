@@ -122,4 +122,9 @@ extern ST *
 ST_Source_COMMON_Block(ST *st, ST **split);
 #endif
 
+#ifdef TARG_LOONGSON
+extern BOOL
+ST_Is_Common_Block (ST *st);
+#endif
+
 #endif  // #ifndef privatize_common_INCLUDED

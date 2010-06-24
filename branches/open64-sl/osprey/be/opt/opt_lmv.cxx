@@ -32,6 +32,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <stack>
 using namespace std;
 
 #include "tracing.h"
@@ -40,11 +41,17 @@ using idmap::ID_MAP;
 
 #include "be_util.h"
 #include "bb_node_set.h"
+#include "glob.h"
 #include "opt_alias_rule.h"
 #include "opt_main.h"  // for COMP_UNIT
 #include "opt_lmv.h"
+#include "opt_ivr.h"
 
 const INT LMV_HEURISTIC::_low_trip_count = 40; 
+const INT LMV_HEURISTIC::_max_access_vectors = 16;
+const INT LMV_HEURISTIC::_max_write_vectors = 3;
+const INT LMV_HEURISTIC::_min_write_vectors = 1;
+
 const float _dup_loop_freq_ratio = 0.1f;
 
 extern void Rename_CODEMAP(COMP_UNIT *);
@@ -57,25 +64,32 @@ extern void Rename_CODEMAP(COMP_UNIT *);
 //====================================================================
 //====================================================================
 
-// Figure out pair of memory access ranges; with the assumption 
-// of the no-alias of these two memory ranges, the performance of 
-// the loop in question is supposed to be improved quite a lot.
-//
+// Attempts to determine the benefit of applying loop multiversioning
+// given a group of memory access ranges.  The assumption being that
+// by asserting non-alias between all pairs, the performance of the
+// loop in question will be improved significantly and overcome the
+// cost of the runtime checks necessary to assert non-alias.
 // return FALSE iff no such pairs are found.
-// 
-// TODO: Current heuristic looks like a toy. It is just used to make
-//  the loop-multiversioning for a loop in LBM@spec2k6 and make other
-//  components of the loop-multiversioning works. 
+//
+// At present, the heuristic is targeted to specific code sequences,
+// however more aggressive experimentation is possible with the
+// -WOPT:loop_multiver_aggr=on option.  The multiversioning transformation
+// has been well testing under that option, so as to allow this to
+// serve as a test bed for identifying future opportunities.
+//
+// Currently LMV focuses on alias, however one may also wish to multiversion
+// around a number of different attributed, e.g. loop trip count and tailor
+// code generation appropriately for those versions.
 //
 // The better heuristics that is planed to be experimented soon are:
 // 
-//   - examine in what degree a critical lenth in loop in shorten 
+//   - Examine in what degree a critical length in loop in shorten
 //     with assumed no-alias
 //   
-//   - examine how many redundant expressions will be eliminated with 
+//   - Examine how many redundant expressions will be eliminated with
 //     assumed no-alias.
 // 
-//   - evalute the profitability that will be obtained by assuming the 
+//   - Evaluate the profitability that will be obtained by assuming the
 //     some quantities (say, trip-counter) to be loop invariant. 
 //
 typedef struct {
@@ -89,87 +103,40 @@ struct less_weight {
 };
 
 BOOL
-LMV_HEURISTIC::Figureout_assumed_noalias_mem_ranges 
-   (MEM_ACCESS_VECT& mem_grp1, MEM_ACCESS_VECT& mem_grp2,
-    MEM_RANGE* r1, MEM_RANGE* r2) {
+LMV_HEURISTIC::Apply(MEM_GROUP_VECT &groups)
+{
+  if (WOPT_Enable_Loop_Multiver_Aggressive)
+    return TRUE;
 
-  r1->Init ();
-  r2->Init ();
+  INT n_vect = 0;
+  INT n_write_vect = 0;
+  INT n_read = 0;
+  INT n_write = 0;
+  for (MEM_GROUP_VECT_CITER iter = groups.begin();
+        iter != groups.end(); iter++) {
+    MEM_GROUP *grp = *iter;
+    if (grp->Write())
+      n_write_vect++;
+    n_vect++;
 
-  MA_PTR_MGR& ptr_mgr = _maa->_ptr_mgr;
-  if (ptr_mgr.Ptr_sum() < 2) {
-    // there is no more than one group of mem-ops. No chance for 
-    // multiversioning.
-    return FALSE;
+    MEM_ACCESS_VECT& v = grp->Mem_accesses();
+    for (MEM_ACCESS_VECT_ITER iter = v.begin ();
+        iter != v.end (); iter++) {
+      MEM_ACCESS *ma = (*iter);
+      if (ma->Is_read())
+        n_read++;
+      else if (ma->Is_write())
+        n_write++;
+    }
   }
 
-  // current toy heuristic is: 
-  //  - group memoy access according to their pointer it use (e.g p[i] 
-  //    and p[2] are of same group). The weight of a group is measured 
-  //    by the number of memory access in that group. 
-  //
-  //  - Sort the groups in an order of decreasing weight. 
-  //
-  //  - if the top 2 groups dorminate the memory access in the loop and
-  //    they are array access via pointer, they are profitable for loop
-  //    multi-versioning.
-
-  PTR_INFO* ptr_info = TYPE_MEM_POOL_ALLOC_N(PTR_INFO, _mp, 
-                                             ptr_mgr.Next_ptr_id()+1);
-  
-  MA_PTR_VECT& vect = ptr_mgr.All_ptrs ();
-  INT idx = 0;
-  INT total_weight = 0;
-  for (MA_PTR_VECT_ITER iter = vect.begin (); 
-       iter != vect.end(); iter++, idx++) {
-    MA_POINTER* ptr = *iter;  
-    ptr_info[idx].ptr_id = ptr->Id();
-    ptr_info[idx].weight = ptr->Ld_cnt() + ptr->St_cnt();
-    total_weight += ptr->Ld_cnt() + ptr->St_cnt();
-  }
-  sort (ptr_info, ptr_info+idx-1, less_weight());
-  
-  MA_POINTER* p1 = ptr_mgr.Get_pointer (ptr_info[0].ptr_id);
-  MA_POINTER* p2 = ptr_mgr.Get_pointer (ptr_info[1].ptr_id);
-
-  MEM_ACCESS_VECT& v1 = p1->All_mem_access();   
-  MEM_ACCESS_VECT& v2 = p2->All_mem_access();   
-  if (!_alias_rule->Aliased_Memop (v1[0]->Points_to(_opt_stab), 
-                 v2[0]->Points_to(_opt_stab), (TY_IDX)0, (TY_IDX)0)) {
-    return FALSE;
-  }
-
-  // compute the range of p1
-  MA_OFFSET ofst1, ofst2;
-  ofst1.Set_fixed_ofst (0);
-  ofst2.Set_fixed_ofst (0);
-
-  INT sz1, sz2;
-  sz1 = sz2 = 0;
-
-  for (MEM_ACCESS_VECT_ITER iter = v1.begin (); iter != v1.end (); iter++) {
-    ofst1.Union (&(*iter)->Ofst(), _loopinfo);
-    sz1 = MAX(sz1, (*iter)->Byte_size());
-  }
-
-  r1->Set_base_ptr (p1);
-  r1->Set_access_range (&ofst1, _loopinfo, sz1);
-  if (!r1->Access_range().low.Is_const () || !r1->Access_range().high.Is_const ())
+  if (n_write_vect < Min_write_vectors())
     return FALSE;
 
-  for (MEM_ACCESS_VECT_ITER iter = v2.begin (); iter != v2.end (); iter++) {
-    ofst2.Union (&(*iter)->Ofst(), _loopinfo);
-    sz2 = MAX(sz2, (*iter)->Byte_size());
-  }
-  r2->Set_base_ptr (p2);
-  r2->Set_access_range (&ofst2, _loopinfo, sz2);
-  if (!r2->Access_range().low.Is_const () || !r2->Access_range().high.Is_const ())
-    return FALSE;
+  if (n_vect == Max_access_vectors() && n_write_vect == Max_write_vectors())
+    return TRUE;
 
-  mem_grp1 = v1;
-  mem_grp2 = v2;
-
-  return TRUE;
+  return FALSE;
 }
 
 //====================================================================
@@ -355,6 +322,27 @@ LOOP_MULTIVER::Evaluate_stmt (const STMTREP* stmt) {
   return TRUE;
 }
 
+///////////////////////////////////////////////////////////////////////////
+//
+// Helper function of Gen_test_cond(), it returns the CODEREP
+// holding value "<ptr1> + val".
+//
+////////////////////////////////////////////////////////////////////////////
+//
+CODEREP*
+LOOP_MULTIVER::Gen_add_expr (CODEREP* ptr, CODEREP *val) {
+
+  CODEREP* tmp_cr = Alloc_stack_cr(2/*at most 2 kids*/+IVAR_EXTRA_NODE_CNT);
+
+  OPCODE opcode = (MTYPE_byte_size(ptr->Dtyp()) == 8) ? OPC_U8ADD : OPC_U4ADD;
+  tmp_cr->Init_op(opcode, 2);
+  tmp_cr->Set_opnd(0, ptr);
+  tmp_cr->Set_opnd(1, val);
+
+  ptr->IncUsecnt();
+  val->IncUsecnt();
+  return _htable->Hash_Op (tmp_cr);
+}
 
 ////////////////////////////////////////////////////////////////////////////
 //
@@ -374,13 +362,78 @@ LOOP_MULTIVER::Gen_add_expr (CODEREP* ptr, INT ofst) {
   tmp_cr->Init_const (ofst > 0 ? MTYPE_U4 : MTYPE_I4, (INT64)ofst);
   ofst_cr = _htable->Hash_Const (tmp_cr); 
    
-  OPCODE opcode = (MTYPE_byte_size(ptr->Dtyp()) == 8) ? OPC_U8ADD : OPC_U4ADD;
-  tmp_cr->Init_op(opcode, 2);
-  tmp_cr->Set_opnd(0, ptr);
-  tmp_cr->Set_opnd(1, ofst_cr);
+  return Gen_add_expr(ptr,ofst_cr);
+}
 
-  ptr->IncUsecnt();
-  return _htable->Hash_Op (tmp_cr);
+////////////////////////////////////////////////////////////////////////////
+//
+// Helper function of Gen_test_cond(), it returns the CODEREP
+// that contains the result of disambiguating <ar1> and <ar2>
+//
+////////////////////////////////////////////////////////////////////////////
+//
+CODEREP*
+LOOP_MULTIVER::Gen_range_expr (CODEREP *ptr1, const ADDR_LINEAR_EXPR_RANGE &ar1,
+                               CODEREP *ptr2, const ADDR_LINEAR_EXPR_RANGE &ar2)
+{
+  CODEREP *ptr1_high, *ptr2_high;
+  CODEREP *ptr1_low  = Gen_add_expr (ptr1, ar1.low.Const_val());
+  CODEREP *ptr2_low  = Gen_add_expr (ptr2, ar2.low.Const_val());
+  if (ar1.high.Is_const())
+    ptr1_high = Gen_add_expr (ptr1, ar1.high.Const_val());
+  else
+  {
+    CODEREP *ptr1_tmp = Gen_add_expr(ar1.high.cr(),ar1.high.Const_part());
+    ptr1_high = Gen_add_expr(ptr1,ptr1_tmp);
+  }
+  if (ar2.high.Is_const())
+    ptr2_high = Gen_add_expr (ptr2, ar2.high.Const_val());
+  else
+  {
+    CODEREP *ptr2_tmp = Gen_add_expr(ar2.high.cr(),ar2.high.Const_part());
+    ptr2_high = Gen_add_expr(ptr2,ptr2_tmp);
+  }
+
+  // generate the expr : (p1h < p2l || p2h < p1l)
+  CODEREP* tmp_cr = Alloc_stack_cr(2/*2 kids */);
+  BOOL use_8_bytes = (MTYPE_byte_size(ptr1_low->Dtyp()) == 8);
+
+  CODEREP* cr_1; // generate "p1h < p2l"
+  tmp_cr->Init_op (use_8_bytes ? OPC_I4U8LT : OPC_I4U4LT, 2);
+  tmp_cr->Set_opnd (0, ptr1_high);
+  tmp_cr->Set_opnd (1, ptr2_low);
+  cr_1 = _htable->Hash_Op (tmp_cr);
+
+  CODEREP* cr_2; // generate "p2h < p1l"
+  tmp_cr->Init_op (use_8_bytes ? OPC_I4U8LT : OPC_I4U4LT, 2);
+  tmp_cr->Set_opnd (0, ptr2_high);
+  tmp_cr->Set_opnd (1, ptr1_low);
+  cr_2 = _htable->Hash_Op (tmp_cr);
+
+  tmp_cr->Init_op (OPC_I4CIOR, 2);
+  tmp_cr->Set_opnd (0, cr_1);
+  tmp_cr->Set_opnd (1, cr_2);
+
+  CODEREP* cr = _htable->Hash_Op (tmp_cr);
+  return cr;
+}
+
+CODEREP *
+LOOP_MULTIVER::Gen_range_and_expr(CODEREP *range1, CODEREP *range2)
+{
+  Is_True(range1 != NULL || range2 != NULL,("Expected a non-NULL coderep"));
+  if (range1 == NULL)
+    return range2;
+  else if (range2 == NULL)
+    return range1;
+
+  CODEREP *tmp_cr = Alloc_stack_cr(2/* 2 kids */);
+  tmp_cr->Init_op(OPC_I4CAND, 2);
+  tmp_cr->Set_opnd(0,range1);
+  tmp_cr->Set_opnd(1,range2);
+
+  CODEREP *cr = _htable->Hash_Op(tmp_cr);
+  return cr;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -396,70 +449,87 @@ LOOP_MULTIVER::Gen_add_expr (CODEREP* ptr, INT ofst) {
 CODEREP*
 LOOP_MULTIVER::Gen_test_cond (LMV_CANDIDATE* cand) {
 
-  const MEM_RANGE& r1 = cand->Mem_range_1 ();
-  const MEM_RANGE& r2 = cand->Mem_range_2 ();
+  if (_tracing)
+    fprintf(TFile,"Mem Groups for candidate at BB%d\n",
+        cand->Loop()->Header()->Id());
+  // Do these checkes need to be moved earlier, i.e. during
+  // the heuristic check when computing memory ranges?
+  const MEM_GROUP_VECT &mem_groups = cand->Mem_groups();
+  for (MEM_GROUP_VECT_CITER val_iter = mem_groups.begin();
+      val_iter != mem_groups.end(); val_iter++) {
+    MEM_GROUP *grp = *val_iter;
 
-  const ADDR_LINEAR_EXPR_RANGE ar1 = r1.Access_range();
-  const ADDR_LINEAR_EXPR_RANGE ar2 = r2.Access_range();
+    if (_tracing)
+      grp->Print(TFile);
 
-  // TODO: Handle non-constant range
-  Is_True (ar1.low.Is_const () && ar1.high.Is_const() &&
-           ar2.low.Is_const() && ar2.high.Is_const(), 
-           ("currently cannot handle non-constant range"));
+    const MEM_RANGE &mr = *grp->Mem_range();
+    const ADDR_LINEAR_EXPR_RANGE &r = mr.Access_range();
+    // TODO: Handle non-constant lower bound
+    Is_True(r.low.Is_const(),
+        ("cannot handle non-const lower bound for now"));
 
-  // TODO: Handle this case
-  if (r1.Base_is_symbol() || r2.Base_is_symbol()) {
-    return NULL;
+    // TODO: Handle this case
+    if ( mr.Base_is_symbol())
+      return NULL;
+
+    if (mr.Base_ptr()->Kind() != MA_PTR_PREG &&
+        mr.Base_ptr()->Kind() != MA_PTR_SYM)
+      return NULL;
+
+    // TODO: Handle non-loop-invariant cases
+    CODEREP* ptr = mr.Base_ptr()->Coderep();
+    if (!cand->Loop()->Invariant_cr(ptr))
+      return NULL;
+
   }
-  
-  MA_POINTER *p1, *p2;
-  p1 = r1.Base_ptr ();
-  p2 = r2.Base_ptr ();
+  if (_tracing)
+    fprintf(TFile,"End Mem Groups\n");
 
-  if (p1->Kind () != MA_PTR_PREG && p1->Kind() != MA_PTR_SYM ||
-      p2->Kind () != MA_PTR_PREG && p2->Kind() != MA_PTR_SYM) {
-    return NULL;
+  // Map of access ranges containing a write that have all ready
+  // been checked against all other writes.  This prevents redundant
+  // runtime checks amongst the write access ranges.
+  // Essentially, this is a visited set.  Is there a cheaper way?
+  ID_MAP<INT,MEM_GROUP*> write_checked(32,0,&_mp,FALSE);
+  write_checked.Init();
+  CODEREP *prev_range_chk = NULL;
+
+  for (MEM_GROUP_VECT_CITER iter = mem_groups.begin();
+      iter != mem_groups.end(); iter++) {
+    MEM_GROUP *grp1 = *iter;
+    if (grp1->Write()){
+      for (MEM_GROUP_VECT_CITER iter2 = mem_groups.begin();
+          iter2 != mem_groups.end(); iter2++) {
+        MEM_GROUP *grp2 = *iter2;
+        if(grp1 != grp2 && write_checked.Lookup(grp2) == 0) {
+          const MEM_RANGE& r1 = *grp1->Mem_range();
+          const MEM_RANGE& r2 = *grp2->Mem_range();
+
+          const ADDR_LINEAR_EXPR_RANGE ar1 = r1.Access_range();
+          const ADDR_LINEAR_EXPR_RANGE ar2 = r2.Access_range();
+
+          // TODO: Handle non-constant range
+          Is_True (ar1.low.Is_const () && ar2.low.Is_const(),
+              ("currently cannot handle non-constant lower bound"));
+
+          MA_POINTER *p1, *p2;
+          p1 = r1.Base_ptr ();
+          p2 = r2.Base_ptr ();
+
+          CODEREP* ptr1 = p1->Coderep();
+          CODEREP* ptr2 = p2->Coderep();
+          CODEREP *range_chk = Gen_range_expr(ptr1,ar1,ptr2,ar2);
+          prev_range_chk = Gen_range_and_expr(prev_range_chk,range_chk);
+        }
+      }
+      write_checked.Insert(grp1,1);
+    }
   }
-
-  CODEREP* ptr1 = p1->Coderep();
-  CODEREP* ptr2 = p2->Coderep();
-  if (!cand->Loop()->Invariant_cr (ptr1) || 
-      !cand->Loop()->Invariant_cr (ptr2)) {
-    // TODO:: Handle non-loop-invariant cases
-    return NULL;    
-  }
-  
-  CODEREP *ptr1_low  = Gen_add_expr (ptr1, ar1.low.Const_val());
-  CODEREP *ptr1_high = Gen_add_expr (ptr1, ar1.high.Const_val());
-  CODEREP *ptr2_low  = Gen_add_expr (ptr2, ar2.low.Const_val());
-  CODEREP *ptr2_high = Gen_add_expr (ptr2, ar2.high.Const_val());
-
-  // generate the expr : (p1h < p2l || p2h < p1l)   
-  CODEREP* tmp_cr = Alloc_stack_cr(2/*2 kids */);
-  BOOL use_8_bytes = (MTYPE_byte_size(ptr1_low->Dtyp()) == 8); 
-
-  CODEREP* cr_1; // generate "p1h < p2l"
-  tmp_cr->Init_op (use_8_bytes ? OPC_I4U8LE : OPC_I4U4LE, 2);
-  tmp_cr->Set_opnd (0, ptr1_high);
-  tmp_cr->Set_opnd (1, ptr2_low);
-  cr_1 = _htable->Hash_Op (tmp_cr);
-
-  CODEREP* cr_2; // generate "p2h < p1l"
-  tmp_cr->Init_op (use_8_bytes ? OPC_I4U8LE : OPC_I4U4LE, 2);
-  tmp_cr->Set_opnd (0, ptr2_high);
-  tmp_cr->Set_opnd (1, ptr1_low);
-  cr_2 = _htable->Hash_Op (tmp_cr);
-
-  tmp_cr->Init_op (OPC_I4CIOR, 2);
-  tmp_cr->Set_opnd (0, cr_1);
-  tmp_cr->Set_opnd (1, cr_2);
-
-  CODEREP* cr = _htable->Hash_Op (tmp_cr);
+  Is_True(prev_range_chk,("Non-NULL range check CODEREP tree expected"));
   if (_tracing) {
     fprintf (TFile, "The precondition predicate (kid of true-branch) is:\n");
-    cr->Print (0, TFile);
+    prev_range_chk->Print (0, TFile);
   }
-  return cr;
+  return prev_range_chk;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -475,14 +545,6 @@ LOOP_MULTIVER::Not_applicable (BB_LOOP* loop) {
   if (loop->Child()) {
     if (_tracing) {
       fprintf (TFile, "Not innermost loop, give up\n");
-    }
-    return TRUE;
-  }
-
-  if (loop->Parent ()) {
-    if (_tracing) {
-      // The concern is not interfere LNO.
-      fprintf (TFile, "Currently, it is not ready for loop-nest");
     }
     return TRUE;
   }
@@ -515,8 +577,9 @@ LOOP_MULTIVER::Pass_initial_screen (const BB_LOOP* loop) {
   CODEREP* iv;
   if (_agg_mode && (iv = loop->Iv()) && iv->Kind() == CK_CONST && 
      iv->Const_val () < LMV_HEURISTIC::Low_trip_count_threshold ()) {
-    fprintf (TFile, "The trip count is %d smaller than the threshold %d\n", 
-             (INT)iv->Const_val(), (INT)LMV_HEURISTIC::Low_trip_count_threshold ());
+    if (_tracing)
+      fprintf(TFile, "The trip count is %d smaller than the threshold %d\n",
+          (INT)iv->Const_val(), (INT)LMV_HEURISTIC::Low_trip_count_threshold ());
     return FALSE;
   }
 
@@ -587,6 +650,7 @@ LOOP_MULTIVER::Pass_initial_screen (const BB_LOOP* loop) {
   // Take a closer look of each block by examining each statement to see 
   // whether it is appropriate for multiversioning 
   //
+  _stmt_num = _expr_num = _ld_num = _st_num = 0;
   FOR_ALL_ELEM (blk, iter, Init(loop->True_body_set())) {
    
     STMTREP_CONST_ITER stmt_iter (blk->Stmtlist());
@@ -649,29 +713,28 @@ LOOP_MULTIVER::Pass_initial_screen (const BB_LOOP* loop) {
 void
 LOOP_MULTIVER::Identify_candidate (BB_LOOP* loop) {
 
+
   MEM_POOL_Popper lmp (_local_mp);
 
-  LMV_LOOP_INFO* loopinfo = CXX_NEW(LMV_LOOP_INFO(loop, &_mp), &_mp);
-
+  IVR ivr(_comp_unit,FALSE);
+  LMV_LOOP_INFO* loopinfo =
+      CXX_NEW(LMV_LOOP_INFO(loop, &_mp,ivr,_tracing), &_mp);
+  
   MEM_ACCESS_ANALYZER* maa = 
     CXX_NEW (MEM_ACCESS_ANALYZER(_opt_stab, loopinfo, &_mp, _tracing), &_mp);
   maa->Analyze_mem_access ();
- 
-  LMV_HEURISTIC heur(_local_mp, this, loopinfo, _opt_stab, maa,
+
+  MEM_GROUP_VECT mem_groups(&_mp);
+  if (!maa->Assemble_aliased_mem_groups(_alias_rule,mem_groups))
+    return;
+
+  LMV_HEURISTIC heur(&_mp, this, loopinfo, _opt_stab, maa,
                     _alias_rule, _tracing);
-
-  MEM_RANGE r1, r2;
-  MEM_ACCESS_VECT mem_grp1 (_local_mp);
-  MEM_ACCESS_VECT mem_grp2 (_local_mp);
-
-  if (heur.Figureout_assumed_noalias_mem_ranges 
-       (mem_grp1, mem_grp2, &r1, &r2)) {
-
+  if (heur.Apply(mem_groups)) {
     LMV_CANDIDATE* cand = CXX_NEW (LMV_CANDIDATE(&_mp), &_mp);
     cand->Set_mem_access_analyzer (maa);
-    cand->Set_range (r1, r2);
+    cand->Set_mem_groups(mem_groups);
     cand->Set_loop (loop);
-    cand->Set_mem_group (mem_grp1, mem_grp2);
     _candidates.push_back (cand);
   }
 }
@@ -692,14 +755,29 @@ LOOP_MULTIVER::Identify_candidates (void) {
   BB_LOOP* loop;
 
   // go through all innermost loops 
-  FOR_ALL_NODE (loop, loop_iter, Init()) {
+  stack<BB_LOOP*> loop_nest;
+  loop_nest.push(loop_list);
+  while (!loop_nest.empty()) {
+    BB_LOOP *cur_loop = loop_nest.top();
+    loop_nest.pop();
 
-    if (Not_applicable (loop) || !Pass_initial_screen (loop)) {
-      // The loop is not eligible for multiversioning
-      continue;
+    // Visit all nodes at this nesting level
+    BB_LOOP_ITER loop_nest_iter(cur_loop);
+    FOR_ALL_NODE(loop,loop_nest_iter,Init()) {
+      if (loop->Child())
+        loop_nest.push(loop->Child());
+
+      if (_tracing) {
+        fprintf(TFile,"Examining Loop with header BB%d\n",
+            loop->Header()->Id());
+      }
+      if (Not_applicable(loop) || !Pass_initial_screen (loop)) {
+        // The loop is not eligible for multiversioning
+        continue;
+      }
+
+      Identify_candidate (loop);
     }
-
-    Identify_candidate (loop);  
   }
 
   if (_tracing) {
@@ -742,17 +820,34 @@ LOOP_MULTIVER::Annotate_alias_group_helper
 }
 
 void
-LOOP_MULTIVER::Annotate_alias_group (LMV_CANDIDATE* cand) {
+LOOP_MULTIVER::Annotate_alias_group (LMV_CANDIDATE* cand)
+{
+  INT grp_num = 1;
+  const MEM_GROUP_VECT &mem_groups = cand->Mem_groups();
+  for (MEM_GROUP_VECT_CITER iter = mem_groups.begin();
+      iter != mem_groups.end(); iter++) {
+    const MEM_ACCESS_VECT &memops = (*iter)->Mem_accesses();
+    LMV_ALIAS_GROUP alias_grp =
+        Gen_LMV_alias_group(cand->Loop()->Header()->Id(),grp_num++);
+    Annotate_alias_group_helper(memops,alias_grp);
+  }
 
-  const MEM_ACCESS_VECT& memops1 = cand->Mem_op_group1 ();
-  LMV_ALIAS_GROUP alias_grp1 = 
-    Gen_LMV_alias_group (cand->Loop()->Header()->Id(), 1);
-  Annotate_alias_group_helper (memops1, alias_grp1);
-
-  const MEM_ACCESS_VECT& memops2 = cand->Mem_op_group2 ();
-  LMV_ALIAS_GROUP alias_grp2 = 
-    Gen_LMV_alias_group (cand->Loop()->Header()->Id(), 2);
-  Annotate_alias_group_helper (memops2, alias_grp2);
+  // Now that we have attached alias groups to the memory
+  // references in the original loop, flag the loop to indicate same.
+  // We do this by setting a flag on the LOOP_INFO.  If none exists
+  // we will manufacture one to be consumed if this loop is raised
+  // to a do loop.
+  BB_LOOP *loop = cand->Loop();
+  BB_NODE *body = loop->Body();
+  WN *loop_info = body->Label_loop_info();
+  if (loop_info)
+    WN_Set_Multiversion_Alias(loop_info);
+  else {
+    loop_info = WN_CreateLoopInfo(NULL,loop->Wn_trip_count(),
+        0,loop->Depth(),0);
+    WN_Set_Multiversion_Alias(loop_info);
+    body->Set_label_loop_info(loop_info);
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -762,13 +857,13 @@ LOOP_MULTIVER::Annotate_alias_group (LMV_CANDIDATE* cand) {
 //
 /////////////////////////////////////////////////////////////////////////
 //
-void
+BOOL
 LOOP_MULTIVER::Perform_transformation (LMV_CANDIDATE* cand) {
   
   CODEREP* precond = Gen_test_cond (cand);
   if (!precond) {
     // it is possible because currently we cannot handle some cases.
-    return;
+    return FALSE;
   }
 
   // We feel more comfortable to have code generation done by CFG in that 
@@ -781,7 +876,8 @@ LOOP_MULTIVER::Perform_transformation (LMV_CANDIDATE* cand) {
   LMV_CFG_ADAPTOR adaptor(&_mp, _cfg, _tracing, cand->Loop(), precond);
   _cfg->LMV_clone_loop (&adaptor);
 
-  Annotate_alias_group (cand); 
+  Annotate_alias_group (cand);
+  return TRUE;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -791,8 +887,8 @@ LOOP_MULTIVER::Perform_transformation (LMV_CANDIDATE* cand) {
 ///////////////////////////////////////////////////////////////////////////
 //
 void
-LOOP_MULTIVER::Perform_loop_multiversioning (void) {
-
+LOOP_MULTIVER::Perform_loop_multiversioning (void)
+{
   if (_tracing) {
     fprintf (TFile, 
              "Begin Loop Multiversioning for PU:%d %s\n%s\n", 
@@ -805,12 +901,17 @@ LOOP_MULTIVER::Perform_loop_multiversioning (void) {
   }
   
   Identify_candidates ();
-  if (_candidates.size () == 0) return ;
+  if (_candidates.size () == 0) return;
 
   for (LMV_CAND_VECT_ITER iter = _candidates.begin ();
        iter != _candidates.end(); iter++) {
     LMV_CANDIDATE* cand = *iter; 
-    Perform_transformation (cand);
+    BOOL xform = Perform_transformation (cand);
+
+    if (xform && _tracing)
+      fprintf(TFile,"Multiversioned loop file: %s, line %d\n",
+          Orig_Src_File_Name,
+          Srcpos_To_Line(WN_Get_Linenum(cand->Loop()->Orig_wn())));
   }
 
   // reconstruct the CFG 
@@ -990,7 +1091,14 @@ CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
   clone->Set_loopdepth (src->Loopdepth());
   clone->Set_rid_id (src->Rid_id());
   clone->Set_flag (src->Flag());
-  clone->Set_kind (src->Kind());
+  // When cloning a 'DO' loop we lower the loop back to a while loop
+  // because we cannot manufacture (yet) all the state contained in
+  // the BB_LOOP structure for a 'DO' loop.  The loop should be
+  // raised again during "emit".
+  if ( src->Kind() == BB_DOEND )
+    clone->Set_kind(BB_WHILEEND);
+  else if ( src->Kind() == BB_DOSTEP )
+    clone->Set_kind(BB_GOTO);
 
   // DCE requires non-null PHI-list to transfer dead phi functions
   // from one block to another.
@@ -1240,7 +1348,7 @@ CFG::LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR* adaptor) {
                                adaptor->Cloned_loop_merge()), 
                                Mem_pool());
 
-  BB_NODE_SET* t = CXX_NEW (BB_NODE_SET(Last_bb_id()+1, this, Mem_pool(), 
+  BB_NODE_SET* t = CXX_NEW (BB_NODE_SET(Total_bb_count(), this, Mem_pool(),
                             BBNS_EMPTY), Mem_pool());
   dup_loop->Set_true_body_set (t);
  
@@ -1268,6 +1376,8 @@ CFG::LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR* adaptor) {
       blk->Set_loop (dup_loop); 
     }
   }
+  if (src_loop->Preheader()->Loop())
+    adaptor->Get_cloned_bb(src_loop->Preheader())->Set_loop(dup_loop);
 
   return dup_loop;
 }
@@ -1376,7 +1486,8 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   // step 2: create and insert preconditioning 
   //
   BB_NODE* orig_phdr = src_loop->Preheader();
-  BB_NODE* precond = Create_and_allocate_bb (BB_LOGIF);
+  BB_NODE* precond = LMV_create_alike_block(BB_LOGIF,orig_phdr);
+  precond->Set_flag(0);
 
   // splice into pred/next list and permute the precond right before 
   // original preheader.
@@ -1386,10 +1497,42 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* pred;
   FOR_ALL_ELEM (pred, pred_iter, Init(orig_phdr->Pred())) {
     pred->Replace_succ (orig_phdr, precond); 
+    // If the preheader is the then/else of a lowered IF/THEN/ELSE
+    // construct then we must update the BB_IFINFO on the predecessor
+    if (pred->Kind()==BB_LOGIF) {
+      if (pred->If_then() == orig_phdr)
+        pred->Ifinfo()->Set_then(precond);
+      else if (pred->If_else() == orig_phdr)
+        pred->Ifinfo()->Set_else(precond);
+    }
   }
   precond->Set_pred (orig_phdr->Pred ());
   orig_phdr->Set_pred (NULL);
   Connect_predsucc (precond, orig_phdr);
+
+  // Likewise if the preheader is the merge point of a lowered IF/THEN/ELSE
+  // then we must update the merge point on the immediate dominator
+  BB_NODE *idom = orig_phdr->Idom();
+  while (idom) {
+    if (idom->Kind()==BB_LOGIF && idom->If_merge() == orig_phdr) {
+      idom->Ifinfo()->Set_merge(precond);
+      break;
+    }
+    idom = idom->Idom();
+  }
+
+  // If the original preheader is the body of the parent loop we need
+  // to make the precond block the new body
+  BB_LOOP *parent_loop = src_loop->Parent();
+  if (parent_loop && parent_loop->Body() == orig_phdr)
+    parent_loop->Set_body(precond);
+
+  // Insert a pragma to mark the orig_phdr as the likely target
+  // of the preconditioning branch
+  //WN *pragma = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL,
+  //   FREQUENCY_HINT_FREQUENT, 0);
+  //Append_wn_in(orig_phdr,pragma);
+  //orig_phdr->Set_haspragma();
 
   // Append the preconditioning branch 
   
@@ -1469,9 +1612,11 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
   LMV_clone_loop_body (adaptor);
 
   // step 2. Clone the preheader
-  //
-  BB_NODE* new_phdr = LMV_create_alike_block (BB_GOTO, src_loop->Preheader());
-  Clone_bb (src_loop->Preheader()->Id(), new_phdr->Id(), FALSE);
+  BB_NODE *new_phdr = LMV_clone_block(src_loop->Preheader(),adaptor);
+  // The loop preheader is lowered to a GOTO. If the loop is a DO loop
+  // all of the DO* blocks will be lowered.  This is done because we cannot
+  // properly manufacture a new BB_LOOP for a DO loop.
+  new_phdr->Set_kind(BB_GOTO);
   adaptor->Set_cloned_loop_preheader (new_phdr);
 
   // prepend to the prev/next list
@@ -1485,7 +1630,8 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
   new_merge->Set_flag (0);
   adaptor->Set_cloned_loop_merge (new_merge);
   if (src_loop->Merge()->Labnam()) {
-    new_merge->Add_label (this);
+    new_merge->Add_label(this);
+    adaptor->Map_cloned_label(src_loop->Merge()->Labnam(),new_merge->Labnam());
   }
 
   // append to the prev/next list

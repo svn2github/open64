@@ -1,5 +1,7 @@
 # -*- Makefile -*-
 #
+#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
@@ -164,6 +166,14 @@ ifeq ($(BUILD_TARGET), X8664)
 SYS_DIRS = \
 	ia64
 endif
+ifeq ($(BUILD_TARGET), PPC32)
+SYS_DIRS = \
+	ia64
+endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+SYS_DIRS = \
+        ia64
+endif
 
 LIBELF_HFILES = \
 	elf_repl.h \
@@ -184,6 +194,11 @@ default: pathscale_defs.h
 	@for h in $(LINUX_HFILES); do \
 	    if ! test -e $$h; then \
 	      $(LN) -sf $(BUILD_TOT)/linux/include/$$h $$h; \
+	    fi; \
+	done
+	@for h in $(LIBELF_HFILES); do \
+	    if ! test -a $$h; then \
+	      ln -sf $(BUILD_TOT)/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
 	@for h in $(LINUX_SYS_HFILES); do \
@@ -208,22 +223,22 @@ default: pathscale_defs.h
 	done
 	@for h in $(CMPLR_HFILES); do \
 	    if ! test -e cmplrs/$$h; then \
-	      $(LN) -sf $(BUILD_TOT)/../include/cmplrs/$$h cmplrs/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/include/cmplrs/$$h cmplrs/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_HFILES); do \
 	    if ! test -e sys/$$h; then \
-	      $(LN) -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(SYS_DIRS); do \
 	    if ! test -e sys/$$h; then \
-	      $(LN) -sf $(BUILD_TOT)/../include/sys/$$h sys/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/include/sys/$$h sys/$$h; \
 	    fi; \
 	done
 	@for h in $(LIBELF_HFILES); do \
 	    if ! test -e $$h; then \
-	      $(LN) -sf $(BUILD_TOT)/../libelf/lib/$$h libelf/$$h; \
+	      $(LN) -sf $(BUILD_TOT)/libelf/lib/$$h libelf/$$h; \
 	    fi; \
 	done
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -76,7 +76,6 @@
 static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/com/config.cxx,v $ $Revision: 1.1.1.1 $";
 #endif /* _KEEP_RCS_ID */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef FRONT_END	/* For setting fullwarn, woff in front end */
 #ifndef FRONT_F90
@@ -670,10 +669,6 @@ static OPTION_DESC Options_LANG[] = {
       0, 0, 0,	&CXX_Exceptions_On,	&CXX_Exceptions_Set,
       "C++: enable exceptions" },
 #endif // !KEY
-#if 0 // remove it till we have a robust design 
-    { OVK_BOOL, OV_SHY,		FALSE, "alias_const",		"",
-      0, 0, 0,  &CXX_Alias_Const,       &CXX_Alias_Const_Set },
-#endif
     { OVK_BOOL, OV_VISIBLE,	FALSE, "recursive",		"",
       0, 0, 0,	&LANG_Recursive,	&LANG_Recursive_Set,
       "FORTRAN: program contains recursion" },
@@ -1021,7 +1016,7 @@ char *Inline_Path = 0;                    /* path to inline.so */
 #if defined(BACK_END) || defined(QIKKI_BE)
 char *Targ_Path = 0;		    /* path to targ_info .so */
 #endif /* defined(BACK_END) || defined(QIKKI_BE) */
-
+
 /* ====================================================================
  *
  * Preconfigure
@@ -1190,6 +1185,11 @@ Configure_Ofast ( void )
   if ( ! WOPT_Enable_Estr_FB_Injury_Set ) {
     WOPT_Enable_Estr_FB_Injury = TRUE;
     WOPT_Enable_Estr_FB_Injury_Set = TRUE;
+  }
+
+  if ( ! WOPT_Enable_Loop_Multiver_Set ) {
+    WOPT_Enable_Loop_Multiver = TRUE;
+    WOPT_Enable_Loop_Multiver_Set = TRUE;
   }
 
   /* Get platform and its associated options: */
@@ -1461,11 +1461,15 @@ Configure_Source ( char	*filename )
    */
   if ( ! Cfold_Aggr_Set )
     Enable_Cfold_Aggressive = TRUE;
-
+  
+#if defined(TARG_PPC32)
+  Enable_CVT_Opt = FALSE;
+#else
 #ifndef TARG_NVISA // nvisa wants to preserve 32<->64 conversions
   if (!Enable_CVT_Opt_Set)
     Enable_CVT_Opt = ( Opt_Level > 0);
 #endif
+#endif  
 
   CSE_Elim_Enabled = Opt_Level > 0;
 
@@ -1486,10 +1490,6 @@ Configure_Source ( char	*filename )
       OPT_unroll_size = 20;
     /* reduce caller+callee "size" limit for inlining */
     INLINE_Max_Pu_Size=1000;
-#if 0 /* not ready for this yet. */
-    /* don't inline divide expansions */
-    if (!OPT_Inline_Divide_Set) OPT_Inline_Divide = FALSE;
-#endif
 
 #ifdef BACK_END
     /* LNO options to be turned off for SPACE */
@@ -1563,12 +1563,12 @@ Configure_Source ( char	*filename )
   /* IEEE arithmetic options: */
   if ( IEEE_Arithmetic > IEEE_ACCURATE ) {
     /* Minor roundoff differences for inexact results: */
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     // facerec fails at -O3 if Recip_Allowed is true
     if ( ! Recip_Set )
       Recip_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
 #endif
-#if !defined(TARG_IA64) && !defined(TARG_X8664)
+#if !defined(TARG_IA64) && !defined(TARG_X8664) && !defined(TARG_LOONGSON)
     // apsi fails at -O3 because Rsqrt_Allowed is true
     if ( ! Rsqrt_Set )
       Rsqrt_Allowed = IEEE_Arithmetic >= IEEE_INEXACT;
@@ -1583,7 +1583,7 @@ Configure_Source ( char	*filename )
 #ifndef KEY
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
     Roundoff_Level = ROUNDOFF_SIMPLE;
@@ -1631,16 +1631,6 @@ Configure_Source ( char	*filename )
 #endif
   }
 
-#if 0
-  /* Set the relational operator folding in simplifier based on the optimizer
-     setting of Allow_wrap_around_opt */
-  if (!Simp_Unsafe_Relops_Set && Allow_wrap_around_opt_Set) {
-     Simp_Unsafe_Relops = Allow_wrap_around_opt;
-  }
-  if (!Allow_wrap_around_opt_Set && Simp_Unsafe_Relops_Set ) {
-     Allow_wrap_around_opt = Simp_Unsafe_Relops;
-  }
-#endif
 #if !defined(TARG_NVISA) // NVISA needs to avoid overflow arithmetic
   if (!Simp_Unsafe_Relops_Set && Opt_Level > 2) {
      Simp_Unsafe_Relops = TRUE;
@@ -1937,25 +1927,8 @@ Build_Skiplist ( OPTION_LIST *olist )
 	ol != NULL;
 	++count, ol = OLIST_next(ol) )
   {
-#if 0
-    if ( !strncmp ( "skip_a", OLIST_opt(ol), 6 ) ||
-	 !strncmp ( "region_skip_a", OLIST_opt(ol), 13 ) ||
-	 !strncmp ( "goto_skip_a", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	 || !strncmp ( "ddb_skip_a", OLIST_opt(ol), 10 )
-#endif
-	 ) {
-      Set_SKIPLIST_kind ( sl, count, SK_AFTER );
-    } else if ( !strncmp ( "skip_b", OLIST_opt(ol), 6 ) ||
-	        !strncmp ( "region_skip_b", OLIST_opt(ol), 13 ) ||
-	        !strncmp ( "goto_skip_b", OLIST_opt(ol), 11 ) 
-#if defined(TARG_SL)
-	     || !strncmp ( "ddb_skip_b", OLIST_opt(ol), 10 )
-#endif
-		) {
-#endif
     // ignore goto/region/ddb prefix of skip name
-    char *opt_name = strstr(OLIST_opt(ol), "skip");
+    const char *opt_name = strstr(OLIST_opt(ol), "skip");
     if ( !strncmp ( "skip_a", opt_name, 6 )) {
       Set_SKIPLIST_kind ( sl, count, SK_AFTER );
     } else if ( !strncmp ( "skip_b", opt_name, 6 )) {

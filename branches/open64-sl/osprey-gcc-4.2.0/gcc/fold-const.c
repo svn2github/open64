@@ -1670,6 +1670,14 @@ int_const_binop (enum tree_code code, tree arg1, tree arg2, int notrunc)
 
   t = build_int_cst_wide (TREE_TYPE (arg1), low, hi);
 
+#ifdef TARG_SL
+  if (t && TYPE_MAX_VALUE(TREE_TYPE(t)) && tree_int_cst_lt(TYPE_MAX_VALUE(TREE_TYPE(t)), t))
+  {
+     TREE_OVERFLOW (t) = 1;
+  }
+#endif
+
+
   if (notrunc)
     {
       /* Propagate overflow flags ourselves.  */
@@ -5652,10 +5660,6 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
             }
           break;
         }
-      /* If the constant is negative, we cannot simplify this.
-         Test case: gcc.c-torture/int/execute/pr34130.c */
-      if (tree_int_cst_sgn (c) == -1)
-        break;
       /* FALLTHROUGH */
     case NEGATE_EXPR:
       if ((t1 = extract_muldiv (op0, c, code, wide_type, strict_overflow_p))
@@ -5823,11 +5827,19 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
 
       /* If these are the same operation types, we can associate them
 	 assuming no overflow.  */
+#if defined(TARG_SL)
+      if (tcode == code
+         && 0 != (t1 = const_binop (MULT_EXPR, fold_convert (ctype, op1),
+                                    fold_convert (ctype, c), 1))
+         && ! TREE_OVERFLOW (t1))
+       return fold_build2 (tcode, ctype, fold_convert (ctype, op0), t1);
+#else
       if (tcode == code
 	  && 0 != (t1 = const_binop (MULT_EXPR, fold_convert (ctype, op1),
 				     fold_convert (ctype, c), 0))
 	  && ! TREE_OVERFLOW (t1))
 	return fold_build2 (tcode, ctype, fold_convert (ctype, op0), t1);
+#endif
 
       /* If these operations "cancel" each other, we have the main
 	 optimizations of this pass, which occur when either constant is a
@@ -8477,8 +8489,7 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
      safe for every expression, except for a comparison expression
      because its signedness is derived from its operands.  So, in
      the latter case, only strip conversions that don't change the
-     signedness. MIN_EXPR/MAX_EXPR also need signedness of arguments
-     preserved.
+     signedness.
 
      Note that this is done as an internal manipulation within the
      constant folder, in order to find the simplest representation
@@ -8486,9 +8497,7 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
      cases, the appropriate type conversions should be put back in
      the tree that will get out of the constant folder.  */
 
-  /* Fix gcc bug 36137: 
-     http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36137 */ 
-  if (kind == tcc_comparison || code == MIN_EXPR || code == MAX_EXPR)
+  if (kind == tcc_comparison)
     {
       STRIP_SIGN_NOPS (arg0);
       STRIP_SIGN_NOPS (arg1);

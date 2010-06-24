@@ -2770,14 +2770,6 @@ cwh_types_mk_anon_name (const char * nm)
     strcpy(anonymous_str,nm);
   }
 
-#if 0
-// In 7.3 numbering is suppressed, because TY_unique
-// uses the type name among the criteria for matching.
-// arguably it's not required, since TYs have an id in 
-// the dump..
-
-  sprintf(&anonymous_str[len], "%d", ++ anonymous_index);
-#endif
 
   return(anonymous_str);
 }
@@ -3238,9 +3230,6 @@ cwh_types_copyin_pragma(ST *st)
 {
   WN *pragma;
 
-#if 0
-  if (enable_mp_processing || process_cri_mp_pragmas) {
-#endif
     if (ST_sym_class(st) == CLASS_VAR &&
         !ST_auxst_xpragma_copyin(st)) {
 
@@ -3249,8 +3238,5 @@ cwh_types_copyin_pragma(ST *st)
       cwh_block_append_given_id(pragma,Preamble_Block,FALSE);
       Set_ST_auxst_xpragma_copyin(st,TRUE);
     }
-#if 0
-  }
-#endif
 }
 

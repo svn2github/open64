@@ -675,6 +675,7 @@ public:
   void     Set_then(BB_NODE * i) { _then = i; }
   void     Set_else(BB_NODE * i) { _else = i; }
   void     Set_merge(BB_NODE * i) { _merge = i; }
+  void     Set_cond(BB_NODE * i) { _cond = i; }
 };
 
 enum LOOP_FLAGS {
@@ -694,6 +695,9 @@ enum LOOP_FLAGS {
 				  // occurrence of the current
 				  // expression (for LFTR termination
 				  // guarantee).
+  LOOP_HAS_MV_ALIAS    = 0x200,   // Memory references in this loop are
+                                  // associated with loop multi-version
+                                  // alias groups
 };
 
 enum MP_TY { MP_REGION, MP_DOACROSS = 0x40, MP_PDO = 0x80};
@@ -814,12 +818,16 @@ public:
   BB_LOOP     *Parent(void) const   { return _parent;}
   WN          *Loopstmt(void) const { return _loopstmt; }
   WN          *Index(void) const    { return _index; }
+  void         Set_index(WN *p) { _index = p; }
   BB_NODE     *Start(void) const    { return _u1._start; }
+  void         Set_start(BB_NODE *p) { _u1._start = p; }
   BB_NODE     *Dohead(void) const   { return _u1._dohead; }
   BB_NODE     *End(void) const      { return _end; }
+  void         Set_end(BB_NODE *p) { _end = p; }
   BB_NODE     *Body(void) const     { return _body; }
   void         Set_body(BB_NODE *p) { _body = p; }
   BB_NODE     *Step(void) const     { return _step; }
+  void         Set_step(BB_NODE *p) { _step = p; }
   void         Set_merge(BB_NODE *b){ _u2._merge = b; }
   BB_NODE     *Merge(void) const    { return _u2._merge; }
   BB_NODE     *Dotail(void) const   { return _u2._dotail; }
@@ -893,7 +901,7 @@ public:
 
   LOOP_FLAGS   Flags(void) const             { return _flags; }
   void         Set_flag(LOOP_FLAGS  f)       { _flags =(LOOP_FLAGS)(_flags|f);}
-  BOOL         Is_flag_set(LOOP_FLAGS f)const{ return _flags & f; }
+  BOOL         Is_flag_set(LOOP_FLAGS f)const{ return ((_flags & f) == f); }
   void         Clear_flag(LOOP_FLAGS f)      { _flags = (LOOP_FLAGS) (_flags & ~f); }
   CODEREP     *Iv(void) const                { return _iv; }
   void         Set_iv(CODEREP *cr)           { _iv = cr; }
@@ -1254,6 +1262,7 @@ public:
 			   MEM_POOL *pool) { _pred = _pred->Append(bb,pool); }
   void         Append_succ(BB_NODE *bb,
 			   MEM_POOL *pool) { _succ = _succ->Append(bb,pool); }
+  void         Prepend_pred(BB_NODE * bb, MEM_POOL * pool) { _pred = _pred->Prepend(bb, pool); }
   void         Prepend_succ(BB_NODE *bb, MEM_POOL * pool) { _succ = _succ->Prepend(bb, pool); }
   void         Remove_pred(BB_NODE *bb, MEM_POOL *pool) 
 			{ if (_pred != NULL)
@@ -1263,6 +1272,8 @@ public:
 			{ if (_succ != NULL)
 			    _succ = _succ->Remove(bb,pool);
 			}
+  void         Remove_preds(MEM_POOL * pool);
+  void         Remove_succs(MEM_POOL * pool);
   void         Replace_pred( BB_NODE *old_pred, BB_NODE *new_pred );
   void         Replace_succ( BB_NODE *old_succ, BB_NODE *new_succ );
 
@@ -1370,6 +1381,7 @@ public:
   void         Set_pred(BB_LIST *bblst) { _pred = bblst;}
   BB_NODE     *Nth_pred(INT32)   const;
   BB_NODE     *Nth_succ(INT32)   const;
+  BB_NODE     *Last_succ();
   BB_LIST     *Succ(void)        const  { return _succ;}
   void         Set_succ(BB_LIST *bblst) { _succ = bblst;}
 
@@ -1718,8 +1730,8 @@ public:
   // Is every pair of WN statements in this BB_NODE and the given BB_NODE identical?
   BOOL Compare_Trees(BB_NODE *);
 
-  // Count of real statements in this BB_NODE.
-  int  Real_stmt_count();
+  // Count of executable statements in this BB_NODE.
+  int  Executable_stmt_count();
   // Does this BB_NODE end with a branch targeting the given BB_NODE?
   BOOL Is_branch_to(BB_NODE *);
 
@@ -1837,10 +1849,10 @@ static const char * sc_type_name[] =
   {"NONE", "IF", "THEN", "ELSE", "LOOP", "BLOCK", "FUNC",
    "LP_START", "LP_COND", "LP_STEP", "LP_BACKEDGE", "LP_BODY", "COMPGOTO", "OTHER"};
 
+// bit mask.
 enum SC_NODE_FLAG
 {
-  NONE = 0,
-  HAS_SYMM_LOOP = 1
+  HAS_SYMM_LOOP = 0x1
 };
 
 
@@ -1873,7 +1885,8 @@ public:
   int          Flag()            const  { return _flag; }
   void         Set_flag(int i)          { _flag = i; }
   void         Remove_flag(int i);
-  void         Add_flag(int i)          { _flag += i; }
+  BOOL         Has_flag(int i)          { return ((_flag & i) != 0); }
+  void         Add_flag(int i)          { if (!Has_flag(i)) {_flag += i; } }
   SC_TYPE      Type(void)        const { return type; }
   void         Set_type(SC_TYPE i)     { type = i; }
   const char * Type_name(void) const   { return sc_type_name[type]; }
@@ -1914,8 +1927,10 @@ public:
 
   SC_NODE *  Parent(void)      const   { return parent; }
   void       Set_parent(SC_NODE * i)   { parent = i; }
+  void       Set_kids(SC_LIST * i)     { kids = i; }
   SC_LIST *  Kids(void)        const   { return kids; }
   void       Clear(void);
+  BOOL       Is_empty_block();
   
   SC_NODE(void)          { Clear(); }
   SC_NODE(const SC_NODE&);
@@ -1926,11 +1941,15 @@ public:
   void Append_kid(SC_NODE * sc);
   void Prepend_kid(SC_NODE * sc);
   void Remove_kid(SC_NODE * sc);
+  void Insert_before(SC_NODE * sc);
+  void Insert_after(SC_NODE * sc);
   SC_NODE * Last_kid();
   SC_NODE * First_kid();
   SC_NODE * Next_sibling();
   SC_NODE * Prev_sibling();
   SC_NODE * Next_sibling_of_type(SC_TYPE);
+  SC_NODE * Next_in_tree();
+  SC_NODE * Get_nesting_if(SC_NODE *);
   SC_NODE * First_kid_of_type(SC_TYPE);
   BOOL Contains(BB_NODE *);
   BB_NODE * Then();
@@ -1942,6 +1961,7 @@ public:
   BB_NODE * Else_end();
   BB_NODE * Exit();
   BB_LOOP * Loopinfo();
+  WN *      Index();
   SC_NODE * Find_kid_of_type(SC_TYPE);
   void Unlink();
   void Convert(SC_TYPE);
@@ -1949,14 +1969,15 @@ public:
   BOOL Is_well_behaved();
   BOOL Is_sese();
   BOOL Has_same_loop_struct(SC_NODE *);
-  BOOL Has_symmetric_path(SC_NODE *);
+  BOOL Has_symmetric_path(SC_NODE *, BOOL);
   SC_NODE * Find_lcp(SC_NODE *);
   BB_NODE * First_bb();
   BB_NODE * Last_bb();
   BOOL Is_pred_in_tree(SC_NODE *);
   int Num_of_loops(SC_NODE *, BOOL, BOOL);
-  int Real_stmt_count();
+  int Executable_stmt_count();
   BOOL Has_loop();
+  SC_NODE * Get_real_parent();
 };
 
 class SC_LIST : public SLIST_NODE {

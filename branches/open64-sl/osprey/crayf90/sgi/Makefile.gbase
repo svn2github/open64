@@ -243,7 +243,7 @@ VPATH    =  $(FE90_DIR) $(SRC_DIRS)
 
 LCINCS = $(addprefix -I, $(HEADER_DIRS))
 ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
-LCINCS += -I$(FE90_INCLUDES) -I$(LINUX_INC) -I$(INCLUDE_DIR)/cmplrs 
+LCINCS += -I$(FE90_INCLUDES) -I$(LINUX_INC) -I$(BUILD_TOT)/include/cmplrs -I$(INCLUDE_DIR)/cmplrs
 endif
 LCXXINCS = $(LCINCS)
 
@@ -287,6 +287,10 @@ endif
 ifeq ($(BUILD_TARGET), X8664)
 LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
 endif
+ifeq ($(BUILD_TARGET), LOONGSON)
+LIBRARIES += $(F90SGI_TARG_DIR)/libf90sgi.a
+endif
+
 
 LLDLIBS += $(LIBRARIES)
 ifeq ($(BUILD_ARCH), IA64)
@@ -333,6 +337,9 @@ ifndef SKIP_DEP_BUILD
  ifeq ($(BUILD_TARGET),X8664)
 	$(call submake,$(F90SGI_TARG_DIR))
  endif
+ ifeq ($(BUILD_TARGET),LOONGSON)
+       $(call submake,$(F90SGI_TARG_DIR))
+ endif
 endif
 
 #----------------------------------------------------------------------
@@ -378,7 +385,11 @@ else
 ifeq ($(BUILD_TARGET),X8664)
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm
 else
+ifeq ($(BUILD_TARGET), LOONGSON)
+	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $(F90_RTLIBS) -lm 
+else
 	$(link.c++f) -o $@ $(OBJECTS) compiler_build_date.o  -L./ $(TARG_COMUTIL_DIR)/libcomutil.a $(LDFLAGS) $$($(F90) -m32 -print-file-name=libfortran.a)
+endif
 endif
 endif
 else
@@ -413,8 +424,8 @@ cf95.i: $(FE90_DIR)/cf95.msgs
 	$(CCF) -E $(FE90_DIR)/cf95.msgs > cf95.i
 
 ifeq ($(BUILD_OS_LINUX_OR_DARWIN), TRUE)
-cf95.cat: ../../../crayf90/fe90/cf95.msgs
-	awk -f ../../../linux/tools/caterr.awk < ../../../crayf90/fe90/cf95.msgs | gencat -o cf95.cat
+cf95.cat: $(BUILD_TOT)/crayf90/fe90/cf95.msgs
+	awk -f $(BUILD_TOT)/linux/tools/caterr.awk < $(BUILD_TOT)/crayf90/fe90/cf95.msgs | gencat -o cf95.cat
 else
 cf95.cat: cf95.i
 	rm -f cf95.cat

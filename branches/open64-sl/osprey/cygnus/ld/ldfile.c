@@ -321,14 +321,6 @@ read_gcc_output(const char *cmdline)
     }
     strcpy (gcc_cmd, "gcc ");
     strcat (gcc_cmd, cmdline);
-#if 0
-    char *gcc_path = get_full_phase_name(P_ld);
-
-    if (asprintf(&gcc_cmd, "%s %s", gcc_path, cmdline) == -1) {
-        internal_error("cannot allocate memory");
-        goto bail;
-    }
-#endif
     if ((fp = popen(gcc_cmd, "r")) == NULL) {
         fp = NULL;
     }
@@ -437,8 +429,14 @@ ldfile_open_file_search (const char *arch,
 	  return TRUE;
 	}
 
+#ifndef TARG_LOONGSON
+      /* Bug 13174:  In LOONGSON compiler, IPA receives an absolute path as
+       * /libc/libc.so.6 -- Workaround this problem by pretending it is
+       * not an absolute path.
+       */
       if (IS_ABSOLUTE_PATH (entry->filename))
 	return FALSE;
+#endif
     }
 
   for (search = search_head; search != NULL; search = search->next)

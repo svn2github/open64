@@ -230,6 +230,22 @@ LIB_SRCS += \
 endif
 endif
 
+ifeq ($(BUILD_TARGET),LOONGSON)
+ifeq ($(BUILD_COMPILER),GNU)
+LIB_SRCS += \
+        _powci.c \
+        _powcl.c \
+        _powdi.c \
+        _powdl.c \
+        _powii.c \
+        _powll.c \
+        _powri.c \
+        _powrl.c \
+        _powzi.c \
+        _powzl.c
+endif
+endif
+
 F77FILES = z_sqrtf.F \
 	z_logf.F \
 	z_expf.F
@@ -252,7 +268,7 @@ LCDEFS = $(HOSTDEFS) $(TARGDEFS) -D_LIBU
 LCDEFS += -D_LITTLE_ENDIAN
 # needed for libcsup/msgnew files
 LCDEFS +=-DTARG_IA64 -D__NLS_INTERNALS -D_SGI_SOURCE
-LCINCS += -I$(BUILD_AREA)/include -I$(FE90_INCLUDES) 
+LCINCS += -I$(TARGDIR)/include -I$(BUILD_AREA)/include -I$(FE90_INCLUDES)
 LF77OPTS = $(LCDEFS) -ansi $(LCINCS)
 
 

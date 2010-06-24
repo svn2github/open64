@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -578,7 +582,7 @@ void ISA_Operands_End(void)
 		 "  mUINT8 rsubclass;\n"
 		 "  mUINT8 lclass;\n"
 		 "  mUINT8 eclass;\n"
-		 "  mUINT8 size;\n"
+		 "  mUINT16 size;\n"
 		 "  mUINT8 flags;\n"
 		 "} ISA_OPERAND_VALTYP;\n");
 

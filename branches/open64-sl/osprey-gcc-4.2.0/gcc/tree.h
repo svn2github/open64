@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 /* Front-end tree definitions for GNU compiler.
@@ -395,6 +399,9 @@ struct tree_common GTY(())
   unsigned int dwarf_access : 2;                /* KEY */
     /* indicate if the tree node is fully or partially translated to spin */
   unsigned int fully_translated_to_gs : 1;      /* KEY */
+    /* indicate if the node has been fully translated as an extern inline
+       definition. */
+  unsigned int translated_as_inline : 1;	/* KEY */
 
   unsigned long translated_gs_node;             /* KEY */
   HOST_WIDE_INT gs_sequence_num;                /* KEY */
@@ -2073,6 +2080,7 @@ struct tree_block GTY(())
 /* Inside a TARGET_EXPR, keep track if GNU is emitting the cleanup */
 #define EMIT_TARGET_EXPR_CLEANUP(NODE) ((NODE)->common.emit_target_expr_cleanup)
 #define FULLY_TRANSLATED_TO_GS(NODE) ((NODE)->common.fully_translated_to_gs)
+#define TRANSLATED_TO_GS_AS_INLINE(NODE) ((NODE)->common.translated_as_inline)
 #define GS_SEQUENCE_NUM(NODE) ((NODE)->common.gs_sequence_num)
 #endif
 

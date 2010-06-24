@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -572,11 +576,20 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_V8I1:	return OPC_V8I1V8I1LDID;
     case MTYPE_V8I2:	return OPC_V8I2V8I2LDID;
     case MTYPE_V8I4:	return OPC_V8I4V8I4LDID;
+    case MTYPE_V8I8:	return OPC_V8I8V8I8LDID;
     case MTYPE_V8F4:	return OPC_V8F4V8F4LDID;
     case MTYPE_M8I1:	return OPC_M8I1M8I1LDID;
     case MTYPE_M8I2:	return OPC_M8I2M8I2LDID;
     case MTYPE_M8I4:	return OPC_M8I4M8I4LDID;
     case MTYPE_M8F4:	return OPC_M8F4M8F4LDID;
+    case MTYPE_V32I1:	return OPC_V32I1V32I1LDID;
+    case MTYPE_V32I2:	return OPC_V32I2V32I2LDID;
+    case MTYPE_V32I4:	return OPC_V32I4V32I4LDID;
+    case MTYPE_V32I8:	return OPC_V32I8V32I8LDID;
+    case MTYPE_V32F4:	return OPC_V32F4V32F4LDID;
+    case MTYPE_V32F8:	return OPC_V32F8V32F8LDID;
+    case MTYPE_V32C4:	return OPC_V32C4V32C4LDID;
+    case MTYPE_V32C8:	return OPC_V32C8V32C8LDID;
 #endif
 
     case MTYPE_B:
@@ -610,6 +623,7 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
         case 1: return MTYPE_V8I1; 
         case 2: return MTYPE_V8I2; 
         case 4: return MTYPE_V8I4; 
+        case 8: return MTYPE_V8I8; 
         }
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
@@ -625,6 +639,22 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
           return MTYPE_M8F4; 
+      }
+    } else if ( ( mtype_class & MTYPE_CLASS_AVECTOR ) == MTYPE_CLASS_AVECTOR ) {
+      // 256-bit AVX vector
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return MTYPE_V32I1; 
+        case 2: return MTYPE_V32I2; 
+        case 4: return MTYPE_V32I4; 
+        case 8: return MTYPE_V32I8; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        switch ( bytes ) {
+        case 4: return MTYPE_V32F4; 
+        case 8: return MTYPE_V32F8; 
+        case 16: return MTYPE_V32C8;
+        }
       }
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
@@ -709,6 +739,7 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
         case 1: return OPC_V8I1V8I1LDID; 
         case 2: return OPC_V8I2V8I2LDID; 
         case 4: return OPC_V8I4V8I4LDID; 
+        case 8: return OPC_V8I8V8I8LDID; 
         }
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
@@ -725,6 +756,22 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
         if ( bytes == 4 )
           return OPC_M8F4M8F4LDID; 
       }
+    } else if ( ( mtype_class & MTYPE_CLASS_AVECTOR ) == MTYPE_CLASS_AVECTOR ) {
+      // AVX 256-bit vector
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_V32I1V32I1LDID; 
+        case 2: return OPC_V32I2V32I2LDID; 
+        case 4: return OPC_V32I4V32I4LDID; 
+        case 8: return OPC_V32I8V32I8LDID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        switch ( bytes ) {
+        case 4: return OPC_V32F4V32F4LDID; 
+        case 8: return OPC_V32F8V32F8LDID; 
+        case 16: return OPC_V32C8V32C8LDID;
+        }
+      } 
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
       switch ( bytes ) {
@@ -808,6 +855,7 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
         case 1: return OPC_V8I1STID; 
         case 2: return OPC_V8I2STID; 
         case 4: return OPC_V8I4STID; 
+        case 8: return OPC_V8I8STID; 
         }
       } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
         if ( bytes == 4 )
@@ -824,6 +872,22 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
         if ( bytes == 4 )
           return OPC_M8F4STID; 
       }
+    } else if ( ( mtype_class & MTYPE_CLASS_AVECTOR ) == MTYPE_CLASS_AVECTOR ) {
+      // 256-bit AVX vector
+      if ( mtype_class & MTYPE_CLASS_INTEGER ) {
+        switch ( bytes ) {
+        case 1: return OPC_V32I1STID; 
+        case 2: return OPC_V32I2STID; 
+        case 4: return OPC_V32I4STID; 
+        case 8: return OPC_V32I8STID; 
+        }
+      } else if ( mtype_class & MTYPE_CLASS_FLOAT ) {
+        switch ( bytes ) {
+        case 4: return OPC_V32F4STID; 
+        case 8: return OPC_V32F8STID; 
+        case 16: return OPC_V32C8STID; 
+        }
+      } 
     } else // 128-bit vectors
     if ( mtype_class & MTYPE_CLASS_INTEGER ) {
       switch ( bytes ) {
@@ -1139,27 +1203,6 @@ WN_get_const_val(WN *wn)
   } val;
 
   val.i8 = WN_const_val(wn);
-#if 0
-  MTYPE rtype = WN_rtype(wn);
-  switch (rtype) {
-  case MTYPE_I1: 
-    return (INT64) val.i1.b1;
-  case MTYPE_I2: 
-    return (INT64) val.i2.s1;
-  case MTYPE_I4: 
-    return (INT64) val.i4.lo;
-  case MTYPE_I8: 
-    return (INT64) val.i8;
-  case MTYPE_U1: 
-    return (INT64) val.u1.ub1;
-  case MTYPE_U2: 
-    return (INT64) val.u2.us1;
-  case MTYPE_U4:
-    return (INT64) val.u4.ulo;
-  case MTYPE_U8: 
-    return (INT64) val.u8;
-  }
-#endif
   return val.i8;
 }
 
@@ -1400,19 +1443,27 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
     switch (type) {
     case MTYPE_M8I1:
     case MTYPE_V8I1:
-    case MTYPE_V16I1: bytes = 1; break;
+    case MTYPE_V16I1:
+    case MTYPE_V32I1: bytes = 1; break;
     case MTYPE_M8I2:
     case MTYPE_V8I2:
-    case MTYPE_V16I2: bytes = 2; break;
+    case MTYPE_V16I2:
+    case MTYPE_V32I2: bytes = 2; break;
     case MTYPE_M8I4:
     case MTYPE_M8F4:
     case MTYPE_V8I4:
     case MTYPE_V8F4:
     case MTYPE_V16I4:
-    case MTYPE_V16F4: bytes = 4; break;
+    case MTYPE_V16F4:
+    case MTYPE_V32I4:
+    case MTYPE_V32F4: bytes = 4; break;
+    case MTYPE_V8I8:
     case MTYPE_V16I8:
-    case MTYPE_V16F8: bytes = 8; break;
-    case MTYPE_V16C8: bytes = 16; break;
+    case MTYPE_V16F8:
+    case MTYPE_V32I8:
+    case MTYPE_V32F8: bytes = 8; break;
+    case MTYPE_V16C8:
+    case MTYPE_V32C8: bytes = 16; break;
     }
     ldidop = Ldid_from_mtype_class_and_size(sym->Mclass(), bytes);
     stidop = Stid_from_mtype_class_and_size(sym->Mclass(), bytes);

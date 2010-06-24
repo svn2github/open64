@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -40,7 +44,6 @@
 
 */
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #ifdef USE_PCH
 #include "be_com_pch.h"
@@ -1064,6 +1067,73 @@ Gen_In_Parallel(void)
   WN_linenum(wn) = line_number;
   
   return wn;
+}
+
+static UINT64
+Get_Offset_From_Const_Array(WN* array)
+{
+  // should be one-dimension array with constant index.
+  WN* index = WN_array_index(array,0);
+  FmtAssert(WN_operator(index) == OPR_INTCONST,("expect a const index"));
+  UINT64 offset = WN_element_size(array) * WN_const_val(index);
+  return offset;
+}
+
+// Return a non-structure field from offset, if there's multiple field
+// with the same offset, return the first.
+// This routine can return empty fld handler.
+static FLD_HANDLE 
+Get_FLD_From_Offset_r(const TY_IDX ty_idx, const UINT64 offset, UINT* field_id)
+{
+  Is_True(Is_Structure_Type(ty_idx), ("need to be a structure type"));
+
+  UINT64 cur_offset = 0;
+
+  FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty_idx));
+  do {
+    if ( field_id != NULL )
+      (*field_id) ++;
+    FLD_HANDLE fld(fld_iter);       
+
+    // we assume that we will not see bit-fields here.
+    cur_offset = FLD_ofst(fld);
+
+    if (cur_offset == offset)
+    {
+      // check type
+      TY_IDX cur_fld_idx = FLD_type(fld);
+      if (!Is_Structure_Type(cur_fld_idx))
+        return fld;
+    }
+
+    TY_IDX cur_fld_idx = FLD_type(fld);
+    if (TY_kind(cur_fld_idx) == KIND_STRUCT &&
+        TY_fld(cur_fld_idx) != FLD_HANDLE())
+    {
+      // it's possible that the new_offset becomes negative
+      // because of unions. 
+      INT64 new_offset = offset - cur_offset;
+      if (new_offset < 0) return FLD_HANDLE();
+      FLD_HANDLE fld1 = Get_FLD_From_Offset_r(cur_fld_idx, new_offset, field_id);
+      if (!fld1.Is_Null()) return fld1;
+    }
+
+  } while (!FLD_last_field(fld_iter++));
+
+  return FLD_HANDLE();
+}
+
+// Return a non-structure field from offset, if there's multiple field
+// with the same offset, return the first.
+// This routine will assert if it cannot find a valid field.
+static FLD_HANDLE 
+Get_FLD_From_Offset(const TY_IDX ty_idx, const UINT64 offset, UINT *field_id= NULL)
+{
+  if (field_id != NULL)
+	  *field_id= 0;
+  FLD_HANDLE fld = Get_FLD_From_Offset_r(ty_idx, offset, field_id);
+  FmtAssert(!fld.Is_Null(),("cannot find field from offset"));
+  return fld;
 }
 
 /*
@@ -2097,14 +2167,6 @@ Add_DST_variable ( ST *st, DST_INFO_IDX parent_dst,
 			FALSE);		/* is_artificial */
 
   (void)DST_append_child( parent_dst, dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( dst );
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2235,14 +2297,6 @@ Create_New_DST ( DST_INFO_IDX dst, ST *st , BOOL append_to_nested )
   if (append_to_nested)
     (void)DST_append_child( nested_dst, new_dst );
   info = DST_INFO_IDX_TO_PTR( new_dst );
-#if 0
-  iattr = DST_INFO_attributes(info);
-  assoc = &DST_VARIABLE_def_st(
-		DST_ATTR_IDX_TO_PTR(iattr, DST_VARIABLE));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(st);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2271,14 +2325,6 @@ Create_Func_DST ( char * st_name )
 			FALSE			/* external */
 			);
   (void)DST_append_child( dst, nested_dst );
-#if 0
-  info = DST_INFO_IDX_TO_PTR( nested_dst );
-  assoc = &DST_SUBPROGRAM_def_st(
-		DST_ATTR_IDX_TO_PTR(DST_INFO_attributes(info), DST_SUBPROGRAM));
-  pDST_ASSOC_INFO_st_idx(assoc) = ST_st_idx(parallel_proc);
-  DST_SET_assoc_idx(DST_INFO_flag(info));
-  DST_RESET_assoc_fe(DST_INFO_flag(info));
-#endif
 }
 
 
@@ -2294,7 +2340,8 @@ Identical_Pragmas ( WN * wn1, WN * wn2 )
       (WN_st(wn1) != WN_st(wn2)) ||
       (WN_pragma_flags(wn1) != WN_pragma_flags(wn2)) ||
       ((WN_operator(wn1) == OPR_PRAGMA) &&
-       (WN_pragma_arg64(wn1) != WN_pragma_arg64(wn2))) ||
+       (WN_pragma_arg1(wn1) != WN_pragma_arg1(wn2))) || 
+       (WN_pragma_arg2(wn1) != WN_pragma_arg2(wn2)) ||
       (WN_kid_count(wn1) != WN_kid_count(wn2)))
     return (FALSE);
 
@@ -3607,6 +3654,7 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
 			 (TY_kind(TY_pointed(ST_type(old_st))) == KIND_ARRAY) &&
 			 (TY_size(TY_pointed(ST_type(old_st))) != 0));
   v->is_dynamic_array = (((vtype == VAR_LOCAL) || (vtype == VAR_LASTLOCAL) ||
+                          (vtype == VAR_REDUCTION_ARRAY_OMP) ||
 			  (vtype == VAR_FIRSTPRIVATE)) &&
 			 (TY_kind(ST_type(old_st)) == KIND_POINTER) &&
                          (ST_keep_name_w2f(old_st) || 
@@ -3656,36 +3704,53 @@ Localize_Variable ( VAR_TABLE *v, VAR_TYPE vtype, OPERATOR opr,
   } else if (ST_class(old_st) != CLASS_PREG) {
 
     ty = ST_type(old_st);
-#ifdef KEY // bug 7259 and 8076
-    if ((TY_kind(ty) == KIND_STRUCT) && 
-        (vtype == VAR_REDUCTION_SCALAR || vtype == VAR_REDUCTION_ARRAY))
-      ty = FLD_type(TY_fld(ty));
-#endif
-    if ((TY_kind(ty) == KIND_POINTER) &&
-	((v->is_static_array) || (vtype == VAR_REDUCTION_ARRAY)))
-#ifdef KEY //bug 11661
-     {
-#endif
-      ty = TY_pointed(ty);
-#ifdef KEY //bug 11661: for structure, we need the field type 
-      if (TY_kind(ty) == KIND_STRUCT && vtype == VAR_REDUCTION_ARRAY)
-        ty = FLD_type(TY_fld(ty));
-     }
-#endif
 
-    if ((TY_kind(ty) == KIND_ARRAY) && (vtype == VAR_REDUCTION_ARRAY))
-      ty = TY_etype(ty);
-    if ((vtype == VAR_REDUCTION_ARRAY_OMP) && (TY_kind(ty) == KIND_POINTER)
-					&& (TY_kind(TY_pointed(ty)) == KIND_ARRAY))
-		{
-			ty = TY_pointed(ty);
-			// we need to create an array in local stack.
-			// This may not always work.
-			// csc.
-      /*ty = TY_etype(ty);*/
-		}
+    TY_KIND kind = TY_kind(ty);
+    while ( kind == KIND_POINTER || kind == KIND_STRUCT || kind == KIND_ARRAY)
+    {
+      if (kind == KIND_POINTER)
+      {
+        if (v->is_static_array || vtype == VAR_REDUCTION_ARRAY)
+          ty = TY_pointed(ty);
+        else
+          break;
+      }else if (kind == KIND_STRUCT)
+      {
+        if (vtype == VAR_REDUCTION_SCALAR)
+           ty = FLD_type(Get_FLD_From_Offset(ty, v->orig_offset));
+        else if (vtype == VAR_REDUCTION_ARRAY)
+        {
+          WN* array = v->vtree;
+          if (WN_element_size(array)<0)
+          {
+            // fortran dope vector: we will iteratively find the element type.
+            // Maybe we should check the dimsion.
+            ty = FLD_type(TY_fld(ty));
+          }
+          else
+          {
+            // must be from pointer promption
+            // we might have some problems for the union as multiple fields
+            // share the same offset. But this info is lost and there's no way
+            // to recover. (we need to change the reduction pragma)
+            UINT64 offset = Get_Offset_From_Const_Array(array);
+            FLD_HANDLE fld = Get_FLD_From_Offset(ty, offset);
+
+            ty = FLD_type(fld);
+          }
+        } else
+         break;
+      }else if (kind == KIND_ARRAY)
+      {
+        if (vtype == VAR_REDUCTION_ARRAY)
+           ty = TY_etype(ty);
+        else
+          break;
+      }
+      kind = TY_kind(ty);
+    }
   
-	localname = (char *) alloca(strlen(ST_name(old_st)) + 32);
+    localname = (char *) alloca(strlen(ST_name(old_st)) + 32);
       // if already localized, append "x" to localization prefix
     if (strncmp(ST_name(old_st), "__mplocal_", 10) == 0)
       sprintf ( localname, "__mplocalx_%s", &ST_name(old_st)[10] );
@@ -4926,9 +4991,7 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
     old_offset = WN_offsetx(tree);
     for (w=vtab; w->orig_st; w++) {
       if ((w->orig_st == old_sym) &&
-#ifndef KEY
 	  (w->has_offset ? (w->orig_offset == old_offset) : TRUE ) &&
-#endif
           (w->vtype != VAR_REDUCTION_ARRAY) &&
 	  ! (w->is_non_pod && is_orphaned_worksharing)) {
 	if (w->is_static_array) {
@@ -4947,12 +5010,15 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
 	  opr = OPCODE_operator(op);
 	} else {
           WN_st_idx(tree) = ST_st_idx(w->new_st);
+	  // for reduction of a field of STRUCT, the TY_kind would be different
+	  // And, we need to fix the TY for the wn, the field_id, and offsetx
+	  // As the local_xxx symbol is always .predef..., so field_id should be 0
+	  if (TY_kind(ST_type(w->new_st)) != TY_kind(WN_ty(tree))){
+            WN_set_ty(tree, ST_type(w->new_st));
+	    WN_set_field_id(tree, 0);
+	  }
 	  if (w->has_offset)
-#ifdef KEY
-	    WN_set_offsetx(tree, old_offset);
-#else
 	    WN_set_offsetx(tree, w->new_offset);
-#endif
 	}
 	if (w->is_dynamic_array) {  // fix PV 553472 by updating aliases
             // child of ldst that's on the path to tree
@@ -4991,17 +5057,15 @@ Walk_and_Localize (WN * tree, VAR_TABLE * vtab, Localize_Parent_Stack * lps,
     for (w=vtab; w->orig_st; w++) {
       if ((w->vtree == NULL) &&
 	  (w->orig_st == old_sym) &&
-#ifndef KEY
 	  (w->has_offset ? (w->orig_offset == old_offset) : TRUE ) &&
-#endif
 	  ! (w->is_non_pod && is_orphaned_worksharing)) {
 	WN_st_idx(tree) = ST_st_idx(w->new_st);
+	if (TY_kind(ST_type(w->new_st)) != TY_kind(WN_ty(tree))){
+	  WN_set_ty(tree, ST_type(w->new_st));
+	  WN_set_field_id(tree, 0);
+	}
 	if (w->has_offset)
-#ifdef KEY
-	  WN_set_offsetx(tree, old_offset);
-#else
 	  WN_set_offsetx(tree, w->new_offset);
-#endif
 	break;
       }
     }
@@ -5727,51 +5791,58 @@ ST_IDX Make_MPRuntime_ST ( MPRUNTIME rop )
 }
 
 
-/*  Generate an appropriate load WN based on an ST.  */
-
-static WN * 
-Gen_MP_Load ( ST * st, WN_OFFSET offset, BOOL scalar_only )
+static void
+Gen_MP_LS_get_fld_id_and_ty(ST *st, WN_OFFSET offset, BOOL scalar_only, UINT &field_id, TY_IDX &ty, TY_IDX &result_ty)
 {
-  WN *wn;
-  TY_IDX ty = ST_type(st);
+  ty = ST_type(st);
+  result_ty = ty;
 #ifdef KEY // bug 7259
-  if (scalar_only && TY_kind(ty) == KIND_STRUCT)
-    ty = FLD_type(TY_fld(ty));
+  if (scalar_only && TY_kind(ty) == KIND_STRUCT )
+  {
+    FLD_HANDLE fld = Get_FLD_From_Offset(ty, offset, &field_id);
+    result_ty = FLD_type(fld);
+  }
 #endif
 #ifdef KEY // bug 10681
   if (scalar_only && TY_kind(ty) == KIND_ARRAY)
     ty = TY_etype(ty);
 #endif
+  return; 
+}
+/*  Generate an appropriate load WN based on an ST.  */
 
-  wn = WN_RLdid ( Promote_Type(TY_mtype(ty)),
-                  TY_mtype(ty), offset, st, ty );
+static WN *
+Gen_MP_Load( ST * st, WN_OFFSET offset, BOOL scalar_only )
+{
+  UINT field_id = 0;
+  WN *wn;
+  TY_IDX ty;
+  TY_IDX result_ty;
+  
+  Gen_MP_LS_get_fld_id_and_ty(st, offset, scalar_only, field_id, ty, result_ty);
+
+  wn = WN_Ldid ( TY_mtype(result_ty), offset, st, ty ,field_id);
 
   return (wn);
 }
 
-
 /*  Generate an appropriate store WN based on an ST.  */
 
-static WN * 
-Gen_MP_Store ( ST * st, WN_OFFSET offset, WN * value, BOOL scalar_only)
+static WN *
+Gen_MP_Store( ST * st, WN_OFFSET offset, WN * value, BOOL scalar_only)
 {
+  UINT  field_id = 0;
   WN *wn;
-  TY_IDX ty = ST_type(st);
-#ifdef KEY // bug 7259
-  if (scalar_only && TY_kind(ty) == KIND_STRUCT)
-    ty = FLD_type(TY_fld(ty));
-#endif
-#ifdef KEY // bug 10681
-  if (scalar_only && TY_kind(ty) == KIND_ARRAY)
-    ty = TY_etype(ty);
-#endif
+  TY_IDX ty;
+  TY_IDX result_ty;
 
-  wn = WN_Stid ( TY_mtype(ty), offset, st, ty, value );
+  Gen_MP_LS_get_fld_id_and_ty(st, offset, scalar_only, field_id, ty, result_ty);
+  
+  wn = WN_Stid ( TY_mtype(result_ty), offset, st, ty, value, field_id );
   WN_linenum(wn) = line_number;
 
   return (wn);
 }
-
 
 /*  Generate appropriate load/store WN's based on two ST's.  */
 
@@ -6502,7 +6573,12 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    //The code are partly ported from be/vho/f90_lower.cxx
 
 	    // Create loop nest.
-	    ARB_HANDLE arb_base = TY_arb( ST_type( v->new_st ));
+        TY_IDX array_ty= (TY_kind(v->ty) == KIND_POINTER ? 
+                TY_pointed(v->ty) : v->ty);
+        TY_IDX pointer_ty = (TY_kind(v->ty) == KIND_POINTER ?
+            v->ty: Make_Pointer_Type(v->ty, false));
+
+        ARB_HANDLE arb_base = TY_arb(array_ty);
 	    ndim_array = ARB_dimension( arb_base );
 	    Is_True(( ndim_array <= MAX_NDIM ) && ( ndim_array >= 0 ),
 	          ("dimension of array is not 0-7"));
@@ -6510,21 +6586,46 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    INT64 temp_size = 0;
 	    for(int j=0; j<ndim_array; j++)
 	    {
-		     ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
-		     Is_True( ARB_const_lbnd( arb ) && ARB_const_ubnd( arb ),
-		            ("Lower and/or Upper bound of array is not const"));
-		     temp_size = ARB_ubnd_val( arb ) - ARB_lbnd_val( arb ) + 1;
-		     temp_size = ( temp_size > 0 ) ? temp_size : 0;
-		     sizes[ndim_array-j-1] = WN_CreateIntconst( OPC_I8INTCONST, 
-				                        temp_size );
-		     sizes_bak[j] = WN_CreateIntconst( OPC_I8INTCONST, temp_size );
-	    }
-
-	    for( int j=ndim_array; j<MAX_NDIM; j++ )
-	    {
-		     sizes[j] = NULL;
-		     sizes_bak[j] = NULL;
-	    }
+                ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
+                WN* lb = NULL;
+                WN* ub = NULL;
+                WN* size = NULL;
+                TYPE_ID mtype = MTYPE_I8;
+                TY_IDX ty_idx = 0;
+                
+                if (ARB_const_lbnd(arb))
+                   lb = WN_Intconst(mtype, ARB_lbnd_val(arb));
+                else
+                {
+                   ST_IDX st_idx = ARB_lbnd_var(arb);
+                   ty_idx = ST_type(st_idx);
+                   lb = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+                   lb = WN_Type_Conversion(lb, mtype);
+                }
+                
+                if (ARB_const_ubnd(arb))
+                   ub = WN_Intconst(mtype, ARB_ubnd_val(arb));
+                else
+                {
+                   ST_IDX st_idx = ARB_ubnd_var(arb);
+                   ty_idx = ST_type(st_idx);
+                   ub = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+                   ub = WN_Type_Conversion(ub, mtype);
+                }
+                
+                size = WN_Add(mtype, 
+                WN_Sub(mtype, ub, lb),
+                WN_Intconst(mtype, 1));
+                
+                sizes[ndim_array-j-1] = size;
+                sizes_bak[j] = WN_COPY_Tree(size);
+            }
+                
+            for( int j=ndim_array; j<MAX_NDIM; j++ )
+            {
+                sizes[j] = NULL;
+                sizes_bak[j] = NULL;
+            }
 							
 	    stlist = create_doloop_nest( new_indices,&loopnest,
 	                           sizes,ndim_array );
@@ -6537,11 +6638,12 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    // store the value.
         OPCODE op_array = OPCODE_make_op( OPR_ARRAY, Pointer_type, MTYPE_V );
 	    WN *local_array = WN_Create( op_array, 1+2*ndim_array );
-	    WN_element_size( local_array ) = TY_size( TY_AR_etype( v->ty ));
 
-	    WN_array_base( local_array ) = WN_CreateLda( 
-	    OPCODE_make_op( OPR_LDA, Pointer_type, MTYPE_V ),
-	              0, Make_Pointer_Type( v->ty ), v->new_st);
+	    WN_element_size( local_array ) = TY_size( TY_AR_etype(array_ty));
+        if (TY_kind(v->ty) == KIND_POINTER)
+	        WN_array_base( local_array ) = WN_Ldid(Pointer_type, 0, v->new_st, v->ty);
+        else
+            WN_array_base( local_array ) = WN_Lda(Pointer_type, 0, v->new_st);
 
 	    for( int j=0; j<ndim_array; j++ )
 	    {
@@ -6554,8 +6656,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	    // Maybe need to set parent point of the array kids.
 
 	    WN *wn_store_val = WN_Istore( v->mtype, 0, 
-			    Make_Pointer_Type( v->ty ),
-	                    local_array, wn_init_val ); 
+			    pointer_ty, local_array, wn_init_val ); 
 
 	    WN_INSERT_BlockLast( stlist, wn_store_val );
 	    WN_INSERT_BlockLast( *init_block, loopnest );
@@ -6655,7 +6756,11 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       lower_using_critical = TRUE;
       // stuff code for later use, will be clean up later. csc.
       // TODO:Insert combine code here.
-      ARB_HANDLE arb_base = TY_arb( ST_type( v->new_st ));
+      TY_IDX array_ty= (TY_kind(v->ty) == KIND_POINTER ?
+                      TY_pointed(v->ty) : v->ty);
+      TY_IDX pointer_ty = (TY_kind(v->ty) == KIND_POINTER ?
+                  v->ty: Make_Pointer_Type(v->ty, false));
+      ARB_HANDLE arb_base = TY_arb( array_ty);
       ndim_array = ARB_dimension( arb_base );
       Is_True(( ndim_array <= MAX_NDIM ) && ( ndim_array >= 0 ),
               ("dimension of array is not 0-7"));
@@ -6664,13 +6769,39 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       for(int j=0; j<ndim_array; j++)
       {
           ARB_HANDLE arb = arb_base[ ndim_array-1-j ];
-          Is_True( ARB_const_lbnd( arb ) && ARB_const_ubnd( arb ),
-                  ("Lower and/or Upper bound of array is not const"));
-	        temp_size = ARB_ubnd_val( arb ) - ARB_lbnd_val( arb ) + 1;
-	        temp_size = ( temp_size > 0 ) ? temp_size : 0;
-	        sizes[ndim_array-j-1] = WN_CreateIntconst( OPC_I8INTCONST,
-					                   temp_size );
-	        sizes_bak[j] = WN_CreateIntconst( OPC_I8INTCONST, temp_size );
+          WN* lb = NULL;
+          WN* ub = NULL;
+          WN* size = NULL;
+          TYPE_ID mtype = MTYPE_I8;
+          TY_IDX ty_idx = 0;
+
+          if (ARB_const_lbnd(arb))
+             lb = WN_Intconst(mtype, ARB_lbnd_val(arb));
+          else
+          {
+             ST_IDX st_idx = ARB_lbnd_var(arb);
+             ty_idx = ST_type(st_idx);
+             lb = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+             lb = WN_Type_Conversion(lb, mtype);
+          }
+
+          if (ARB_const_ubnd(arb))
+             ub = WN_Intconst(mtype, ARB_ubnd_val(arb));
+          else
+          {
+             ST_IDX st_idx = ARB_ubnd_var(arb);
+             ty_idx = ST_type(st_idx);
+             ub = WN_Ldid(mtype, 0, st_idx, ST_type(st_idx));
+             ub = WN_Ldid(TY_mtype(ty_idx), 0, st_idx, ty_idx);
+             ub = WN_Type_Conversion(ub, mtype);
+          }
+
+          size = WN_Add(mtype, 
+                       WN_Sub(mtype, ub, lb),
+                       WN_Intconst(mtype, 1));
+
+          sizes[ndim_array-j-1] = size;
+          sizes_bak[j] = WN_COPY_Tree(size);
       }
 
       for( int j=ndim_array; j<MAX_NDIM; j++ )
@@ -6686,12 +6817,18 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
       WN *wn_init_val = Make_Reduction_Identity( v->reduction_opr, v->mtype );
       OPCODE op_array = OPCODE_make_op( OPR_ARRAY, Pointer_type, MTYPE_V );
       WN *new_array = WN_Create( op_array, 1+2*ndim_array );
-      WN_element_size( new_array ) = TY_size( TY_AR_etype( v->ty ));
-      WN_array_base( new_array ) = WN_Lda( Pointer_type, 0, v->new_st );
+      WN_element_size( new_array ) = TY_size( TY_AR_etype(array_ty));
+      if (TY_kind(v->ty) == KIND_POINTER)
+        WN_array_base( new_array ) = WN_Ldid(Pointer_type, 0, v->new_st, v->ty);
+      else
+        WN_array_base( new_array ) = WN_Lda(Pointer_type, 0, v->new_st);
 
       WN *old_array = WN_Create( op_array, 1+2*ndim_array );
-      WN_element_size( old_array ) = TY_size( TY_AR_etype( v->ty ));
-      WN_array_base( old_array ) = WN_Lda( Pointer_type, 0, v->orig_st );
+      WN_element_size( old_array ) = TY_size( TY_AR_etype(array_ty));
+      if (TY_kind(v->ty) == KIND_POINTER)
+        WN_array_base( old_array ) = WN_Ldid(Pointer_type, 0, v->orig_st, v->ty);
+      else
+        WN_array_base(old_array ) = WN_Lda(Pointer_type, 0, v->orig_st);
 					          
       for( int j=0; j<ndim_array; j++ )
       {
@@ -6703,9 +6840,9 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	     WN_array_dim( old_array, j ) =  sizes_bak[ndim_array-j-1];
       }
 			   // Maybe need to set parent point of the array kids.
-      WN *wn_old_val = WN_Iload( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_old_val = WN_Iload( v->mtype, 0, pointer_ty,
 	                         WN_COPY_Tree( old_array ));
-      WN *wn_new_val = WN_Iload( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_new_val = WN_Iload( v->mtype, 0, pointer_ty,
 	                         new_array );
 
       if(( v->reduction_opr == OPR_CAND || v->reduction_opr == OPR_CIOR) &&
@@ -6755,7 +6892,7 @@ Gen_MP_Reduction(VAR_TABLE *var_table, INT num_vars, WN **init_block,
 	              v->mtype != restype )
 	      result = WN_Cvt( restype, v->mtype, result );
 
-      WN *wn_store_val = WN_Istore( v->mtype, 0, Make_Pointer_Type( v->ty ),
+      WN *wn_store_val = WN_Istore( v->mtype, 0, pointer_ty,
                                     old_array, result );
       WN_INSERT_BlockLast( stlist, wn_store_val );
       WN_INSERT_BlockLast( *store_block, loopnest );
@@ -10652,45 +10789,6 @@ Process_PDO ( WN * tree )
 
     }
 
-#if 0 //def KEY
-// The following is in order to make "i" private in the serialized version
-// of the region:
-//    #pragma omp parallel
-//    #pragma omp for private (i)
-//
-    if (nested_local_count && !orphaned)
-    {
-      // We have to recreate new ST entries because we need these symbols
-      // for a different scope than above, typically 2. So change the current
-      // scope ONLY locally.
-      SYMTAB_IDX psymtab_l = CURRENT_SYMTAB;
-      PU_Info * ppuinfo_l = Current_PU_Info;
-      WN_MAP_TAB * pmaptab_l = Current_Map_Tab;
-
-      CURRENT_SYMTAB = psymtab;
-      Current_PU_Info = ppuinfo;
-      Current_Map_Tab = pmaptab;
-
-      // Use local versions of the global tables.
-      INT32 vsize_l = (nested_local_count + 1) * sizeof (VAR_TABLE);
-      VAR_TABLE * nested_var_table_l = (VAR_TABLE *) alloca (vsize_l);
-       ( nested_var_table_l, vsize_l );
-      Create_Local_Variables ( nested_var_table_l, nested_reduction_nodes,
-			       nested_lastlocal_nodes, nested_local_nodes,
-			       nested_firstprivate_nodes,
-			       &nested_firstprivate_block,
-			       nested_lastthread_node,
-			       &alloca_block );
-      Localize_Parent_Stack lps_l(orphaned, body_block);
-      (void) Walk_and_Localize ( serial_stmt_block,
-                                 nested_var_table_l, &lps_l, FALSE,
-                                 &nested_non_pod_finalization_nodes );
-
-      CURRENT_SYMTAB = psymtab_l;
-      Current_PU_Info = ppuinfo_l;
-      Current_Map_Tab = pmaptab_l;
-    }
-#endif // KEY
 
     prev_node = WN_prev(pdo_node);
     if (prev_node) {
@@ -11665,7 +11763,8 @@ Process_Parallel_Region ( void )
   stmt_block = Walk_and_Localize ( stmt_block, var_table, &lps, TRUE , 
                                    &non_pod_finalization_nodes );
 #ifdef KEY
-  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc)
+  if (LANG_Enable_CXX_Openmp && PU_Info_pu(ppuinfo).misc &&
+    PU_src_lang(PU_Info_pu(ppuinfo)) == PU_CXX_LANG)
   { // C++
     Is_True (parallel_proc, ("Parallel block unavailable"));
     PU_IDX pu_idx = ST_pu(parallel_proc);
@@ -12340,7 +12439,10 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 	    copyin_nodes_end = WN_next(copyin_nodes_end) = cur_node;
 	  ++copyin_count;
           break;
-
+        
+	case WN_PRAGMA_DEFAULT:
+	  break;
+	  
 	  default:
 	    Fail_FmtAssertion (
 	       "out of context pragma (%s) in MP {top-level pragma} processing",
@@ -12550,10 +12652,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
                             WN_COPY_Tree( do_preamble_block ));
     }
 
-#if 0 //def KEY
-    // localize variables in serialized version of PDO
-    Localize_in_serialized_parallel ();
-#endif
 
 //    do_preamble_block = NULL;
 
@@ -12682,10 +12780,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     } else
       serial_stmt_block = Copy_Non_MP_Tree ( stmt_block );
 
-#if 0 //def KEY
-    // localize variables in serialized version of parallel region
-    Localize_in_serialized_parallel ();
-#endif
 
     Process_Parallel_Region ( );
 

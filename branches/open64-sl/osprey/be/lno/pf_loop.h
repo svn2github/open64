@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
  */
 
@@ -349,7 +353,7 @@ class PF_LOOPNODE {
   PF_SPLIT_VECTOR*  _split_vec;     // store the chosen versioning
   // private methods
   void              Add_Ref (WN* wn_array);
-  void              Process_Refs (const WN* wn);
+  void              Process_Refs (WN* wn);
   PF_VOLUME         Volume_For_Outer (mINT16 depth);
   PF_SPLIT_VECTOR*   Find_Split_Vector ();
 
@@ -415,7 +419,8 @@ public:
 
 extern mINT16 Loop_Confidence (DO_LOOP_INFO* dli);
 #if defined(TARG_X8664) || defined(TARG_IA64) //introduced by bug 10953
-extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop);
+extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop, BOOL ck_induc_base,
+           BOOL *inductive_use, BOOL *indirect_use);
 #endif
 
 #endif // pf_loop_INCLUDED

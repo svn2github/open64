@@ -46,7 +46,6 @@
 
 
 
-#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #if defined(BUILD_OS_DARWIN)
 #include <darwin_elf.h>
@@ -253,6 +252,8 @@ static void Perform_Inline_Script_Analysis(IPA_CALL_GRAPH* cg, MEM_POOL* pool, M
 #endif /* KEY */
 
 extern void IPA_struct_opt_legality (void);
+
+extern void IPA_identify_no_return_procs(void);
 
 //-------------------------------------------------------------------------
 // the main analysis phase at work! 
@@ -581,7 +582,8 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
         IPA_Fast_Static_Analysis_VF ();
     }
 #endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
-    // The following if-block is left by earlier developer. IPA_Enable_Devirtualization is not active in open64 4.2-1.
+    // Devirtualization using IPA_Enable_Devirtualization enabled path is not used from open64 4.2.2-1. Please use IPA_Enable_Fast_Static_Analysis_VF enabled path for understanding devirtualization.
+
     if (IPA_Enable_Devirtualization) { 
         Temporary_Error_Phase ephase ("IPA Devirtualization"); 
         IPA_Class_Hierarchy = Build_Class_Hierarchy(); 
@@ -697,15 +699,6 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
         IPA_Call_Graph->Print(TFile);
       }
     
-#if 0
-      // Optionally, we could remove quasi clones without making them real
-      for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-        IPA_NODE* node = (IPA_NODE*) cg_iter.Current();
-        if (node && node->Is_Quasi_Clone()) {
-          IPA_Call_Graph->Remove_Quasi_Clone(node);
-        }
-      }
-#endif
     
       if (IPA_Enable_Common_Const) {
         MEM_POOL_Pop(&local_cprop_pool);
@@ -848,4 +841,5 @@ Perform_Interprocedural_Analysis() { // ipa/main/analyze/ipa_main.cxx
     CGB_IPA_Terminate();
 #endif
 
+   IPA_identify_no_return_procs();
 }

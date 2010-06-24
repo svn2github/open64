@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -53,7 +57,7 @@
 #include "defs.h"
 #include "glob.h"
 #include "config.h"
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 #include "config_opt.h"
 #endif
 #ifdef TARG_SL
@@ -1167,6 +1171,8 @@ WFE_Array_Expr(tree exp,
         wn1 = WN_Intconst(MTYPE_I4, 0);
       wn2 = WFE_Expand_Expr (TREE_OPERAND (exp, 1));
 #ifdef TARG_X8664 // bug 11705
+      // when a 32-bit integer is stored in a 64-bit register,
+      // the high-order 32 bits are zero-extended for x8664
       if (WN_operator(wn2) == OPR_SUB)
         WN_set_rtype(wn2, Mtype_TransferSign(MTYPE_I4, WN_rtype(wn2)));
 #endif
@@ -1294,7 +1300,7 @@ WN_Adjust_Vbuf_Ofst(WN* wn, ST* st){
     if(!WN_vbuf_ofst_adjusted(wn)) {
       WN_lda_offset(wn) = (((WN_lda_offset(wn) / 16) * 16) << shft_num ) \
 	+ (WN_lda_offset(wn) % 16);
-      WN_Set_vbuf_ofst_adjusted(wn);
+      WN_Set_vbuf_ofst_adjusted(wn, TRUE);
     }
     return;
   }
@@ -1302,7 +1308,7 @@ WN_Adjust_Vbuf_Ofst(WN* wn, ST* st){
     if(WN_vbuf_ofst_adjusted(wn)) return;
     else {
       WN_const_val(wn) <<= shft_num;
-      WN_Set_vbuf_ofst_adjusted(wn);
+      WN_Set_vbuf_ofst_adjusted(wn, TRUE);
     }
     return;
   }
@@ -2742,10 +2748,6 @@ WFE_Address_Of(tree arg0)
     {
       DevWarn ("taking address of a label at line %d", lineno);
       LABEL_IDX label_idx = WFE_Get_LABEL (arg0, FALSE);
-#if 0
-      FmtAssert (arg0->decl.symtab_idx == CURRENT_SYMTAB,
-                 ("line %d: taking address of a label not defined in current function currently not implemented", lineno));
-#endif
       wn = WN_LdaLabel (Pointer_Mtype, label_idx);
       Set_LABEL_addr_saved (label_idx);
     }
@@ -3942,13 +3944,13 @@ Mark_LDA_Vbuf_Offset(WN* tree, INTRINSIC iopc ) {
 
   if(WN_operator(tree) == OPR_LDA) {
     if( ST_in_vbuf(WN_st(tree)) && iopc == INTRN_VBUF_OFFSET) {
-      WN_Set_is_internal_mem_ofst(tree);
+      WN_Set_is_internal_mem_ofst(tree, TRUE);
       Set_ST_is_vbuf_ofst(WN_st(tree));
       if(ST_in_v1buf(WN_st(tree))) 
         has_v1buf_lda = TRUE;
     }		  
     else if(ST_in_sbuf(WN_st(tree)) && iopc == INTRN_SBUF_OFFSET) {
-      WN_Set_is_internal_mem_ofst(tree);
+      WN_Set_is_internal_mem_ofst(tree, TRUE);
       Set_ST_is_sbuf_ofst(WN_st(tree));
     }		  
   }
@@ -4475,12 +4477,16 @@ WFE_Expand_Expr (tree exp,
 	    tcon = Host_To_Targ_Float (MTYPE_F8, *(double *) &rbuf);
 #endif
 	    break;
-#if defined(TARG_IA32) || defined(TARG_X8664) 
+#if defined(TARG_IA32) || defined(TARG_X8664) || defined(TARG_LOONGSON) 
 	  case MTYPE_FQ:
 	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
 	    for (i = 0; i < 4; i++)
 	      rbuf_w[i] = rbuf[i];
+#ifdef TARG_LOONGSON
+	    tcon = Host_To_Targ_Quad (*(QUAD_TYPE *) &rbuf_w);
+#else
 	    tcon = Host_To_Targ_Quad (*(long double *) &rbuf_w);
+#endif
 	    break;	    
 #endif /* TARG_IA32 */
 #endif
@@ -4571,7 +4577,7 @@ WFE_Expand_Expr (tree exp,
 					 *(double *) &ibuf);
 #endif
 	    break;
-#ifdef KEY
+#if defined(KEY) && !defined(TARG_LOONGSON)
 	case MTYPE_CQ:
 	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (real, rbuf);
 	    REAL_VALUE_TO_TARGET_LONG_DOUBLE (imag, ibuf);
@@ -5254,9 +5260,9 @@ WFE_Expand_Expr (tree exp,
              if(ST_in_v2buf(vbuf_sym) || ST_in_v4buf(vbuf_sym)) {
                if(WN_operator(WN_kid1(wn)) == OPR_MPY) {
                  WN* tmp = WN_Intconst(MTYPE_U4,  ST_in_v2buf(vbuf_sym) ? 2 : 4); 
-                 WN_Set_vbuf_ofst_adjusted(tmp);
+                 WN_Set_vbuf_ofst_adjusted(tmp, TRUE);
                  WN* new_wn = WN_Binary(OPR_MPY, MTYPE_I4, WN_kid1(wn), tmp);
-                 WN_Set_vbuf_ofst_adjusted(new_wn);
+                 WN_Set_vbuf_ofst_adjusted(new_wn, TRUE);
                  WN_kid1(wn) = new_wn;
                }
              }
@@ -5930,7 +5936,7 @@ WFE_Expand_Expr (tree exp,
      // set corresponding flag for automatic expand v1buf ld/st
      // in whirl2ops.cxx 
     if(Mark_LDA_Vbuf_Offset(wn, INTRN_VBUF_OFFSET)) 
-      WN_Set_is_internal_mem_ofst(wn);
+      WN_Set_is_internal_mem_ofst(wn, TRUE);
 
     // following code used to handle assignment from one vbuf array value to 
     // another vbuf array value;
@@ -6041,7 +6047,7 @@ WFE_Expand_Expr (tree exp,
 		       || TREE_CODE (arg2) == INDIRECT_REF)
 		  arg2 = TREE_OPERAND (arg2, 0);
 		ST *st2 = Get_ST (arg2);
-#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS)
+#if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_MIPS) || defined(TARG_LOONGSON)
 		const int align = PARM_BOUNDARY / BITS_PER_UNIT;
 		wn = WN_Lda (Pointer_Mtype, 
                              ((TY_size (ST_type (st2)) + align-1) & (-align)),
@@ -6384,27 +6390,6 @@ WFE_Expand_Expr (tree exp,
 #endif // KEY
                 break;
               }
-#if 0
-              case BUILT_IN_LOCK_TEST_AND_SET:
-                wn = emit_builtin_lock_test_and_set (exp, num_args-2);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_LOCK_RELEASE:
-                emit_builtin_lock_release (exp, num_args-1);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_COMPARE_AND_SWAP:
-                wn = emit_builtin_compare_and_swap (exp, num_args-3);
-                whirl_generated = TRUE;
-                break;
-
-              case BUILT_IN_SYNCHRONIZE:
-                emit_builtin_synchronize (exp, num_args);
-                whirl_generated = TRUE;
-                break;
-#endif
 
               case BUILT_IN_RETURN_ADDRESS:
                 i = Get_Integer_Value (TREE_VALUE (TREE_OPERAND (exp, 1)));
@@ -6621,9 +6606,15 @@ WFE_Expand_Expr (tree exp,
 	        break;
 	
 	      case BUILT_IN_POPCOUNT:
+                iopc = INTRN_I4POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTL:
+                iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
+                intrinsic_op = TRUE;
+                break;
 	      case BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_POPCOUNT;
+	        iopc = INTRN_I8POPCNT;
 		intrinsic_op = TRUE;
 		break;
 	
@@ -7383,13 +7374,6 @@ WFE_Expand_Expr (tree exp,
 	  }
 
 	  arg_mtype  = TY_mtype(arg_ty_idx);
-#if 0
-	  // gcc allows non-struct actual to correspond to a struct formal;
-	  // fix mtype of parm node so as not to confuse back-end
-	  if (arg_mtype == MTYPE_M) {
-	    arg_mtype = WN_rtype(arg_wn);
-	  }
-#endif
           arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), arg_wn,
 		    		  arg_ty_idx, WN_PARM_BY_VALUE);
 #if defined(TARG_SL)
@@ -7866,7 +7850,7 @@ WFE_Expand_Expr (tree exp,
 	  wn = WN_Mpy(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 8));
 	}
 #endif
-#ifdef TARG_MIPS // bug 12945: pad since long doubles are 16-byte aligned
+#if defined(TARG_MIPS) || defined(TARG_LOONGSON) // bug 12945: pad since long doubles are 16-byte aligned
 	if (mtype == MTYPE_FQ) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 15));
 	  wn = WN_Div(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 16));

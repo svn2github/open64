@@ -60,7 +60,6 @@ extern INT Struct_split_count;
 
 #define MAX_NUM_FIELDS_IN_COMPLETE_STRUCT_RELAYOUT 16
 extern TYPE_ID complete_struct_relayout_type_id;
-extern TYPE_ID another_complete_struct_relayout_type_id;
 
 #define MAX_NUM_STRUCTS_WITH_FIELD_POINTING_TO_COMPLETE_STRUCT_RELAYOUT 32
 extern TYPE_ID struct_with_field_pointing_to_complete_struct_relayout_type_id

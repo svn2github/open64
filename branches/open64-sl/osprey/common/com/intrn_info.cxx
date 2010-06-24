@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -41,6 +45,7 @@
 */
 
 #include "intrn_info.h"
+#include "errors.h"
 
 // On many platforms, the native dynamic libm defines functions that
 // we want to use, but it hides the leading underscore characters from
@@ -67,3 +72,76 @@ const intrn_info_t intrn_info[] = {
 	IRETURN_UNKNOWN, NULL, NULL, NULL},
 };
 
+TYPE_ID INTRN_Size_Mtype (const INTRINSIC id)
+{
+  switch (id) {
+  case INTRN_COMPARE_AND_SWAP_I1:
+  case INTRN_LOCK_TEST_AND_SET_I1:
+  case INTRN_LOCK_RELEASE_I1:
+  case INTRN_FETCH_AND_ADD_I1:
+  case INTRN_ADD_AND_FETCH_I1:
+  case INTRN_SUB_AND_FETCH_I1:
+  case INTRN_OR_AND_FETCH_I1:
+  case INTRN_XOR_AND_FETCH_I1:
+  case INTRN_AND_AND_FETCH_I1:
+  case INTRN_NAND_AND_FETCH_I1:
+  case INTRN_FETCH_AND_SUB_I1:
+  case INTRN_FETCH_AND_OR_I1:
+  case INTRN_FETCH_AND_XOR_I1:
+  case INTRN_FETCH_AND_AND_I1:
+  case INTRN_FETCH_AND_NAND_I1:
+        return MTYPE_I1;
+  case INTRN_COMPARE_AND_SWAP_I2:
+  case INTRN_LOCK_TEST_AND_SET_I2:
+  case INTRN_LOCK_RELEASE_I2:
+  case INTRN_FETCH_AND_ADD_I2:
+  case INTRN_ADD_AND_FETCH_I2:
+  case INTRN_SUB_AND_FETCH_I2:
+  case INTRN_OR_AND_FETCH_I2:
+  case INTRN_XOR_AND_FETCH_I2:
+  case INTRN_AND_AND_FETCH_I2:
+  case INTRN_NAND_AND_FETCH_I2:
+  case INTRN_FETCH_AND_SUB_I2:
+  case INTRN_FETCH_AND_OR_I2:
+  case INTRN_FETCH_AND_XOR_I2:
+  case INTRN_FETCH_AND_AND_I2:
+  case INTRN_FETCH_AND_NAND_I2:
+        return MTYPE_I2;
+  case INTRN_COMPARE_AND_SWAP_I4:
+  case INTRN_LOCK_TEST_AND_SET_I4:
+  case INTRN_LOCK_RELEASE_I4:
+  case INTRN_FETCH_AND_ADD_I4:
+  case INTRN_ADD_AND_FETCH_I4:
+  case INTRN_SUB_AND_FETCH_I4:
+  case INTRN_OR_AND_FETCH_I4:
+  case INTRN_XOR_AND_FETCH_I4:
+  case INTRN_AND_AND_FETCH_I4:
+  case INTRN_NAND_AND_FETCH_I4:
+  case INTRN_FETCH_AND_SUB_I4:
+  case INTRN_FETCH_AND_OR_I4:
+  case INTRN_FETCH_AND_XOR_I4:
+  case INTRN_FETCH_AND_AND_I4:
+  case INTRN_FETCH_AND_NAND_I4:
+        return MTYPE_I4;
+  case INTRN_COMPARE_AND_SWAP_I8:
+  case INTRN_LOCK_TEST_AND_SET_I8:
+  case INTRN_LOCK_RELEASE_I8:
+  case INTRN_FETCH_AND_ADD_I8:
+  case INTRN_ADD_AND_FETCH_I8:
+  case INTRN_SUB_AND_FETCH_I8:
+  case INTRN_OR_AND_FETCH_I8:
+  case INTRN_XOR_AND_FETCH_I8:
+  case INTRN_AND_AND_FETCH_I8:
+  case INTRN_NAND_AND_FETCH_I8:
+  case INTRN_FETCH_AND_SUB_I8:
+  case INTRN_FETCH_AND_OR_I8:
+  case INTRN_FETCH_AND_XOR_I8:
+  case INTRN_FETCH_AND_AND_I8:
+  case INTRN_FETCH_AND_NAND_I8:
+  case INTRN_SYNCHRONIZE:
+        return MTYPE_I8;
+  default:
+        FmtAssert(FALSE, ("Unexpected intrinsic %d", id));
+        return MTYPE_UNKNOWN;
+  }
+}

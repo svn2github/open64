@@ -45,6 +45,9 @@
 #include "gnu/MIPS/config.h"
 #endif /* TARG_MIPS */
 #endif
+#ifdef TARG_PPC32
+#include "gnu/ppc32/config.h"
+#endif /* TARG_PPC32 */
 #ifdef TARG_IA64
 #include "gnu/ia64/config.h"
 #endif /* TARG_IA64 */
@@ -54,3 +57,6 @@
 #undef ASM_OUTPUT_DEF
 #define ASM_OUTPUT_DEF
 #endif /* TARG_IA32 */
+#ifdef TARG_LOONGSON
+#include "gnu/loongson/config.h"
+#endif

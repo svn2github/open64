@@ -944,37 +944,6 @@ simple_memory_operand (op, mode)
       else
 	return 0;
 
-#if 0
-      /* We used to allow small symbol refs here (ie, stuff in .sdata
-	 or .sbss), but this causes some bugs in G++.  Also, it won't
-	 interfere if the MIPS linker rewrites the store instruction
-	 because the function is PIC.  */
-
-    case LABEL_REF:		/* never gp relative */
-      break;
-
-    case CONST:
-      /* If -G 0, we can never have a GP relative memory operation.
-	 Also, save some time if not optimizing.  */
-      if (!TARGET_GP_OPT)
-	return 0;
-
-      {
-	rtx offset = const0_rtx;
-	addr = eliminate_constant_term (XEXP (addr, 0), &offset);
-	if (GET_CODE (op) != SYMBOL_REF)
-	  return 0;
-
-	/* let's be paranoid....  */
-	if (! SMALL_INT (offset))
-	  return 0;
-      }
-
-      /* fall through */
-
-    case SYMBOL_REF:
-      return SYMBOL_REF_FLAG (addr);
-#endif
 
       /* This SYMBOL_REF case is for the mips16.  If the above case is
          reenabled, this one should be merged in.  */
@@ -5638,10 +5607,6 @@ mips_debugger_offset (addr, offset)
     }
 
   /* sdbout_parms does not want this to crash for unrecognized cases.  */
-#if 0
-  else if (reg != arg_pointer_rtx)
-    abort_with_insn (addr, "mips_debugger_offset called with non stack/frame/arg pointer");
-#endif
 
   return offset;
 }
@@ -10359,90 +10324,6 @@ mips_output_conditional_branch (insn,
        arbitrary locations, using `jr', even across a 256MB boundary.
        We could add a -mhuge switch, and then use this code instead of
        the `j' alternative above when -mhuge was used.  */
-#if 0
-    case 16:
-    case 20:
-      {
-	/* Generate a reversed conditional branch around a `jr'
-	   instruction:
-
-		 .set noreorder
-		 .set nomacro
-		 .set noat
-		 bc    l
-		 la    $at, target
-		 jr    $at
-		 .set at
-		 .set macro
-		 .set reorder
-	      l:
-
-	   Not pretty, but allows a conditional branch anywhere in the
-	   32-bit address space.  If the original branch is annulled,
-	   then the instruction in the delay slot should be executed
-	   only if the branch is taken.  The la instruction is really
-	   a macro which will usually take eight bytes, but sometimes
-	   takes only four, if the instruction to which we're jumping
-	   gets its own entry in the global pointer table, which will
-	   happen if its a case label.  The assembler will then
-	   generate only a four-byte sequence, rather than eight, and
-	   there seems to be no way to tell it not to.  Thus, we can't
-	   just use a `.+x' addressing form; we don't know what value
-	   to give for `x'.
-
-	   So, we resort to using the explicit relocation syntax
-	   available in the assembler and do:
-
-	      lw $at,%got_page(target)($gp)
-	      daddiu $at,$at,%got_ofst(target)
-
-	   That way, this always takes up eight bytes, and we can use
-	   the `.+x' form.  Of course, these explicit machinations
-	   with relocation will not work with old assemblers.  Then
-	   again, neither do out-of-range branches, so we haven't lost
-	   anything.  */
-
-	/* The target of the reversed branch.  */
-	const char *const target
-	  = ((mips_branch_likely || length == 20) ? ".+20" : ".+16");
-	const char *at_register = mips_reg_names[ASSEMBLER_SCRATCH_REGNUM];
-	const char *gp_register = mips_reg_names[PIC_OFFSET_TABLE_REGNUM];
-	char *c;
-
-	strcpy (buffer, "%(%<%[");
-	c = strchr (buffer, '\0');
-	/* Generate the reversed comparision.  This takes four
-	   bytes.  */
-	if (float_p)
-	  sprintf (c, "%%*b%s\t%%Z2%s",
-		   inverted_p ? comp : inverted_comp,
-		   target);
-	else
-	  sprintf (c, "%%*b%s%s\t%s%s,%s",
-		   inverted_p ? comp : inverted_comp,
-		   need_z_p ? "z" : "",
-		   op1,
-		   op2,
-		   target);
-	c = strchr (buffer, '\0');
-	/* Generate the load-address, and jump.  This takes twelve
-	   bytes, for a total of 16.  */
-	sprintf (c,
-		 "\n\tlw\t%s,%%%%got_page(%%1)(%s)\n\tdaddiu\t%s,%s,%%%%got_ofst(%%1)\n\tjr\t%s",
-		 at_register,
-		 gp_register,
-		 at_register,
-		 at_register,
-		 at_register);
-	if (length == 20)
-	  /* The delay slot was unfilled.  Since we're inside
-	     .noreorder, the assembler will not fill in the NOP for
-	     us, so we must do it ourselves.  */
-	  strcat (buffer, "\n\tnop");
-	strcat (buffer, "%]%>%)");
-	return buffer;
-      }
-#endif
 
     default:
       abort ();
