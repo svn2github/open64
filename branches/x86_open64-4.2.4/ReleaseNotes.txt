@@ -2,7 +2,7 @@
 x86 Open64 4.2.4 Release Notes 
 
 
-               June 25, 2010
+               July 1, 2010
 
 
 1. Overview
@@ -28,7 +28,7 @@ x86 Open64 4.2.4 Release Notes
  This is version 4.2.4 of the x86 Open64 compiler suite.
 
  x86 Open64 is an open source, optimizing compiler for 32-bit (x86) and
- 64-bit (x86-64) achitectures. x86 Open64 supports Fortran 77/90/95, C (C89
+ 64-bit (x86-64) architectures. x86 Open64 supports Fortran 77/90/95, C (C89
  and C99 with GNU extensions), and C++ (C++98 with GNU extensions), as well as
  the shared memory programming model OpenMP (version 2.5).
 
@@ -121,17 +121,18 @@ x86 Open64 4.2.4 Release Notes
  are tested and validated on 64-bit Linux systems running:
 
  o SUSE Linux Enterprise Server (SLES) 10 with SP2
- o SUSE Linux Enterprise Server (SLES) 11
- o Red Hat Enterprise Linux (RHEL) 5.3
+ o SUSE Linux Enterprise Server (SLES) 10 with SP3
+ o SUSE Linux Enterprise Server (SLES) 11 with SP1
  o Red Hat Enterprise Linux (RHEL) 5.4
+ o Red Hat Enterprise Linux (RHEL) 5.5
 
  x86 Open64 compilers make use of the GNU binutils package.
  Packages known to work include:
 
  o binutils-2.16.91.0.5-23.31 (SLES 10 with SP2)
- o binutils-2.19-11.28 (SLES 11)
- o binutils-2.17.50.0.6-9.el5 (RHEL 5.3)
- o binutils-2.17.50.0.6-12.el5 (RHEL 5.4)
+ o binutils-2.16.91.0.5-23.34.33 (SLES 10 with SP3)
+ o binutils-2.20.0-0.7.9 (SLES 11 with SP1)
+ o binutils-2.17.50.0.6-12.el5 (RHEL 5.4 and RHEL 5.5)
 
 
 5. Installing the Compiler Suite
@@ -163,7 +164,7 @@ x86 Open64 4.2.4 Release Notes
  $ rpm -ivh x86_open64-4.2.4-1.x86_64.rpm
 
  This command will install the x86 Open64 compiler to
- /opt/x86_open64-4.2.4.2. The C, C++, FORTRAN compilers are in folder
+ /opt/x86_open64-4.2.4. The C, C++, FORTRAN compilers are in folder
  /opt/x86_open64-4.2.4/bin.
 
  To install the compiler to another location:
@@ -198,6 +199,11 @@ x86 Open64 4.2.4 Release Notes
 7. Known Issues and Limitations
 ===============================
 
+ o The Open64 compiler depends on 32-bit system libraries.  These libraries may
+   not be installed by default on some Linux distributions, such as the 64-bit
+   Fedora 13 distribution.  Before installing the compiler on Fedora 13, make
+   certain the following packages are installed: glibc.i686 and libstdc++.i686.
+
  o Linux Operating Systems are frequently configured with a soft limit on
    process stack sizes. Programs that exceed these limits by methods such as
    placing very large arrays on the stack will terminate with a segmentation
@@ -215,7 +221,7 @@ x86 Open64 4.2.4 Release Notes
    - vector types other than MMX (8-byte) and SSE (16-bit)
 
    The __builtin_return_address function is supported only with no
-   optimization.  The 'long double' implementation is not compatible with GCC.
+   optimization.
 
  o Open64 does not fully support C99 variable length arrays.
 

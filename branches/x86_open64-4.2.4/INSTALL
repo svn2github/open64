@@ -14,8 +14,8 @@ release.
     * Obtaining the Source Code
     * Compiling
     * Installation
-    * Notes on Building on Ubuntu 9.10
-    * Notes on Building on Fedora 12
+    * Notes on Building on Ubuntu 10.04
+    * Notes on Building on Fedora 13
 
 
 Prerequisites
@@ -93,47 +93,70 @@ the compiler.
 
 Notes on Building on Ubuntu 10.04
 ---------------------------------
-
 We were able to build the 4.2.4 Open64 compiler on ubuntu 10.04 from these
-sources by making changes to address the issues listed below.  After
-applying these changes, we followed instructions given in the Compiling
-section of this document to complete our build:
+sources by making changes to address the following three issues:
 
 1. Install pre-requisite packages if they are not already installed:
 
-   apt-get install gcc g++ flex bison gawk
-   apt-get install gcc-4.4-multilib g++-4.4-multilib
-   apt-get install gfortran-4.2 lib32gfortran2
+   apt-get install build-essential gfortran flex bison
+   apt-get install gcc-multilib g++-multilib gfortran-multilib lib32gcc1
 
-2. Several Makefiles assume the shell redirection syntax is /bin/bash.
-   We worked around this by explicitly changing the following Makefiles:
+2. Add "SHELL=/bin/bash" to the build lines since ubuntu uses /bin/dash instead
+   of /bin/bash as the default shell.
 
-   Makefile
-   osprey/targia32_x8664/Makefile
+3. In an ubuntu 64-bit system, /usr/lib contains 64-bit libraries and startup
+   files.  The build compiler above (4.2.3.2) doesn't work because it assumes
+   this directory has 32-bit libraries and startup files.
 
-   to specify:
+   What we did instead was temporary copy some libraries in place and use these
+   along with the newly built Open64 4.2.4 compiler to build the final version
+   of the compiler.
 
-   SHELL=/bin/bash
+The complete sequence we used including these steps was:
 
-3. During the build, gfortran was unable to find 32-bit versions of
-   system libraries.  We worked around this issue by changing the 
-   following file:
+   # build the compiler and install initial compiler pieces in ~/myopen64
 
-   osprey/linux/make/gcommondefs
+   make all MACHINE_TYPE=i386 SHELL=/bin/bash
+   export TOOLROOT=~/myopen64
+   export PATH=${TOOLROOT}/bin:$PATH
 
-   to change the following lines:
+   ./install_compiler.sh i386
 
-   F90 = gfortran -fsecond-underscore
-   F90_RTLIBS = -Wl,-Bstatic -lgfortran -Wl,-Bdynamic
+   # Also copy temporary library pieces from build compiler
+   #   /opt/x86_open64-4.2.3.2/lib/gcc-lib/x86_64-open64-linux/4.2.3.2
+   # to ~/myopen64
 
-   to instead be:
+   export BUILD_COMPILER_LIBDIR=\
+     /opt/x86_open64-4.2.3.2/lib/gcc-lib/x86_64-open64-linux/4.2.3.2
+   export NEW_COMPILER_LIBDIR=\
+     ${TOOLROOT}/lib/gcc-lib/x86_64-open64-linux/4.2.4/
 
-   F90 = gfortran-4.2 -fsecond-underscore
-   F90_RTLIBS = -Wl,-Bstatic -L /usr/lib/gcc/x86_64-linux-gnu/4.2/32 \
-      -lgfortran -Wl,-Bdynamic
+   cp $BUILD_COMPILER_LIBDIR/libacml_mv.a $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libffio.a $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libffio.so $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libfortran.a $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libfortran.so $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libmv.a $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libmv.so.1 $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libopen64rt.a $NEW_COMPILER_LIBDIR/
+   cp $BUILD_COMPILER_LIBDIR/libopen64rt_shared.a $NEW_COMPILER_LIBDIR/
 
-After making these source changes and then following instructions in the
-Compiling section, we were able to successfully build and run on ubuntu.
+   cp $BUILD_COMPILER_LIBDIR/32/libacml_mv.a $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libffio.a $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libffio.so $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libfortran.a $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libfortran.so $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libmv.a $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libmv.so.1 $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libopen64rt.a $NEW_COMPILER_LIBDIR/32
+   cp $BUILD_COMPILER_LIBDIR/32/libopen64rt_shared.a $NEW_COMPILER_LIBDIR/32
+
+   # build the libraries using the built 4.2.4 compiler
+   make lib MACHINE_TYPE=i386 SHELL=/bin/bash BUILD_COMPILER=OSP
+   make -C osprey/targx8664_builtonia32 SHELL=/bin/bash BUILD_COMPILER=OSP
+
+   # install the newly built libraries
+   ./install_compiler.sh i386
 
 
 Notes on Building on Fedora 13
