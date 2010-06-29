@@ -881,6 +881,11 @@ extern ST* EH_Get_PU_Range_ST(void)
   return eh_pu_range_st;
 }
 
+extern void Reset_PU_Range_ST(void)
+{
+  eh_pu_range_st = NULL;
+}
+
 inline BOOL Use_Long_EH_Range_Offsets(void)
 {
   return Force_Long_EH_Range_Offsets ||

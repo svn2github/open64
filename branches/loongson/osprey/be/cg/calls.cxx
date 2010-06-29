@@ -549,7 +549,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   	return;
   }
 
-#ifdef defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
   /*
   Do not generate entry code for handler entry, it is a co-design with unwind directives generation in cgdwarf_targ.cxx
   */

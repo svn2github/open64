@@ -59,7 +59,7 @@ AREA="targ${BUILD_HOST}_${TARG_HOST}"
 
 LIBPATH=${ROOT}/${INTERPOSE}/lib
 PHASEPATH=${ROOT}/${INTERPOSE}/lib
-#PHASEPATH=${ROOT}/lib/gcc-lib/x86_64-open64-linux/4.2
+#PHASEPATH=${ROOT}/${INTERPOSE}/lib/gcc-lib/x86_64-open64-linux/4.2
 NATIVE_LIB_DIR=${LIBPATH}/32
 BIN_DIR=${ROOT}/${INTERPOSE}/bin
 GNUFE42_AREA="../osprey-gcc-4.2.0/targ${BUILD_HOST}_${TARG_HOST}"

@@ -128,6 +128,8 @@
 #include "dwarf_DST_mem.h"
 
 #include "calls.h"
+#include "cxx_template.h"
+#include "dominate.h"
 #include "cgemit.h"
 #include "cgtarget.h"
 #include "irbdata.h"
@@ -2552,6 +2554,14 @@ LABEL_IDX *Label_Callee_Saved_Reg=NULL;
 LABEL_IDX *Label_First_BB_PU_Entry=NULL;
 LABEL_IDX *Label_Last_BB_PU_Entry=NULL;
 
+#if defined(TARG_MIPS) || TARG_LOONGSON
+static INT32 new_cfa_offset = 0;
+// We want to generate DWARF for only the first save of GP and return
+// register in a PU (bug 12493).
+static BOOL gp_stored_for_pu = FALSE;
+static BOOL ra_stored_for_pu = FALSE;
+#endif
+
 #define ALLOCATE_LABEL_ENTRY                              \
     (TYPE_MEM_POOL_ALLOC_N(LABEL_IDX,&MEM_src_pool,num_pus))
 
@@ -2628,7 +2638,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#if defined(KEY) && !defined(TARG_LOONGSON)
+#if defined(KEY)
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2737,7 +2747,81 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
       }
     }
-#endif // TARG_X8664
+#elif defined(TARG_MIPS)
+#if 1 //def KEY_DISABLE_13597_FIX
+    static INT32 label_csr_pu = -1;
+#endif // KEY_DISABLE_13597_FIX
+    if ((OP_code(op) == TOP_addiu ||
+         OP_code(op) == TOP_daddiu) &&
+         label_adjustsp_pu != pu_entry_count &&
+         OP_result(op, 0) == SP_TN) {
+      char* buf;
+      LABEL* label;
+      TN * spadjustment;
+      buf = (char *)alloca(strlen(ST_name(entry_sym)) +
+           /* EXTRA_NAME_LEN */ 32);
+      sprintf(buf, ".LEH_adjustsp_%s", ST_name(entry_sym));
+      label = &New_LABEL(CURRENT_SYMTAB, Label_adjustsp[pu_entries]);
+      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+      fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp[pu_entries]));
+
+      spadjustment = OP_opnd(op, 1);
+      FmtAssert (TN_is_constant(spadjustment) && TN_has_value(spadjustment),
+                 ("stack adjustment by non-constant amount"));
+      new_cfa_offset = TN_value(spadjustment);
+      if (new_cfa_offset < 0)
+        new_cfa_offset = -new_cfa_offset;
+      label_adjustsp_pu = pu_entry_count;
+      adjustsp_instr = TRUE;
+#if 1 //def KEY_DISABLE_13597_FIX
+    else if (OP_code(op) == TOP_sd &&
+             OP_opnd(op, 1) == SP_TN) {
+      TN * tn = OP_opnd(op, 0);
+      if (TN_is_dedicated(tn) ||
+          (TN_register(tn) != REGISTER_UNDEFINED &&
+           TN_register(tn) <=
+           REGISTER_CLASS_last_register(TN_register_class(tn)))) {
+        PREG_NUM preg = TN_To_Assigned_PREG(tn);
+        ISA_REGISTER_CLASS tn_class = TN_register_class(tn);
+
+        if ((ABI_PROPERTY_Is_callee(tn_class, preg) ||
+             (ABI_PROPERTY_Is_global_ptr(tn_class, preg) &&
+              !gp_stored_for_pu) ||
+             (ABI_PROPERTY_Is_ret_addr(tn_class, preg) &&
+              !ra_stored_for_pu)) &&
+            TN_is_symbol(OP_opnd(op, 2))) {
+
+          static BOOL label_generated = FALSE;
+          SAVE_REG_LOC sr;
+          extern STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs;
+
+          if (ABI_PROPERTY_Is_global_ptr(tn_class, preg))
+            gp_stored_for_pu = TRUE;
+          else if (ABI_PROPERTY_Is_ret_addr(tn_class, preg))
+            ra_stored_for_pu = TRUE;
+
+          sr.ded_tn = tn;
+          sr.temp = TN_var(OP_opnd(op, 2));
+          sr.user_allocated = FALSE;
+          Saved_Callee_Saved_Regs.Push(sr);
+
+          if (label_csr_pu != pu_entry_count)
+          {
+            char * buf = (char *)alloca(strlen(ST_name(entry_sym)) +
+                                        /* EXTRA_NAME_LEN */ 32);
+            sprintf(buf, ".LEH_csr_%s", ST_name(entry_sym));
+            LABEL * label = &New_LABEL(CURRENT_SYMTAB,
+                                  Label_Callee_Saved_Reg[pu_entries]);
+            LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
+            fprintf(Asm_File, "%s:\n",
+               LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
+            label_csr_pu = pu_entry_count;
+          }
+        }
+      }
+    }
+#endif // KEY_DISABLE_13597_FIX
+#endif // TARG_X8664 || TARG_MIPS
   }
 
   Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
@@ -6175,6 +6259,7 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
 #endif
     fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
   	      ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
+}
 
 #ifndef TARG_IA64
 // because we have different EH implementation with pathscale-3.0 in cg.
@@ -7169,6 +7254,7 @@ EH_Write_Integer_const (
    so we directly output data1 here
    for sym < -127, we have not implement it yet.
   */
+#ifdef TARG_IA64
   if (bsigned) {
     if (sym < 0 && sym > -129) {
       char c = (char)sym;
@@ -7181,6 +7267,20 @@ EH_Write_Integer_const (
   }
   else
     fprintf(Asm_File, "\t.uleb128\t0x%x\n", sym);
+#else
+  if (bsigned) {
+    if (sym < 0 && sym > -129) {
+      char c = (char)sym;
+      unsigned char cc = *(unsigned char*)&c;
+      cc &= 0x7f;
+      fprintf(Asm_File, "\t.byte\t0x%2x\n", cc);
+    }
+    else
+      fprintf(Asm_File, "\t.byte\t0x%x\n", sym);
+  }
+  else
+    fprintf(Asm_File, "\t.uleb128\t0x%x\n", sym);
+#endif
   return scn_ofst + sizeof_signed_leb128(sym);
 }
 
@@ -8957,7 +9057,6 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Elf64_Word symindex;
     INT eh_offset;
     BOOL has_exc_scopes = PU_has_exc_scopes(ST_pu(pu));
-//#ifndef TARG_LOONGSON
     if (Object_Code)
     	Em_Add_New_Event (EK_PEND, PC - INST_BYTES, 0, 0, 0, PU_section);
     /* get exception handling info */ 
@@ -8995,37 +9094,50 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif // !TARG_NVISA
     }
     // Cg_Dwarf_Process_PU (PU_section, Initial_Pu_PC, PC, pu, pu_dst, symindex, eh_offset);
-#ifndef TARG_X8664
+#ifdef TARG_X8664
     Cg_Dwarf_Process_PU (
-		Em_Create_Section_Symbol(PU_section),
-		Initial_Pu_Label,
-		Last_Label, Offset_From_Last_Label,
-		pu, pu_dst, symindex, eh_offset,
-		// The following two arguments need to go away
-		// once libunwind provides an interface that lets
-		// us specify ranges symbolically.
-		Initial_Pu_PC, PC);
+        Em_Create_Section_Symbol(PU_section),
+        Initial_Pu_Label,
+        // For Opteron, we generate a last label at the end of the PU
+        Last_Label,
+        &Label_pushbp[0],
+        &Label_movespbp[0],
+        &Label_adjustsp[0],
+        &Label_Callee_Saved_Reg[0],
+        &Label_First_BB_PU_Entry[0],
+        &Label_Last_BB_PU_Entry[0],
+        pu_entries,
+        0,
+        pu, pu_dst, symindex, eh_offset,
+        // The following two arguments need to go away
+        // once libunwind provides an interface that lets
+        // us specify ranges symbolically.
+        Initial_Pu_PC, PC);
+#elif defined(TARG_MIPS) || defined(TARG_MVP) || defined(TARG_LOONGSON)
+    Cg_Dwarf_Process_PU (
+        Em_Create_Section_Symbol(PU_section),
+        Initial_Pu_Label,
+        Last_Label,
+        &Label_adjustsp[0],
+        &Label_Callee_Saved_Reg[0],
+        new_cfa_offset,
+        0,
+        pu, pu_dst, symindex, eh_offset,
+        // The following two arguments need to go away
+        // once libunwind provides an interface that lets
+        // us specify ranges symbolically.
+        Initial_Pu_PC, PC);
 #else
     Cg_Dwarf_Process_PU (
-		Em_Create_Section_Symbol(PU_section),
-		Initial_Pu_Label,
-		// For Opteron, we generate a last label at the end of the PU
-		Last_Label, 
-		&Label_pushbp[0],
-		&Label_movespbp[0],
-		&Label_adjustsp[0],
-		&Label_Callee_Saved_Reg[0],
-		&Label_First_BB_PU_Entry[0],
-		&Label_Last_BB_PU_Entry[0],
-		pu_entries,
-		0,
-		pu, pu_dst, symindex, eh_offset,
-		// The following two arguments need to go away
-		// once libunwind provides an interface that lets
-		// us specify ranges symbolically.
-		Initial_Pu_PC, PC);
+        Em_Create_Section_Symbol(PU_section),
+        Initial_Pu_Label,
+        Last_Label, Offset_From_Last_Label,
+        pu, pu_dst, symindex, eh_offset,
+        // The following two arguments need to go away
+        // once libunwind provides an interface that lets
+        // us specify ranges symbolically.
+        Initial_Pu_PC, PC);
 #endif // TARG_X8664
-//#endif // TARG_LOONGSON
   }
   if (Run_prompf) {
     fputc ('\n', anl_file);

@@ -96,7 +96,7 @@
 #include "cgtarget.h"
 #include "eh_region.h"
 
-#if defined(TARG_IA64) || defined(TARG_LOONSON) ||
+#if defined(TARG_IA64) || defined(TARG_LOONGSON)
 extern TN *Caller_GP_TN;  // OSP_426, always mark Caller_GP_TN global
 #endif
 
