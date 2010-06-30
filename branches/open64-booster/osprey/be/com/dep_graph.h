@@ -456,7 +456,13 @@ class  ARRAY_DIRECTED_GRAPH16 :
   DEP_GRAPH_TYPE  _type;
   MEM_POOL *_pool;
 public:
+
+#ifndef LNO
   void Print(FILE *fp);
+#else
+  void Print(FILE *fp, INT dummy=0);
+#endif
+
   ARRAY_DIRECTED_GRAPH16(mUINT16 num_v, mUINT16 num_e, WN_MAP map, 
 	DEP_GRAPH_TYPE type) : 
 	DIRECTED_GRAPH16<ARRAY_EDGE16,ARRAY_VERTEX16>(num_v,num_e) {
