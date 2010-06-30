@@ -956,9 +956,6 @@ fei_object(char * name_string,
   /* into ptr TY of FUNCTION returning  ty  */
      
   if ((sym_class == Dummy_Procedure) || 
-#ifdef KEY /* Bug 14150 */
-      test_flag(flag_bits, FEI_OBJECT_PASS_BY_VALUE) ||
-#endif /* KEY Bug 14150 */
       (sym_class == Hosted_Dummy_Procedure))  {
 
     Set_ST_is_value_parm(st);
@@ -1002,6 +999,9 @@ fei_object(char * name_string,
 #endif /* KEY Bug 11574 */
   if (ST_sclass(st) == SCLASS_FORMAL) {
     BOOL formal = TRUE;
+    if (test_flag(flag_bits, FEI_OBJECT_PASS_BY_VALUE)) {
+      Set_ST_is_value_parm(st);
+    }
 
     if (test_flag(flag_bits,FEI_OBJECT_RESULT_TEMP)) {
 
