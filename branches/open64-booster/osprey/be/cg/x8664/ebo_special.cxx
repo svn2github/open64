@@ -8275,6 +8275,12 @@ void expand_strcmp_bb(BB * call_bb) {
   Target_Simple_Fall_Through_BB(&mylist[5], old_succ);
   Set_TN_is_global_reg(arg1); //This will make TN6 map to %rsi stay
   Set_TN_is_global_reg(arg2);
+  Reset_TN_is_gra_homeable(arg1);
+  Reset_TN_is_gra_homeable(arg2);
+  Reset_TN_is_rematerializable(arg1);
+  Reset_TN_is_rematerializable(arg2);
+  Set_TN_home(arg1,NULL);
+  Set_TN_home(arg2,NULL);
   Set_TN_is_global_reg(stack_arg1); //This will make TN6 map to %rsi stay
   Set_TN_is_global_reg(stack_arg2);
   char1of1 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
