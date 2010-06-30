@@ -329,6 +329,64 @@ BB_last_OP_computes_got (BB* bb)
   OP *last_op = BB_last_op(bb);
   return ((last_op != NULL) && OP_computes_got(last_op));
 }
+
+static void
+Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
+{
+  // only consider sign comparision
+  switch (br_variant) {
+    case V_BR_I4EQ:
+    case V_BR_I4NE:
+    case V_BR_I4GE: 
+    case V_BR_I4GT: 
+    case V_BR_I4LE: 
+    case V_BR_I4LT: 
+    case V_BR_I8EQ:
+    case V_BR_I8NE:
+    case V_BR_I8GE: 
+    case V_BR_I8GT: 
+    case V_BR_I8LE: 
+    case V_BR_I8LT:
+        break;
+    default:
+        return;
+  }
+
+  // sign extend the constant value
+  const TOP top = OP_code( compare_op );
+  switch ( top ) {
+    case TOP_test8:
+    case TOP_testx8:
+    case TOP_testxx8:
+    case TOP_testxxx8:
+    case TOP_testi8:
+    case TOP_cmp8:
+    case TOP_cmpx8:
+    case TOP_cmpxx8:
+    case TOP_cmpxxx8:
+    case TOP_cmpi8:
+    case TOP_cmpxi8:
+    case TOP_cmpxxi8:
+    case TOP_cmpxxxi8:
+      *v = ( (*v) << ( sizeof(INT64) * 8 - 8 ) ) >> ( sizeof(INT64) * 8 - 8 );
+      return;
+    case TOP_test16:
+    case TOP_testx16:
+    case TOP_testxx16:
+    case TOP_testxxx16:
+    case TOP_testi16:
+    case TOP_cmp16:
+    case TOP_cmpx16:
+    case TOP_cmpxx16:
+    case TOP_cmpxxx16:
+    case TOP_cmpi16:
+    case TOP_cmpxi16:
+    case TOP_cmpxxi16:
+    case TOP_cmpxxxi16:
+      *v = ( (*v) << ( sizeof(INT64) * 8 - 16 ) ) >> ( sizeof(INT64) * 8 - 16 );
+      return;
+  }
+}
 #endif
 
 
@@ -2627,8 +2685,14 @@ Convert_If_To_Goto ( BB *bp )
   Is_True(tn1 != NULL, ("compare with no operands in BB:%d", BB_id(bp)));
 
   if (!TN_Value_At_Op(tn1, compare_op, &v1)) goto try_identities;
+#ifdef TARG_X8664
+  Extend_Short_Cmp_Src(compare_op, br_variant, &v1);
+#endif
 
   if (tn2 && !TN_Value_At_Op(tn2, compare_op, &v2)) goto try_identities;
+#ifdef TARG_X8664
+  Extend_Short_Cmp_Src(compare_op, br_variant, &v2);
+#endif
 
   /* Evaluate the condition.
    */
