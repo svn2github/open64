@@ -266,7 +266,7 @@ extern omp_team_t	 __omp_root_team;     /* hold information for sequential part*
 /* prototypes, implementations are defined in omp_thread.h
  *
  * Note with newer versions of GCC, no function will be generated
- * unless there is a normal function prototype when the actually
+ * unless there is a normal function prototype when the actual
  * function definition is marked inline.
  */
 extern int __ompc_can_fork(void);
