@@ -99,6 +99,9 @@ BUILD_BOTH=
 # ipfec_targ_info instead of targ_info.
 TARG_INFO_NAME=targ_info
 
+# Specify the GCC src directory.
+GCC_DIR=osprey-gcc-4.2.0
+
 # LIB_* and LIB2_* variables will default to the BUILD_* variables if not
 # overridden in one of the case statements below so most platforms will
 # not have to set these.
@@ -267,6 +270,8 @@ AC_SUBST([LIB2_BUILD_HOST])
 AC_SUBST([BUILD_MULTILIB])
 AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
+AC_SUBST([GCC_CONFIGURE_TARG])
+AC_SUBST([GCC_DIR])
 
 # List of configurable files to create in object directory.
 AC_CONFIG_FILES([
@@ -362,6 +367,8 @@ AC_SUBST([LIBLIST])
 
 # Configure cygnus and GCC subdirectories.
 AC_CONFIG_SUBDIRS(osprey/cygnus)
+# We do not use $GCC_DIR because using AC_CONFIG_SUBDIRS with variables
+# breaks "configure --help=recursive".  See autoconf documentation.
 AC_CONFIG_SUBDIRS(osprey-gcc-4.2.0)
 
 AC_OUTPUT
