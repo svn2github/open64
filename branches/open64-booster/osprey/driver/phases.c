@@ -770,7 +770,6 @@ add_file_args_first (string_list_t *args, phases_t index)
 #else
 	  sprintf(p, "-I%s/../%s/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
 #endif
-          fprintf(stderr,"XXX - %s\n", p);
 	  add_string(args, p);
 #if defined(TARG_X8664) || defined(TARG_NVISA)
   	  if (abi == ABI_N32)
@@ -780,10 +779,8 @@ add_file_args_first (string_list_t *args, phases_t index)
 #else
 	  sprintf(p, "-I%s/../%s/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
 #endif
-          fprintf(stderr,"XXX - %s\n", p);
 	  add_string(args, p);
 	  sprintf(p, "-I%s/%s/libstdc++-v3/libsupc++", BUILD_SRC, GCC_DIR);
-          fprintf(stderr,"XXX - %s\n", p);
 	  add_string(args, p);
         }
       }
