@@ -125,17 +125,6 @@ CANON_CR::Convert2cr(MTYPE typ, OPERATOR opr, OPCODE opc, CODEMAP *htable, BOOL 
        Tree(), htable->Add_const(MTYPE_I8, Scale()));
 #endif
 
-#ifdef KEY
-    // If the original operator was a convert to unsigned and the new operator is signed,
-    // change the new operator to an unsigned because the convert is about to be deleted.
-    // This corrects a regression introduced by a fix in file opt_htable.cxx method
-    // CODEMAP::Canon_add_sub (search for string "bug 14605").
-    if( opr == OPR_CVT &&
-        !MTYPE_signed(OPCODE_rtype(opc)) && MTYPE_signed(cr->Dtyp()) ) {
-      cr->Set_dtyp(Mtype_TransferSign(MTYPE_U4, cr->Dtyp()));
-    }
-#endif
-
     return cr;
   }
 

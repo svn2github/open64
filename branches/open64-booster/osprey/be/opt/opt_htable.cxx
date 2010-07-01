@@ -2034,17 +2034,9 @@ CODEMAP::Canon_add_sub(WN       *wn,
     if (opr == OPR_ADD)
       ccr->Set_tree(kid1.Tree());
     else
-#ifdef KEY // bug 14605: force to signed because generating negate
-      ccr->Set_tree(Add_unary_node(
-                      OPCODE_make_op(OPR_NEG,
-                        Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(op)),
-                        MTYPE_V),
-                      kid1.Tree()));
-#else
       ccr->Set_tree(Add_unary_node(
                         OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), 
                         kid1.Tree()));
-#endif
     return propagated;
   }
   if (kid1.Tree() == NULL) {
@@ -3491,20 +3483,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 #ifdef KEY // bug 10577
     			    , TRUE
 #endif
-			    );
-#ifdef KEY
-  // If the PARM is signed, its child is unsigned, the new child is signed and the size
-  // of the original child is less than the size of the  PARM, then change the new operator
-  // to an unsigned.  Otherwise a negative result will be (incorrectly) sign extened.
-  // This corrects a regression introduced by a fix in file opt_htable.cxx method
-  // CODEMAP::Canon_add_sub (search for string "bug 14605"). 
-  if( MTYPE_signed(OPCODE_rtype(op)) && !MTYPE_signed(WN_rtype(WN_kid0(wn))) &&
-      MTYPE_signed(kid->Dtyp()) &&
-      MTYPE_byte_size(OPCODE_rtype(op)) > MTYPE_byte_size(OPCODE_rtype(WN_opcode(WN_kid0(wn)))) )
-  {
-    kid->Set_dtyp(Mtype_TransferSign(MTYPE_U4, kid->Dtyp()));
-  }
-#endif
+                           );
 
     /* CVTL-RELATED start (correctness) */
     // Attempt of fix 370390.  However, this breaks testn32/test_overall/longs.c
