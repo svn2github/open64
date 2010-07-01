@@ -4487,6 +4487,8 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
         ST_IDX stidx = ST_st_idx(cp);
 
 #if !defined(TARG_SL)
+        // for TARG_SL, the following code will generate an assertion in cgdwarf.cxx
+        // so, currently, we still disable the following code.
         if(Caller_file_dst() == Callee_file_dst())
         {
           dst1 = DST_mk_inlined_subroutine(stidx,

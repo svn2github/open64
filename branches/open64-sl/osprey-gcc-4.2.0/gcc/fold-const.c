@@ -1670,14 +1670,6 @@ int_const_binop (enum tree_code code, tree arg1, tree arg2, int notrunc)
 
   t = build_int_cst_wide (TREE_TYPE (arg1), low, hi);
 
-#ifdef TARG_SL
-  if (t && TYPE_MAX_VALUE(TREE_TYPE(t)) && tree_int_cst_lt(TYPE_MAX_VALUE(TREE_TYPE(t)), t))
-  {
-     TREE_OVERFLOW (t) = 1;
-  }
-#endif
-
-
   if (notrunc)
     {
       /* Propagate overflow flags ourselves.  */

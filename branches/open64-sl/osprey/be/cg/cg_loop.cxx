@@ -2333,6 +2333,15 @@ static void unroll_names_init_tn(TN *result, UINT16 ntimes, MEM_POOL *pool)
   }
 }
 
+static BOOL TN_is_cond_def(OP *op, TN *tn)
+{
+#if defined(TARG_SL)
+  return OP_cond_def(op) || (OP_same_res(op) && OP_Refs_TN(op, tn));
+#else
+  return OP_cond_def(op);
+#endif
+}
+
 // Bug 1064 & Bug 1221
 #ifdef KEY
 static BOOL TN_is_cond_def_of_another_op(BB *bb, TN *tn, OP *cand_op)
@@ -2341,11 +2350,7 @@ static BOOL TN_is_cond_def_of_another_op(BB *bb, TN *tn, OP *cand_op)
   FOR_ALL_BB_OPs(bb, op) {
     if (cand_op == op)
       break;
-#if defined(TARG_SL)
-    if (!OP_cond_def(op) && !(OP_same_res(op) && OP_Refs_TN(op, tn)))
-#else
-    if (!OP_cond_def(op))
-#endif
+    if (!TN_is_cond_def(op, tn))
       continue;
     for (INT i = 0; i < OP_results(op); ++i) {
       TN *result_tn = OP_result(op,i);
@@ -2377,12 +2382,7 @@ static void unroll_names_init(LOOP_DESCR *loop, UINT16 ntimes, MEM_POOL *pool)
     for (INT i = 0; i < OP_results(op); ++i) {
       TN *result_tn = OP_result(op,i);
      
-#if defined(TARG_SL)
-      if (!(OP_cond_def(op) || (OP_same_res(op) && OP_Refs_TN(op, result_tn))) || 
-#else
-      if (!OP_cond_def(op) || 
-#endif
-	  !TN_is_global_reg(result_tn)) {
+      if (!TN_is_cond_def(op, result_tn) || !TN_is_global_reg(result_tn)) {
 	
 	if (OP_base_update_kind(op) == NO_BASE_UPDATE || 
 	    (OP_load(op) && i == 0))  // prevent renaming of base-update incr
@@ -2433,12 +2433,8 @@ static void unroll_names_init_mb(LOOP_DESCR *loop,
       for (INT i = 0; i < OP_results(op); ++i) {
         TN *result_tn = OP_result(op,i);
         BOOL can_record = (bb == head) ?
-#if defined(TARG_SL)
-           (!(OP_cond_def(op) || (OP_same_res(op) && OP_Refs_TN(op, result_tn))) || !TN_is_global_reg(result_tn)) :
-           (!(OP_cond_def(op) || (OP_same_res(op) && OP_Refs_TN(op, result_tn))) && !TN_is_global_reg(result_tn));
-#else
-           (!OP_cond_def(op) || !TN_is_global_reg(result_tn)) :
-           (!OP_cond_def(op) && !TN_is_global_reg(result_tn));
+           (!TN_is_cond_def(op, result_tn) || !TN_is_global_reg(result_tn)) :
+           (!TN_is_cond_def(op, result_tn) && !TN_is_global_reg(result_tn));
 #endif 
         if (can_record) {
 	  if (OP_base_update_kind(op) == NO_BASE_UPDATE || 
