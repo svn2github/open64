@@ -1185,8 +1185,8 @@ run_from_build (char *builddir)
 	override_phase(P_gcpp, "P_gcpp", new_path, "xgcc");
 	override_phase(P_gas, "P_gas", new_path, "xgcc");
 	override_phase(P_ld, "P_ld", new_path, "xgcc");
-	override_phase(P_gcpp, "P_gcpp_plus", new_path, "g++");
-	override_phase(P_ldplus, "P_ldplus", new_path, "g++");
+	override_phase(P_gcpp_plus, "P_gcpp_plus", new_path, "xgcc");
+	override_phase(P_ldplus, "P_ldplus", new_path, "xgcc");
 	override_phase(P_spin_cc1, "P_spin_cc1", new_path, "cc1");
 	override_phase(P_spin_cc1plus, "P_spin_cc1plus", new_path, "cc1plus");
 	new_path[builddir_len] = NULL;
