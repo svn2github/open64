@@ -2435,7 +2435,6 @@ static void unroll_names_init_mb(LOOP_DESCR *loop,
         BOOL can_record = (bb == head) ?
            (!TN_is_cond_def(op, result_tn) || !TN_is_global_reg(result_tn)) :
            (!TN_is_cond_def(op, result_tn) && !TN_is_global_reg(result_tn));
-#endif 
         if (can_record) {
 	  if (OP_base_update_kind(op) == NO_BASE_UPDATE || 
 	      (OP_load(op) && i == 0))  // prevent renaming of base-update incr
@@ -7726,17 +7725,6 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
    */
   cg_loop.Recompute_Liveness();
 
-  /* Remove the dead code after generating zero-delay-loop
-   * First use EBO to do DCE, but EBO has limit when deleting
-   * induction TN which is global TN and used by the next
-   * iteration. However, with 0-delay-loop, this global TN
-   * is actually un-necesary. So secondly, we need to remove
-   * this kind of induction global TN by hand.
-   */
-  INT32 oldvalue = EBO_Opt_Level;
-  EBO_Opt_Level = 2;
-  EBO_Process_Region(NULL);
-  EBO_Opt_Level = oldvalue;
 
   CG_LOOP_ZDL_Remove_Idx_GTN( loop, cg_loop, br_op );
 
@@ -7751,7 +7739,7 @@ CG_LOOP_Zdl_Gen_Rec( LOOP_DESCR* loop )
  /* after CG_LOOP_ZDL_Remove_Idx_GTN & Remove_LTN, it may produce some new
    * dead code, call EBO again.
    */
-  oldvalue = EBO_Opt_Level;
+  int oldvalue = EBO_Opt_Level;
   EBO_Opt_Level = 2;
   EBO_Process_Region(NULL);
   EBO_Opt_Level = oldvalue;
