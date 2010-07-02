@@ -6394,8 +6394,13 @@ WGEN_Expand_Expr (gs_t exp,
 
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
 	    if (MTYPE_size_min(mtyp) != 32)
+#if defined(TARG_SL)
 	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
 			         gs_type_type_precision(gs_tree_type(exp)), wn);
+#else
+	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
+			         MTYPE_size_min(mtyp), wn);
+#endif
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
