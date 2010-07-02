@@ -1,0 +1,14 @@
+dwarfout.o: ../../../kg++fe/gnu/dwarfout.c \
+  ../../../kg++fe/gnu/i386/config.h ../../../kg++fe/gnu/i386/auto-host.h \
+  ../../../include/gnu/ansidecl.h \
+  ../../../kg++fe/gnu/config/i386/biarch64.h \
+  ../../../kg++fe/gnu/config/i386/i386.h \
+  ../../../kg++fe/gnu/config/i386/unix.h \
+  ../../../kg++fe/gnu/config/i386/att.h \
+  ../../../kg++fe/gnu/config/dbxelf.h ../../../kg++fe/gnu/config/elfos.h \
+  ../../../kg++fe/gnu/config/svr4.h ../../../kg++fe/gnu/config/linux.h \
+  ../../../kg++fe/gnu/config/i386/x86-64.h \
+  ../../../kg++fe/gnu/config/i386/linux64.h \
+  ../../../kg++fe/gnu/defaults.h \
+  ../../../kg++fe/gnu/i386/insn-constants.h \
+  ../../../kg++fe/gnu/i386/insn-flags.h

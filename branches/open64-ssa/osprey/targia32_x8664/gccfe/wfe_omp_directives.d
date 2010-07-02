@@ -1,0 +1,45 @@
+wfe_omp_directives.o: ../../kgccfe/wfe_omp_directives.cxx \
+  ../../kgccfe/gnu_config.h ../../kgccfe/gnu/i386/config.h \
+  ../../kgccfe/gnu/i386/auto-host.h ../../include/gnu/ansidecl.h \
+  ../../kgccfe/gnu/config/i386/biarch64.h \
+  ../../kgccfe/gnu/config/i386/i386.h ../../kgccfe/gnu/config/i386/unix.h \
+  ../../kgccfe/gnu/config/i386/att.h ../../kgccfe/gnu/config/dbxelf.h \
+  ../../kgccfe/gnu/config/elfos.h ../../kgccfe/gnu/config/svr4.h \
+  ../../kgccfe/gnu/config/linux.h ../../kgccfe/gnu/config/i386/x86-64.h \
+  ../../kgccfe/gnu/config/i386/linux64.h ../../kgccfe/gnu/defaults.h \
+  ../../kgccfe/gnu/i386/insn-constants.h \
+  ../../kgccfe/gnu/i386/insn-flags.h ../../kgccfe/gnu/system.h \
+  ../../include/gnu/safe-ctype.h ../../kgccfe/gnu/hwint.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/symcat.h ../../kgccfe/gnu/tree.h \
+  ../../kgccfe/gnu/machmode.h ../../kgccfe/gnu/machmode.def \
+  ../../kgccfe/gnu/i386/i386-modes.def ../../kgccfe/gnu/version.h \
+  ../../kgccfe/gnu/location.h ../../kgccfe/gnu/tree.def \
+  ../../kgccfe/gnu/builtins.def ../../kgccfe/gnu/i386/tree-check.h \
+  ../../kgccfe/gnu/hashtable.h ../../include/gnu/obstack.h \
+  ../../kgccfe/omp_types.h ../../common/com/wn.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/opcode.h \
+  ../../common/com/opcode_core.h ../../common/com/opcode_gen_core.h \
+  ../../common/com/mtypes.h ../../common/util/errors.h \
+  ../../common/util/errdesc.h ../../common/com/defs.h \
+  ../../common/com/err_host.h ../../common/com/opcode_gen.h \
+  ../../common/util/mempool.h ../../common/com/srcpos.h \
+  ../../common/com/config_host.h ../../common/com/wn_core.h \
+  ../../common/com/symtab.h ../../common/com/segmented_array.h \
+  ../../common/util/mempool_allocator.h \
+  ../../common/com/cmplr_segmented_array.h ../../common/com/symtab_idx.h \
+  ../../common/com/targ_const.h ../../common/com/strtab.h \
+  ../../common/com/irbdata_defs.h ../../common/com/symtab_defs.h \
+  ../../common/com/symtab_verify.h ../../common/com/config.h \
+  ../../common/com/x8664/config_targ.h ../../common/com/mtypes.h \
+  ../../common/util/flags.h ../../common/com/language.h \
+  ../../common/com/symtab_access.h ../../common/com/symtab_utils.h \
+  ../../common/com/symtab_compatible.h ../../common/com/irbdata.h \
+  ../../common/com/wintrinsic.h ../../common/com/intrn_entry.def \
+  ../../common/com/wio.h ../../common/com/wn_map.h \
+  ../../common/com/wn_pragmas.h ../../common/com/stab.h \
+  ../../kgccfe/wfe_misc.h ../../common/com/srcpos.h \
+  ../../kgccfe/wfe_stmt.h ../../kgccfe/omp_types.h \
+  ../../kgccfe/omp_directive.h ../../kgccfe/wfe_omp_directives.h \
+  ../../kgccfe/wfe_omp_check_stack.h ../../common/util/errors.h \
+  ../../common/com/const.h ../../common/com/erglob.h

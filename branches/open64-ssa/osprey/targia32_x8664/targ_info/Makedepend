@@ -1,0 +1,222 @@
+abi_properties.o: ../../common/targ_info/abi/x8664/abi_properties.cxx \
+  ../../common/targ_info/generate/abi_properties_gen.h \
+  targ_isa_registers.h targ_isa_subset.h topcode.h targ_isa_registers.h
+abi_properties_gen.o:  \
+ ../../common/targ_info/generate/abi_properties_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h targ_isa_registers.h \
+  targ_isa_subset.h topcode.h \
+  ../../common/targ_info/generate/abi_properties_gen.h \
+  ../include/bstring.h
+barcelona.o: barcelona.c ../../common/targ_info/access/ti_si_types.h \
+  topcode.h
+barcelona_si.o: ../../common/targ_info/proc/x8664/barcelona_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h
+core.o: core.c ../../common/targ_info/access/ti_si_types.h topcode.h
+core_si.o: ../../common/targ_info/proc/x8664/core_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h
+em64t.o: em64t.c ../../common/targ_info/access/ti_si_types.h topcode.h
+em64t_si.o: ../../common/targ_info/proc/x8664/em64t_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h
+gen_util.o: ../../common/targ_info/generate/gen_util.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h
+init.o: ../../common/targ_info/generate/init.cxx topcode.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h
+isa.o: ../../common/targ_info/isa/x8664/isa.cxx \
+  ../../common/targ_info/generate/isa_gen.h
+isa_bundle.o: ../../common/targ_info/isa/x8664/isa_bundle.cxx topcode.h \
+  ../../common/targ_info/generate/isa_bundle_gen.h
+isa_bundle_gen.o: ../../common/targ_info/generate/isa_bundle_gen.cxx \
+  topcode.h targ_isa_properties.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_bundle_gen.h ../include/bstring.h
+isa_decode.o: ../../common/targ_info/isa/x8664/isa_decode.cxx topcode.h \
+  ../../common/targ_info/generate/isa_decode_gen.h targ_isa_bundle.h \
+  topcode.h
+isa_decode_gen.o: ../../common/targ_info/generate/isa_decode_gen.cxx \
+  topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_decode_gen.h
+isa_enums.o: ../../common/targ_info/isa/x8664/isa_enums.cxx \
+  ../../common/targ_info/generate/isa_enums_gen.h
+isa_enums_gen.o: ../../common/targ_info/generate/isa_enums_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_enums_gen.h
+isa_gen.o: ../../common/targ_info/generate/isa_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_gen.h
+isa_hazards.o: ../../common/targ_info/isa/x8664/isa_hazards.cxx topcode.h \
+  targ_isa_subset.h topcode.h \
+  ../../common/targ_info/generate/isa_hazards_gen.h
+isa_hazards_gen.o: ../../common/targ_info/generate/isa_hazards_gen.cxx \
+  topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h targ_isa_subset.h \
+  topcode.h ../../common/targ_info/generate/isa_hazards_gen.h \
+  ../include/bstring.h
+isa_lits.o: ../../common/targ_info/isa/x8664/isa_lits.cxx \
+  ../../common/targ_info/generate/isa_lits_gen.h
+isa_lits_gen.o: ../../common/targ_info/generate/isa_lits_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_lits_gen.h
+isa_operands.o: ../../common/targ_info/isa/x8664/isa_operands.cxx \
+  topcode.h ../../common/targ_info/generate/isa_operands_gen.h \
+  targ_isa_registers.h targ_isa_subset.h topcode.h targ_isa_lits.h \
+  targ_isa_enums.h
+isa_operands_gen.o: ../../common/targ_info/generate/isa_operands_gen.cxx \
+  topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_operands_gen.h targ_isa_registers.h \
+  targ_isa_subset.h topcode.h targ_isa_lits.h targ_isa_enums.h
+isa_pack.o: ../../common/targ_info/isa/x8664/isa_pack.cxx topcode.h \
+  ../../common/targ_info/generate/isa_pack_gen.h
+isa_pack_gen.o: ../../common/targ_info/generate/isa_pack_gen.cxx \
+  topcode.h targ_isa_properties.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_pack_gen.h
+isa_print.o: ../../common/targ_info/isa/x8664/isa_print.cxx topcode.h \
+  ../../common/targ_info/generate/isa_print_gen.h \
+  ../../common/targ_info/generate/gen_util_gen.h
+isa_print_gen.o: ../../common/targ_info/generate/isa_print_gen.cxx \
+  topcode.h targ_isa_properties.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_print_gen.h targ_isa_operands.h \
+  topcode.h targ_isa_registers.h targ_isa_subset.h targ_isa_enums.h \
+  targ_isa_lits.h
+isa_properties.o: ../../common/targ_info/isa/x8664/isa_properties.cxx \
+  topcode.h ../../common/targ_info/generate/isa_properties_gen.h
+isa_properties_gen.o:  \
+ ../../common/targ_info/generate/isa_properties_gen.cxx topcode.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_properties_gen.h
+isa_pseudo.o: ../../common/targ_info/isa/x8664/isa_pseudo.cxx topcode.h \
+  ../../common/targ_info/generate/isa_pseudo_gen.h
+isa_pseudo_gen.o: ../../common/targ_info/generate/isa_pseudo_gen.cxx \
+  topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h targ_isa_operands.h \
+  topcode.h targ_isa_registers.h targ_isa_subset.h targ_isa_enums.h \
+  targ_isa_lits.h ../../common/targ_info/generate/isa_pseudo_gen.h \
+  ../include/bstring.h
+isa_registers.o: ../../common/targ_info/isa/x8664/isa_registers.cxx \
+  ../../common/targ_info/generate/isa_registers_gen.h targ_isa_subset.h \
+  topcode.h
+isa_registers_gen.o:  \
+ ../../common/targ_info/generate/isa_registers_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h targ_isa_subset.h \
+  topcode.h ../../common/targ_info/generate/isa_registers_gen.h
+isa_subset.o: ../../common/targ_info/isa/x8664/isa_subset.cxx topcode.h \
+  ../../common/targ_info/generate/isa_subset_gen.h
+isa_subset_gen.o: ../../common/targ_info/generate/isa_subset_gen.cxx \
+  topcode.h ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/isa_subset_gen.h
+opteron.o: opteron.c ../../common/targ_info/access/ti_si_types.h \
+  topcode.h
+opteron_si.o: ../../common/targ_info/proc/x8664/opteron_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h
+orochi.o: orochi.c ../../common/targ_info/access/ti_si_types.h topcode.h
+orochi_si.o: ../../common/targ_info/proc/x8664/orochi_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h
+proc.o: ../../common/targ_info/proc/x8664/proc.cxx \
+  ../../common/targ_info/generate/proc_gen.h
+proc_gen.o: ../../common/targ_info/generate/proc_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/proc_gen.h
+proc_properties.o: ../../common/targ_info/proc/x8664/proc_properties.cxx \
+  targ_proc.h ../../common/targ_info/generate/proc_properties_gen.h
+proc_properties_gen.o:  \
+ ../../common/targ_info/generate/proc_properties_gen.cxx \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h targ_proc.h \
+  ../../common/targ_info/generate/proc_properties_gen.h
+si_gen.o: ../../common/targ_info/generate/si_gen.cxx topcode.h \
+  targ_isa_properties.h targ_isa_subset.h topcode.h targ_isa_operands.h \
+  targ_isa_registers.h targ_isa_subset.h targ_isa_enums.h targ_isa_lits.h \
+  ../../common/targ_info/generate/gen_util.h \
+  ../../common/targ_info/generate/gen_util_gen.h \
+  ../../common/targ_info/generate/si_gen.h
+targ_abi_properties.o: targ_abi_properties.c targ_abi_properties.h \
+  targ_isa_registers.h targ_isa_subset.h topcode.h
+targ_isa_bundle.o: targ_isa_bundle.c targ_isa_bundle.h topcode.h
+targ_isa_decode.o: targ_isa_decode.c topcode.h targ_isa_bundle.h \
+  targ_isa_pack.h targ_isa_properties.h targ_isa_decode.h
+targ_isa_enums.o: targ_isa_enums.c targ_isa_enums.h
+targ_isa_hazards.o: targ_isa_hazards.c topcode.h targ_isa_subset.h \
+  targ_isa_hazards.h
+targ_isa_lits.o: targ_isa_lits.c targ_isa_lits.h
+targ_isa_operands.o: targ_isa_operands.c targ_isa_operands.h topcode.h \
+  targ_isa_registers.h targ_isa_subset.h targ_isa_enums.h targ_isa_lits.h \
+  targ_isa_properties.h
+targ_isa_pack.o: targ_isa_pack.c topcode.h targ_isa_pack.h \
+  targ_isa_properties.h
+targ_isa_print.o: targ_isa_print.c topcode.h targ_isa_print.h
+targ_isa_properties.o: targ_isa_properties.c targ_isa_properties.h
+targ_isa_pseudo.o: targ_isa_pseudo.c topcode.h targ_isa_pseudo.h
+targ_isa_registers.o: targ_isa_registers.c targ_isa_subset.h topcode.h \
+  targ_isa_registers.h
+targ_isa_subset.o: targ_isa_subset.c topcode.h targ_isa_subset.h
+targ_proc.o: targ_proc.c targ_proc.h
+targ_proc_properties.o: targ_proc_properties.c targ_proc_properties.h \
+  targ_proc.h
+ti_asm.o: ../../common/targ_info/access/ti_asm.c topcode.h \
+  targ_isa_operands.h topcode.h targ_isa_registers.h targ_isa_subset.h \
+  targ_isa_enums.h targ_isa_lits.h targ_isa_print.h targ_isa_pack.h \
+  targ_isa_properties.h targ_isa_bundle.h targ_isa_decode.h \
+  targ_isa_bundle.h targ_isa_pack.h targ_isa_pseudo.h targ_isa_enums.h \
+  targ_abi_properties.h targ_proc_properties.h targ_proc.h \
+  ../../common/targ_info/access/ti_errors.h \
+  ../../common/targ_info/access/ti_asm.h ../include/bstring.h
+ti_bundle.o: ../../common/targ_info/access/ti_bundle.c \
+  ../../common/targ_info/access/ti_si.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h \
+  ../../common/targ_info/access/ti_errors.h targ_isa_bundle.h topcode.h \
+  ../../common/targ_info/access/ti_bundle.h
+ti_errors.o: ../../common/targ_info/access/ti_errors.c \
+  ../../common/targ_info/access/ti_errors.h
+ti_latency.o: ../../common/targ_info/access/ti_latency.c \
+  ../../common/targ_info/access/ti_si.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h \
+  targ_isa_properties.h targ_isa_hazards.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h ../../common/targ_info/access/ti_errors.h \
+  ../../common/targ_info/access/ti_latency.h
+ti_res.o: ../../common/targ_info/access/ti_res.c ../../common/com/defs.h \
+  ../include/bstring.h targ_proc.h targ_proc_properties.h targ_proc.h \
+  ../../common/targ_info/access/ti_si.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h \
+  ../../common/targ_info/access/ti_res.h
+ti_res_count.o: ../../common/targ_info/access/ti_res_count.c \
+  ../../common/com/defs.h ../include/bstring.h ../../common/com/erglob.h \
+  ../../common/util/errors.h ../../common/util/errdesc.h \
+  ../../common/com/defs.h ../../common/com/err_host.h \
+  ../../common/util/mempool.h topcode.h \
+  ../../common/targ_info/access/ti_si.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h \
+  ../../common/targ_info/access/ti_res_count.h
+ti_res_res.o: ../../common/targ_info/access/ti_res_res.c \
+  ../../common/com/defs.h ../include/bstring.h ../../common/com/erglob.h \
+  ../../common/util/errors.h ../../common/util/errdesc.h \
+  ../../common/com/defs.h ../../common/com/err_host.h \
+  ../../common/util/mempool.h ../../common/util/bitset.h \
+  ../../common/targ_info/access/ti_si.h \
+  ../../common/targ_info/access/ti_si_types.h topcode.h \
+  ../../common/targ_info/access/ti_res_res.h
+topcode.o: topcode.c topcode.h
+wolfdale.o: wolfdale.c ../../common/targ_info/access/ti_si_types.h \
+  topcode.h
+wolfdale_si.o: ../../common/targ_info/proc/x8664/wolfdale_si.cxx \
+  ../../common/targ_info/generate/si_gen.h targ_isa_subset.h topcode.h \
+  targ_isa_subset.h topcode.h

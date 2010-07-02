@@ -1,0 +1,37 @@
+arith.a(bits.o): ../../arith/bits.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(compare.o): ../../arith/compare.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(convert.o): ../../arith/convert.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(cray1_sim.o): ../../arith/cray1_sim.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(cray_fadd.o): ../../arith/cray_fadd.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(cray_fdiv.o): ../../arith/cray_fdiv.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(cray_fmul.o): ../../arith/cray_fmul.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(cvt.o): ../../arith/cvt.c ../../arith/arith.internal.h ../../arith/arith.h
+arith.a(edition.o): ../../arith/edition.c
+arith.a(ieee_fadd.o): ../../arith/ieee_fadd.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(ieee_fdiv.o): ../../arith/ieee_fdiv.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(ieee_fmul.o): ../../arith/ieee_fmul.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(ieee_norm.o): ../../arith/ieee_norm.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(ieee_sqrt.o): ../../arith/ieee_sqrt.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(intrin.o): ../../arith/intrin.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(math.o): ../../arith/math.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(miscmath.o): ../../arith/miscmath.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(native.o): ../../arith/native.c ../../arith/arith.internal.h \
+  ../../arith/arith.h ../../arith/int64.h
+arith.a(strcvt.o): ../../arith/strcvt.c ../../arith/arith.internal.h \
+  ../../arith/arith.h
+arith.a(test_ar_intrin.o): ../../arith/test_ar_intrin.c ../../arith/arith.h

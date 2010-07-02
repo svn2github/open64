@@ -1,0 +1,4 @@
+matmul_ji2.o: ../../libfi/matrix/matmul_ji2.c ../../libfi/matrix/matmul.h \
+  ../../clibinc/cray/dopevec.h ../../clibinc/fortran.h \
+  ../../clibinc/cray/portdefs.h ../../libfi/include/intrin.h \
+  ../../clibinc/liberrno.h

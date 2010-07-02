@@ -1,0 +1,2 @@
+pxfischr.o: ../../libf/pxf/pxfischr.c ../../clibinc/liberrno.h \
+  ../../clibinc/fortran.h

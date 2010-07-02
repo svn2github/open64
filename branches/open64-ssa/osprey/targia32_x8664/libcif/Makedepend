@@ -1,0 +1,38 @@
+cif_conv.o: ../../libcif/cif_conv.c ../../libcif/cif.h \
+  ../../libcif/unitrecord.h ../../libcif/cif_int.h
+cif_lines.o: ../../libcif/cif_lines.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h ../../libcif/unitrecord.h
+cifbinread.o: ../../libcif/cifbinread.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifclose.o: ../../libcif/cifclose.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifdata.o: ../../libcif/cifdata.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifdup.o: ../../libcif/cifdup.c ../../libcif/cif.h ../../libcif/cif_int.h
+ciferrstr.o: ../../libcif/ciferrstr.c ../../libcif/cif.h
+ciffiledir.o: ../../libcif/ciffiledir.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+ciffree.o: ../../libcif/ciffree.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifgetpos.o: ../../libcif/cifgetpos.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifgetrec.o: ../../libcif/cifgetrec.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifmode.o: ../../libcif/cifmode.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifmsg.o: ../../libcif/cifmsg.c ../../libcif/cif.h ../../libcif/cif_int.h
+cifopen.o: ../../libcif/cifopen.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifprint.o: ../../libcif/cifprint.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifputrec.o: ../../libcif/cifputrec.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifrecgroup.o: ../../libcif/cifrecgroup.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifrel.o: ../../libcif/cifrel.c ../../libcif/cif.h ../../libcif/cif_int.h
+cifsetpos.o: ../../libcif/cifsetpos.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifspace.o: ../../libcif/cifspace.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h
+cifunitdir.o: ../../libcif/cifunitdir.c ../../libcif/cif.h \
+  ../../libcif/cif_int.h

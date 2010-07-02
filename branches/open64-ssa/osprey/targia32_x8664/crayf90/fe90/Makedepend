@@ -1,0 +1,419 @@
+fe90.a(cifcmnrecs.o): ../../../crayf90/fe90/cifcmnrecs.c \
+  ../../../crayf90/fe90/cif.m ../../../crayf90/fe90/cif.h
+fe90.a(cifftnrecs.o): ../../../crayf90/fe90/cifftnrecs.c \
+  ../../../crayf90/fe90/cif.m ../../../crayf90/fe90/cif.h
+fe90.a(cmd_line.o): ../../../crayf90/fe90/cmd_line.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/src_input.m ../../../crayf90/fe90/cmd_line.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/cmd_line.h \
+  ../../../common/com/defs.h ../../include/bstring.h \
+  ../../../common/com/x8664/config_targ.h ../../../common/com/mtypes.h
+fe90.a(cond_comp.o): ../../../crayf90/fe90/cond_comp.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/src_input.m \
+  ../../../crayf90/fe90/cond_comp.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/cond_comp.h
+fe90.a(debug.o): ../../../crayf90/fe90/debug.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/s_utils.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/debug.h
+fe90.a(fecif.o): ../../../crayf90/fe90/fecif.c ../../../crayf90/fe90/defines.h \
+  ../../../clibinc/cray/nlcatmsg.h ../../../crayf90/fe90/cif.h \
+  ../../../crayf90/fe90/cifprocs.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/cif.m \
+  ../../../crayf90/fe90/fecif.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/fecif.h
+fe90.a(fold_drive.o): ../../../crayf90/fe90/fold_drive.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/fold_drive.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/fmath.h ../../../arith/arith.h \
+  ../../../crayf90/fe90/fold_drive.h
+fe90.a(fortout.o): ../../../crayf90/fe90/fortout.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h
+fe90.a(i_cvrt.o): ../../../crayf90/fe90/i_cvrt.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/i_cvrt.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/i_cvrt.h ../../../crayf90/fe90/../sgi/cwh_types.h \
+  ../../../crayf90/fe90/../sgi/decorate_utils.h \
+  ../../../crayf90/fe90/../sgi/cwh_stab.i
+fe90.a(inline.o): ../../../crayf90/fe90/inline.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/s_globals.h
+fe90.a(ir.o): ../../../crayf90/fe90/ir.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(lex.o): ../../../crayf90/fe90/lex.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/lex.m \
+  ../../../crayf90/fe90/debug.m ../../../arith/arith.h \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/lex.h
+fe90.a(main.o): ../../../crayf90/fe90/main.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/debug.m \
+  ../../../arith/arith.h ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/main.h \
+  ../../../crayf90/fe90/type.h ../../../crayf90/fe90/intrin.h \
+  ../../include/pathscale_defs.h
+fe90.a(messages.o): ../../../crayf90/fe90/messages.c \
+  ../../../crayf90/fe90/defines.h ../../../clibinc/cray/nlcatmsg.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/messages.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../include/pathscale_defs.h \
+  ../../../crayf90/fe90/messages.h ../../../crayf90/fe90/src_input.m \
+  ../../../clibinc/cray/../liberrno.h ../../../crayf90/fe90/cif.h
+fe90.a(module.o): ../../../crayf90/fe90/module.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/module.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/module.h
+fe90.a(nameres.o): ../../../crayf90/fe90/nameres.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/nameres.h ../../../crayf90/fe90/p_globals.h
+fe90.a(p_asg_expr.o): ../../../crayf90/fe90/p_asg_expr.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h
+fe90.a(p_ctl_flow.o): ../../../crayf90/fe90/p_ctl_flow.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h
+fe90.a(p_dcl_attr.o): ../../../crayf90/fe90/p_dcl_attr.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h
+fe90.a(p_dcl_pu.o): ../../../crayf90/fe90/p_dcl_pu.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/i_cvrt.h
+fe90.a(p_dcl_util.o): ../../../crayf90/fe90/p_dcl_util.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h
+fe90.a(p_dcls.o): ../../../crayf90/fe90/p_dcls.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/p_dcls.h ../../../crayf90/fe90/i_cvrt.h
+fe90.a(p_directiv.o): ../../../crayf90/fe90/p_directiv.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/p_directiv.h
+fe90.a(p_driver.o): ../../../crayf90/fe90/p_driver.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/p_driver.h \
+  ../../../crayf90/fe90/fmath.h \
+  ../../../crayf90/fe90/../sgi/path_intrinsic_list.h
+fe90.a(p_end.o): ../../../crayf90/fe90/p_end.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/p_end.h
+fe90.a(p_io.o): ../../../crayf90/fe90/p_io.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/p_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/p_io.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h ../../../crayf90/fe90/p_io.h
+fe90.a(p_utils.o): ../../../crayf90/fe90/p_utils.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h
+fe90.a(release.o): ../../../crayf90/fe90/release.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/globals.m \
+  ../../include/stamp.h ../../include/pathscale_defs.h
+fe90.a(s_asg_expr.o): ../../../crayf90/fe90/s_asg_expr.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_asg_expr.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/s_asg_expr.h
+fe90.a(s_call.o): ../../../crayf90/fe90/s_call.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/s_call.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/s_call.h
+fe90.a(s_cnstrct.o): ../../../crayf90/fe90/s_cnstrct.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_asg_expr.m ../../../crayf90/fe90/s_cnstrct.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/s_cnstrct.h \
+  ../../../crayf90/fe90/fmath.h
+fe90.a(s_ctl_flow.o): ../../../crayf90/fe90/s_ctl_flow.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/fmath.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(s_data.o): ../../../crayf90/fe90/s_data.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/s_data.h
+fe90.a(s_dcl_pu.o): ../../../crayf90/fe90/s_dcl_pu.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h
+fe90.a(s_dcls.o): ../../../crayf90/fe90/s_dcls.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(s_directiv.o): ../../../crayf90/fe90/s_directiv.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h
+fe90.a(s_driver.o): ../../../crayf90/fe90/s_driver.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/s_driver.h
+fe90.a(s_end.o): ../../../crayf90/fe90/s_end.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(s_interoperable.o): ../../../crayf90/fe90/s_interoperable.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h
+fe90.a(s_intrin.o): ../../../crayf90/fe90/s_intrin.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/fmath.h ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(s_io.o): ../../../crayf90/fe90/s_io.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../crayf90/fe90/globals.m ../../../crayf90/fe90/tokens.m \
+  ../../../crayf90/fe90/sytb.m ../../../crayf90/fe90/s_globals.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/p_io.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/s_io.h
+fe90.a(s_rcnstrct.o): ../../../crayf90/fe90/s_rcnstrct.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_asg_expr.m ../../../crayf90/fe90/s_cnstrct.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/s_globals.h ../../../crayf90/fe90/s_rcnstrct.h
+fe90.a(s_typ_init.o): ../../../crayf90/fe90/s_typ_init.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_asg_expr.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h
+fe90.a(s_utils.o): ../../../crayf90/fe90/s_utils.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/s_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/s_utils.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/s_globals.h \
+  ../../../crayf90/fe90/i_cvrt.h
+fe90.a(src_input.o): ../../../crayf90/fe90/src_input.c \
+  ../../../crayf90/fe90/defines.h ../../../crayf90/fe90/host.m \
+  ../../../crayf90/fe90/host.h ../../../crayf90/fe90/target.m \
+  ../../../crayf90/fe90/target.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/src_input.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/src_input.h
+fe90.a(sytb.o): ../../../crayf90/fe90/sytb.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../arith/arith.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/p_globals.m ../../../crayf90/fe90/debug.m \
+  ../../../crayf90/fe90/globals.h ../../../crayf90/fe90/printmsg.h \
+  ../../../crayf90/fe90/tokens.h ../../../crayf90/fe90/sytb.h \
+  ../../../crayf90/fe90/p_globals.h \
+  ../../../crayf90/fe90/../sgi/decorate_utils.h
+fe90.a(utils.o): ../../../crayf90/fe90/utils.c ../../../crayf90/fe90/defines.h \
+  ../../../crayf90/fe90/host.m ../../../crayf90/fe90/host.h \
+  ../../../crayf90/fe90/target.m ../../../crayf90/fe90/target.h \
+  ../../../arith/arith.h ../../../crayf90/fe90/globals.m \
+  ../../../crayf90/fe90/tokens.m ../../../crayf90/fe90/sytb.m \
+  ../../../crayf90/fe90/debug.m ../../../crayf90/fe90/globals.h \
+  ../../../crayf90/fe90/printmsg.h ../../../crayf90/fe90/tokens.h \
+  ../../../crayf90/fe90/sytb.h

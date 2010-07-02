@@ -1,0 +1,2076 @@
+
+
+%
+% Copyright 2005-2008 NVIDIA Corporation. All rights reserved.
+%
+
+% -*- fundamental -*-
+%
+% Copyright (C) 2008-2009 Advanced Micro Devices, Inc. All Rights Reserved.
+%
+% Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
+%
+% Copyright 2002, 2003, 2004, 2005, 2006 PathScale, Inc. All Rights Reserved.
+%
+% Copyright (C) 2000, 2001 Silicon Graphics, Inc. All Rights Reserved.
+%
+% This program is free software; you can redistribute it and/or modify it
+% under the terms of version 2 of the GNU General Public License as
+% published by the Free Software Foundation.
+%
+% This program is distributed in the hope that it would be useful, but
+% WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+%
+% Further, this software is distributed without any warranty that it is
+% free of the rightful claim of any third person regarding infringement
+% or the like. Any license provided herein, whether implied or
+% otherwise, applies only to this software file. Patent licenses, if
+% any, provided herein do not apply to combinations of this program with
+% other software, or any other product whatsoever.
+%
+% You should have received a copy of the GNU General Public License along
+% with this program; if not, write the Free Software Foundation, Inc., 59
+% Temple Place - Suite 330, Boston MA 02111-1307, USA.
+%
+% Contact information: Silicon Graphics, Inc., 1600 Amphitheatre Pky,
+% Mountain View, CA 94043, or:
+%
+% http:
+%
+% For further information regarding this notice, see:
+%
+% http:
+%
+%
+
+% Lines beginning with % are comment lines,
+% lines beginning with %%% denote new sections.
+
+% Each option has two lines.
+% The first line contains:
+% the option name,
+% an action to be done upon reading the option,
+% what languages accept it,
+% what phases accept it,
+% and what other options it implies.
+% The second line contains the help message for that option.
+
+% There must be no spaces in any of the fields except the last one,
+% or you can have spaces in an action if you surround it with braces.
+
+% There are several special syntax rules for option names that are used:
+% Option names that start with I, e.g. I-foo, are internal names
+% that the user cannot access. Internal names are used for phase options
+% (e.g. -pic2), and for implicit defaults like -D__sgi.
+% A %s after an option name means to use the next string as an argument;
+% a %- after an option name means to use the next string or '-' as an argument;
+% a %d or %x after an option name means to use the next number as an argument;
+% a %D after an option name means to use the next directory as an argument;
+% the %{s,x,d,D} formats accept an optional space before the argument;
+% if there is no number or directory for a corresponding %{x,d,D},
+% then the option is not matched.
+% A * in the middle of an argument means there can be an optional space here;
+% a * at the end of the argument means the syntax is too complicated and a
+% call to a hand-written routine called parse_<prefix>_option will be generated.
+% A ? at the end of %D means the option will be ignored if the directory
+% argument is missing (1).
+
+% A special action is toggle(&<var>,<val>) which stores the value in the
+% variable, and gives an error if the variable has already been set.
+% This is useful for catching conflicts like -mips1 -mips2.
+
+% Toggle is also used in support of options from compiler.defaults. When the
+% driver starts, <var> is initially set to UNDEFINED. <var> is toggled to
+% other values according to command line options. When parsing
+% compiler.defaults, toggle will silently drop an option if its <var> is not
+% UNDEFINED, meaning it is already set by a command line option. All options
+% in compiler.defaults must have a <var>.
+
+
+% The implies field should include the option name if that name is to be
+% passed to phases. The special word "self" for the implies field means
+% to repeat the option name.
+% Repeating a %{d,D,s} in the implies field shows the format to use
+% when passing to phases, i.e. whether to have a blank space.
+
+% A simple alias is recognized when you have an option that has
+% no action, language=all, phases=none, and 1 implies option.
+% This is directly translated to the implies option when processing.
+
+% The file is first preprocessed by cpp to expand macros, and then sorted
+% by option names.
+
+% the letter keys for languages and phases must match what is in lang_defs.c
+% ALL and NONE can be used for both languages and phases.
+
+
+% languages
+% use CPP not cpp to avoid conflict with -cpp option
+
+
+
+
+
+% f90 used in option name, so use F90 for define
+
+
+
+
+% phases
+% p is a phase a well a a language, but the definition is the same
+% pfa used in option name, so use PFA for define
+% GRP: All the pieces that swallow regular group options
+% ALLX: A except pca & pfa which do not accept the usual compilation args
+% <option name> <action> <languages> <phases> <implies>
+% <help message>
+-help {print_help = TRUE;} A N ""
+ "print list of possible options"
+-h {print_help = TRUE;} A N ""
+ ""
+-realO ; A N ""
+ "override the turning down of optimization levels"
+-help:%s save_name(&help_pattern,optargs); A N ""
+ "print list of possible options that contain given string"
+%
+-show {show_flag = TRUE; } A F,b,i self
+ "show phases as they are being invoked"
+-show1 {show_flag = TRUE; } A N ""
+ ""
+-show0 {show_flag = TRUE; execute_flag = FALSE;} A N ""
+ "show what phases would be called, but do not invoke anything"
+-showt {time_flag = TRUE; } A N ""
+ "show time taken by each phase"
+-Q {quiet_flag = FALSE; } A N ""
+ "suppress timing information (g++) "
+-version {show_version++; show_copyright = TRUE; execute_flag = FALSE;} A N ""
+ "Show the version of the compiler being used"
+%-copyright {show_copyright = TRUE; execute_flag = FALSE;} A N ""
+% "Show the copyright for the compiler being used"
+% Fix for bug 492
+-dumpversion {dump_version = TRUE; execute_flag = FALSE;} A N ""
+ "Show the version of the compiler being used, and nothing else"
+% -showd turns on internal driver debugging
+-showd {show_flag = debug = TRUE; execute_flag = FALSE;} A N ""
+ ""
+-show-defaults {show_defaults = TRUE; execute_flag = FALSE;} A N ""
+ "Show the default compiler options being used"
+% gcc has -v show version a well a phases, so take that meaning
+-v {show_flag = TRUE; show_version++;} A p,a,l self "-show"
+ "show phases and version as they are being invoked"
+-fullwarn toggle(&msglevel,2); f,F p "-m2"
+ "give more warnings, especially about missing prototypes"
+-w toggle(&msglevel,0); A p,C,a,K self "-m0"
+ ""
+-w2 ; f F self
+ "warnings count as errors"
+-w3 ; f F self
+ "supress warnings but exit with error status"
+-w66 ; f F self
+ "turn off F66 incompatibility warnings"
+-66 ; f F self
+ "issue errors when non-F66 feature used"
+-woff*all toggle(&msglevel,0); A N "-w -m0"
+ "turn off all warnings"
+-woff*options ; A N ""
+ "turn off warnings about options"
+-woff%d ; f,F F,b "-woff%d"
+ "turn off named warnings"
+% -V is an svr4 option, currently ignored
+-V {show_version++; show_copyright=TRUE; execute_flag=FALSE;} A N ""
+ "Show the version of the compiler being used"
+-V%d {warn_ignored("-V <version>");} c p,f,i,b,l ""
+ ""
+% last_phase gives the last phase to run, phase names from lang_defs.h
+% If the user gives conflicting last phases, e.g. -c -P,
+% then we use the earliest phase given.
+-c last_phase=(((ipa==TRUE)&&(shared==RELOCATABLE))?P_any_ld:earliest_phase(P_any_as,last_phase)); A N ""
+ "produce a .o and stop"
+-r toggle(&shared,RELOCATABLE);last_phase=P_any_ld; A l self
+ "produce a relocatable .o and stop"
+-S last_phase=earliest_phase(P_be,last_phase); c,C,f,F N ""
+ "produce a .s and stop"
+-fe last_phase=earliest_phase(P_any_fe,last_phase); c,C,f,F N ""
+ "stop after the front end is run"
+-F dash_F_option(); f N ""
+ "stop after RATFOR (f77 only)"
+% just parse and then stop
+-parse last_phase=earliest_phase(P_any_fe,last_phase); c,C C self
+ ""
+-I%D ; A p "-I%D -include=%D"
+ "add following directory to the include search path list"
+-iquote%D ; A p "-iquote=%D"
+ "add following directory to the include search path list"
+-x%- set_explicit_lang(option_name,optargs); A N ""
+ "Specify explicit language for input files"
+I-include=%D ; f,F F,K "-include=%D"
+ ""
+% 1 Make -I to always mean an include search path. -I without a
+% directory argument does nothing.
+%-I ; A N "-nostdinc"
+% ""
+%I-ivpad ; c,C,f,F l "-ivpad"
+% "inter-variable padding of common blocks"
+-nostdinc nostdinc=TRUE; A p self
+ "no predefined include search path list"
+-stdinc nostdinc=FALSE; A p ""
+ "predefined include search path list"
+-nostdinc++ nostdinc=TRUE; C,p p self
+ "Do not search for header files in the standard directories specific to C++"
+-nostdlib ; c,C,f,F l self
+ "Do not use standard system startup files or libraries when linking"
+-ffast-stdlib ; A f,l "-OPT:fast_stdlib=on"
+ "Use faster versions of some standard library functions, when available"
+-fno-fast-stdlib ; A f,l "-OPT:fast_stdlib=off"
+ "Do not use faster versions of standard library functions"
+-nolibopen64rt ; c,C,f,F l ""
+ "Do not link with libopen64rt"
+-external-gcc toggle(&external_gcc,TRUE); A j self
+ "Do not use internal gcc to preprocess and link"
+%I-split_common ; c,C,f,F l "-split_common"
+% "check split COMMON for inconsistencies and fix them"
+-LIST:%s ; A b,i "-LIST:%s"
+ "option group to control listing file and contents"
+-LD_%s ; A l "-LD_%s"
+ ""
+-L%D add_library_dir(optargs); c,C,f,F l "-L%D"
+ "add following directory to the library search path list"
+-L ; c,C,f,F l self
+ ""
+-s ; c,C,f,F l self
+ "Strip symbol table and relocation information"
+-G%d toggle(&gnum,optargd); A F,b "-G%d"
+ ""
+-Gspace%d ; A b "-TENV:Gspace=%d"
+ ""
+% encourage people to replace -K with -keep
+-keep keep_flag=TRUE; A j self
+ "keep intermediate files"
+-save-temps keep_flag=TRUE; A N ""
+ ""
+-pass-exit-codes pass_exit_codes=TRUE; A N ""
+ "Return the highest error code encountered by any phase"
+% there are three shared modes: non, dso, call; call-shared is the default.
+% -KPIC can mean either dso or call, so it is only used to say "not non-shared".
+% on 1, use g++ driver so do not need init and fini
+I-cpp_pic ; A N "-D_PIC -D__DSO__"
+ ""
+% 1 support only -fpic, -fno-pic, -static, -shared, -pic1
+-call_shared toggle(&shared,CALL_SHARED); A N "-TENV:PIC -pic2"
+ "call-shared PIC code"
+%-shared toggle(&shared,DSO_SHARED); A l "-TENV:PIC -pic2 -shared"
+% "dso-shared PIC code"
+-shared toggle(&shared,DSO_SHARED); A l -TENV:PIC -shared
+ "dso-shared PIC code"
+%-non_shared toggle(&shared,NON_SHARED); A N ""
+% "compile non-shared (no DSOs)"
+-pic1 ; A N -TENV:CPIC
+ ""
+-pic2 ; A N -TENV:PIC
+ ""
+% This option turns on everything of interest to SPEC:
+-Ofast Process_Ofast(""); A N ""
+ "default fast option configuration"
+-fb_phase=%s Process_fb_phase(optargs); A N ""
+        ""
+-fb-phase=%s Process_fb_phase(optargs); A N ""
+        "Option needed to tell compile feedback phase"
+-fbgen Gen_feedback=TRUE; A N ""
+ ""
+-fbuse%s Process_fbuse(optargs); A N ""
+ ""
+-fbexe%s Process_fbexe(optargs); A N ""
+ ""
+-fb_xdir%D Process_fb_xdir(optargs); A N ""
+ ""
+-fb_cdir%D Process_fb_cdir(optargs); A N ""
+ ""
+-fb_create%s Process_fb_create(optargs); A N ""
+        ""
+-fb-create%s Process_fb_create(optargs); A N ""
+        "Option needed for SPEC feedback file generation"
+-fb_opt%s Process_fb_opt(optargs); A N ""
+        ""
+-fb-opt%s Process_fb_opt(optargs); A N ""
+        "Option needed for using SPEC feedback files"
+-fb_type=%s Process_fb_type(optargs); A N ""
+        ""
+-fb-type=%s Process_fb_type(optargs); A N ""
+        "Option need for the type of profiles"
+-frandom-seed%s ; A N "-frandom-seed=%s"
+ "specify random seed (string) for internal random number generator"
+-fivopts ; A N ""
+ "Perform induction variable optimizations (for options compatibility only, performed by default by Open64)"
+-fno-ivopts ; A N ""
+ "Do not perform induction variable optimizations (for options compatibility only, ignored by Open64)"
+-frename-registers ; A N ""
+             "for options compatibility only, ignored by Open64"
+-ftree-vectorize ; A N ""
+      "Perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
+-fno-tree-vectorize ; A N ""
+      "Don't perform 'tree' specific vectorization; for options compatibility only, ignored by Open64"
+-directives-only ; A N ""
+             "ignored by open64"
+% Basic option groups:
+% See opt_actions.c::Process_Ofast if you change the -OPT: item.
+-OPT:%s Process_Opt_Group(optargs); A f,i,b,j "-OPT:%s"
+ "option group to control optimization"
+-OPT:unroll_level=n ; A b ""
+ "where n=1,2 controls unrolling, default=1, aggressive=2"
+-OPT:keep_ext=on,off ; A b ""
+ "where default is off, on means external syms are preserved"
+-DEBUG:%s ; A F,b,i "-DEBUG:%s"
+ "option group to debugging options"
+-TENV:%s Process_Tenv_Group(optargs); A F,b,i "-TENV:%s"
+ "option group to control target environment"
+-TARG:%s Process_Targ_Group(optargs); A F,b,i "-TARG:%s"
+ "option group to control compilation target"
+-SWP:%s ; A b "-SWP:%s"
+ ""
+-GRA:%s ; A b "-GRA:%s"
+ "option group to control global register allocation"
+-GRA:unspill=on,off ; A b ""
+ "when on enables optimal GRA/LRA boundary condition allocations"
+-GCM:%s {warning("-GCM group no longer supported");} N N ""
+ ""
+-CG:%s ; A b "-CG:%s"
+ "option group to control code generation"
+-CG:unroll_level=n ; A b ""
+ "where n=0,1,2 controls unrolling, none=0, default=1, aggressive=2"
+-CG:unroll_fb_req=on,off ; A b ""
+ "when on with FDO disables cold code layout for unrolled loops"
+-CG:cmp_peep=on,off ; A b ""
+ "when on load-exec opts include compare instructions"
+-CG:compute_to=on,off ; A b ""
+ "when on, enables SSE based scheduling/local code motion optimizations"
+-PHASE:%s ; A b,i "-PHASE:%s"
+ ""
+-WOPT:%s ; A b,i "-WOPT:%s"
+ "option group internal-use WOPT options"
+-LNO:%s ; A b "-LNO:%s"
+ "option group to control loop nest optimization"
+-HP:%s Process_Hugepage_Group(optargs); A b ""
+ "option group to specify huge page usage, e.g., -HP:bdt=2m:heap=2m,limit=150"
+-HP Process_Hugepage_Default(); A b ""
+ "equivalent to -HP:heap=2m"
+-HUGEPAGE:%s Process_Hugepage_Group(optargs); A b ""
+ "equivalent to -HP:"
+-HUGEPAGE Process_Hugepage_Default(); A b ""
+ "equivalent to -HP"
+-VHO:%s ; A F,b,i "-VHO:%s"
+ "option group to control vho lowering"
+% C and Fortran listing related options:
+-CLIST:%s ; c b "-PHASE:clist -CLIST:%s"
+ "option group to control C source listing of compiler intermediate"
+-FLIST:%s ; f,F b "-PHASE:flist -FLIST:%s"
+ "option group to control Fortran source listing of compiler intermediate"
+-clist ; c b "-PHASE:clist -CLIST:=ON"
+ ""
+-flist ; f,F b "-PHASE:flist -FLIST:=ON"
+ ""
+-mplist ; f,F,c b "-mplist"
+ ""
+-PURPLE:%s ; f b "-PHASE:purple -PURPLE:%s"
+ "option group to control problem isolation slicing tool"
+-PROMP:next_id=%d ; f,F,c,C b "-PROMP:next_id=%d"
+ ""
+-PROMP:%s ; f,F,c,C b "-PHASE:prompf -PROMP:%s"
+ ""
+-IPA:%s toggle(&ipa,TRUE); A i,j "-IPA:%s"
+ "option group to control interprocedural optimizations"
+-LANG:std toggle(&standard_cplusplus,TRUE); C F,b,i "-LANG:std"
+        "Use ISO/ANSI standard-conforming C++ language and library"
+-LANG:%s ; c,C,f,F F,b,i "-LANG:%s"
+ "option group to control language features"
+-INTERNAL:%s ; c,C,f,F F,b,i,j "-INTERNAL:%s"
+ "option group to control features while testing"
+-DEFAULT:%s Process_Default_Group(optargs); A N ""
+ ""
+-fverify-tree ; C f "-fverify-tree"
+        "Run verification routine before tree-to-whirl conversion"
+% Linker Option Group(s)
+-LMSG:%s ; A l "-LMSG:%s"
+ "option group to control error/warning messages in ld"
+-FE:%s ; A F "-FE:%s"
+ ""
+I-init%s ; C l "-init %s"
+ ""
+I-fini%s ; C l "-fini %s"
+ ""
+% -C can have two different meanings, so escape to hand-code
+-C* ; A N ""
+ "C/C++: keep C comments after cpp; Fortran: runtime subscript checking"
+-ffortran-bounds-check ; f,F F "-DEBUG:subscript_check"
+ "check bounds"
+-ffortran2003 ; f,F F self
+ "Fortran 2003 behavior for BOZ constants in intrinsics"
+% we can safely assume that P_cpp will b the earliest phase
+% P_any_cpp is the generic union of all cpp phases
+-E last_phase=P_any_cpp; A N self
+ "run cpp and send result to standard output"
+-P ; A p self
+ ""
+-M last_phase=P_any_cpp; A p self
+ "run cpp and print list of make dependencies"
+-MDupdate%s ; A p,l "-MDupdate %s"
+ "update the following file with make dependencies"
+-MDtarget%s ; A p "-MDtarget %s"
+ "use the following as the target for make dependencies"
+-MDignore%s ; A l "-MDignore %s"
+ ""
+-fdollars-in-identifiers ; A p self
+        "Accept `$' in identifiers"
+% first_phase is P_cpp by default, so set it to anything different
+-nocpp nocpp_flag=TRUE;first_phase=P_any_fe; f,F f self
+ "do not do cpp processing"
+-cpp toggle(&use_ftpp,0);first_phase=P_any_cpp; A N ""
+ ""
+% -o is now handled elsewhere because of complications introduced by cord
+-o%- save_name(&outfile,optargs);check_output_name(optargs);cancel_saved_arg(2); A N ""
+ "put output in following file name rather than a.out"
+-fonetrip ; f F "-1"
+ "One trip DO loops"
+-onetrip ; f F "-1"
+ "One trip DO loops"
+-1 ; f F self
+ "One trip DO loops"
+-p ; A l self "-TENV:call_mcount"
+ ""
+-pg ; A l self "-lm" "-TENV:call_mcount"
+ ""
+-profile ; A l self "-lm" "-TENV:call_mcount"
+ ""
+-m32 toggle(&abi,ABI_N32); A b "-TARG:abi=n32"
+        "Compile for 32-bit ABI"
+-m64 toggle(&abi,ABI_64); A b "-TARG:abi=n64"
+ "Compile for 64-bit ABI"
+-module%s Process_module(optargs); F N ""
+ "Directory in which to create .mod file"
+% KRDEFS are used by K&R compiles; ONANSI by any non-strict-ansi compile
+% One kludge that we do is to add -DMIPSE{L,B} by hand in the driver,
+% by checking if ansi==KR_ANSI and then checking the endian value.
+I-cpp_nonansi ; A N "-D_LONGLONG"
+ ""
+I-cpp_extensions ; A N "-D__EXTENSIONS__ -D__MATH_HAS_NO_SIDE_EFFECTS"
+ ""
+% 1: Do not list f,F here because while f,F fe and f,F cpp take -ansi, gcc for
+% f,F preprocessing does not. Handle f,F -ansi when calling individual
+% phases.
+-ansi toggle(&ansi,STRICT_ANSI); c p,f self "-Xansi -D__STRICT_ANSI__"
+ "strict ansi and standard intrinsics only"
+-std=c89 ; c,C,p p,C self
+ "Support ISO C from 1990"
+-std=iso9899:1990 ; c,C,p p,C self
+ "Support ISO C from 1990"
+-std=iso9899:199409 ; c,C,p p,C self
+ "Support ISO C from 1990, with 1994 amendments"
+-std=c99 ; c,C,p p,C self
+ "Support revised ISO C, from 1999"
+-std=c9x ; c,C,p p,C self
+ "Support revised ISO C, from 1999"
+-std=iso9899:1999 ; c,C,p p,C self
+ "Support revised ISO C, from 1999"
+-std=iso9899:199x ; c,C,p p,C self
+ "Support revised ISO C, from 1999"
+-std=gnu89 ; c,C,p p,C self
+ "Support ISO C from 1990, with GNU extensions"
+-std=gnu99 ; c,C,p p,C self
+ "Support ISO C from 1999, with GNU extensions"
+-std=gnu9x ; c,C,p p,C self
+ "Support ISO C from 1999, with GNU extensions"
+-std=c++98 ; C,p p,C self
+ "Support 1998 ISO C++ standard plus amendments"
+-std=gnu++98 ; C,p p,C self
+ "The same as '-std=c++98' plus GNU extensions.  This is the default for C++ code."
+% these options are only set for c:
+I-Xansi ; c M self
+        ""
+I-D_LANGUAGE_C ; c p self
+ ""
+I-D__EXTENSIONS__ ; C,c p self
+ ""
+I-D__GNUC__ ; C,c p self
+ ""
+% these options are only set for C:
+% the -Xcpluscomm is needed in case we use p
+I-D_LANGUAGE_C_PLUS_PLUS=1 ; C p self
+ ""
+% these options are only set for a:
+I-cpp_assembly ; a p "-D_LANGUAGE_ASSEMBLY -DLANGUAGE_ASSEMBLY"
+ ""
+I-D_LANGUAGE_ASSEMBLY ; a p self
+ ""
+% these options are only set for fortran:
+% these options are only set for fortran:
+I-cpp_fortran ; f,F p "-D_LANGUAGE_FORTRAN -DLANGUAGE_FORTRAN"
+ ""
+I-cpp_fortran90 ; F p "-D_LANGUAGE_FORTRAN90 -DLANGUAGE_FORTRAN90"
+ ""
+I-cpp_fortran77 ; f p "-D_LANGUAGE_FORTRAN77 -DLANGUAGE_FORTRAN77"
+ ""
+I-D_LANGUAGE_FORTRAN ; f,F p self
+ ""
+% f and a use cpp, but require k&r processing for things like # comments
+-A%s ; A p "-A%s"
+ "add following cpp assertions"
+-D%s ; A p "-D%s"
+ "add following macro define"
+% -U can have two different meanings, so escape to hand-code
+-U* ; A N ""
+ ""
+-U%s ; A p "-U%s"
+ "undefine the following macro"
+-l%s ; c,C,f,F l "-l%s"
+ "-l<arg> adds library lib<arg> to link list"
+-WB,%s ; c,C,f,F l "-WB,%s"
+ "-WB,<arg> passes <arg> to the back-end via ipacom"
+%the next 2 entries are allegedly handled by the W* entry -- gbl
+%Bug#551
+%-Wa,%s ; c,C,f,F a "-Wa,%s"
+% "pass comma-separated opts to assembler as individual opts"
+-Wl,%s ; c,C,f,F l "-Wl,%s"
+ "pass comma-separated opts to linker as individual opts"
+-Wp,%s ; A p "-Wp,%s"
+ "pass comma-separated opts to preprocessor as individual opts"
+-W* ; A N ""
+ "-W<phase>,<arg> sends arg to phase {p=cpp,f=fe,b=be,a=as,l=ld}"
+-Y%s change_phase_path(optargs); A j "-Y%s"
+ "-Y<phase>,<path> uses path to find phase {p=cpp,f=fe,b=be,a=as,l=ld,i=inline,I=include,S=startup,L=libraries}"
+% XPG requires ability to do -O 0 a well a -O0
+-O*0 toggle(&olevel,0); A f,i,b,p "-O0"
+ "no optimization"
+-O*1 toggle(&olevel,1); A f,i,b,p "-O1 -D__OPTIMIZE__"
+ "minimal optimization"
+-O toggle(&olevel,2); A f,i,b,p "-O2 -D__OPTIMIZE__"
+ "same as -O2"
+-O*2 toggle(&olevel,2); A f,i,b,p "-O2 -D__OPTIMIZE__"
+ "global optimization"
+-O*3 O3_flag=TRUE;toggle(&olevel,3); A f,i,b,p "-O3 -D__OPTIMIZE__"
+ "full optimization"
+-O*%d ; A f,i,b,p "-O3"
+ "full optimization"
+-Os toggle(&ospace,TRUE); A f,i,b "-OPT:space"
+ "Optimize for space"
+-mspace toggle(&ospace,TRUE); A f,i,b "-OPT:space"
+ ""
+-mso toggle(&oscale,TRUE); A f,i,b,j, ""
+        "Optimize for multicore scalability"
+-g toggle(&glevel,2); A f,i,b "-g2"
+ "full debug info"
+-g0 toggle(&glevel,0); A f,i,b self
+ "no debug info"
+-g1 toggle(&glevel,1); A f,i,b self "-Wl,--export-dynamic"
+ ""
+-g2 toggle(&glevel,2); A f,i,b self
+ ""
+-g3 toggle(&glevel,3); A f,i,b,p self
+ "Add debugging information for C preprocessor macros"
+-gdwarf warn_ignored(option_name); A N ""
+ ""
+-gdwarf-1 warn_ignored(option_name); A N ""
+ ""
+-gdwarf-1+ warn_ignored(option_name); A N ""
+ ""
+-gdwarf-2 toggle(&glevel,2); A f,i,b "-g2"
+ "Produce debugging information in DWARF version 2 format"
+-gdwarf-20 toggle(&glevel,0); A f,i,b "-g0"
+ "Produce DWARF 2 debugging information at debug level 0"
+-gdwarf-21 toggle(&glevel,1); A f,i,b "-g1"
+ "Produce DWARF 2 debugging information at debug level 1"
+-gdwarf-22 toggle(&glevel,2); A f,i,b "-g2"
+ "Produce DWARF 2 debugging information at debug level 2"
+-gdwarf-23 toggle(&glevel,3); A f,i,b "-g3"
+ "Produce DWARF 2 debugging information at debug level 3"
+-ggdb toggle(&glevel,2); A f,i,b "-g2"
+ "Produce debugging information for use by GDB"
+-ggdb3 toggle(&glevel,3); A f,i,b "-g3"
+ "Produce debugging information for use by GDB"
+-gnu3 toggle(&gnu_major_version,3);toggle(&gnu_minor_version,3); c,C N ""
+ "Use GCC 3.3 C/C++ front-end."
+-gnu4 toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2); c,C N ""
+ "Use GCC 4.2 C/C++ front-end."
+-gnu40 toggle(&gnu_major_version,4);toggle(&gnu_minor_version,0); c,C N ""
+ "Use GCC 4.0 C/C++ front-end."
+-gnu42 toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2); c,C N ""
+ "Use GCC 4.2 C/C++ front-end."
+-gstabs warn_ignored(option_name); A N ""
+ ""
+-gstabs+ warn_ignored(option_name); A N ""
+ ""
+-gstabs0 warn_ignored(option_name); A N ""
+ ""
+-gstabs1 warn_ignored(option_name); A N ""
+ ""
+-gstabs2 warn_ignored(option_name); A N ""
+ ""
+-gstabs3 warn_ignored(option_name); A N ""
+ ""
+-i32 toggle(&abi,ABI_I32); A K,K,M "-i32" "-D_ILP32 -Amodel(ilp32)" "-TARG:abi=i32 -D__ia64=1"
+        ""
+-i64 toggle(&abi,ABI_I64); A K,K,M "-i64" "-D_LP64" "-TARG:abi=i64 -D__ia64=1"
+        ""
+-ia32 toggle(&abi,ABI_IA32); A K,K,M "-ia32" "-D_ILP32 -Amodel(ilp32)" "-TARG:abi=ia32 -D__ia32=1"
+        ""
+-itanium toggle(&isa,ISA_IA641); A N "-i64"
+        ""
+% See the comments associated with -mlittle/big-endian
+I-m0 ; A F,b,i self
+ ""
+I-m1 ; A F,b,i self
+ ""
+I-m2 ; A F,b,i self
+ ""
+I-object ; A l ""
+ ""
+% -useas says to go through the assembler phase
+-useas toggle(&skip_as,FALSE); A N ""
+ ""
+% -noas says to skip the assembler phase
+-noas toggle(&skip_as,TRUE); A N ""
+ ""
+-usegfe ; c,C N ""
+ ""
+-usef90 ; F N ""
+ ""
+-NC%d ; f,F F "-NC%d"
+ "set max # of continuation lines"
+I-cvs ; f,F F self
+ ""
+I-cvs,%D ; f,F F "-cvs,%D"
+ ""
+I-cvs_nosrc ; f,F F self
+ ""
+I-cvs_nosrc,%D ; f,F F "-cvs_nosrc,%D"
+ ""
+-automatic toggle(&isstatic,1); f,F N ""
+ ""
+-auto_use%s ; F F "-auto_use=%s"
+ ""
+-auto-use%s ; F F "-auto_use=%s"
+ "Act as if a USE statement is specified in every PU"
+-fcoco toggle(&use_coco,TRUE); f,F N ""
+ "use coco Fortran preprocessor"
+-fcoco=%s toggle(&use_coco,TRUE);save_name(&coco_setfile,optargs); f,F N ""
+ "use coco Fortran preprocessor"
+-ftpp toggle(&use_ftpp,1); F N ""
+ ""
+-macro_expand expand_ftpp_macros=TRUE; F N ""
+ ""
+-macro-expand expand_ftpp_macros=TRUE; F N ""
+ "expand macros everywhere in ftpp"
+-static-data ; f,F F self
+ "treat local data as static"
+-static ; c,C,f,F l self
+ ""
+-static_threadprivate ; f,F F self
+ ""
+-static-threadprivate ; f,F F self
+ "treat locals as static but not shared among multiple threads"
+-dumpspecs warn_ignored(option_name); A f self
+ ""
+-backslash first_phase=P_any_fe; f F self
+ "treat backslash as normal character rather than an escape"
+-byteswapio toggle(&io_byteswap,1); F F self
+  "Swap bytes during file I/O"
+-convert%s toggle(&io_byteswap,2);check_convert_name(optargs); F F "-convert %s"
+ "Convert files by swapping bytes during I/O"
+-noexpopt ; f,F b "-OPT:fast_exp=no"
+ "Do not optimize exponentiation operations"
+-keepdollar ; f F self
+ "Treat $ as a normal last character in symbol names"
+-chararg1 ; f F self
+ ""
+-nof77 ; f F self
+ ""
+-ff77 warn_ignored(option_name); f,F N ""
+ "Use idiomatic UNIX FORTRAN 77"
+-ff90 ; f,F N ""
+ "Allow Fortran 90 constructs"
+-fdirectives ; f,F F ""
+ "Recognize Fortran compiler directives inside comments"
+-fno-directives ; f,F F "-xall"
+ "Ignore Fortran compiler directives inside comments"
+I-xall ; f,F F self
+ ""
+-fsecond-underscore ; f,F F self
+ "Append a second underscore to symbols that already contain an underscore"
+-fno-second-underscore ; f,F F self
+ "Do not append a second underscore to symbols that already contain an underscore"
+-funderscoring ; f,F F self
+ "Append underscores to symbols"
+-fno-underscoring ; f,F F self
+ "Do not append underscores to symbols"
+-fcheck-new ; C C self
+ "Check result of operator new for NULL"
+-fno-check-new ; C C self
+ "Do not check result of operator new for NULL"
+-fvisibility-inlines-hidden ; C C self
+        "for options compatibility only, ignored by Open64"
+-frepo ; C C self
+        "Enable automatic template instantiation at link time, for options compatibility only, ignored by Open64"
+-fconserve-space ; C C self
+        "Put uninitialized or runtime-initialized global variables into the common segment, for options compatibility only, ignored by Open64"
+-felide-constructors ; C C self
+        "for options compatibility only, ignored by Open64"
+-fno-elide-constructors ; C C self
+ "Do not perform an optimization that can avoid calling the copy constructor"
+-fno-implement-inlines ; C C self
+        "Do not emit out-of-line copies of inline functions controlled by `#pragma implementation', for options compatibility only, ignored by Open64"
+-ffor-scope ; C C self
+ "Variables declared in a for-init loop are constrained to that scope"
+-fno-for-scope ; C C self
+ "Variables declared in a for-init loop extend to the enclosing scope"
+-fuse-cxa-atexit ; C C self
+ "Register static destructors with __cxa_atexit instead of atexit"
+-fno-use-cxa-atexit ; C C self
+ "Register static destructors with atexit instead of __cxa_atexit"
+-frtti ; C C self
+ "Generate runtime type information"
+-fno-rtti ; C C self
+ "Do not generate runtime type information"
+-fimplicit-templates ; C C self
+ "Emit code for non-inline templates instantiated implicitly"
+-fno-implicit-templates ; C C self
+ "Never emit code for non-inline templates instantiated implicitly"
+-fimplicit-inline-templates ; C C self
+ "Emit code for inline templates instantiated implicitly"
+-fno-implicit-inline-templates ; C C self
+ "Never emit code for inline templates instantiated implicitly"
+-fweak warn_ignored(option_name); A N ""
+ ""
+-fno-weak warn_ignored(option_name); A N ""
+ ""
+-fssa warn_ignored(option_name); A N ""
+ ""
+-fno-ssa warn_ignored(option_name); A N ""
+ ""
+-fssa-ccp warn_ignored(option_name); A N ""
+ ""
+-fno-ssa-ccp warn_ignored(option_name); A N ""
+ ""
+-fssa-dce warn_ignored(option_name); A N ""
+ ""
+-fno-ssa-dce warn_ignored(option_name); A N ""
+ ""
+-foptimize-register-move warn_ignored(option_name); A N ""
+ ""
+-fno-optimize-register-move warn_ignored(option_name); A N ""
+ ""
+-foptimize-sibling-calls warn_ignored(option_name); A N ""
+ ""
+-fno-optimize-sibling-calls warn_ignored(option_name); A N ""
+ ""
+-femit-class-debug-always warn_ignored(option_name); A N ""
+ ""
+-fno-emit-class-debug-always warn_ignored(option_name); A N ""
+ ""
+-ftree-vrp warn_ignored(option_name); A N ""
+ "Perform Value Range Propagation on trees"
+-fno-tree-vrp warn_ignored(option_name); A N ""
+ ""
+-Wframe-larger-than-100000000 warn_ignored(option_name); A N ""
+        "help noticing functions with larger than usual frame sizes"
+-Wno-vla warn_ignored(option_name); A N ""
+        "prevent the -pedantic warning of the variable length array"
+-Wno-error=%s warn_ignored(option_name); A N ""
+        "makes -Ws warnings not be error"
+-ftls-model=%s check_opt_tls_model(optargs); c,C C "-ftls-model=%s"
+ "Thread-Local Storage model. \n\t\tShould be one of `global-dynamic', `local-dynamic', `initial-exec' or `local-exec'.\n\t\tThe default without -fpic is `local-exec'; with -fpic the default is `global-dynamic`."
+-varargs ; f F self
+ "MATRA varargs"
+%-nocode last_phase=earliest_phase(P_any_fe,last_phase); f,F F self
+% "do not generate any intermediate code from front-end"
+-vms warn_no_longer_supported2(option_name,"-vms_cc"); f,F N self
+ ""
+-vms_cc ; f F self
+ ""
+-old_rl ; f F self
+ ""
+-bytereclen ; f F "-old_rl"
+ ""
+-vms_stdin ; f F self
+ ""
+-vms_endfile ; f F self
+ ""
+-vms_library ; f F self
+ ""
+-usefpidx ; f F self
+ ""
+% this should b on by default unless -mp, but off now until freeze over
+-cray_directives ; f,F N self
+ ""
+-mipslibs toggle(&use_mipslibs,TRUE);toggle(&use_craylibs,FALSE); f N ""
+       ""
+-craylibs toggle(&use_craylibs,TRUE);toggle(&use_mipslibs,FALSE); f N ""
+       ""
+-mp toggle(&mpkind,NORMAL_MP); f,F,c,C F,C self
+        "enable the multiprocessing directives"
+-openmp ; f,F,c,C F -mp
+        "enable the multiprocessing directives (same as -mp)"
+-fopenmp ; c,C C self
+        ""
+-memsim ; A N "-LNO:mem_sim=TRUE -lmemsim"
+ ""
+-memctr ; A b "-memctr"
+ ""
+-mieee-fp ; A b "-OPT:IEEE_NaN_Inf=on"
+ "Use IEEE floating point comparisons"
+-mno-ieee-fp ; A b "-OPT:IEEE_NaN_Inf=off"
+ "IEEE floating point comparisons not required"
+-mp_keep warn_no_longer_supported2(option_name,"-CLIST/-FLIST"); f,F,c N ""
+ ""
+-mpio ; f,F b self
+ ""
+-mp_schedtype=%s ; f,F K,F "-mp_schedtype=%s"
+ ""
+-chunk=%d ; f,F K,F "-chunk=%d"
+ "Set the MP chunksize"
+-mp_chunk=%d ; f,F F "-mp_chunk=%d"
+ ""
+-mp_use_locks warn_no_longer_needed(option_name); f,F N ""
+ ""
+-mp_use_copy warn_no_longer_needed(option_name); f,F N ""
+ ""
+% invoke apo - which discovers parallelism (synonym for -pfa, -pca)
+-apo auto_parallelize=TRUE; c,C,f,F b "-pfa"
+ ""
+-apo*list auto_parallelize=TRUE;keep_list=TRUE; c,C,f,F b "-pfa -LNO:prompl"
+ ""
+-apo*keep auto_parallelize=TRUE;keep_list=keep_mp=TRUE;Process_Promp(); c,C,f,F b "-pfa -LNO:prompl"
+ ""
+% invoke pfa - which discovers parallelism
+-pfa auto_parallelize=TRUE; c,C,f,F b "-pfa"
+ ""
+-pfa*list auto_parallelize=TRUE;keep_list=TRUE; c,C,f,F b "-pfa -LNO:prompl"
+ ""
+-pfa*keep auto_parallelize=TRUE;keep_list=keep_mp=TRUE;Process_Promp(); c,C,f,F b "-pfa -LNO:prompl"
+ ""
+% Because of limitation on derived flags, we repeat the -pfa,%s in the
+% implied list. This is to find the parent flag so action is done.
+-pfa,%s {auto_parallelize=TRUE; warning("options after -pfa, are ignored; should just use -pfa");} c,C,f,F b "-pfa"
+ ""
+-pfa2 warn_no_longer_supported2(option_name,"-pfa"); A N ""
+ ""
+I-lo=ocktl ; f,F K self
+ ""
+-i2 toggle(&iflag,1); f F self
+ "make integer and logical quantities short (2 bytes)"
+-noi4 toggle(&iflag,1); f F self
+ "make integer and logical quantities short (2 bytes)"
+-i4 toggle(&iflag,2); f,F F self
+ "make integer and logical quantities long (4 bytes)"
+-i8 toggle(&iflag,3); f,F F self
+ "make integer and logical quantities long long (8 bytes)"
+-r4 toggle(&rflag,1); f,F F self
+ "use REAL*4 and COMPLEX*8 as the defaults for real and complex"
+-r8 toggle(&rflag,2); f,F F self
+ "use REAL*8 and COMPLEX*16 as the defaults for real and complex"
+-r8const ; f F self
+ ""
+-d8 toggle(&dflag,1); f,F F self
+ "use double=8 and dcomplex=16"
+-dump_input ; f F self
+ ""
+-extend_source fortran_line_length=132; f,F F self "-scan=132"
+ ""
+-extend-source fortran_line_length=132; f,F F "-extend_source -scan=132"
+ "make each source line 132 bytes long"
+-e* ; c,C,f,F l ""
+ ""
+-d_lines ; f,F F self
+ ""
+-d-lines ; f,F F self
+ "compile lines with a D in column 1"
+-pad_char_literals ; F F self
+ ""
+-pad-char-literals ; F F "-pad_char_literals"
+ "blank pad character literal actual arguments to word boundary"
+-expand_include ; f,F F self
+ ""
+-noextend_source fortran_line_length=72; f,F F self "-scan=72"
+ ""
+-noextend-source fortran_line_length=72; f,F F "-noextend_source -scan=72"
+ ""
+-col72 fortran_line_length=72; f,F F self "-scan=72"
+ "sets the source statement length to 72 columns"
+-col80 fortran_line_length=80; F F self "-scan=80"
+ "sets the source statement length to 80 columns"
+-col120 fortran_line_length=120; f,F F self "-scan=120"
+ "sets the source statement length to 120 columns"
+I-scan%s ; f,F K self
+ ""
+-freeform toggle(&fortran_form,2); F F ""
+ "sets Fortran 90 free form source statement formatting"
+-fixedform toggle(&fortran_form,1); F F ""
+ "sets Fortran 90 fixed form source statement formatting"
+-default64 ; F F self
+ "Cray compatibility mode for F90"
+% handle with special routine which reads option groups
+% after all switches read, pass switch to l if ipa run, or to inline if
+% stand-alone inliner run
+-INLINE:%s Process_Inline(); A j "-INLINE:%s"
+ "specify inline processing option group"
+% handle with special routine which reads option groups
+-INLINE Process_Inline(); A N ""
+ "request inline processing"
+-inline Process_Inline(); c,C N "-INLINE"
+ "request inline processing"
+-noinline Process_Inline(); c,C N "-INLINE:=OFF"
+ "suppress inline processing"
+-minline-all-stringops ; c,C j ""
+  "force inline all stringops,ignored at present"
+-intrinsic=%s ; f,F F "-intrinsic=%s"
+ "Add intrinsic to the initial set the compiler recognizes"
+-no-intrinsic=%s ; f,F F "-no-intrinsic=%s"
+ "Remove intrinsic from the initial set the compiler recognizes"
+-nobool ; C C self
+ "disallow bool keyword"
+-fprofile-arcs Process_Profile_Arcs(); A b "-OPT:profile_arcs=true"
+ ""
+-ftest-coverage Process_Test_Coverage(); A b "-CG:test_coverage=true"
+ "turn on test coverage"
+% warn about old flag no longer supported; new driver will split this
+% flag, which may cause confusion
+-Olimit%d warn_no_longer_supported2(option_name,"-OPT:Olimit=n"); A N self
+ ""
+-pedantic ; c,C,p p,C self
+ ""
+-fpermissive ; C C self
+ "Downgrade messages about nonconformant code to warnings"
+-fno-permissive ; C C self
+ "Keep messages about nonconformant code as errors"
+-use_readonly_const ; f,F C self
+ ""
+-use_readwrite_const ; f,F C self
+ ""
+-change_const ; f,F N ""
+ ""
+% invoke pca - which discovers parallelism
+-pca auto_parallelize=TRUE; c,C,f,F b "-pfa"
+ ""
+-pca*list auto_parallelize=TRUE;keep_list=TRUE; c,C,f,F b "-pfa -LNO:prompl"
+ ""
+-pca*keep auto_parallelize=TRUE;keep_list=keep_mp=TRUE;Process_Promp(); c,f,F b "-pfa -LNO:prompl"
+ ""
+-pca,%s {auto_parallelize=TRUE; warning("options after -pca, are ignored; should just use -pca");} c,C,f,F b "-pfa"
+ ""
+% for kernel folks
+-jalr ; A N "-TARG:force_jalr"
+ ""
+-align8 ; c,C,f F,b self
+ "align data in common blocks to 8-bit boundaries"
+-align16 ; c,C,f F,b self
+ "align data in common blocks to 16-bit boundaries"
+-align32 ; c,C,f,F F,b self
+ "align data in common blocks to 32-bit boundaries"
+-align64 ; c,C,f,F F,b self
+ "align data in common blocks to 64-bit boundaries"
+-align128 ; c,C,f F,b self
+ "align data in common blocks to 128-bit boundaries"
+% -u can have two different meanings, so escape to hand-code
+-u* ; A N ""
+ ""
+I-u%s ; c,C l "-u %s"
+ ""
+-soname%s ; c,C,f,F l "-soname %s"
+ ""
+-y%s ; c,C,f,F l "-y %s"
+ ""
+-n ; c,C,f,F l self
+ ""
+-all ; c,C,f,F l --whole-archive
+ ""
+-rpath%s ; c,C,f,F l "-rpath %s"
+ ""
+--whole-archive ; c,C,f,F l self
+ ""
+--no-whole-archive ; c,C,f,F l self
+ ""
+% C options:
+-demangle ; C l self
+ ""
+-prelink ; C N ""
+ "use prelinker (default)"
+-no_prelink prelink_flag=FALSE; C C self
+ ""
+-no-prelink prelink_flag=FALSE; C C self
+ "do not use prelinker (i.e. instantiate all templates immediately)"
+% IPA-related options:
+-ipa toggle(&ipa,TRUE); A j self
+ "Perform interprocedural analysis and optimization"
+-IPA toggle(&ipa,TRUE); A N "-ipa"
+ "Perform interprocedural analysis and optimization"
+-R* ; A N ""
+ "pass flags to RATFOR"
+% 1 Pass "-m elf_i386" and "-m elf_x86_64" to linker. They are the only
+% two valid linker emulation modes. Bug 8441.
+-m*elf_i386 ; c,C,f,F l ""
+ "Pass -m args to linker"
+-m*elf_x86_64 ; c,C,f,F l ""
+ "Pass -m args to linker"
+%-m run_m4=TRUE; f N ""
+% "run m4 on each RATFOR source"
+-framepointer warn_no_longer_supported2(option_name,"-TENV:large_stack"); A N ""
+ ""
+-trapuv ; c,C,f,F b "-DEBUG:trap_uninitialized"
+ "trap uninitialized variables"
+-zerouv ; c,C,f,F b "-DEBUG:zero_uninitialized"
+ "set uninitialized variables to zero"
+-H ; c,C,a,p p self
+ "print name of each header file used"
+% cord
+-cord toggle(&cordflag,TRUE); A N ""
+ ""
+-feedback*%s add_string(feedback_files,optargs); A N ""
+ ""
+-fb%s save_name(&internal_fb_file,optargs); A N ""
+ ""
+- read_stdin=TRUE; A p ""
+ ""
+-- check_dashdash(); A N ""
+ ""
+-ignore_suffix ignore_suffix=TRUE; A N ""
+ ""
+-ignore-suffix ignore_suffix=TRUE; A N ""
+ "ignore source suffix when determining compiler language"
+-cif keep_cif=TRUE; F f self
+        ""
+-ar ; A N ""
+ "create an archive (instead of a shared object or executable) using ar"
+-promp ; f,F,c,C b "-PHASE:prompf -PROMP:=on"
+ ""
+%%% gcc compiler options
+-mcpu=%s set_cpu(optargs,M_CPU); A N ""
+ "Set CPU type"
+-march=%s set_cpu(optargs,M_ARCH); A N ""
+ "Set CPU type"
+-mtune=%s set_cpu(optargs,M_TUNE); A N ""
+ "Set CPU type"
+-pipe ; A N ""
+ ""
+--help {print_help = TRUE;} A N ""
+ "print list of possible options"
+-dumpmachine {printf(OPEN64_TARGET "\n"); execute_flag=FALSE;} A N ""
+ "Print the compilers target machine"
+%%% C language options
+-flang-isoc9x ; c,C f self
+ ""
+-msoft-float warn_ignored(option_name); A N ""
+ ""
+-mno-soft-float warn_ignored(option_name); A N ""
+ ""
+-fcond-mismatch ; c,C f self
+ ""
+-fcxx-openmp toggle(&fcxx_openmp,1); c,C N self -LANG:cxx_openmp=on
+ "Do OpenMP processing under C++"
+-fno-cxx-openmp toggle(&fcxx_openmp,0); c,C N self -LANG:cxx_openmp=off
+ "Do not handle OpenMP under C++"
+-fasm ; c,C f self
+ ""
+-fms-extensions ; c,C f self
+ "Accept broken MFC extensions without warning"
+-fno-asm ; c,C f self
+ "Do not recognise the 'asm' keyword"
+-fbuiltin toggle(&fbuiltin,1); c,C N self
+ ""
+-fno-builtin toggle(&fbuiltin,0); c,C N self
+ "Do not recognise any built in functions"
+-fmath-errno toggle(&fmath_errno,1); c,C,f,F N self
+ ""
+-fno-math-errno toggle(&fmath_errno,0); c,C,f,F N self -LANG:math_errno=off
+ "Do not set ERRNO after calling math functions that are executed with a single instruction"
+-fmessage-length=%d ; C f "-fmessage-length=%d"
+ "Try to format error messages so that they fit on lines of about n characters."
+-fdiagnostics-show-location=once ; C f self
+ "Instructs the diagnostic messages reporter to emit source location information once"
+-fdiagnostics-show-location=every-line ; C f self
+ "Instructs the diagnostic messages reporter to emit source location information on every line"
+-ffreestanding ; c,C f self
+ ""
+-fno-freestanding ; c,C f self
+ ""
+-fhosted ; c,C f self
+ ""
+-fno-hosted ; c,C f self
+ ""
+-fgnu-keywords ; c,C f self
+ "Recognize 'typeof' as a keyword"
+-fno-gnu-keywords ; c,C f self
+ "Do not recognize 'typeof' as a keyword"
+-fsigned-bitfields ; c,C f self
+ "Make bitfields be signed by default"
+-fno-signed-bitfields ; c,C f self
+ "Make bitfields be unsigned by default"
+-fsigned-char ; c,C f self
+ "Make 'char' be signed by default"
+-fno-signed-char ; c,C f self "-D__CHAR_UNSIGNED__"
+ "Make 'char' be unsigned by default"
+-funsigned-bitfields ; c,C f self
+ "Make bitfields be unsigned by default"
+-fno-unsigned-bitfields ; c,C f self
+ "Make bitfields be signed by default"
+-funsigned-char ; c,C f self "-D__CHAR_UNSIGNED__"
+ "Make 'char' be unsigned by default"
+-fno-unsigned-char ; c,C f self
+ ""
+-fwritable-strings ; c,C f self
+ "Attempt to support writable-strings K&R style C"
+-fno-writable-strings ; c,C f self
+ ""
+-fshow-column ; c,C f self
+ "Show column numbers in diagnostics when available"
+-fno-show-column ; c,C f self
+ ""
+-ftraditional ; c,C f self
+ ""
+-fno-traditional ; c,C f self
+ ""
+-fnotraditional ; c,C f self
+ ""
+-traditional ; c,C,p p self
+ "Attempt to support traditional K&R style C"
+-no-traditional ; c,C f self
+ ""
+-gcc ; c,C p self
+ "Define __GNUC__ and other macros"
+-no-gcc ; c,C p self
+ "Do not define __GNUC__ and other macros"
+-opencc ; c,C p ""
+ "Define __OPENCC__ and other macros"
+-no-opencc ; c,C p ""
+ "Do not define __OPENCC__ and other macros"
+-traditional-cpp ; c,C,p N "-traditional"
+ ""
+-trigraphs ; c,C,p p self
+ ""
+%%% Warning Options
+-syntax-only ; c,C f self
+ ""
+-pedantic-errors ; c,C,p p,f self
+ "Issue warnings needed by strict compliance to ANSI C"
+% -w ; c,C f self
+% "Suppress warnings"
+-W ; c,C f self
+ "Enable extra warnings"
+-Wall ; c,C,p p,f self "-WOPT:warn_uninit=on"
+ "Enable most warning messages"
+-Waggregate-return ; c,C f self
+ "Warn about returning structures, unions or arrays"
+-Wno-aggregate-return ; c,C f self
+ "Do not warn about returning structures, unions or arrays"
+-Wbad-function-cast ; c,C f self
+ "Attempt to support writable-strings K&R style C"
+-Wno-bad-function-cast ; c,C f self
+ "Do not warn when a function call is cast to a non-matching type"
+-Wcast-align ; c,C f self
+ "Warn about pointer casts which increase alignment"
+-Wno-cast-align ; c,C f self
+ "Do not warn about pointer casts which increase alignment"
+-Wcast-qual ; c,C f self
+ "Warn about casts which discard qualifiers"
+-Wno-cast-qual ; c,C f self
+ "Do not warn about casts which discard qualifiers"
+-Wchar-subscripts ; c,C f self
+ "Warn about subscripts whose type is 'char'"
+-Wno-char-subscripts ; c,C f self
+ "Do not warn about subscripts whose type is 'char'"
+-Wcomment ; c,C,p p,f self
+ "Warn if nested comments are detected"
+-Wno-comment ; c,C,p p,f self
+ "Do not warn if nested comments are detected"
+-Wcomments ; c,C,p p,f self
+ "Warn if nested comments are detected"
+-Wno-comments ; c,C,p p,f self
+ "Do not warn if nested comments are detected"
+-Wconversion ; c,C f self
+ "Warn about possibly confusing type conversions"
+-Wno-conversion ; c,C f self
+ "Do not warn about possibly confusing type conversions"
+-Werror ; c,C,p p,f,b self
+ "Make all warnings into errors"
+-Wno-error ; c,C,p p,f self
+ "Do not make all warnings into errors"
+-Wformat ; c,C f self
+ "Warn about printf format anomalies"
+-Wno-format ; c,C f self
+ "Do not warn about printf format anomalies"
+-Wformat=2 ; c,C f "-Wformat -Wformat-nonliteral -Wformat-security"
+ "Enable -Wformat plus format checks not included in -Wformat"
+-Wimplicit ; c,C f self
+ "Warn about implicit declarations of functions or variables"
+-Wno-implicit ; c,C f self
+  "Do not warn about implicit declarations of functions or variables"
+-Wimplicit-int ; c,C f self
+ "Warn when a declaration does not specify a type"
+-Wno-implicit-int ; c,C f self
+ "Do not warn when a declaration does not specify a type"
+-Wimplicit-function-declaration ; c,C f self
+ "Warn when a function is used before being declared"
+-Wno-implicit-function-declaration ; c,C f self
+ "Do not warn when a function is used before being declared"
+-Werror-implicit-function-declaration ; c,C f self
+ "Give an error when a function is used before being declared"
+%-Wno-error-implicit-function-declaration ; c,C f self
+% "Do not give an error when a function is used before being declared"
+-Wimport ; c,C,p p,f self
+ "Warn about the use of the #import directive"
+-Wno-import ; c,C,p p,f self
+ "Do not warn about the use of the #import directive"
+-Winline ; c,C f self
+ "Warn if a function declared as inline cannot be inlined"
+-Wno-inline ; c,C f self
+ "Do not warn if a function declared as inline cannot be inlined"
+-Winvalid-pch ; c,C f ""
+ ""
+-Wno-invalid-pch ; c,C f ""
+ ""
+-Wlarger-than-%d ; c,C f "-Wlarger-than-%d"
+ "Warn if an object is larger than <number> bytes"
+-Wno-larger-than-%d ; c,C f "-Wno-larger-than-%d"
+ "Do not warn if an object is larger than <number> bytes"
+-Wlong-long ; c,C f self
+ "Warn if the long long type is used"
+-Wno-long-long ; c,C f self
+ "Do not warn if the long long type is used"
+-Wmain ; c,C f self
+ "Warn about suspicious declarations of main"
+-Wno-main ; c,C f self
+ "Do not warn about suspicious declarations of main"
+-Wmissing-braces ; c,C f self
+ "Warn about possibly missing braces around initialisers"
+-Wno-missing-braces ; c,C f self
+ "Do not warn about possibly missing braces around initialisers"
+-Wmissing-declarations ; c,C f self
+ "Warn about global funcs without previous declarations"
+-Wno-missing-declarations ; c,C f self
+ "Do not warn about global funcs without previous declarations"
+-Wmissing-noreturn ; c,C f self
+ "Warn about functions that are candidates for 'noreturn' attribute"
+-Wno-missing-noreturn ; c,C f self
+ "Do not warn about functions that are candidates for 'noreturn' attribute"
+-Wnonnull ; c,C f self
+ "Warn when passing null to functions requiring non-null pointers"
+-Wmissing-prototypes ; c,C f self
+ "Warn about global funcs without prototypes"
+-Wno-missing-prototypes ; c,C f self
+ "Do not warn about global funcs without prototypes"
+-Wmultichar ; c,C f self
+ "Warn if a multicharacter constant is used"
+-Wno-multichar ; c,C f self
+ "Do not warn if a multicharacter constant is used"
+-Wnested-externs ; c,C f self
+ "Warn about externs not at file scope level"
+-Wno-nested-externs ; c,C f self
+ "Do not warn about externs not at file scope level"
+-Wold-style-definition ; c,C f self
+ "Warn if an old-style function definition is used. A warning is given even if there is a previous prototype."
+-Wno-old-style-definition ; c,C f self
+ "Do not warn about old style fucntion definition"
+-Wparentheses ; c,C f self
+ "Warn about possible missing parentheses"
+-Wno-parentheses ; c,C f self
+ "Do not warn about possible missing parentheses"
+-Wpointer-arith ; c,C f self
+ "Warn about function pointer arithmetic"
+-Wno-pointer-arith ; c,C f self
+ "Do not warn about function pointer arithmetic"
+-Wpointer-sign ; c,C f self
+ "Warn for pointer asignments with different signedness"
+-Wno-pointer-sign ; c,C f self
+ "Don't warn for pointer asignments with different signedness"
+-Wpointer-to-int-cast ; c,C f self
+ "Warn for pointer casts to integer types of a different size"
+-Wno-pointer-to-int-cast ; c,C f self
+ "Don't warn for pointer casts to integer types of a different size"
+-Wno-int-to-pointer-cast ; c,C f self
+ "Don't warn for casts to pointers from integer types of a different size"
+-Wint-to-pointer-cast ; c,C f self
+ "Warn for casts to pointers from integer types of a different size"
+-Wredundant-decls ; c,C f self
+ "Warn about multiple declarations of the same object"
+-Wno-redundant-decls ; c,C f self
+ "Do not warn about multiple declarations of the same object"
+-Wreturn-type ; c,C f self
+ "Warn when a function return type defaults to int"
+-Wno-return-type ; c,C f self
+ "Do not warn when a function return type defaults to int"
+-Wshadow ; c,C f self
+ "Warn when one local variable shadows another"
+-Wno-shadow ; c,C f self
+ "Do not warn when one local variable shadows another"
+-Wsign-compare ; c,C f self
+ "Warn about signed/unsigned comparisons"
+-Wno-sign-compare ; c,C f self
+ "Do not warn about signed/unsigned comparisons"
+-Wstrict-prototypes ; c,C f self
+ "Warn about non-prototyped function decls"
+-Wno-strict-prototypes ; c,C f self
+ "Do not warn about non-prototyped function decls"
+-Wswitch ; c,C f self
+ "Warn when a switch statement is incorrectly indexed with an enum"
+-Wswitch-default ; c,C f self
+ "Warn when a switch statement has no default"
+-Wswitch-enum ; c,C f self
+ "Warn when a switch statement is missing a case for an enum member"
+-Wno-switch ; c,C f self
+ "Do not warn when a switch statement is incorrectly indexed with an enum"
+-Wdeclaration-after-statement ; c f self
+ "Warn about declarations after statements (pre-C99)"
+-Wtraditional ; c,C,p p,f self
+ "Warn about constructs whoes meaning change in ANSI C"
+-Wno-traditional ; c,C,p p,f self
+ "Do not warn about constructs whoes meaning change in ANSI C"
+-Wtrigraphs ; c,C,p p,f self
+ "Warn when trigraphs are encountered"
+-Wno-trigraphs ; c,C,p p,f self
+ "Do not warn when trigraphs are encountered"
+-Wundef ; c,C,p p,f self
+ "Warn if an undefined identifier appears in a #if directive"
+-Wno-undef ; c,C,p p,f self
+ "Do not warn if an undefined identifier appears in a #if directive"
+-Wuninitialized ; f,F,c,C f self "-WOPT:warn_uninit=on"
+ "Warn about unitialized automatic variables"
+-Wno-uninitialized ; c,C f self "-WOPT:warn_uninit=off"
+ "Do not warn about unitialized automatic variables"
+-Wunknown-pragmas ; c,C f self
+ "Warn when an unknown #pragma directive is encountered"
+-Wno-unknown-pragmas ; c,C f self
+ "Do not warn when an unknown #pragma directive is encountered"
+-Wunused ; c,C f self
+ "Warn when a variable is unused"
+-Wno-unused ; c,C f self
+ "Do not warn when a variable is unused"
+-Wwrite-strings ; c,C f self
+ "Mark strings as 'const char *'"
+-Wno-write-strings ; c,C f self
+ "Do not mark strings as 'const char *'"
+-Wdeprecated ; c,C,f p self
+ "Announce deprecation of compiler features"
+-Wno-deprecated ; c,C,f p self
+ "Do not announce deprecation of compiler features"
+-Wctor-dtor-privacy ; C p self
+ "Warn when all constructors/destructors are private"
+-Wno-ctor-dtor-privacy ; C p self
+ "Do not warn when all constructors/destructors are private"
+-Wdiv-by-zero ; c,C f self
+ "Warn about compile-time integer division by zero"
+-Wno-div-by-zero ; c,C f self
+ "Suppress warnings about compile-time integer division by zero"
+-Wendif-labels ; c,C,p,f p self
+ "Warn if #if or #endif is followed by text"
+-Wno-endif-labels ; c,C,p,f p self
+ "Do not warn if #if or #endif is followed by text"
+-Weffc++ ; C f self
+ "Warn on 'Effective C++' style violations"
+-Wno-effc++ ; C f self
+ "Do not warn on 'Effective C++' style violations"
+-Wfloat-equal ; c,C f self
+ "Warn if floating point values are compared for equality"
+-Wno-float-equal ; c,C f self
+ "Do not warn if floating point values are compared for equality"
+-Wformat-nonliteral ; c,C f self
+ "If -Wformat, warn if format string is not a string literal"
+-Wno-format-zero-length ; c,C f self
+        "Do not warn about zero-length format string"
+-Wno-format-nonliteral ; c,C f self
+ "Do not warn if format string is not a string literal"
+-Wformat-security ; c,C f self
+ "If -Wformat, warn on potentially insecure format functions"
+-Wno-format-security ; c,C f self
+ "Do not warn on potentially insecure format functions"
+-Wmissing-format-attribute ; c,C f self
+ "If -Wformat, warn on candidates for 'format' attributes"
+-Wno-missing-format-attribute ; c,C f self
+ "Do not warn on candidates for 'format' attributes"
+-Wno-missing-field-initializers ; c,C f self
+        "Do not warn if a structure's initializer has some fields missing"
+-Wno-deprecated-declarations ; c,C f self
+ "Do not warn about deprecated code"
+-Wno-format-extra-args ; c,C f self
+ "Do not warn about extra arguments to printf-like functions"
+-Wno-format-y2k ; c,C f self
+ "Do not warn about 'strftime' formats that yield two-digit years"
+-Wno-non-template-friend ; C f self
+ "Do not warn about friend functions declared in templates"
+-Wno-pmf-conversions ; C f self
+ "Do not warn about converting PMFs to plain pointers"
+-Wnon-virtual-dtor ; C f self
+ "Warn when a class declares a dtor that should be virtual"
+-Wno-non-virtual-dtor ; C f self
+ "Do not warn when a class declares a dtor that should be virtual"
+-Wold-style-cast ; C f self
+ "Warn when a C-style cast to a non-void type is used"
+-Wno-old-style-cast ; C f self
+ "Do not warn when a C-style cast to a non-void type is used"
+-Woverloaded-virtual ; C f self
+ "Warn when a function declaration hides virtual functions"
+-Wno-overloaded-virtual ; C f self
+ "Do not warn when a function declaration hides virtual functions"
+-Wpacked ; c,C f self
+ "Warn when packed attribute of a struct has no effect"
+-Wno-packed ; c,C f self
+ "Do not warn when packed attribute of a struct has no effect"
+-Wpadded ; c,C f self
+ "Warn when padding is included in a struct"
+-Wno-padded ; c,C f self
+ "Do not warn when padding is included in a struct"
+-Wreorder ; C f self
+ "Warn when reordering member initializers"
+-Wno-reorder ; C f self
+ "Do not warn when reordering member initializers"
+-Wsequence-point ; c,C f self
+ "Warn about code violating sequence point rules"
+-Wno-sequence-point ; c,C f self
+ "Do not warn about code violating sequence point rules"
+-Wsign-promo ; C f self
+ "Warn when overload resolution promotes from unsigned to signed"
+-Wno-sign-promo ; C f self
+ "Do not warn when overload resolution promotes from unsigned to signed"
+-Wsynth ; C f self
+ "Warn about synthesis that is not backwards compatible with cfront"
+-Wno-synth ; C f self
+ "Do not warn about synthesis that is not backwards compatible with cfront"
+-Wsystem-headers ; c,C,p p,f self
+ "Print warnings for constructs in system header files"
+-Wno-system-headers ; c,C,p p,f self
+ "Do not print warnings for constructs in system header files"
+-Wunreachable-code ; c,C f self
+ "Warn about code that will never be executed"
+-Wno-unreachable-code ; c,C f self
+ "Do not warn about code that will never be executed"
+-Wunused-macros ; c,C,p p,f self
+ "Warn about macros defined but not used"
+-Wno-unused-macros ; c,C,p p,f self
+ "Do not warn about macros defined but not used"
+-Wunused-function ; c,C f self
+ "Warn about unused static and inline functions"
+-Wno-unused-function ; c,C f self
+ "Do not warn about unused static and inline functions"
+-Wunused-label ; c,C f self
+ "Warn about unused labels"
+-Wno-unused-label ; c,C f self
+ "Do not warn about unused labels"
+-Wunused-parameter ; c,C f self
+ "Warn about unused function parameters"
+-Wno-unused-parameter ; c,C f self
+ "Do not warn about unused function parameters"
+-Wunused-value ; c,C f self
+ "Warn about statements whose results are not used"
+-Wno-unused-value ; c,C f self
+ "Do not warn about statements whose results are not used"
+-Wunused-variable ; c,C f self
+ "Warn about local and static variables that are not used"
+-Wno-unused-variable ; c,C f self
+ "Do not warnarn about local and static variables that are not used"
+-Wdisabled-optimization warn_ignored(option_name); c,C N ""
+ "Warn if a requested optimization pass is disabled"
+-Wno-disabled-optimization ; c,C f self
+ "Do not warn if a requested optimization pass is disabled"
+%%% Optimization Options
+-fbranch-probabilities ; c,C f self
+ ""
+-foptimize-register-moves ; c,C f self
+ ""
+-fcaller-saves ; c,C f self
+ ""
+-fcse-follow-jumps ; c,C f self
+ ""
+-fcse-skip-blocks ; c,C f self
+ ""
+-fdelayed-branch ; c,C f self
+ ""
+-fexpensive-optimizations ; c,C f self
+ ""
+-ffast-math toggle(&ffast_math,1); c,C,f,F f,b "-OPT:ffast_math=ON -fno-math-errno"
+ "Improve FP speed by violating ANSI & IEEE rules"
+-fno-fast-math toggle(&ffast_math,0); c,C,f,F f "-OPT:ffast_math=OFF -fmath-errno"
+ "Conform to ANSI & IEEE math rules at the expense of speed"
+-funsafe-math-optimizations ; c,C f "-OPT:funsafe_math_optimizations=ON -fno-math-errno"
+ "Improve FP speed by violating ANSI & IEEE rules"
+-fno-unsafe-math-optimizations ; c,C f "-OPT:funsafe_math_optimizations=OFF -fmath-errno"
+ "Conform to ANSI & IEEE math rules at the expense of speed"
+-ffloat-store ; c,C,f,F b "-CG:x87_store=1:min_spill_loc_size=1"
+ "Do not store floats in registers"
+-fforce-addr ; c,C f self
+ ""
+-fforce-mem ; c,C f self
+ ""
+-fdata-sections ; c,C f self
+ ""
+-ffunction-sections ; c,C f self
+ ""
+-fgcse ; c,C f self
+ ""
+-fno-gcse ; c,C f self
+        "Disable global common subexpression elimination, for options compatibility only, ignored by Open64"
+-falign-functions ; c,C f self
+        "Align the start of functions to the machine-dependent default value, for options compatibility only, ignored by Open64"
+-falign-functions=%d ; c,C f "-falign-functions=%d"
+        "Align the start of functions to the next power-of-two greater than n, for options compatibility only, ignored by Open64"
+-falign-jumps=%d ; c,C f "-falign-jumps=%d"
+        "Align branch targets to a power-of-two boundary, for options compatibility only, ignored by Open64"
+-falign-loops ; c,C f self
+        "Align loops to a machine-dependent default value, for options compatibility only, ignored by Open64"
+-falign-loops=%d ; c,C f "-falign-loops=%d"
+        "Align loops to a power-of-two boundary, skipping up to n bytes, for options compatibility only, ignored by Open64"
+-falign-labels ; c,C f self
+        "Align all branch targets to a machine-dependent default value, for options compatibility only, ignored by Open64"
+-finline-functions ; c,C f self
+ "Automatically integrate simple functions into their callers"
+-fno-inline-functions ; c,C f self
+ "Do not automatically integrate simple functions into their callers"
+-finline-limit=%d ; c,C f "-finline-limit=%d"
+ ""
+-fkeep-inline-functions ; c,C f self
+ "Generate code for funcs even if they are fully inlined"
+-fno-default-inline ; c,C f self
+ ""
+-fno-defer-pop ; c,C f self
+ ""
+-fno-function-cse ; c,C f self
+ ""
+-finline Process_Inline(); c,C f "-INLINE"
+ ""
+-fno-inline Process_Inline(); c,C f "-INLINE:=off"
+ ""
+-fabi-version=%d ; C f "-fabi-version=%d"
+ ""
+-fno-operator-names ; C f self
+ "Do not treat operator keywords and, bitand, bitor, compl, not, or and xor as keywords."
+-fno-peephole ; c,C f self
+ ""
+-fomit-frame-pointer ; c,C f self
+ "When possible do not generate stack frames"
+-fno-omit-frame-pointer ; c,C f self
+ ""
+-fregmove ; c,C f self
+ ""
+-frerun-cse-after-loop ; c,C f self
+ ""
+-frerun-loop-opt ; c,C f self
+ ""
+-fschedule-insns ; c,C f self
+ ""
+-fno-schedule-insns ; c,C f self
+ ""
+-fschedule-insns2 ; c,C f self
+ ""
+-fno-schedule-insns2 ; c,C f self
+ ""
+-fstrength-reduce ; c,C f self
+ "Perform strength reduction optimisations"
+-fno-strength-reduce ; c,C f self
+ ""
+-fthread-jumps ; c,C f self
+ "Perform jump threading optimisations"
+-ftemplate-depth-%d ; C f "-ftemplate-depth-%d"
+ "Set maximum instantiation depth for template classes"
+-ftree-ter ; c,C f self
+ ""
+-fno-tree-ter ; c,C f self
+ ""
+-funroll-all-loops ; c,C f self
+ "Peform loop onrolling for all loops"
+-funroll-loops ; c,C f self
+ "unroll-loops"
+-fmove-all-movables ; c,C f self
+ ""
+-freduce-all-givs ; c,C f self
+ ""
+-fstrict-aliasing ; c,C f self "-OPT:alias=typed"
+ "Assume strictest aliasing rules"
+-Wstrict-aliasing ; c,C f self
+ "Warn about code that breaks strict aliasing rules"
+-fno-strict-aliasing ; c,C f self
+ "Do not assume strict aliasing rules"
+-Wno-strict-aliasing ; c,C f self
+ "Do not warn about code that breaks strict aliasing rules"
+-dA warn_ignored(option_name); c,C N self
+ ""
+-db warn_ignored(option_name); c,C N self
+ ""
+-dB warn_ignored(option_name); c,C N self
+ ""
+-dc warn_ignored(option_name); c,C N self
+ ""
+-dC warn_ignored(option_name); c,C N self
+ ""
+-dd warn_ignored(option_name); c,C N self
+ ""
+-de warn_ignored(option_name); c,C N self
+ ""
+-dE warn_ignored(option_name); c,C N self
+ ""
+-df warn_ignored(option_name); c,C N self
+ ""
+-dF warn_ignored(option_name); c,C N self
+ ""
+-dg warn_ignored(option_name); c,C N self
+ ""
+-dh warn_ignored(option_name); c,C N self
+ ""
+-dk warn_ignored(option_name); c,C N self
+ ""
+-do warn_ignored(option_name); c,C N self
+ ""
+-dG warn_ignored(option_name); c,C N self
+ ""
+-di warn_ignored(option_name); c,C N self
+ ""
+-dj warn_ignored(option_name); c,C N self
+ ""
+-dl warn_ignored(option_name); c,C N self
+ ""
+-dL warn_ignored(option_name); c,C N self
+ ""
+% This flag collides with the "dynamic" toggle flag
+%-dn warn_ignored(option_name); c,C N self
+% "Dump after register renumbering, to file.25.rnreg."
+-dr warn_ignored(option_name); c,C N self
+ ""
+-dR warn_ignored(option_name); c,C N self
+ ""
+-ds warn_ignored(option_name); c,C N self
+ ""
+-dS warn_ignored(option_name); c,C N self
+ ""
+-dt warn_ignored(option_name); c,C N self
+ ""
+-dw warn_ignored(option_name); c,C N self
+ ""
+-dX warn_ignored(option_name); c,C N self
+ ""
+-dz warn_ignored(option_name); c,C N self
+ ""
+-da warn_ignored(option_name); c,C N self
+ ""
+-dm warn_ignored(option_name); c,C N self
+ ""
+-dp warn_ignored(option_name); c,C N self
+ ""
+-dP warn_ignored(option_name); c,C N self
+ ""
+-dv warn_ignored(option_name); c,C N self
+ ""
+-dx warn_ignored(option_name); c,C N self
+ ""
+% This flag collides with the "dynamic" toggle flag
+%-dy warn_ignored(option_name); c,C N self
+% "Dump debugging information during parsing, to standard error."
+%%% Preprocessor options
+-dD ; c,C,a,p p self
+ "Generate list of non-predefined macro directives"
+-dI ; c,C,a,p p self
+ "Output #include directives in addition to preprocessor results"
+-dM ; c,C,a,p p self
+ "Generate list of directives for all macros"
+-dN ; c,C,a,p p self
+ "Generate list of all macro names defined"
+-idirafter%D ; c,C,a,p p "-idirafter %D"
+ ""
+-include%s ; c,C,a,p p "-include %s"
+ ""
+-imacros%s ; c,C,a,p p "-imacros %s"
+ ""
+-iprefix%s ; c,C,a,p p "-iprefix %s"
+ ""
+-iwithprefix%D ; c,C,a,p p "-iwithprefix %D"
+ ""
+-iwithprefixbefore%D ; c,C,a,p p "-iwithprefixbefore %D"
+ ""
+-isystem%D accumulate_isystem(optargs); c,C,f,F,a,p p "-isystem %D"
+ ""
+-isysroot%D ; c,C,a,p p "-isysroot %D"
+ ""
+-MD ; c,C,a,p p self
+ "Write dependencies to .d output file"
+-MF%s ; c,C,a,p p "-MF %s"
+ "Write dependencies to specified output file"
+-MMD ; c,C,a,p p self
+ "Write user dependencies to .d output file"
+-MM last_phase=P_any_cpp; c,C,a,p p self
+ "Output user dependencies of source file"
+-MG ; c,C,a,p p self
+ "With -M or -MM, treat missing header files as generated files"
+-MT%s ; c,C,a,p p "-MT %s"
+ "Change the target of the generated dependency rules"
+-MQ%s ; c,C,a,p p "-MQ %s"
+ "Same as -MT, but quote characters that are special to Make"
+%Fixing bug 375
+-MP ; c,C,a,p p self
+ "With -M or -MM, add phony targets for each dependency"
+%Fixing bug 493
+-aux-info%s ; a C "-aux-info %s"
+        ""
+-ff2c-abi%s ; A F "-ff2c-abi %s"
+ "Tell Fortran compiler to use the f2c ABI for symbols in file"
+-fdecorate%s ; A F "-fdecorate %s"
+ "File tells Fortran compiler how to transform ids into linker symbols"
+-undef ; c,C,a,p p self
+ ""
+%%% Code Generation Options
+-fcall-saved-%s ; c,C N ""
+ ""
+-fcall-used-%s ; c,C N ""
+ ""
+-fexceptions ; c,C p,C "-fexceptions -TENV:frame_pointer=on"
+ "Enable exception handling"
+-fhandle-exceptions ; c,C p,C self
+ ""
+-fno-exceptions ; c,C p,C "-fno-exceptions"
+ "Disable exception handling"
+-fno-emit-exceptions ; c,C w self
+ "Do not emit code to handle exceptions"
+-fno-optimize-regions ; c,C C self
+ "Enable optimization of EH regions formation"
+-fno-handle-exceptions ; c,C p,C self
+ ""
+-fgnu-exceptions ; c,C p,C "-fexceptions"
+ ""
+-fno-gnu-exceptions ; c,C p,C "-fno-exceptions"
+ ""
+-ffixed-%s ; c,C N "-TENV:registers_not_allocatable=%s"
+ ""
+-mfixed-range=%s ; c,C N "-TENV:registers_not_allocatable=%s"
+ ""
+-funwind-tables ; A N "-CG:emit_unwind_info=on -TENV:frame_pointer=on"
+ ""
+-fno-unwind-tables ; c,C N "-CG:emit_unwind_info=off"
+ ""
+-mconstant-gp ; c,C N "-TENV:constant_gp=on"
+ ""
+-mno-sdata ; c,C N "-G0"
+ ""
+-finstrument-functions ; A N "-OPT:cyg_instr=4"
+ ""
+-finhibit-size-directive ; c,C b "-CG:inhibit_size_directive=1:emit_asm_dwarf=0"
+ "Do not generate .size directives"
+-fcheck-memory-usage ; c,C N ""
+ ""
+-fprefix-function-name ; c,C N ""
+ "Add a prefix to all function names"
+-fno-common ; c,C C self
+ "use strict ref/def initialization model"
+-fno-ident ; c,C C self
+ "Ignore #ident directives"
+-fident ; c,C C self
+        "for options compatibility only, ignored by Open64"
+-fwrapv ; c,C C self
+        "for options compatibility only, ignored by Open64"
+-fvisibility=hidden ; c,C C self
+        "Set the default ELF image symbol visibility to be hidden, for options compatibility only, ignored by Open64"
+-fvisibility=default ; c,C C self
+        "Make every ELF image symbol public, for options compatibility only, ignored by Open64"
+-fno-gnu-linker ; c,C N ""
+ ""
+-fpcc-struct-return ; c,C N ""
+ ""
+-fpic toggle(&pic,TRUE); A f self "-TENV:PIC"
+ "Generate position independent code, if possible"
+-fPIC toggle(&pic,TRUE); A f self "-TENV:PIC"
+  "Generate position independent code, if possible"
+-fno-PIC toggle(&pic,TRUE); A f self
+  "Do not generate position independent code"
+-fno-pic toggle(&pic,TRUE); A f self
+  "Do not generate position independent code"
+-fpie ; A f self "-TENV:PIC"
+ "Generate position independent code, if possible"
+-pie ; A l self "-TENV:PIC"
+ "Generate position independent code, if possible"
+-fPIE ; A f self "-TENV:PIC"
+  "Generate position independent code, if possible"
+-fno-pie ; A f self
+ "Do not generate position independent code"
+-fno-PIE ; A f self
+  "Do not generate position independent code"
+-frandom-seed=%s ; c,C f "-frandom-seed=%s"
+ ""
+-freg-struct-return ; c,C N ""
+ ""
+-fshared-data ; c,C N ""
+ "Mark data as shared rather than private"
+-fshort-enums ; c,C N ""
+ "Use the smallest fitting integer to hold enums"
+-fshort-double ; c,C N ""
+ "Use the same size for double as for float"
+-fshort-wchar ; c,C f self
+ "Use short unsigned int for wchar_t instead of the default underlying type for the target."
+-fvolatile ; c,C N ""
+ "Consider all mem refs through pointers as volatile"
+-fvolatile-global ; c,C N ""
+ "Consider all mem refs to global data to be volatile"
+-fvolatile-static ; c,C N ""
+ ""
+-fverbose-asm ; c,C N ""
+ ""
+-fpack-struct ; c,C N ""
+ "Pack structure members together without holes"
+-fstack-check ; c,C N ""
+ ""
+-fargument-alias ; c,C N ""
+ ""
+-fargument-noalias ; c,C N ""
+ ""
+-fargument-noalias-global ; c,C N ""
+ ""
+-fleading-underscore ; c,C N ""
+ ""
+%%% Linker Options
+-nostartfiles ; c,C,f,F l self
+ "Do not use standard system startup files when linking"
+-nodefaultlibs ; c,C,f,F l self
+ "Do not use standard system libraries when linking"
+--sysroot%D ; c,C,a,p l "--sysroot %D -isysroot %D"
+ ""
+%-Xlinker%- warn_no_longer_supported2(option_name,"-Wl,"); c,C,f,F l "-Xlinker %s"
+% ""
+% 1 Call dedicated code to handle -Xlinker since generic code does not
+% like the arg string to begin with -.
+-Xlinker* ; c,C,f,F l ""
+ ""
+-symbolic ; c,C,f,F l self
+ ""
+-shared-libgcc ; c,C,f,F l self
+ "Force the use of the shared libgcc library"
+-static-libgcc ; c,C,f,F l self
+ "Force the use of the static libgcc library"
+%%% Directory Options
+-I- ; A p self
+  ""
+-specs=%s warn_ignored(option_name); A N self
+ ""
+%%% Target Options
+-b%s warn_ignored(option_name); A N self
+ ""
+%%% 386-specific options
+-m386 warn_ignored(option_name); A N self
+ ""
+-malign-loops=%d warn_ignored(option_name); A N self
+ ""
+-malign-jumps=%d warn_ignored(option_name); A N self
+ ""
+-malign-functions=%d warn_ignored(option_name); A N self
+ ""
+%%% x86 extensions
+-mmmx toggle(&mmx,TRUE); A A ""
+ "Enable MMX extensions"
+-mno-mmx toggle(&mmx,FALSE);toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE); A N self
+ "Disable MMX extensions"
+-msse toggle(&mmx,TRUE);toggle(&sse,TRUE); A A ""
+ "Enable SSE extensions"
+-mno-sse toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE); A b ""
+ "Disable SSE2/SSE3/SSE4a extensions"
+-msse2 toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE); A p,C self
+ "Enable SSE2 extensions"
+-mno-sse2 toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE); A p,C self
+ "Disable SSE2/SSE3 extensions"
+-msse3 toggle(&sse2,TRUE);toggle(&sse3,TRUE); A p,C self
+ "Enable SSE3 extensions"
+-mno-sse3 toggle(&sse3,FALSE); A p,C self
+ "Disable SSE3 extensions"
+-m3dnow toggle(&m3dnow,TRUE); A p,C self
+ "Enable 3Dnow extensions"
+-mno-3dnow toggle(&m3dnow,FALSE); A p,C self
+ "Disable 3Dnow extensions"
+-msse4a toggle(&sse2,TRUE);toggle(&sse4a,TRUE); A p,C self
+ "Enable SSE4a extensions"
+-mno-sse4a toggle(&sse4a,FALSE); A p,C self
+ "Disable SSE4a extensions"
+-mssse3 toggle(&sse2,TRUE);toggle(&ssse3,TRUE); A p,C self
+ "Enable SSSE3 extensions"
+-mno-ssse3 toggle(&ssse3,FALSE); A p,C self
+ "Disable SSSE3 extensions"
+-msse4.1 toggle(&sse2,TRUE);toggle(&sse41,TRUE); A p,C self
+ "Enable SSE4.1 extensions"
+-mno-sse4.1 toggle(&sse41,FALSE); A p,C self
+ "Disable SSE4.1 extensions"
+-msse4.2 toggle(&sse2,TRUE);toggle(&sse42,TRUE); A p,C self
+ "Enable SSE4.2 extensions"
+-mno-sse4.2 toggle(&sse42,FALSE); A p,C self
+ "Disable SSE4.2 extensions"
+-maes toggle(&sse2,TRUE);toggle(&aes,TRUE); A p,C self
+ "Enable AES extensions"
+-mno-aes toggle(&aes,FALSE); A p,C self
+ "Disable AES extensions"
+-mpclmul toggle(&sse2,TRUE);toggle(&pclmul,TRUE); A p,C self
+ "Enable PCLMUL extensions"
+-mno-pclmul toggle(&pclmul,FALSE); A p,C self
+ "Disable PCLMUL extensions"
+-mavx toggle(&sse2,TRUE);toggle(&avx,TRUE); A p,C self
+ "Enable AVX extensions"
+-mno-avx toggle(&avx,FALSE); A p,C self
+ "Disable AVX extensions"
+-mxop toggle(&sse2,TRUE);toggle(&xop,TRUE); A p,C self
+ "Enable XOP extensions"
+-mno-xop toggle(&xop,FALSE); A p,C self
+ "Disable XOP extensions"
+-mfma4 toggle(&sse2,TRUE);toggle(&fma4,TRUE); A p,C self
+ "Enable FMA4 extensions"
+-mno-fma4 toggle(&fma4,FALSE); A p,C self
+ "Disable FMA4 extensions"
+%%% x87
+-mx87-precision=%d ; A b "-TARG:x87-precision=%d"
+ "Specify the precision of x87 floating-point calculations (32/64/80-bit)"
+%%% ia-64 workaround
+-ma-step ; A N "-TARG:ma0_step=on -mb-step"
+ ""
+-mb-step ; A N ""
+ ""
+-mvolatile-asm-stop ; A N "-CG:volatile_asm_stop=on"
+ ""
+% 1: Because of limitation on derived flags, we repeat the -mcmodel=%s in the
+% implied list. This is to find the parent flag so action is done.
+-mcmodel=%s set_memory_model(optargs); A N "-mcmodel=%s -TENV:mcmodel=%s"
+ "Set the memory model to use"
+-print-file-name=%s {execute_flag=FALSE; print_file_path(optargs, 0);} A N ""
+ ""
+-print-libgcc-file-name ; A N "-print-file-name=libgcc.a"
+ ""
+-print-multi-lib {execute_flag=FALSE; print_multi_lib();} A N ""
+ "Print the mapping from multilib directory names to compiler switches that enable them."
+-print-prog-name=%s {execute_flag=FALSE; print_file_path(optargs, 1);} A N ""
+ ""
+-print-search-dirs {show_search_path=TRUE; execute_flag=FALSE;} A N ""
+ "Print the installation directory and directories the compiler will search"
+-fvar-tracking ; A C self
+        "Run variable tracking pass, for options compatibility only, ignored by Open64"
+-fpreprocessed ; c,C,a,p p,C self
+ "Tell preprocessor that input has already been preprocessed"
+-fno-preprocessed ; c,C,a,p p,C self
+ "Tell preprocessor that input has not already been preprocessed"
+%%% gcc long option aliases
+--all-warnings ; A N "-Wall"
+ ""
+--ansi ; A N "-ansi"
+ ""
+--assemble ; A N "-S"
+ ""
+--assert%s ; A N "-A%s"
+ ""
+--comments ; A N "-C"
+ ""
+--compile ; A N "-c"
+ ""
+--debug ; A N "-g"
+ ""
+% --debug%d ; A N "-g%d"
+--define-macro%s ; A N "-D%s"
+ ""
+--dependencies ; A N "-M"
+ ""
+--dumpversion ; A N "-dumpversion"
+  ""
+--extra-warnings ; A N "-W"
+ ""
+--force-link%s ; A N "-u %s"
+ ""
+--imacros%s ; A N "-imacros %s"
+ ""
+--include%s ; A N "-include %s"
+ ""
+--include-barrier ; A N "-I-"
+ ""
+--include-directory%D ; A N "-I%D"
+ ""
+--include-directory-after%D ; A N "-idirafter %D"
+ ""
+--include-prefix%s ; A N "-iprefix %s"
+ ""
+--include-with-prefix%D ; A N "-iwithprefix %D"
+ ""
+--include-with-prefix-before%D ; A N "-iwithprefixbefore %D"
+ ""
+--library-directory%D ; A N "-L%D"
+ ""
+--no-line-commands ; A N "-P"
+ ""
+--no-standard-includes ; A N "-nostdinc"
+ ""
+--no-standard-libraries ; A N "-nostdlib"
+ ""
+--no-warnings ; A N "-w"
+ ""
+--optimize ; A N "-O"
+ ""
+--output%s ; A N "-o %s"
+ ""
+--pedantic ; A N "-pedantic"
+ ""
+--pedantic-errors ; A N "-pedantic-errors"
+ ""
+--pipe ; A N "-pipe"
+ ""
+--preprocess ; A N "-E"
+ ""
+% need to handle either <space>name or =name
+--print-file-name%s ; A N "-print-file-name=%s"
+ ""
+--print-file-name=%s ; A N "-print-file-name=%s"
+ ""
+--print-libgcc-file-name ; A N "-print-file-name=libgcc.a"
+ ""
+--print-search-dirs ; A N "-print-search-dirs"
+ ""
+--print-missing-file-dependencies ; A N "-MG"
+ ""
+--print-multi-lib ; A N "-print-multi-lib"
+ ""
+--print-prog-name%s ; A N "-print-prog-name=%s"
+ ""
+--print-prog-name=%s ; A N "-print-prog-name=%s"
+ ""
+--profile ; A N "-p"
+ ""
+--save-temps ; A N "-save-temps"
+ ""
+--shared ; A N "-shared"
+ ""
+--specs%s ; A N "-specs=%s"
+ ""
+--specs=%s ; A N "-specs=%s"
+ ""
+--static ; c,C,f,F l self
+ ""
+--symbolic ; A N "-symbolic"
+ ""
+--target%s ; A N "-b%s"
+ ""
+--trace-includes ; A N "-H"
+ ""
+--traditional ; A N "-traditional"
+ ""
+--traditional-cpp ; A N "-traditional-cpp"
+ ""
+--trigraphs ; A N "-trigraphs"
+ ""
+--undefine-macro%s ; A N "-U%s"
+ ""
+--user-dependencies ; A N "-MM"
+ ""
+--verbose ; A N "-v"
+ ""
+--version ; A N "-version"
+ ""
+--write-dependencies ; A N "-MD"
+ ""
+--write-user-dependencies ; A N "-MMD"
+ ""
+-subverbose subverbose=1; A N "-subverbose"
+ "Print diagnostic information about subscription management"
+-pthread ; A N ""
+ "Compile with pthreads support"
+% gcc compatibility flags
+-compat-gcc toggle(&compat_gcc,TRUE); A N ""
+ ""
+-Wabi warn_ignored(option_name); A C self ""
+ ""
+-### {show_version++; show_but_not_run = TRUE;} A N "-###"
+ "Like -v, only nothing is run and args are quoted"
+-rdynamic ; c,C,f,F l "-Wl,--export-dynamic"
+ ""
+-Bsymbolic ; c,C,f,F l self
+        "Let the linker to resolve as many symbols as possible at link time"
+% 1 The driver ignores options by changing them into -dummy, which does
+% nothing.
+-dummy ; A N ""
+ ""

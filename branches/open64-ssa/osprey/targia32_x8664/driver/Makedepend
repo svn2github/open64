@@ -1,0 +1,89 @@
+errors.o: ../../driver/errors.c ../include/cmplrs/rcodes.h \
+  ../../driver/errors.h ../../driver/basic.h ../../driver/string_utils.h
+file_names.o: ../../driver/file_names.c ../../driver/phases.h \
+  ../../driver/basic.h ../../driver/lang_defs.h \
+  ../../driver/string_utils.h ../../driver/file_names.h \
+  ../../driver/file_utils.h ../../driver/errors.h \
+  ../../driver/opt_actions.h ../../driver/option_seen.h option_names.h \
+  ../../driver/run.h ../../driver/version.h
+file_utils.o: ../../driver/file_utils.c ../../driver/errors.h \
+  ../../driver/basic.h ../../driver/string_utils.h \
+  ../../driver/file_utils.h
+get_options.o: ../../driver/get_options.c ../../driver/string_utils.h \
+  ../../driver/basic.h ../../driver/get_options.h ../../driver/options.h \
+  ../../driver/lang_defs.h option_names.h ../../driver/errors.h \
+  ../../driver/file_utils.h ../../driver/phases.h \
+  ../../driver/opt_actions.h get_option.i
+implicits.o: implicits.c ../../driver/string_utils.h ../../driver/basic.h \
+  ../../driver/options.h ../../driver/lang_defs.h \
+  ../../driver/option_seen.h option_names.h ../../driver/opt_actions.h \
+  ../../driver/get_options.h ../../driver/errors.h
+lang_defs.o: ../../driver/lang_defs.c ../../common/com/lib_phase_dir.h \
+  ../include/stamp.h ../include/pathscale_defs.h \
+  ../include/pathscale_defs.h ../../driver/lang_defs.h \
+  ../../driver/basic.h ../../driver/file_utils.h \
+  ../../driver/string_utils.h ../../driver/errors.h
+main.o: ../../driver/main.c ../include/stamp.h \
+  ../include/pathscale_defs.h ../include/cmplrs/rcodes.h \
+  ../include/pathscale_defs.h ../../driver/string_utils.h \
+  ../../driver/basic.h ../../driver/options.h ../../driver/lang_defs.h \
+  ../../driver/option_seen.h option_names.h ../../driver/opt_actions.h \
+  ../../driver/get_options.h ../../driver/errors.h ../../driver/phases.h \
+  ../../driver/file_utils.h ../../driver/file_names.h ../../driver/run.h \
+  ../../driver/objects.h ../../driver/version.h
+objects.o: ../../driver/objects.c ../../driver/basic.h \
+  ../../driver/string_utils.h ../../driver/objects.h option_names.h \
+  ../../driver/options.h ../../driver/lang_defs.h \
+  ../../driver/option_seen.h ../../driver/opt_actions.h \
+  ../../driver/get_options.h ../../driver/errors.h ../../driver/phases.h \
+  ../../driver/file_names.h ../../driver/file_utils.h \
+  ../include/pathscale_defs.h ../../driver/run.h
+opt_actions.o: ../../driver/opt_actions.c ../include/cmplrs/rcodes.h \
+  ../../driver/opt_actions.h ../../driver/basic.h ../../driver/options.h \
+  ../../driver/lang_defs.h option_names.h ../../driver/option_seen.h \
+  ../../driver/errors.h ../../driver/file_utils.h \
+  ../../driver/file_names.h ../../driver/string_utils.h \
+  ../../driver/get_options.h ../../driver/objects.h \
+  ../include/pathscale_defs.h ../../driver/phases.h ../../driver/run.h \
+  ../../common/com/profile_type.h opt_action.i \
+  ../../driver/string_utils.h ../../driver/get_options.h \
+  ../../common/com/lib_phase_dir.h ../include/stamp.h \
+  ../include/pathscale_defs.h ../include/pathscale_defs.h
+option_seen.o: ../../driver/option_seen.c ../../driver/option_seen.h \
+  ../../driver/basic.h ../../driver/options.h ../../driver/lang_defs.h \
+  option_names.h ../../driver/errors.h
+options.o: ../../driver/options.c ../../driver/phases.h \
+  ../../driver/basic.h ../../driver/lang_defs.h ../../driver/options.h \
+  ../../driver/string_utils.h ../../driver/errors.h option_names.h \
+  ../../driver/option_seen.h init_options.i option_names.h \
+  ../../driver/opt_actions.h
+phases.o: ../../driver/phases.c ../include/pathscale_defs.h \
+  ../../driver/phases.h ../../driver/basic.h ../../driver/lang_defs.h \
+  ../../driver/options.h ../../driver/option_seen.h option_names.h \
+  ../../driver/string_utils.h ../../driver/errors.h \
+  ../../driver/file_names.h ../../driver/file_utils.h ../../driver/run.h \
+  ../../driver/objects.h ../../driver/opt_actions.h \
+  ../../common/com/profile_type.h ../../common/com/lib_phase_dir.h \
+  ../include/stamp.h ../include/pathscale_defs.h \
+  ../include/pathscale_defs.h ../../driver/get_options.h
+run.o: ../../driver/run.c ../include/cmplrs/rcodes.h ../../driver/run.h \
+  ../../driver/basic.h ../../driver/string_utils.h \
+  ../../driver/lang_defs.h ../../driver/errors.h \
+  ../../driver/file_names.h ../../driver/phases.h \
+  ../../driver/opt_actions.h ../../driver/option_seen.h \
+  ../../driver/file_utils.h ../include/pathscale_defs.h option_names.h \
+  ../../common/com/lib_phase_dir.h ../include/stamp.h \
+  ../include/pathscale_defs.h ../include/pathscale_defs.h
+special_options.o: ../../driver/special_options.c ../include/stamp.h \
+  ../include/pathscale_defs.h ../../driver/string_utils.h \
+  ../../driver/basic.h ../../driver/options.h ../../driver/lang_defs.h \
+  ../../driver/option_seen.h option_names.h ../../driver/errors.h \
+  ../../driver/opt_actions.h ../../driver/file_names.h \
+  ../../driver/get_options.h ../../driver/phases.h ../../driver/run.h \
+  ../../driver/version.h
+string_utils.o: ../../driver/string_utils.c ../../driver/string_utils.h \
+  ../../driver/basic.h
+table.o: ../../driver/table.c ../../driver/basic.h \
+  ../../driver/lang_defs.h ../../driver/string_utils.h \
+  ../../driver/errors.h
+version_hg.o: version_hg.c ../../driver/version.h

@@ -1,0 +1,4 @@
+libcmplrs.a(array_alloc.o): ../../libcmplrs/array_alloc.c \
+  ../../include/cmplrs/array_alloc.h
+libcmplrs.a(make_depend.o): ../../libcmplrs/make_depend.c ../include/bstring.h \
+  ../include/cmplrs/make_depend.h

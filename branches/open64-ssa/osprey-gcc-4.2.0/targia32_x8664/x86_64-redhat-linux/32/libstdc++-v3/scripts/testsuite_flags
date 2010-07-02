@@ -1,0 +1,69 @@
+#!/bin/sh
+
+#
+# This script computes the various flags needed to run GNU C++ testsuites
+# (compiler specific as well as library specific). 
+#
+# Written by Benjamin Kosnik <bkoz@redhat.com>
+#            Gabriel Dos Reis <gdr@codesourcery.com>
+#
+
+# Print a message saying how this script is intended to be invoked
+print_usage() {
+    cat <<EOF
+Usage: 
+    testsuite_flags --install-includes
+		    --build-includes
+		    --build-cxx
+		    --install-cxx
+		    --cxxflags
+		    --cxxpchflags
+		    --cxxldflags
+EOF
+}
+
+# Establish configure-generated directory structure.
+BUILD_DIR=/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/x86_64-redhat-linux/32/libstdc++-v3
+SRC_DIR=/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/libstdc++-v3
+PREFIX_DIR=/open64-gcc-4.2.0
+query=$1
+
+case ${query} in
+    --install-includes)
+      INCLUDES="-I${SRC_DIR}/testsuite/util"
+      echo ${INCLUDES}
+      ;;
+    --build-includes)
+      INCLUDES="-nostdinc++ -I/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/x86_64-redhat-linux/32/libstdc++-v3/include/x86_64-redhat-linux -I/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/x86_64-redhat-linux/32/libstdc++-v3/include -I/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/libstdc++-v3/libsupc++ 
+                -I${SRC_DIR}/include/backward -I${SRC_DIR}/testsuite/util"
+      echo ${INCLUDES}
+      ;;
+    --install-cxx)
+      CXX=${PREFIX_DIR}/bin/g++
+      echo ${CXX}
+      ;;
+    --build-cxx)
+      CXX_build="/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/./gcc/xgcc -shared-libgcc -B/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/./gcc -nostdinc++ -L/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/x86_64-redhat-linux/32/libstdc++-v3/src -L/proj/opensrc_nobackup/zhiweic/SVN/puretrunk/osprey-gcc-4.2.0/targia32_x8664/x86_64-redhat-linux/32/libstdc++-v3/src/.libs -B/open64-gcc-4.2.0/x86_64-redhat-linux/bin/ -B/open64-gcc-4.2.0/x86_64-redhat-linux/lib/ -isystem /open64-gcc-4.2.0/x86_64-redhat-linux/include -isystem /open64-gcc-4.2.0/x86_64-redhat-linux/sys-include  -m32"
+      CXX=`echo "$CXX_build" | sed 's,gcc/xgcc ,gcc/g++ ,'`
+      echo ${CXX}
+      ;;
+    --cxxflags)
+      CXXFLAGS_save="-g -O2 -D_GLIBCXX_ASSERT"
+      CXXFLAGS_config='-ffunction-sections -fdata-sections -fmessage-length=0 
+ 		      -g -O2  -D_GNU_SOURCE  '
+      echo ${CXXFLAGS_save} ${CXXFLAGS_config}
+      ;;
+    --cxxpchflags)
+      PCHFLAGS="-include bits/stdtr1c++.h"
+      echo ${PCHFLAGS}
+      ;;
+    --cxxldflags)
+      SECTIONLDFLAGS="-Wl,--gc-sections "
+      echo ${SECTIONLDFLAGS}
+      ;;
+    *)
+      print_usage
+      ;;
+esac
+
+exit 0

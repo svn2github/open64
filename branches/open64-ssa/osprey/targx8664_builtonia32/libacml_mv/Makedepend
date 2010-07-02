@@ -1,0 +1,605 @@
+libacml_mv.a(acos.o): ../../libacml_mv/src/acos.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(acosf.o): ../../libacml_mv/src/acosf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(acosh.o): ../../libacml_mv/src/acosh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(acoshf.o): ../../libacml_mv/src/acoshf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(asin.o): ../../libacml_mv/src/asin.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(asinf.o): ../../libacml_mv/src/asinf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(asinh.o): ../../libacml_mv/src/asinh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(asinhf.o): ../../libacml_mv/src/asinhf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(atan.o): ../../libacml_mv/src/atan.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(atan2.o): ../../libacml_mv/src/atan2.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(atan2f.o): ../../libacml_mv/src/atan2f.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(atanf.o): ../../libacml_mv/src/atanf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(atanh.o): ../../libacml_mv/src/atanh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(atanhf.o): ../../libacml_mv/src/atanhf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(cbrt.o): ../../libacml_mv/src/gas/cbrt.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(cbrtf.o): ../../libacml_mv/src/gas/cbrtf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(ceil.o): ../../libacml_mv/src/ceil.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(ceilf.o): ../../libacml_mv/src/ceilf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(copysign.o): ../../libacml_mv/src/gas/copysign.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(copysignf.o): ../../libacml_mv/src/gas/copysignf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(cos.o): ../../libacml_mv/src/gas/cos.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(cosf.o): ../../libacml_mv/src/gas/cosf.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(cosh.o): ../../libacml_mv/src/cosh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(coshf.o): ../../libacml_mv/src/coshf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(exp.o): ../../libacml_mv/src/gas/exp.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(exp10.o): ../../libacml_mv/src/gas/exp10.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(exp10f.o): ../../libacml_mv/src/gas/exp10f.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(exp2.o): ../../libacml_mv/src/gas/exp2.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(exp2f.o): ../../libacml_mv/src/gas/exp2f.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(exp_special.o): ../../libacml_mv/src/exp_special.c \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(expf.o): ../../libacml_mv/src/gas/expf.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(expm1.o): ../../libacml_mv/src/gas/expm1.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(expm1f.o): ../../libacml_mv/src/gas/expm1f.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fabs.o): ../../libacml_mv/src/gas/fabs.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fabsf.o): ../../libacml_mv/src/gas/fabsf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fdim.o): ../../libacml_mv/src/gas/fdim.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fdimf.o): ../../libacml_mv/src/gas/fdimf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(finite.o): ../../libacml_mv/src/finite.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(finitef.o): ../../libacml_mv/src/finitef.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(floor.o): ../../libacml_mv/src/floor.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(floorf.o): ../../libacml_mv/src/floorf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(fmax.o): ../../libacml_mv/src/gas/fmax.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fmaxf.o): ../../libacml_mv/src/gas/fmaxf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fmin.o): ../../libacml_mv/src/gas/fmin.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fminf.o): ../../libacml_mv/src/gas/fminf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fmod.o): ../../libacml_mv/src/gas/fmod.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(fmodf.o): ../../libacml_mv/src/gas/fmodf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(frexp.o): ../../libacml_mv/src/frexp.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(frexpf.o): ../../libacml_mv/src/frexpf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(hypot.o): ../../libacml_mv/src/hypot.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(hypotf.o): ../../libacml_mv/src/hypotf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(ilogb.o): ../../libacml_mv/src/ilogb.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(ilogbf.o): ../../libacml_mv/src/ilogbf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(ldexp.o): ../../libacml_mv/src/ldexp.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(ldexpf.o): ../../libacml_mv/src/ldexpf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(libm_special.o): ../../libacml_mv/src/libm_special.c \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(llrint.o): ../../libacml_mv/src/llrint.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(llrintf.o): ../../libacml_mv/src/llrintf.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(llround.o): ../../libacml_mv/src/llround.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(llroundf.o): ../../libacml_mv/src/llroundf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(log.o): ../../libacml_mv/src/gas/log.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(log10.o): ../../libacml_mv/src/gas/log10.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(log10f.o): ../../libacml_mv/src/gas/log10f.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(log1p.o): ../../libacml_mv/src/log1p.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(log1pf.o): ../../libacml_mv/src/log1pf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(log2.o): ../../libacml_mv/src/gas/log2.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(log2f.o): ../../libacml_mv/src/gas/log2f.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(log_special.o): ../../libacml_mv/src/log_special.c \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(logb.o): ../../libacml_mv/src/logb.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(logbf.o): ../../libacml_mv/src/logbf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(logf.o): ../../libacml_mv/src/gas/logf.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(lrint.o): ../../libacml_mv/src/lrint.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(lrintf.o): ../../libacml_mv/src/lrintf.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(lround.o): ../../libacml_mv/src/lround.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(lroundf.o): ../../libacml_mv/src/lroundf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(modf.o): ../../libacml_mv/src/modf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(modff.o): ../../libacml_mv/src/modff.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(nan.o): ../../libacml_mv/src/nan.c ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(nanf.o): ../../libacml_mv/src/nanf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(nearbyint.o): ../../libacml_mv/src/gas/nearbyint.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(nearbyintf.o): ../../libacml_mv/src/nearbyintf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(nextafter.o): ../../libacml_mv/src/nextafter.c \
+  ../../libacml_mv/inc/libm_amd.h ../../libacml_mv/inc/acml_mv.h \
+  ../../libacml_mv/inc/acml_mv_m128.h ../../libacml_mv/inc/fn_macros.h \
+  ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(nextafterf.o): ../../libacml_mv/src/nextafterf.c \
+  ../../libacml_mv/inc/libm_amd.h ../../libacml_mv/inc/acml_mv.h \
+  ../../libacml_mv/inc/acml_mv_m128.h ../../libacml_mv/inc/fn_macros.h \
+  ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(nexttoward.o): ../../libacml_mv/src/nexttoward.c \
+  ../../libacml_mv/inc/libm_amd.h ../../libacml_mv/inc/acml_mv.h \
+  ../../libacml_mv/inc/acml_mv_m128.h ../../libacml_mv/inc/fn_macros.h \
+  ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(nexttowardf.o): ../../libacml_mv/src/nexttowardf.c \
+  ../../libacml_mv/inc/libm_amd.h ../../libacml_mv/inc/acml_mv.h \
+  ../../libacml_mv/inc/acml_mv_m128.h ../../libacml_mv/inc/fn_macros.h \
+  ../../libacml_mv/inc/libm_util_amd.h \
+  ../../libacml_mv/inc/libm_special.h
+libacml_mv.a(pow.o): ../../libacml_mv/src/gas/pow.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(pow_special.o): ../../libacml_mv/src/pow_special.c \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(powf.o): ../../libacml_mv/src/gas/powf.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(remainder.o): ../../libacml_mv/src/gas/remainder.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(remainder_piby2.o): ../../libacml_mv/src/remainder_piby2.c
+libacml_mv.a(remainder_piby2d2f.o): ../../libacml_mv/src/remainder_piby2d2f.c
+libacml_mv.a(remainderf.o): ../../libacml_mv/src/gas/remainderf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(rint.o): ../../libacml_mv/src/rint.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h
+libacml_mv.a(rintf.o): ../../libacml_mv/src/rintf.c ../../libacml_mv/inc/libm_amd.h \
+  ../../libacml_mv/inc/acml_mv.h ../../libacml_mv/inc/acml_mv_m128.h \
+  ../../libacml_mv/inc/fn_macros.h ../../libacml_mv/inc/libm_util_amd.h
+libacml_mv.a(round.o): ../../libacml_mv/src/gas/round.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(roundf.o): ../../libacml_mv/src/roundf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(scalbln.o): ../../libacml_mv/src/scalbln.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(scalblnf.o): ../../libacml_mv/src/scalblnf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(scalbn.o): ../../libacml_mv/src/scalbn.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(scalbnf.o): ../../libacml_mv/src/scalbnf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(sin.o): ../../libacml_mv/src/gas/sin.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(sincos.o): ../../libacml_mv/src/gas/sincos.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(sincos_special.o): ../../libacml_mv/src/sincos_special.c \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(sincosf.o): ../../libacml_mv/src/gas/sincosf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(sinf.o): ../../libacml_mv/src/gas/sinf.S ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(sinh.o): ../../libacml_mv/src/sinh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(sinhf.o): ../../libacml_mv/src/sinhf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(sqrt.o): ../../libacml_mv/src/sqrt.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(sqrtf.o): ../../libacml_mv/src/sqrtf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_special.h
+libacml_mv.a(tan.o): ../../libacml_mv/src/tan.c ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(tanf.o): ../../libacml_mv/src/tanf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(tanh.o): ../../libacml_mv/src/tanh.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h
+libacml_mv.a(tanhf.o): ../../libacml_mv/src/tanhf.c \
+  ../../libacml_mv/src/../inc/libm_amd.h \
+  ../../libacml_mv/src/../inc/acml_mv.h \
+  ../../libacml_mv/src/../inc/acml_mv_m128.h \
+  ../../libacml_mv/src/../inc/fn_macros.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_inlines_amd.h \
+  ../../libacml_mv/src/../inc/libm_util_amd.h \
+  ../../libacml_mv/src/../inc/libm_errno_amd.h
+libacml_mv.a(trunc.o): ../../libacml_mv/src/gas/trunc.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(truncf.o): ../../libacml_mv/src/gas/truncf.S \
+  ../../libacml_mv/inc/fn_macros.h
+libacml_mv.a(v4hcosl.o): ../../libacml_mv/src/gas/v4hcosl.S
+libacml_mv.a(v4helpl.o): ../../libacml_mv/src/gas/v4helpl.S
+libacml_mv.a(v4hfrcpal.o): ../../libacml_mv/src/gas/v4hfrcpal.S
+libacml_mv.a(v4hlog10l.o): ../../libacml_mv/src/gas/v4hlog10l.S
+libacml_mv.a(v4hlog2l.o): ../../libacml_mv/src/gas/v4hlog2l.S
+libacml_mv.a(v4hlogl.o): ../../libacml_mv/src/gas/v4hlogl.S
+libacml_mv.a(v4hsinl.o): ../../libacml_mv/src/gas/v4hsinl.S
+libacml_mv.a(vrd2cos.o): ../../libacml_mv/src/gas/vrd2cos.S
+libacml_mv.a(vrd2exp.o): ../../libacml_mv/src/gas/vrd2exp.S
+libacml_mv.a(vrd2log.o): ../../libacml_mv/src/gas/vrd2log.S
+libacml_mv.a(vrd2log10.o): ../../libacml_mv/src/gas/vrd2log10.S
+libacml_mv.a(vrd2log2.o): ../../libacml_mv/src/gas/vrd2log2.S
+libacml_mv.a(vrd2sin.o): ../../libacml_mv/src/gas/vrd2sin.S
+libacml_mv.a(vrd2sincos.o): ../../libacml_mv/src/gas/vrd2sincos.S
+libacml_mv.a(vrd4cos.o): ../../libacml_mv/src/gas/vrd4cos.S
+libacml_mv.a(vrd4exp.o): ../../libacml_mv/src/gas/vrd4exp.S
+libacml_mv.a(vrd4frcpa.o): ../../libacml_mv/src/gas/vrd4frcpa.S
+libacml_mv.a(vrd4log.o): ../../libacml_mv/src/gas/vrd4log.S
+libacml_mv.a(vrd4log10.o): ../../libacml_mv/src/gas/vrd4log10.S
+libacml_mv.a(vrd4log2.o): ../../libacml_mv/src/gas/vrd4log2.S
+libacml_mv.a(vrd4sin.o): ../../libacml_mv/src/gas/vrd4sin.S
+libacml_mv.a(vrda_scaled_logr.o): ../../libacml_mv/src/gas/vrda_scaled_logr.S
+libacml_mv.a(vrda_scaledshifted_logr.o):  \
+ ../../libacml_mv/src/gas/vrda_scaledshifted_logr.S
+libacml_mv.a(vrdacos.o): ../../libacml_mv/src/gas/vrdacos.S
+libacml_mv.a(vrdaexp.o): ../../libacml_mv/src/gas/vrdaexp.S
+libacml_mv.a(vrdalog.o): ../../libacml_mv/src/gas/vrdalog.S
+libacml_mv.a(vrdalog10.o): ../../libacml_mv/src/gas/vrdalog10.S
+libacml_mv.a(vrdalog2.o): ../../libacml_mv/src/gas/vrdalog2.S
+libacml_mv.a(vrdalogr.o): ../../libacml_mv/src/gas/vrdalogr.S
+libacml_mv.a(vrdasin.o): ../../libacml_mv/src/gas/vrdasin.S
+libacml_mv.a(vrdasincos.o): ../../libacml_mv/src/gas/vrdasincos.S
+libacml_mv.a(vrs4cosf.o): ../../libacml_mv/src/gas/vrs4cosf.S
+libacml_mv.a(vrs4expf.o): ../../libacml_mv/src/gas/vrs4expf.S
+libacml_mv.a(vrs4log10f.o): ../../libacml_mv/src/gas/vrs4log10f.S
+libacml_mv.a(vrs4log2f.o): ../../libacml_mv/src/gas/vrs4log2f.S
+libacml_mv.a(vrs4logf.o): ../../libacml_mv/src/gas/vrs4logf.S
+libacml_mv.a(vrs4powf.o): ../../libacml_mv/src/gas/vrs4powf.S
+libacml_mv.a(vrs4powxf.o): ../../libacml_mv/src/gas/vrs4powxf.S
+libacml_mv.a(vrs4sincosf.o): ../../libacml_mv/src/gas/vrs4sincosf.S
+libacml_mv.a(vrs4sinf.o): ../../libacml_mv/src/gas/vrs4sinf.S
+libacml_mv.a(vrs8expf.o): ../../libacml_mv/src/gas/vrs8expf.S
+libacml_mv.a(vrs8log10f.o): ../../libacml_mv/src/gas/vrs8log10f.S
+libacml_mv.a(vrs8log2f.o): ../../libacml_mv/src/gas/vrs8log2f.S
+libacml_mv.a(vrs8logf.o): ../../libacml_mv/src/gas/vrs8logf.S
+libacml_mv.a(vrsacosf.o): ../../libacml_mv/src/gas/vrsacosf.S
+libacml_mv.a(vrsaexpf.o): ../../libacml_mv/src/gas/vrsaexpf.S
+libacml_mv.a(vrsalog10f.o): ../../libacml_mv/src/gas/vrsalog10f.S
+libacml_mv.a(vrsalog2f.o): ../../libacml_mv/src/gas/vrsalog2f.S
+libacml_mv.a(vrsalogf.o): ../../libacml_mv/src/gas/vrsalogf.S
+libacml_mv.a(vrsapowf.o): ../../libacml_mv/src/gas/vrsapowf.S
+libacml_mv.a(vrsapowxf.o): ../../libacml_mv/src/gas/vrsapowxf.S
+libacml_mv.a(vrsasincosf.o): ../../libacml_mv/src/gas/vrsasincosf.S
+libacml_mv.a(vrsasinf.o): ../../libacml_mv/src/gas/vrsasinf.S

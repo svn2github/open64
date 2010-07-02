@@ -1,0 +1,125 @@
+libf90sgi.a(_powci.o): ../../../libF77/_powci.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../../libF77/c_div.h
+libf90sgi.a(_powcl.o): ../../../libF77/_powcl.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../../libF77/c_div.h
+libf90sgi.a(_powdi.o): ../../../libF77/_powdi.c ../../include/cmplrs/host.h \
+  ../../../libF77/moremath.h
+libf90sgi.a(_powdl.o): ../../../libF77/_powdl.c ../../include/cmplrs/host.h \
+  ../../../libF77/moremath.h
+libf90sgi.a(_powii.o): ../../../libF77/_powii.c ../../include/cmplrs/host.h
+libf90sgi.a(_powll.o): ../../../libF77/_powll.c ../../include/cmplrs/host.h
+libf90sgi.a(_powri.o): ../../../libF77/_powri.c ../../include/cmplrs/host.h
+libf90sgi.a(_powrl.o): ../../../libF77/_powrl.c ../../include/cmplrs/host.h
+libf90sgi.a(_powzi.o): ../../../libF77/_powzi.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../../libF77/z_div.h
+libf90sgi.a(_powzl.o): ../../../libF77/_powzl.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../../libF77/z_div.h
+libf90sgi.a(c_div.o): ../../../libF77/c_div.c ../../../libF77/cmplx.h \
+  ../../include/defalias.h
+libf90sgi.a(catgetmsg.o): ../../../libcsup/msgnew/catgetmsg.c \
+  ../../../clibinc/cray/nlcatmsg.h
+libf90sgi.a(catmsgfmt.o): ../../../libcsup/msgnew/catmsgfmt.c \
+  ../../../clibinc/cray/nlcatmsg.h
+libf90sgi.a(cq_div.o): ../../../libF77/mips/quad/cq_div.c \
+  ../../../linux/mfef90_includes/sys/fpu.h \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(cq_exp.o): ../../../libF77/mips/quad/cq_exp.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(cq_log.o): ../../../libF77/mips/quad/cq_log.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(cq_pow.o): ../../../libF77/mips/quad/cq_pow.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(cq_sqrt.o): ../../../libF77/mips/quad/cq_sqrt.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(dumppfmt.o): ../../../libf/fio/dumppfmt.c ../../../clibinc/cray/format.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(f90_index.o): ../../../libfi/char/f90_index.c ../../../clibinc/fortran.h
+libf90sgi.a(f90_scan.o): ../../../libfi/char/f90_scan.c ../../../clibinc/fortran.h
+libf90sgi.a(f90_verify.o): ../../../libfi/char/f90_verify.c ../../../clibinc/fortran.h
+libf90sgi.a(fmtparse.o): ../../../libf/fio/fmtparse.c ../../../libf/include/lio.h \
+  ../../../clibinc/cray/format.h ../../../clibinc/cray/nassert.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(index.o): ../../../libfi/char/index.c ../../../clibinc/fortran.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(lbound.o): ../../../libfi/array/lbound.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(lerror.o): ../../../libu/errmsg/lerror.c ../../../clibinc/liberrno.h
+libf90sgi.a(lmessage.o): ../../../libu/errmsg/lmessage.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/nlcatmsg.h ../../../clibinc/cray/portdefs.h
+libf90sgi.a(lwarn.o): ../../../libu/errmsg/lwarn.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(modulo.o): ../../../libfi/element/modulo.c ../../../clibinc/fortran.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(parsfmt.o): ../../../libf/fio/parsfmt.c ../../../libf/fio/fmtparse.c \
+  ../../../libf/include/lio.h ../../../clibinc/cray/format.h \
+  ../../../clibinc/cray/nassert.h ../../../clibinc/cray/portdefs.h
+libf90sgi.a(pow_cc.o): ../../../libF77/pow_cc.c ../../../libF77/cmplx.h \
+  ../../include/defalias.h ../../../libF77/moremath.h
+libf90sgi.a(pow_ci.o): ../../../libF77/pow_ci.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../include/defalias.h
+libf90sgi.a(pow_cqi.o): ../../../libF77/mips/quad/pow_cqi.c \
+  ../../include/cmplrs/host.h ../../../libF77/mips/quad/qcmplx.h \
+  ../../../libF77/mips/quad/cq_div.h
+libf90sgi.a(pow_di.o): ../../../libF77/pow_di.c ../../include/cmplrs/host.h \
+  ../../../libF77/moremath.h
+libf90sgi.a(pow_ii.o): ../../../libF77/pow_ii.c ../../include/cmplrs/host.h
+libf90sgi.a(pow_qi.o): ../../../libF77/mips/quad/pow_qi.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(pow_ri.o): ../../../libF77/pow_ri.c ../../include/cmplrs/host.h
+libf90sgi.a(pow_zi.o): ../../../libF77/pow_zi.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../include/defalias.h
+libf90sgi.a(pow_zz.o): ../../../libF77/pow_zz.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../include/defalias.h \
+  ../../../libF77/moremath.h
+libf90sgi.a(q_cis.o): ../../../libF77/mips/quad/q_cis.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(q_sqrt.o): ../../../libF77/mips/quad/q_sqrt.c \
+  ../../../libF77/mips/quad/quad.h \
+  ../../../linux/mfef90_includes/inttypes.h ../../include/standards.h \
+  ../../../libF77/cmplx.h ../../../libF77/mips/quad/qcmplx.h
+libf90sgi.a(repeat.o): ../../../libfi/char/repeat.c ../../../clibinc/fortran.h \
+  ../../../clibinc/liberrno.h ../../../clibinc/cray/dopevec.h
+libf90sgi.a(reshape_gen.o): ../../../libfi/array/reshape_gen.c \
+  ../../../libfi/include/f90_intrinsic.h ../../../clibinc/cray/portdefs.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h \
+  ../../../clibinc/liberrno.h ../../../linux/mfef90_includes/inttypes.h \
+  ../../include/standards.h ../../../clibinc/fmath.h
+libf90sgi.a(scan.o): ../../../libfi/char/scan.c ../../../clibinc/fortran.h
+libf90sgi.a(selrealkind.o): ../../../libfi/element/selrealkind.c \
+  ../../../clibinc/fortran.h ../../../clibinc/fmath.h
+libf90sgi.a(shape.o): ../../../libfi/array/shape.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(size.o): ../../../libfi/array/size.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h
+libf90sgi.a(strnrstrn.o): ../../../libcsup/gen/strnrstrn.c
+libf90sgi.a(strnstrn.o): ../../../libcsup/gen/strnstrn.c
+libf90sgi.a(transfer_gen.o): ../../../libfi/array/transfer_gen.c \
+  ../../../libfi/include/f90_intrinsic.h ../../../clibinc/cray/portdefs.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h \
+  ../../../clibinc/liberrno.h ../../../linux/mfef90_includes/inttypes.h \
+  ../../include/standards.h ../../../clibinc/fmath.h
+libf90sgi.a(trim.o): ../../../libfi/char/trim.c ../../../clibinc/fortran.h \
+  ../../../clibinc/liberrno.h ../../../clibinc/cray/dopevec.h
+libf90sgi.a(ubound.o): ../../../libfi/array/ubound.c ../../../clibinc/liberrno.h \
+  ../../../clibinc/cray/dopevec.h ../../../clibinc/fortran.h \
+  ../../../clibinc/cray/portdefs.h
+libf90sgi.a(verify.o): ../../../libfi/char/verify.c ../../../clibinc/fortran.h
+libf90sgi.a(z_div.o): ../../../libF77/z_div.c ../../include/cmplrs/host.h \
+  ../../../libF77/cmplx.h ../../include/defalias.h \
+  ../../../libF77/moremath.h

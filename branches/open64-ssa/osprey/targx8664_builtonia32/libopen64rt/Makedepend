@@ -1,0 +1,8 @@
+cacheinfo.o: ../../libopen64rt/x8664/cacheinfo.c \
+  ../../libopen64rt/x8664/libc-symbols.h ../../libopen64rt/x8664/config.h \
+  ../../libopen64rt/x8664/symbol-hacks.h
+malloc_opt.o: ../../libopen64rt/malloc_opt.c
+memset.o: ../../libopen64rt/x8664/memset.S \
+  ../../libopen64rt/x8664/libc-symbols.h ../../libopen64rt/x8664/config.h \
+  ../../libopen64rt/x8664/symbol-hacks.h ../../libopen64rt/x8664/sysdep.h \
+  ../../libopen64rt/x8664/sysdeps/generic/sysdep.h

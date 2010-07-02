@@ -1,0 +1,116 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:630: checking host system type
+configure:651: checking target system type
+configure:669: checking build system type
+configure:724: checking for a BSD compatible install
+configure:777: checking whether ln works
+configure:801: checking whether ln -s works
+configure:1866: checking for gcc
+configure:1979: checking whether the C compiler (gcc -m32 -DTARG_X8664 -O0 -g -DIs_True_On ) works
+configure:1995: gcc -m32 -DTARG_X8664 -o conftest -O0 -g -DIs_True_On   conftest.c  1>&5
+configure:2021: checking whether the C compiler (gcc -m32 -DTARG_X8664 -O0 -g -DIs_True_On ) is a cross-compiler
+configure:2026: checking whether we are using GNU C
+configure:2035: gcc -m32 -DTARG_X8664 -E conftest.c
+configure:2054: checking whether gcc -m32 -DTARG_X8664 accepts -g
+configure:2121: checking for gnatbind
+configure:2186: checking whether compiler driver understands Ada
+configure:2218: checking how to compare bootstrapped objects
+configure:2338: checking for correct version of gmp.h
+configure:2351: gcc -m32 -DTARG_X8664 -c -O0 -g -DIs_True_On   conftest.c 1>&5
+configure:2364: checking for correct version of mpfr.h
+configure:2378: gcc -m32 -DTARG_X8664 -c -O0 -g -DIs_True_On   conftest.c 1>&5
+configure:2392: checking for any version of mpfr.h
+configure:2402: gcc -m32 -DTARG_X8664 -o conftest -O0 -g -DIs_True_On    conftest.c  -lmpfr -lgmp 1>&5
+configure:3513: checking for bison
+configure:3553: checking for bison
+configure:3592: checking for gm4
+configure:3592: checking for gnum4
+configure:3592: checking for m4
+configure:3631: checking for flex
+configure:3671: checking for flex
+configure:3710: checking for makeinfo
+configure:3763: checking for expect
+configure:3804: checking for runtest
+configure:3852: checking for x86_64-redhat-linux-ar
+configure:3883: checking for ar
+configure:3927: checking for x86_64-redhat-linux-as
+configure:3958: checking for as
+configure:4002: checking for x86_64-redhat-linux-dlltool
+configure:4033: checking for dlltool
+configure:4077: checking for x86_64-redhat-linux-ld
+configure:4108: checking for ld
+configure:4152: checking for x86_64-redhat-linux-lipo
+configure:4183: checking for lipo
+configure:4227: checking for x86_64-redhat-linux-nm
+configure:4258: checking for nm
+configure:4302: checking for x86_64-redhat-linux-ranlib
+configure:4333: checking for ranlib
+configure:4372: checking for x86_64-redhat-linux-strip
+configure:4403: checking for strip
+configure:4442: checking for x86_64-redhat-linux-windres
+configure:4473: checking for windres
+configure:4517: checking for x86_64-redhat-linux-objcopy
+configure:4548: checking for objcopy
+configure:4592: checking for x86_64-redhat-linux-objdump
+configure:4623: checking for objdump
+configure:4704: checking for x86_64-redhat-linux-cc
+configure:4735: checking for cc
+configure:4795: checking for x86_64-redhat-linux-c++
+configure:4826: checking for c++
+configure:4886: checking for x86_64-redhat-linux-gcc
+configure:4917: checking for gcc
+configure:4972: checking for x86_64-redhat-linux-gcj
+configure:5003: checking for gcj
+configure:5063: checking for x86_64-redhat-linux-gfortran
+configure:5094: checking for gfortran
+configure:5219: checking for ar
+configure:5273: checking for x86_64-redhat-linux-ar
+configure:5304: checking for ar
+configure:5372: checking for as
+configure:5426: checking for x86_64-redhat-linux-as
+configure:5457: checking for as
+configure:5525: checking for dlltool
+configure:5579: checking for x86_64-redhat-linux-dlltool
+configure:5610: checking for dlltool
+configure:5678: checking for ld
+configure:5732: checking for x86_64-redhat-linux-ld
+configure:5763: checking for ld
+configure:5831: checking for lipo
+configure:5885: checking for x86_64-redhat-linux-lipo
+configure:5916: checking for lipo
+configure:5984: checking for nm
+configure:6038: checking for x86_64-redhat-linux-nm
+configure:6069: checking for nm
+configure:6137: checking for objdump
+configure:6191: checking for x86_64-redhat-linux-objdump
+configure:6222: checking for objdump
+configure:6290: checking for ranlib
+configure:6344: checking for x86_64-redhat-linux-ranlib
+configure:6375: checking for ranlib
+configure:6443: checking for strip
+configure:6497: checking for x86_64-redhat-linux-strip
+configure:6528: checking for strip
+configure:6596: checking for windres
+configure:6650: checking for x86_64-redhat-linux-windres
+configure:6681: checking for windres
+configure:6729: checking where to find the target ar
+configure:6762: checking where to find the target as
+configure:6795: checking where to find the target cc
+configure:6828: checking where to find the target c++
+configure:6864: checking where to find the target c++ for libstdc++
+configure:6900: checking where to find the target dlltool
+configure:6933: checking where to find the target gcc
+configure:6966: checking where to find the target gcj
+configure:7002: checking where to find the target gfortran
+configure:7038: checking where to find the target ld
+configure:7071: checking where to find the target lipo
+configure:7094: checking where to find the target nm
+configure:7127: checking where to find the target objdump
+configure:7160: checking where to find the target ranlib
+configure:7193: checking where to find the target strip
+configure:7226: checking where to find the target windres
+configure:7287: checking whether to enable maintainer-specific portions of Makefiles
+configure:7336: checking whether -fkeep-inline-functions is supported
+configure:7345: gcc -m32 -DTARG_X8664 -c -O0 -g -DIs_True_On -fkeep-inline-functions  conftest.c 1>&5

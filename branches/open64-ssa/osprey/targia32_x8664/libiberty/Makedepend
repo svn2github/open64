@@ -1,0 +1,89 @@
+(alloca.o): ../../libiberty/alloca.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(argv.o): ../../libiberty/argv.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(choose-temp.o): ../../libiberty/choose-temp.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(concat.o): ../../libiberty/concat.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(cp-demangle.o): ../../libiberty/cp-demangle.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/dyn-string.h \
+  ../../include/gnu/demangle.h
+(cplus-dem.o): ../../libiberty/cplus-dem.c ../../libiberty/config.h \
+  ../../include/gnu/safe-ctype.h ../../include/gnu/demangle.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h
+(dyn-string.o): ../../libiberty/dyn-string.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/dyn-string.h
+(fdmatch.o): ../../libiberty/fdmatch.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(fibheap.o): ../../libiberty/fibheap.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/fibheap.h
+(floatformat.o): ../../libiberty/floatformat.c \
+  ../../include/gnu/floatformat.h ../../include/gnu/ansidecl.h
+(fnmatch.o): ../../libiberty/fnmatch.c ../../libiberty/config.h \
+  ../../include/gnu/fnmatch.h ../../include/gnu/safe-ctype.h
+(getopt.o): ../../libiberty/getopt.c ../../libiberty/config.h
+(getopt1.o): ../../libiberty/getopt1.c ../../libiberty/config.h \
+  ../../include/gnu/getopt.h
+(getpwd.o): ../../libiberty/getpwd.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(getruntime.o): ../../libiberty/getruntime.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(hashtab.o): ../../libiberty/hashtab.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/hashtab.h
+(hex.o): ../../libiberty/hex.c ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(lbasename.o): ../../libiberty/lbasename.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/safe-ctype.h
+(md5.o): ../../libiberty/md5.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/md5.h
+(mkstemps.o): ../../libiberty/mkstemps.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h
+(objalloc.o): ../../libiberty/objalloc.c ../../include/gnu/ansidecl.h \
+  ../../libiberty/config.h ../../include/gnu/objalloc.h \
+  ../../include/gnu/ansidecl.h
+(obstack.o): ../../libiberty/obstack.c ../../libiberty/config.h \
+  ../../include/gnu/obstack.h
+(partition.o): ../../libiberty/partition.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/partition.h
+(pexecute.o): ../../libiberty/pexecute.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/safe-ctype.h
+(physmem.o): ../../libiberty/physmem.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(safe-ctype.o): ../../libiberty/safe-ctype.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/safe-ctype.h
+(spaces.o): ../../libiberty/spaces.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(splay-tree.o): ../../libiberty/splay-tree.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../include/gnu/splay-tree.h
+(strerror.o): ../../libiberty/strerror.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../libiberty/config.h
+(strsignal.o): ../../libiberty/strsignal.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h \
+  ../../libiberty/config.h
+(xatexit.o): ../../libiberty/xatexit.c ../../include/gnu/ansidecl.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(xexit.o): ../../libiberty/xexit.c ../../libiberty/config.h \
+  ../../include/gnu/libiberty.h ../../include/gnu/ansidecl.h
+(xmalloc.o): ../../libiberty/xmalloc.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(xmemdup.o): ../../libiberty/xmemdup.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(xstrdup.o): ../../libiberty/xstrdup.c ../../libiberty/config.h \
+  ../../include/gnu/ansidecl.h ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h
+(xstrerror.o): ../../libiberty/xstrerror.c ../../include/gnu/libiberty.h \
+  ../../include/gnu/ansidecl.h ../../libiberty/config.h

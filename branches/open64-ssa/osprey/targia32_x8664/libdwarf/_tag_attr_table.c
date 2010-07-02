@@ -1,0 +1,110 @@
+static unsigned int tag_attr_combination_table [ ][3] = {
+/* 0x00                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x01 DW_TAG_array_type               */
+    { 0x00800a0a, 0x1e065000, 0x00000200},
+/* 0x02 DW_TAG_class_type               */
+    { 0x0080080a, 0x1e061000, 00000000},
+/* 0x03 DW_TAG_entry_point              */
+    { 0x0002000a, 0x00080400, 0x00000340},
+/* 0x04 DW_TAG_enumeration_type         */
+    { 0x0080080a, 0x1e061000, 00000000},
+/* 0x05 DW_TAG_formal_parameter         */
+    { 0x4000000e, 0x0e120002, 0x00000a40},
+/* 0x06                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x07                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x08 DW_TAG_imported_declaration     */
+    { 0x0100000a, 0x0e041000, 00000000},
+/* 0x09                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x0a DW_TAG_label                    */
+    { 0x0002000a, 0x00021000, 0x00000040},
+/* 0x0b DW_TAG_lexical_block            */
+    { 0x0006000a, 0x00020000, 0x00000040},
+/* 0x0c                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x0d DW_TAG_member                   */
+    { 0x0080380a, 0x1f040000, 0x00000200},
+/* 0x0e                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x0f DW_TAG_pointer_type             */
+    { 0x00000802, 0x00080000, 0x00000200},
+/* 0x10 DW_TAG_reference_type           */
+    { 0x00000002, 0x00080000, 0x00000200},
+/* 0x11 DW_TAG_compile_unit             */
+    { 0x080f000a, 0x00200020, 0x0000000c},
+/* 0x12 DW_TAG_string_type              */
+    { 0x0280080a, 0x1e061000, 0x00000040},
+/* 0x13 DW_TAG_structure_type           */
+    { 0x0080080a, 0x1e061000, 00000000},
+/* 0x14                                 */
+    { 00000000, 00000000, 00000000},
+/* 0x15 DW_TAG_subroutine_type          */
+    { 0x0080000a, 0x1e0e1080, 0x00000200},
+/* 0x16 DW_TAG_typedef                  */
+    { 0x0080000a, 0x1e061000, 0x00000200},
+/* 0x17 DW_TAG_union_type               */
+    { 0x0080080a, 0x1e061000, 0x00000002},
+/* 0x18 DW_TAG_unspecified_parameters   */
+    { 0x00000002, 0x0e120000, 00000000},
+/* 0x19 DW_TAG_variant                  */
+    { 0x00400002, 0x3e060000, 00000000},
+/* 0x1a DW_TAG_common_block             */
+    { 0x0080000e, 0x1e000000, 00000000},
+/* 0x1b DW_TAG_common_inclusion         */
+    { 0x04800002, 0x1e000000, 00000000},
+/* 0x1c DW_TAG_inheritance              */
+    { 0x00000002, 0x0f040000, 0x00001200},
+/* 0x1d DW_TAG_inlined_subroutine       */
+    { 0x00060002, 0x0e021400, 0x00000040},
+/* 0x1e DW_TAG_module                   */
+    { 0x0086000a, 0x1e040000, 0x00000060},
+/* 0x1f DW_TAG_ptr_to_member_type       */
+    { 0x2080000a, 0x1e0a0000, 0x00000600},
+/* 0x20 DW_TAG_set_type                 */
+    { 0x0080080a, 0x1e061000, 0x00000200},
+/* 0x21 DW_TAG_subrange_type            */
+    { 0x0080080a, 0x1e868004, 0x00000200},
+/* 0x22 DW_TAG_with_stmt                */
+    { 0x00860006, 0x100c0000, 0x00000240},
+/* 0x23 DW_TAG_access_declaration       */
+    { 0x0000000a, 0x0e040000, 00000000},
+/* 0x24 DW_TAG_base_type                */
+    { 0x0000380a, 0x40000000, 00000000},
+/* 0x25 DW_TAG_catch_block              */
+    { 0x00060002, 0x0e020000, 0x00000040},
+/* 0x26 DW_TAG_const_type               */
+    { 0x00000002, 00000000, 0x00000200},
+/* 0x27 DW_TAG_constant                 */
+    { 0x1080000a, 0x9e041000, 0x00000200},
+/* 0x28 DW_TAG_enumerator               */
+    { 0x1000000a, 0x0e000000, 00000000},
+/* 0x29 DW_TAG_file_type                */
+    { 0x0080080a, 0x0e021000, 0x00000200},
+/* 0x2a DW_TAG_friend                   */
+    { 0x00000002, 0x0e020000, 0x00000002},
+/* 0x2b DW_TAG_namelist                 */
+    { 0x00800002, 0x1e060000, 00000000},
+/* 0x2c DW_TAG_namelist_item            */
+    { 0x00000002, 0x0e000000, 0x00000010},
+/* 0x2d DW_TAG_packed_type              */
+    { 0x00000002, 00000000, 0x00000200},
+/* 0x2e DW_TAG_subprogram               */
+    { 0x0086000a, 0x9e5e1481, 0x000033c1},
+/* 0x2f DW_TAG_template_type_parameter  */
+    { 0x0000000a, 0x0e000000, 0x00000200},
+/* 0x30 DW_TAG_template_value_parameter */
+    { 0x1000000a, 0x0e000000, 0x00000200},
+/* 0x31 DW_TAG_thrown_type              */
+    { 0x00000002, 0x0e000000, 0x00000200},
+/* 0x32 DW_TAG_try_block                */
+    { 0x00060002, 0x00020000, 0x00000040},
+/* 0x33 DW_TAG_variant_part             */
+    { 0x00200002, 0x1e060000, 0x00000200},
+/* 0x34 DW_TAG_variable                 */
+    { 0x1080000e, 0x9e041000, 0x000002c0},
+/* 0x35 DW_TAG_volatile_type            */
+    { 0x00000002, 00000000, 0x00000200},
+};

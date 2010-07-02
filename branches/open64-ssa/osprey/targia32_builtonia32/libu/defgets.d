@@ -1,0 +1,1 @@
+defgets.o: defgets.c

@@ -1,0 +1,3 @@
+pxfgetpwnam.pg.o: ../../libf/pxf/pxfgetpwnam.c ../../clibinc/fortran.h \
+  ../../clibinc/liberrno.h ../../libf/pxf/pxfstruct.h \
+  ../../libf/pxf/table.h ../../clibinc/cray/mtlock.h

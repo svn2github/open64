@@ -1,0 +1,93 @@
+libinstr.a(dump.o): ../../instrumentation/libinstr2/dump.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../common/instrument/profile_errors.h ../../common/com/fb_info.h \
+  ../../common/com/fb_freq.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/dump.h
+libinstr.a(dump.pg.o): ../../instrumentation/libinstr2/dump.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../common/instrument/profile_errors.h ../../common/com/fb_info.h \
+  ../../common/com/fb_freq.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/dump.h
+libinstr.a(dump.pic.o): ../../instrumentation/libinstr2/dump.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../common/instrument/profile_errors.h ../../common/com/fb_info.h \
+  ../../common/com/fb_freq.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/dump.h
+libinstr.a(profile.o): ../../instrumentation/libinstr2/profile.cxx \
+  ../../instrumentation/libinstr2/hash_map.h \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/utils.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h ../../common/com/fb_tnv.h
+libinstr.a(profile.pg.o): ../../instrumentation/libinstr2/profile.cxx \
+  ../../instrumentation/libinstr2/hash_map.h \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/utils.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h ../../common/com/fb_tnv.h
+libinstr.a(profile.pic.o): ../../instrumentation/libinstr2/profile.cxx \
+  ../../instrumentation/libinstr2/hash_map.h \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/utils.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h ../../common/com/fb_tnv.h
+libinstr.a(profile_errors.o): ../../common/instrument/profile_errors.cxx \
+  ../../common/instrument/profile_errors.h
+libinstr.a(profile_errors.pg.o): ../../common/instrument/profile_errors.cxx \
+  ../../common/instrument/profile_errors.h
+libinstr.a(profile_errors.pic.o): ../../common/instrument/profile_errors.cxx \
+  ../../common/instrument/profile_errors.h
+libinstr.a(profile_interface.o):  \
+ ../../instrumentation/libinstr2/profile_interface.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/profile_interface.h \
+  ../../common/instrument/profile_errors.h \
+  ../../instrumentation/libinstr2/dump.h
+libinstr.a(profile_interface.pg.o):  \
+ ../../instrumentation/libinstr2/profile_interface.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/profile_interface.h \
+  ../../common/instrument/profile_errors.h \
+  ../../instrumentation/libinstr2/dump.h
+libinstr.a(profile_interface.pic.o):  \
+ ../../instrumentation/libinstr2/profile_interface.cxx \
+  ../../instrumentation/libinstr2/vector.h \
+  ../../instrumentation/libinstr2/profile.h \
+  ../../common/com/profile_com.h ../../common/com/defs.h \
+  ../include/bstring.h ../../common/com/profile_type.h \
+  ../../instrumentation/libinstr2/profile_aux.h \
+  ../../instrumentation/libinstr2/hash_map.h ../../common/com/fb_tnv.h \
+  ../../instrumentation/libinstr2/profile_interface.h \
+  ../../common/instrument/profile_errors.h \
+  ../../instrumentation/libinstr2/dump.h

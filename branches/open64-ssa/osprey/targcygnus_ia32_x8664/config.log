@@ -1,0 +1,58 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:595: checking host system type
+configure:616: checking target system type
+configure:634: checking build system type
+configure:689: checking for a BSD compatible install
+configure:742: checking whether ln works
+configure:766: checking whether ln -s works
+configure:1809: checking for gcc
+configure:1922: checking whether the C compiler (gcc  -O0 -g -DIs_True_On -m32 ) works
+configure:1938: gcc -o conftest  -O0 -g -DIs_True_On -m32   conftest.c  1>&5
+configure:1964: checking whether the C compiler (gcc  -O0 -g -DIs_True_On -m32 ) is a cross-compiler
+configure:1969: checking whether we are using GNU C
+configure:1978: gcc -E conftest.c
+configure:1997: checking whether gcc accepts -g
+configure:2064: checking for gnatbind
+configure:2129: checking whether compiler driver understands Ada
+configure:2162: checking how to compare bootstrapped objects
+configure:2260: checking for correct version of gmp.h
+configure:2273: gcc -c  -O0 -g -DIs_True_On -m32   conftest.c 1>&5
+configure:2286: checking for MPFR
+configure:2299: gcc -o conftest  -O0 -g -DIs_True_On -m32    conftest.c  -lmpfr -lgmp 1>&5
+configure:2786: checking for bison
+configure:2821: checking for bison
+configure:2856: checking for gm4
+configure:2856: checking for gnum4
+configure:2856: checking for m4
+configure:2891: checking for flex
+configure:2926: checking for flex
+configure:2961: checking for makeinfo
+configure:3607: checking for i686-open64-linux-ar
+configure:3640: checking for ar
+configure:3679: checking for i686-open64-linux-as
+configure:3712: checking for as
+configure:3751: checking for i686-open64-linux-dlltool
+configure:3784: checking for dlltool
+configure:3823: checking for i686-open64-linux-ld
+configure:3856: checking for ld
+configure:3895: checking for i686-open64-linux-nm
+configure:3928: checking for nm
+configure:3967: checking for i686-open64-linux-ranlib
+configure:4000: checking for ranlib
+configure:4039: checking for i686-open64-linux-windres
+configure:4072: checking for windres
+configure:4111: checking for i686-open64-linux-objcopy
+configure:4144: checking for objcopy
+configure:4183: checking for i686-open64-linux-objdump
+configure:4216: checking for objdump
+configure:4262: checking for x86_64-open64-linux-ar
+configure:4334: checking for x86_64-open64-linux-as
+configure:4406: checking for x86_64-open64-linux-dlltool
+configure:4478: checking for x86_64-open64-linux-ld
+configure:4550: checking for x86_64-open64-linux-nm
+configure:4622: checking for x86_64-open64-linux-ranlib
+configure:4694: checking for x86_64-open64-linux-windres
+configure:4812: checking whether to enable maintainer-specific portions of Makefiles
+configure:4859: checking if symbolic links between directories work

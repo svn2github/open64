@@ -1,0 +1,3 @@
+tdir_elf_x86_64=x86_64-open64-linux
+tdir_elf_i386=i386-open64-linux
+tdir_i386linux=i386-open64-linuxaout
