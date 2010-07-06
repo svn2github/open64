@@ -264,6 +264,8 @@ public:
   bool exposeArgAddressToReturn() const { return cfa_expose_arg_address_to_return(SideEffects);}
   bool exposeArgAddressToGlobals() const { return cfa_expose_arg_address_to_globals(SideEffects);}
   bool returnsExposedMemory() const { return cfa_returns_exposed_memory(SideEffects);}
+  bool returnsNonPointer() const { return cfa_returns_non_pointer(SideEffects); }
+  bool returnIsNotEscaping() const { return cfa_return_is_not_escaping(SideEffects); }
 
   UINT32 GetArgumentAttr(UINT32 arg_pos, WN* call_node = NULL, 
                          bool ignore_format_string = false) const;

@@ -1141,7 +1141,7 @@ CallSideEffectInfoBase RawLibcallSideEffectTable[] =
       CFAT_libc_default_attr &
       ~(CFAT_exposes_argument_address_to_return |CFAT_exposes_argument_address_to_globals)
       | CFAT_argument_indirectly_read | CFAT_argument_indirectly_write
-      | CFAT_argument_one_level_deref,
+      | CFAT_argument_one_level_deref | CFAT_return_is_not_escaping,
       0,
       { 0, }
     },
