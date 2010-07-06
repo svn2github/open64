@@ -83,6 +83,8 @@ enum CSE_FUNC_ATTR
     CFAT_is_printf_like                      = 0x02000000,
     // return parameter is exposed
     CFAT_returns_exposed_memory              = 0x10000000,
+    CFAT_returns_non_pointer                 = 0x20000000,
+    CFAT_return_is_not_escaping              = 0x40000000,
 
     // some composite defaults:
     CFAT_libc_default_attr =  (
@@ -130,9 +132,14 @@ enum CSE_FUNC_ATTR
         
     CFAT_default_attr = (
                          CFAT_touches_all_attr & 
-                         ~CFAT_allocates_heap_memory & ~CFAT_returns_heap_memory &
-                         ~CFAT_argument_one_level_deref & ~ CFAT_is_marked_libcall &
-                         ~CFAT_has_format_string & ~CFAT_deallocates_heap_memory),
+                         ~CFAT_allocates_heap_memory & 
+                         ~CFAT_returns_heap_memory &
+                         ~CFAT_argument_one_level_deref & 
+                         ~CFAT_is_marked_libcall &
+                         ~CFAT_has_format_string & 
+                         ~CFAT_deallocates_heap_memory &
+                         ~CFAT_returns_non_pointer &
+                         ~CFAT_return_is_not_escaping),
 
     // 
     // Pure call return value depends only on input argument -- it does not
@@ -192,6 +199,8 @@ inline bool cfa_is_stdlibc_entry(UINT32 s) { return (s & CFAT_callee_kind_mask) 
 inline bool cfa_is_libcpp_entry(UINT32 s) { return (s & CFAT_callee_kind_mask) == CFAT_is_libcpp_entry;}
 inline bool cfa_is_f90_entry(UINT32 s) { return (s & CFAT_callee_kind_mask) == CFAT_is_lib_f90;}
 inline bool cfa_returns_exposed_memory(UINT32 s){ return (s & CFAT_returns_exposed_memory);  }
+inline bool cfa_returns_non_pointer(UINT32 s) { return (s & CFAT_returns_non_pointer); }
+inline bool cfa_return_is_not_escaping(UINT32 s) { return (s & CFAT_return_is_not_escaping); }
 
 // pure func
 inline bool cfa_is_pure(UINT32 s) {

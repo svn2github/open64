@@ -135,7 +135,8 @@ LMV_HEURISTIC::Apply(MEM_GROUP_VECT &groups)
   if (n_write_vect < Min_write_vectors())
     return FALSE;
 
-  if (n_vect == Max_access_vectors() && n_write_vect == Max_write_vectors())
+  //if (n_vect == Max_access_vectors() && n_write_vect == Max_write_vectors())
+  if (n_write_vect == Max_write_vectors())
     return TRUE;
 
   return FALSE;
