@@ -1025,7 +1025,7 @@ IPA_NystromAliasAnalyzer::callGraphSetup(IPA_CALL_GRAPH *ipaCallGraph,
     if (i3 == _stToIPANodeMap.end()) {
       bool inTable = false;
       CallSideEffectInfo::GetCallSideEffectInfo(calledFuncST,&inTable);
-      if (!inTable) {
+      if (!inTable && !ST_is_not_used(&St_Table[calledFuncST->st_idx])) {
         _extCallSet.insert(calledFuncST->st_idx);
         if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
           fprintf(stderr,"External call: %s (%d)\n", ST_name(calledFuncST),
