@@ -592,11 +592,9 @@ maybe_apply_renaming_pragma (tree decl, tree asmname)
 
 /* #pragam {frequency_hint|mips_frequency_hint} {never|init|frequent} */
 static void
-handle_pragma_freq_hint (dummy)
-     cpp_reader *dummy ATTRIBUTE_UNUSED;
+handle_pragma_freq_hint (cpp_reader *dummy ATTRIBUTE_UNUSED)
 {
   tree hint, pragma_stmt, tmp;
-  enum cpp_ttype t; /* token */
   const char* hint_name;
 
   /* it should be one of the "never" "init" and "frequent" */

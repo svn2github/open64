@@ -1310,7 +1310,7 @@ print_switch_values (FILE *file, int pos, int max,
 }
 
 #ifdef KEY
-// Bug 10195: Do not produce a .s file under -spinfile.
+/* Bug 10195: Do not produce a .s file under -spinfile. */
 void remove_asm_file (void) {
 
   if (strcmp (asm_file_name, "-") != 0) {
@@ -1964,8 +1964,8 @@ lang_dependent_init (const char *name)
 #endif
 
 #ifdef KEY
-  // Set up the universe so that even if the source file is empty, we still
-  // emit a .spin file.
+  /* Set up the universe so that even if the source file is empty, we still
+   * emit a .spin file. */
   if (flag_spin_file) {
     gspin_init ();
     gspin ((tree) NULL);
@@ -1977,7 +1977,7 @@ lang_dependent_init (const char *name)
 
 #ifdef KEY
   if (flag_spin_file) {
-    // Add the global_trees after they are initialized.
+    /* Add the global_trees after they are initialized. */
     gspin_init_global_trees_list ();
   }
 #endif
@@ -2032,7 +2032,7 @@ finalize (void)
      whether fclose returns an error, since the pages might still be on the
      buffer chain while the file is open.  */
 
-#ifdef KEY // bug 11256
+#ifdef KEY /* bug 11256 */
   if (flag_spin_file)
     remove_asm_file ();
   else

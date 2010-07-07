@@ -1514,8 +1514,8 @@ emit_tinfo_decl (tree decl)
         if (TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (decl)))
           TREE_NOT_EMITTED_BY_GXX (decl) = 0;
         else
-          // at this point it seems g++ is not emitting this symbol, we will
-          // decide
+          /* at this point it seems g++ is not emitting this symbol, we will
+           * decide */
           TREE_NOT_EMITTED_BY_GXX (decl) = 1;
       }
 #endif
