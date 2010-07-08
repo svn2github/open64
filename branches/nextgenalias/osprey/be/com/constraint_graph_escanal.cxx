@@ -388,6 +388,10 @@ EscapeAnalysis::examineCallSites(ConstraintGraph *graph)
           newPropEscapeSt(actual,CG_ST_FLAGS_LPROP_ESC);
         }
         if (callsite->returnId()) {
+          // Have we been explicitly told that the return does not
+          // escape?
+          if (callInfo.returnIsNotEscaping())
+            continue;
           ConstraintGraphNode *actual = 
                                ConstraintGraph::cgNode(callsite->returnId());
           if (!callsite->actualReturnModeled()) {

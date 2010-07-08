@@ -786,7 +786,7 @@ ConstraintGraph::nonIPASolver()
 UINT32
 ConstraintGraphNode::computeMaxAccessSize()
 {
-  UINT32 max = 1;
+  UINT32 max = accessSize();
   for (CGEdgeSetIterator i1 = inLoadStoreEdges().begin();
       i1 != inLoadStoreEdges().end(); ++i1) {
     ConstraintGraphEdge *edge = *i1;

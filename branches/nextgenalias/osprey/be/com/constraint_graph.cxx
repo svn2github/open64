@@ -378,6 +378,24 @@ ModulusRange::print(ostream &str,UINT32 indent)
 }
 
 void
+StInfo::initBlk(UINT64 size, UINT32 flags, MEM_POOL *memPool)
+{
+  _flags = flags;
+  _maxOffsets = 512;
+  _numOffsets = 0;
+  _firstOffset = 0;
+  _ty_idx = 0;
+  _memPool = memPool;
+
+  _varSize = size;
+
+  _u._modulus = _varSize;
+
+  // Treat every symbol as context-insensitive
+  addFlags(CG_ST_FLAGS_NOCNTXT);
+}
+
+void
 StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
 {
   _flags = flags;
@@ -443,7 +461,10 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
 {
   ST *st = &St_Table[st_idx];
 
-  init(ST_type(st), 0, memPool);
+  if (ST_sym_class(*st) == CLASS_BLOCK)
+    initBlk(Blk_Table[ST_blk(*st)].Size(), 0, memPool);
+  else
+    init(ST_type(st), 0, memPool);
 
   // Set the flags
   ST_SCLASS storage_class = ST_sclass(st);
@@ -717,6 +738,18 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
     ptsTo.clear();
     cgNode->unionPointsTo(tmp, pti.qual());
   }
+}
+
+static bool
+callDoesNotReturnPtr(WN *callWN)
+{
+  if (WN_operator(callWN) == OPR_CALL) {
+    CallSideEffectInfo call_info =
+      CallSideEffectInfo::GetCallSideEffectInfo(callWN);
+    if (call_info.returnsNonPointer())
+      return true;
+  }
+  return false;
 }
 
 bool
@@ -1606,6 +1639,7 @@ ConstraintGraph::processExpr(WN *expr)
           WN_MAP_CGNodeId_Set(WN_kid0(expr), tmp1CGNode->id());
         }
         addrCGNode->addFlags(CG_NODE_FLAGS_MEMOP);
+        addrCGNode->accessSize(MTYPE_byte_size(WN_rtype(expr)));
         // If the load can never load a pointer, return notAPointer
         if (!exprMayPoint(expr)) {
           WN_MAP_CGNodeId_Set(expr, notAPointer()->id());
@@ -1963,6 +1997,7 @@ ConstraintGraph::processLHSofStore(WN *stmt)
       }
     }
     cgNodeLHS = addrCGNode;
+    cgNodeLHS->accessSize(MTYPE_byte_size(WN_desc(stmt)));
   }
 
   if (cgNodeLHS == NULL) {
@@ -2359,7 +2394,7 @@ ConstraintGraph::handleCall(WN *callWN)
     // If the return value of the call can be determined to be
     // not a pointer, we want to flag the node that represents
     // the target of that return value as !PTR
-    if (!exprMayPoint(WN_kid0(stmt))) {
+    if (!exprMayPoint(WN_kid0(stmt)) || callDoesNotReturnPtr(callWN)) {
       cgNode->addFlags(CG_NODE_FLAGS_NOT_POINTER);
       cgNode->deleteInOutEdges();
     }
@@ -2698,6 +2733,9 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
 
   TY ty = Ty_Table[ty_idx];
   TY_KIND kind = TY_kind(ty);
+
+  if (kind == KIND_INVALID)
+    return offset;
 
   // For arrays, we dive into the array to determine the actual
   // element type
@@ -4065,6 +4103,54 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
       }
     }
   }
+}
+
+void
+ConstraintGraph::mapAliasedSyms()
+{
+  hash_set<ST_IDX> newSts;
+
+  for (CGStInfoMapIterator iter = _cgStInfoMap.begin(); 
+       iter != _cgStInfoMap.end(); iter++) {
+    CG_ST_IDX cg_st_idx = iter->first;
+    ST_IDX st_idx = SYM_ST_IDX(cg_st_idx);
+    if (newSts.find(st_idx) != newSts.end())
+      continue;
+    // Ignore non global symbols;
+    if (ST_IDX_level(st_idx) != GLOBAL_SYMTAB)
+      continue;
+    ST *st = &St_Table[st_idx];
+    StInfo *stInfo = this->stInfo(cg_st_idx);
+    ConstraintGraphNode *cur = stInfo->firstOffset();
+    if (cur && cur->offset() == -1)
+      cur = cur->nextOffset();
+    while (cur) {
+      INT64 offset = cur->offset();
+      ST *base_st;
+      INT64 base_offset;
+      Expand_ST_into_base_and_ofst(st, offset, &base_st, &base_offset);
+      ConstraintGraphNode *n = checkCGNode(CG_ST_st_idx(base_st), base_offset);
+      if (!n) {
+        newSts.insert(ST_st_idx(base_st));
+        n = getCGNode(CG_ST_st_idx(base_st), base_offset);
+        fprintf(stderr, "mapNewBase: mapping node:\n");
+        cur->print(stderr);
+        fprintf(stderr, "          : to node:\n");
+        n->print(stderr);
+        _aliasedSyms[n->id()] = cur->id();
+      }
+      cur = cur->nextOffset();
+    }
+  }
+}
+
+ConstraintGraphNode *
+ConstraintGraph::aliasedSym(ConstraintGraphNode *n)
+{
+  hash_map<CGNodeId, CGNodeId>::iterator iter = _aliasedSyms.find(n->id());
+  if (iter != _aliasedSyms.end())
+    return cgNode(iter->second);
+  return n;
 }
 
 void

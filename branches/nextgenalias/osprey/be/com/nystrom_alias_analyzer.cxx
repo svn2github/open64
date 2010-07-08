@@ -36,8 +36,18 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
   _constraintGraph = CXX_NEW(ConstraintGraph((WN*) NULL, &_memPool), 
                              &_memPool);
 
+#if 0
+  if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)) {
+    fprintf(stderr,"Nystrom IPA BE...\n");
+    fprintf(stderr, "Printing ConstraintGraph\n");
+    _constraintGraph->print(stderr);
+  }
+#endif
+
   // Map WNs to AliasTags
   createAliasTags(entryWN);
+
+  // _constraintGraph->mapAliasedSyms();
 
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
@@ -194,6 +204,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
     if (size == 0) {
       ConstraintGraphNode *node = cg->checkCGNode(CG_ST_st_idx(st),offset);
       if (node) {
+        node = cg->aliasedSym(node);
         aliasTag = newAliasTag();
         AliasTagInfo *aliasTagInfo = _aliasTagInfo[aliasTag];
         if (direct) {
@@ -223,10 +234,11 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
       }
     }
     else {
-      ConstraintGraphNode *node = stInfo->firstOffset();
+      ConstraintGraphNode *cur = stInfo->firstOffset();
       AliasTagInfo *aliasTagInfo = NULL;
-      while (node && node->offset() < offset+size) {
-        if (node->offset() >= offset) {
+      while (cur && cur->offset() < offset+size) {
+        if (cur->offset() >= offset) {
+          ConstraintGraphNode *node = cg->aliasedSym(cur);
           if (aliasTag == InvalidAliasTag) {
             aliasTag = newAliasTag();
             aliasTagInfo = _aliasTagInfo[aliasTag];
@@ -258,7 +270,7 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
             aliasTagInfo->pointsTo().setUnion(node->pointsTo(CQ_HZ));
           }
         }
-        node = node->nextOffset();
+        cur = cur->nextOffset();
       }
     }
     if (aliasTag != InvalidAliasTag &&
@@ -598,6 +610,9 @@ ConstraintGraph::buildCGNode(SUMMARY_CONSTRAINT_GRAPH_NODE* summ)
 
   cgIdToNodeMap[summ->cgNodeId()] = cgNode;
   _cgNodeToIdMap[cgNode] = summ->cgNodeId();
+
+  nextCGNodeId = MAX(nextCGNodeId, summ->cgNodeId());
+  nextCGNodeId++;
 }
 
 void

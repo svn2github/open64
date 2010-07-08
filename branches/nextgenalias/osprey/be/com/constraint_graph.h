@@ -388,6 +388,7 @@ public:
     _parentCG(parentCG),
     _id(0),
     _version(0),
+    _accessSize(1),
     _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
@@ -411,6 +412,7 @@ public:
     _parentCG(parentCG),
     _id(id),
     _version(0),
+    _accessSize(1),
     _ty_idx(0),
     _inEdges(NULL),
     _outEdges(NULL)
@@ -681,6 +683,9 @@ public:
 
   void collapseTypeIncompatibleNodes();
 
+  UINT8 accessSize() { return _accessSize; } 
+  void accessSize(UINT8 s) { _accessSize = MAX(_accessSize, s); }
+
   typedef struct
   {
     size_t operator()(const ConstraintGraphNode *k) const
@@ -789,6 +794,10 @@ private:
   ConstraintGraph *_parentCG;
   CGNodeId _id;
   UINT8    _version;
+
+  // For tracking the max access size from the
+  // WN for iloads/istores
+  UINT8 _accessSize; 
 
   TY_IDX   _ty_idx;
 
@@ -1096,6 +1105,8 @@ public:
 
 private:
   void init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool);
+
+  void initBlk(UINT64 size, UINT32 flags, MEM_POOL *memPool);
 
   UINT32 _flags;
   union  {
@@ -1479,6 +1490,10 @@ public:
 
   CGStInfoMap &newLocalStInfos() { return _newLocalStInfos; }
 
+  void mapAliasedSyms();
+
+  ConstraintGraphNode *aliasedSym(ConstraintGraphNode *n);
+
 private:
 
   // Max size of all types
@@ -1628,6 +1643,8 @@ private:
 
   // Track the newly created StInfos created in buildLocalStInfo
   CGStInfoMap _newLocalStInfos;
+
+  hash_map<CGNodeId, CGNodeId> _aliasedSyms;
 
   MEM_POOL *_memPool;
 };

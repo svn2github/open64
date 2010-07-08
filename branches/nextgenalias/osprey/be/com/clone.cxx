@@ -348,6 +348,10 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
 
   ret_wn = Copy_Node (wn);
 
+  // Clone the WN to CGNodeId mapping for the cloned node into the caller
+  if (Alias_Nystrom_Analyzer)
+    ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(wn, ret_wn, this);
+
   op = WN_opcode(wn);
 
   if (_sym) {
@@ -372,9 +376,7 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
             Fix_ST (ret_wn, wn);
 
        // Nystrom alias analyzer:
-       // Clone the WN to CGNodeId mapping for the cloned node into the caller
        if (Alias_Nystrom_Analyzer) {
-         ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(wn, ret_wn, this);
          // Map the original st_idx to its clone for non globals
          if (OPCODE_has_sym(op) && !OPCODE_is_call(WN_opcode(wn)) && 
              WN_st(wn) && (ST_IDX_level(WN_st_idx(wn)) != GLOBAL_SYMTAB))
