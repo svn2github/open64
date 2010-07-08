@@ -1180,6 +1180,7 @@ IPA_NystromAliasAnalyzer::validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx)
       }
       //fprintf(stderr,"\n");
     }
+    free(demangledName);
     if (!match)
       return false;
 #if 0
@@ -1190,7 +1191,6 @@ IPA_NystromAliasAnalyzer::validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx)
       free(demangleCaller);
     }
 #endif
-    free(demangledName);
     return true;
   }
   // Not a mangled C++ name, cannot be called from virtual callsite
@@ -1597,6 +1597,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
      fprintf(stderr,"IPA Nystrom: Solver Complete\n");
+
+  _indirectEdgeSet.clear();
+  _stToIndTgtMap.clear();
+  _stToIPANodeMap.clear();
+  _extCallSet.clear();
 
   if (Get_Trace(TP_ALIAS,NYSTROM_CG_VCG_FLAG))
     ConstraintGraphVCG::dumpVCG("ipa_final");

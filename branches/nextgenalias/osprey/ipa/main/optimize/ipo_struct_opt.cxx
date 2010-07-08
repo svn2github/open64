@@ -1419,6 +1419,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
         WN_offset(wn) = index_offset * TY_size(TY_pointed(ptr_to_gptr_ty_idx
           [WN_field_id(wn)]));
         WN_set_field_id(wn, 0);
+        IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, wn, 0);
       }
       break;
 
@@ -1474,6 +1475,7 @@ static WN *traverse_wn_tree_for_complete_struct_relayout(WN *block_wn,
         WN_offset(wn) = index_offset * TY_size(TY_pointed(ptr_to_gptr_ty_idx
           [WN_field_id(wn)]));
         WN_set_field_id(wn, 0);
+        IPA_WN_MAP32_Set(Current_Map_Tab, WN_MAP_ALIAS_CGNODE, wn, 0);
       }
       break;
 
