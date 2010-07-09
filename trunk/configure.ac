@@ -101,6 +101,9 @@ BUILD_MULTILIB=NO
 # BUILD_BOTH is (only) used in osprey/Makefile.gsetup.in for setting -fPIC.
 BUILD_BOTH=
 
+# Set BUILD_GNU3 to "YES" to build the GCC 3.3 C/C++ front-end.
+BUILD_GNU3=NO
+
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
 TARG_INFO_NAME=targ_info
@@ -269,6 +272,7 @@ AC_SUBST([LIB2_BUILD_HOST])
 AC_SUBST([BUILD_MULTILIB])
 AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
+AC_SUBST([BUILD_GNU3])
 AC_SUBST([GCC_CONFIGURE_TARG])
 AC_SUBST([GCC_DIR])
 
@@ -308,11 +312,16 @@ AC_CONFIG_FILES([
   osprey/targdir/crayf90/fe90/Makefile
   osprey/targdir/crayf90/libf90sgi/Makefile
   osprey/targdir/crayf90/sgi/Makefile
-  osprey/targdir/gccfe/Makefile
-  osprey/targdir/gccfe/gnu/Makefile
-  osprey/targdir/g++fe/Makefile
-  osprey/targdir/g++fe/gnu/Makefile
 ])
+
+if test $BUILD_GNU3 = "YES"; then
+  AC_CONFIG_FILES([
+    osprey/targdir/gccfe/Makefile
+    osprey/targdir/gccfe/gnu/Makefile
+    osprey/targdir/g++fe/Makefile
+    osprey/targdir/g++fe/gnu/Makefile
+  ])
+fi
 
 # The directories created under targdir_lib (and targdir_lib2) also
 # need to be listed in LIBLIST.  This list is used in targdir_lib/Makefile.in

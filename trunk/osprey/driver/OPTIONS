@@ -702,15 +702,16 @@ I-D_LANGUAGE_FORTRAN	;		FTN	CPP	self
 	"Produce debugging information for use by GDB"
 -ggdb3	toggle(&glevel,3);		ALL	CMP	"-g3"
 	"Produce debugging information for use by GDB"
-#ifdef KEY
+#ifdef BUILD_GNU3
 -gnu3	toggle(&gnu_major_version,3);toggle(&gnu_minor_version,3);	Cc	NONE	""
 	"Use GCC 3.3 C/C++ front-end."
 -gnu4	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
 	"Use GCC 4.2 C/C++ front-end."
--gnu40	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,0);	Cc	NONE	""
-	"Use GCC 4.0 C/C++ front-end."
 -gnu42	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
 	"Use GCC 4.2 C/C++ front-end."
+#else
+-gnu42	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
+	""
 #endif
 -gstabs		warn_ignored(option_name);	ALL	NONE	""
 	""

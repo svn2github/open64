@@ -132,6 +132,9 @@ endif
 ifndef BUILD_BOTH
      BUILD_BOTH     = @BUILD_BOTH@
 endif
+ifndef BUILD_GNU3
+     BUILD_GNU3     = @BUILD_GNU3@
+endif
 ifndef COMPILER_TARG_DIR
      COMPILER_TARG_DIR = @abs_top_builddir@/osprey/targdir
 endif

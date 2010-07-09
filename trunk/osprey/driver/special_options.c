@@ -164,6 +164,11 @@ set_defaults (void)
 		toggle(&use_ftpp, 0);
 	}
 
+#ifndef BUILD_GNU3
+    // Always use the GCC 4.2 FE.
+    toggle(&gnu_major_version, 4);
+    toggle(&gnu_minor_version, 2);
+#else
 	// Use the system's GCC version to select -gnu3/-gnu4 as the default.
 	// Bug 11426.
 	if (!is_toggled(gnu_major_version)) {
@@ -179,6 +184,8 @@ set_defaults (void)
 	      error("no support for GCC version %d", gnu_major_version);
 	  }
 	}
+#endif
+
 #endif
 #if defined(TARG_NVISA)
 	/* stop after assembly */
