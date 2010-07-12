@@ -2098,6 +2098,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Enable SSE extensions"
 -mno-sse	toggle(&sse,FALSE);toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	be	""
 	"Disable SSE2/SSE3/SSE4a extensions"
+-msse2	toggle(&mmx,TRUE);toggle(&sse,TRUE);toggle(&sse2,TRUE);		ALL	CPP,cfe		self
+	"Enable SSE2 extensions"
 -mno-sse2	toggle(&sse2,FALSE);toggle(&sse3,FALSE);toggle(&sse4a,FALSE);	ALL	CPP,cfe		self
 	"Disable SSE2/SSE3 extensions"
 -msse3	toggle(&sse2,TRUE);toggle(&sse3,TRUE);	ALL	CPP,cfe		self

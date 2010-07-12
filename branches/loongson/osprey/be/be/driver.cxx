@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -195,7 +199,6 @@ extern void (*EH_Generate_Range_List_p) (WN *);
 // used to dump information of EH related INITO
 extern void (*EH_Dump_INITOs_p) (WN *, FILE *);
 #define EH_Dump_INITOs (*EH_Dump_INITOs_p)
-
 #else
 extern void CG_Process_Command_Line (INT, char **, INT, char **);
 extern void CG_Init ();
@@ -204,7 +207,6 @@ extern void CG_PU_Initialize (WN*);
 extern void CG_PU_Finalize ();
 extern WN* CG_Generate_Code (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 extern void EH_Generate_Range_List (WN *);
-extern void EH_Dump_INITOs (WN *, FILE *);
 #endif //BUILD_FAST_BIN
 
 #else
@@ -220,7 +222,6 @@ extern void EH_Dump_INITOs (WN *, FILE *);
 
 #endif // __linux__
 #endif // SHARED_BUILD
-
 
 #if defined(TARG_SL)  || defined(TARG_MIPS)
 extern INT *SI_resource_count_p;
@@ -638,11 +639,11 @@ Phase_Init (void)
 
     if (need_lno_output) {
 	Write_BE_Maps = TRUE;
-    // Output IR after preopt to .P file, and IR after LNO to .N file.
-    if (Run_lno)
-       ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
-    else
-       ir_output = Open_Output_Info(New_Extension(output_file_name,".P"));
+	// Output IR after preopt to .P file, and IR after LNO to .N file.
+	if (Run_lno)
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".N"));
+	else
+	    ir_output = Open_Output_Info(New_Extension(output_file_name,".P"));
     }
     if (need_wopt_output) {
 	Write_ALIAS_CLASS_Map = TRUE;
@@ -1183,10 +1184,6 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	if ( Cur_PU_Feedback ) {
 	  Cur_PU_Feedback->Verify("after WOPT");
 	}
-#if 0  // this is now unnecessary because the lowering is done inside wopt
-	if (Only_Unsigned_64_Bit_Ops && Delay_U64_Lowering)
-	  U64_lower_wn(rwn, FALSE);
-#endif
       }
 
       /* we may still have to print the .O file:		   */
@@ -1210,10 +1207,6 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
 	WN_Instrument(rwn, PROFILE_PHASE_BEFORE_CG);
-#if 0
-	extern void wb_gwe(WN*); // hack to check __profile calls.
-	wb_gwe(rwn);
-#endif
       } else if (Feedback_Enabled[PROFILE_PHASE_BEFORE_CG]) {
 	rwn = WN_Lower(rwn, LOWER_SCF, NULL, 
 		       "Lower structured control flow");
@@ -1424,101 +1417,6 @@ static void Update_EHRegion_Inito (WN *pu) {
   Update_EHRegion_Inito_Used (pu);
 }
 
-#if 0
-static const char*
-Get_INITV_kind (INITVKIND kind)
-{
-#define CASE_KIND(n)    case n:return #n
-  switch (kind) {
-          CASE_KIND(INITVKIND_UNK);
-          CASE_KIND(INITVKIND_SYMOFF);
-          CASE_KIND(INITVKIND_ZERO);
-          CASE_KIND(INITVKIND_ONE);
-          CASE_KIND(INITVKIND_VAL);
-          CASE_KIND(INITVKIND_BLOCK);
-          CASE_KIND(INITVKIND_PAD);
-          CASE_KIND(INITVKIND_SYMDIFF);
-          CASE_KIND(INITVKIND_SYMDIFF16);
-          CASE_KIND(INITVKIND_LABEL);
-#ifdef TARG_IA64
-          CASE_KIND(INITVKIND_SYMIPLT);
-#endif
-  }
-  return "unknown";
-#undef CASE_KIND
-}
-
-static const char*
-Get_LABEL_Kind (LABEL_KIND kind)
-{
-#define CASE_KIND(n)    case n: return #n
-  switch (kind) {
-        CASE_KIND(LKIND_DEFAULT);
-        CASE_KIND(LKIND_ASSIGNED);
-        CASE_KIND(LKIND_BEGIN_EH_RANGE);
-        CASE_KIND(LKIND_END_EH_RANGE);
-        CASE_KIND(LKIND_BEGIN_HANDLER);
-        CASE_KIND(LKIND_END_HANDLER);
-  }
-  return "unknown";
-#undef CASE_KIND
-}
-
-static void
-EH_Dump_INITV (INITV_IDX inv, FILE* fp, int step)
-{
-  if (inv == 0)return;
-  // for identation, increased by step
-  for (int i=0; i<step; i++)
-    fprintf(fp, "\t");
-
-  fprintf(fp, "%s (%d)", Get_INITV_kind(INITV_kind(inv)), inv);
-
-  if (INITVKIND_BLOCK == INITV_kind(inv)) {
-    fprintf(fp, "\n");
-    EH_Dump_INITV(INITV_blk(inv), fp, step + 1);
-  }
-  else if (INITVKIND_LABEL == INITV_kind(inv)) {
-    LABEL& lab = Label_Table[INITV_lab(inv)];
-    fprintf(fp, " %s: (%s) (%d)\n", Get_LABEL_Kind (lab.kind), LABEL_name (lab), INITV_lab(inv));
-  }
-  else if (INITVKIND_VAL == INITV_kind(inv)) {
-    int sym = TCON_ival(INITV_tc_val(inv));
-    fprintf(fp, " INITVKIND_VAL: value = %d (0x%08x)\n", sym, sym);
-  }
-  else if (INITVKIND_ZERO == INITV_kind(inv)) {
-    fprintf(fp, " INITVKIND_VAL: value = 0\n");
-  }
-  else if (INITVKIND_ONE == INITV_kind(inv)) {
-    fprintf(fp, " INITVKIND_VAL: value = 1\n");
-  }
-  else {
-    fprintf(fp, "\n");
-  }
-  if (INITV_next(inv) != 0)
-    EH_Dump_INITV(INITV_next(inv), fp, step);
-}
-
-static void
-EH_Dump_INITOs (WN *pu, FILE *fp)
-{
-  INT i;
-  INITO *ino;
-  static int num = 0;
-  FOREACH_INITO (CURRENT_SYMTAB, ino, i) {
-    ST *st = INITO_st(ino);
-    if (st->storage_class == SCLASS_EH_REGION ||
-        st->storage_class == SCLASS_EH_REGION_SUPP)
-      if (!ST_is_not_used(st)) {
-        INITV_IDX inv = ino->val;
-        fprintf(fp, "EH Symbol [%d]: \n", num++);
-        fprintf(fp, "\tName:   %s\n", ST_name(st));
-        EH_Dump_INITV (inv, fp, 1);
-      }
-  }
-}
-#endif
-
 static void
 Backend_Processing (PU_Info *current_pu, WN *pu)
 {
@@ -1667,7 +1565,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 #endif
     Update_EHRegion_Inito (pu);
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_IA64)
     /* Generate EH range table for PU.  The high and low labels are
      * filled in during code generation.
      */
@@ -1957,10 +1855,6 @@ Preprocess_PU (PU_Info *current_pu)
        && (Instrumentation_Phase_Num == PROFILE_PHASE_BEFORE_VHO)) {
     if (!is_mp_nested_pu )
       WN_Instrument(pu, PROFILE_PHASE_BEFORE_VHO); 
-#if 0
-    extern void wb_gwe(WN*); // hack to check __profile calls.
-    wb_gwe(pu);
-#endif
   } else if ( Feedback_Enabled[PROFILE_PHASE_BEFORE_VHO] ) {
     WN_Annotate(pu, PROFILE_PHASE_BEFORE_VHO, &MEM_pu_pool);
   }
@@ -2005,9 +1899,9 @@ Postprocess_PU (PU_Info *current_pu)
   }
 
   if (Run_ipl != 0 && (Run_wopt || Run_preopt))
-	choose_from_complete_struct_for_relayout_candidates(); // among all the
-	// structures marked by ipl while compiling all the functions in this file,
-	// choose the most profitable one
+    choose_from_complete_struct_for_relayout_candidates(); // among all the
+    // structures marked by ipl while compiling all the functions in this file,
+    // choose the most profitable one
 
   Current_Map_Tab = PU_Info_maptab(current_pu);
  
@@ -2053,12 +1947,6 @@ Postprocess_PU (PU_Info *current_pu)
   }
 } /* Postprocess_PU */
 
-//#ifdef TARG_LOONGSON
-#if 0
-int pu_has_throw;
-int pu_need_lsda;
-int pu_need_eh;
-#endif
 /* compile each PU through all phases before going to the next PU */
 static void
 Preorder_Process_PUs (PU_Info *current_pu)
@@ -2421,10 +2309,10 @@ main (INT argc, char **argv)
 #ifdef KEY // bug 5684: deleting branches interferes with branch profiling
 	WOPT_Enable_Simple_If_Conv = FALSE;
 #endif
-    // Proactive loop nest transformation interferes with branch profiling.
-    WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
-    WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE;
-
+	// Proactive loop nest transformation interferes with branch profiling.
+	WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
+	WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE;
+	
 	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }
   }

@@ -53,7 +53,22 @@ extern void Cg_Dwarf_Finish (pSCNINFO text_scninfo);
 
 extern void Cg_Dwarf_Add_Line_Entry (INT code_address, SRCPOS srcpos);
 
-#ifdef TARG_X8664
+#ifndef TARG_X8664
+extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
+				 LABEL_IDX   begin_label,
+				 LABEL_IDX   end_label,
+				 INT32       end_offset,
+				 ST         *PU_st,
+				 DST_IDX     pu_dst,
+				 Elf64_Word  eh_index,
+				 INT         eh_offset,
+				 // The following two arguments need
+				 // to go away once libunwind provides
+				 // an interface that lets us specify
+				 // ranges symbolically.
+				 INT        low_pc,
+				 INT        high_pc);
+#else
 extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 				 LABEL_IDX   begin_label,
 				 LABEL_IDX   end_label,
@@ -75,41 +90,7 @@ extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
 				 // ranges symbolically.
 				 INT        low_pc,
 				 INT        high_pc);
-#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
-extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
-				 LABEL_IDX   begin_label,
-				 LABEL_IDX   end_label,
-				 LABEL_IDX   *eh_adjustsp_label,
-				 LABEL_IDX   *eh_callee_saved_reg,
-				 INT32       new_cfa_offset,
-				 INT32       end_offset,
-				 ST         *PU_st,
-				 DST_IDX     pu_dst,
-				 Elf64_Word  eh_index,
-				 INT         eh_offset,
-				 // The following two arguments need
-				 // to go away once libunwind provides
-				 // an interface that lets us specify
-				 // ranges symbolically.
-				 INT        low_pc,
-				 INT        high_pc);
-#else
-extern void Cg_Dwarf_Process_PU (Elf64_Word  scn_index,
-				 LABEL_IDX   begin_label,
-				 LABEL_IDX   end_label,
-				 INT32       end_offset,
-				 ST         *PU_st,
-				 DST_IDX     pu_dst,
-				 Elf64_Word  eh_index,
-				 INT         eh_offset,
-				 // The following two arguments need
-				 // to go away once libunwind provides
-				 // an interface that lets us specify
-				 // ranges symbolically.
-				 INT        low_pc,
-				 INT        high_pc);
 #endif // TARG_X8664
-
 // To force a line number entry after the end of preamble in entry BB.
 extern BOOL Cg_Dwarf_First_Op_After_Preamble_End;
 #ifdef KEY

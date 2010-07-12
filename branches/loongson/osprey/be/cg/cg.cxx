@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -185,7 +189,10 @@ BOOL CG_file_scope_asm_seen = FALSE;
 
 BOOL gra_pre_create = TRUE;
 #ifdef TARG_X8664
+BOOL PU_has_local_dynamic_tls;
+TN*  Local_Dynamic_TLS_Base;
 BOOL PU_References_GOT;  // for -m32 -fpic
+BOOL PU_has_avx128;      // cause emit of vzeroupper 
 #endif
 
 BOOL edge_done = FALSE;
@@ -201,6 +208,10 @@ BB_MAP BBs_Map = NULL;
 extern BOOL cg_load_execute_overridden;
 #endif
 
+#ifdef TARG_PPC32
+extern void Expand_Start();
+extern void Expand_Finish();
+#endif
 /* WOPT alias manager */
 struct ALIAS_MANAGER *Alias_Manager;
 
@@ -259,6 +270,10 @@ CG_PU_Initialize (WN *wn_pu)
       CG_load_execute = 1;
     }
   }
+
+  // for local dynamic tls, all tls objects can share the same base
+  PU_has_local_dynamic_tls = FALSE;
+  Local_Dynamic_TLS_Base = NULL;
 
   PU_References_GOT = FALSE;
 
@@ -354,7 +369,7 @@ CG_PU_Initialize (WN *wn_pu)
 #endif 
   Init_Label_Info();
 
-#ifdef EMULATE_LONGLONG
+#if defined(EMULATE_LONGLONG) && !defined(TARG_PPC32)
   extern void Init_TN_Pair();
   Init_TN_Pair ();
 #endif
@@ -409,6 +424,10 @@ CG_PU_Finalize(void)
   BB_MAP_Delete( BBs_Map );
   BBs_Map = NULL;
 
+  Expand_Finish();
+#endif
+
+#if defined(TARG_PPC32)
   Expand_Finish();
 #endif
 
@@ -467,7 +486,7 @@ CG_Region_Initialize (WN *rwn, struct ALIAS_MANAGER *alias_mgr)
 
   Current_Rid = REGION_get_rid( rwn );
 
-#ifdef TARG_X8664
+#if defined(TARG_X8664) || defined(TARG_PPC32)
   Expand_Start();
 #endif
 
@@ -634,7 +653,6 @@ Collect_Simd_Register_Usage()
 }
 #endif 
 
-
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 static void Config_Ipfec_Flags() {
  
@@ -787,6 +805,10 @@ CG_Generate_Code(
 #endif
 
   Convert_WHIRL_To_OPs ( rwn );
+#if defined(TARG_PPC32)
+  extern void Set_Current_PU_WN(WN*);
+  Set_Current_PU_WN(rwn);
+#endif
 
 #ifndef TARG_NVISA
 
@@ -821,6 +843,7 @@ CG_Generate_Code(
     Localize_or_Replace_Dedicated_TNs();
   }
 
+
   // If using feedback, incorporate into the CFG as early as possible.
   // This phase also fills in any missing feedback using heuristics.
   if (CG_PU_Has_Feedback) {
@@ -838,11 +861,8 @@ CG_Generate_Code(
   // do not have calls or throws. 
 
   EH_Prune_Range_List();
-#ifdef KEY
-  Reset_PU_Range_ST();
-#endif
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_IA64)
   // it's high time to compute pu_need_LSDA after EH_Prune_Range_List, 
   pu_need_LSDA = !PU_Need_Not_Create_LSDA ();
 #endif
@@ -866,7 +886,11 @@ CG_Generate_Code(
   //while Generate_Entry_Exit_Code will do this instead, but it need to know
   //IPFEC_Enable_Edge_Profile in time.
   Config_Ipfec_Flags();
-#endif  
+#endif
+#if defined(TARG_PPC32)
+extern void Generate_Return_Address(void);
+  Generate_Return_Address();
+#endif
 #ifdef TARG_LOONGSON
   if ( (IPFEC_Enable_Edge_Profile || IPFEC_Enable_Stride_Profile || IPFEC_Enable_Cache_Profile)
        && (CG_opt_level>1)) 
@@ -884,7 +908,7 @@ CG_Generate_Code(
 #ifndef TARG_NVISA	// nvisa just emits initial assembly
 
 #ifdef TARG_IA64
-  if (IPFEC_Enable_Edge_Profile && (CG_opt_level>1) )
+  if (IPFEC_Enable_Edge_Profile && can_invoke_profile_with_current_cg_opt_level )
   {
     Set_Error_Phase ( "edge profile instrument" );
     Start_Timer ( T_Ipfec_Profiling_CU );
@@ -892,7 +916,7 @@ CG_Generate_Code(
     Stop_Timer( T_Ipfec_Profiling_CU );
     Check_for_Dump(TP_A_PROF, NULL);
     Set_Frame_Has_Calls(TRUE);
-  } else if (IPFEC_Enable_Edge_Profile_Annot && (CG_opt_level>1) ) {
+  } else if (IPFEC_Enable_Edge_Profile_Annot && can_invoke_profile_with_current_cg_opt_level ) {
     Set_Error_Phase ( "edge profile annotation" );
     CG_Edge_Profile_Annotation(RID_cginfo(Current_Rid),PROFILE_PHASE_BEFORE_REGION);
     Check_for_Dump(TP_A_PROF, NULL);
@@ -1315,7 +1339,7 @@ CG_Generate_Code(
   fat_self_recursive = FALSE;
   //Check_Self_Recursive();
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
-  
+
   if (IPFEC_Enable_Prepass_GLOS && CG_opt_level > 1) {
     Start_Timer( T_GLRA_CU );
     GRA_LIVE_Init(region ? REGION_get_rid( rwn ) : NULL);
@@ -1330,7 +1354,6 @@ CG_Generate_Code(
   } else {
     IGLS_Schedule_Region (TRUE /* before register allocation */);
   }
-
   
   if (CG_opt_level > 1 && IPFEC_Enable_PRDB) PRDB_Init(region_tree);
   // bug fix for OSP_104, OSP_105, OSP_192
@@ -1456,25 +1479,13 @@ CG_Generate_Code(
   }
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
-  /* for now we don't turn on ebo, it causes that there are lots of 
-   * jump to jump not converted to direct jump implemented in 
-   * CFLOW_Optimize in EBO_Post_Process_Region so we call 
-   * CFLOW_Optimize once immediately before Local scheduling as 
-   * walkaround.  After ebo turn on, we need back to use original 
-   * function call in ebo.
-   */
-  if( CG_Enable_Regional_Global_Sched && 
-      CG_Enable_REGION_formation &&
-      CG_opt_level > 1) {
-     CFLOW_Optimize( CFLOW_BRANCH | CFLOW_UNREACHABLE | CFLOW_MERGE | 
-                      CFLOW_REORDER, "CFLOW (third pass)");
-  }
-
-  Check_for_Dump_ALL ( TP_CGEXP, NULL, "after Sched" );
 #else
   GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
   GRA_LIVE_Rename_TNs();
+#if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#endif 
+
 #endif // TARG_SL
 #endif
 
@@ -1505,7 +1516,6 @@ CG_Generate_Code(
 #endif
       GRA_LIVE_Rename_TNs ();
     }
-
 #ifdef TARG_IA64
     if (GRA_redo_liveness || IPFEC_Enable_Prepass_GLOS && (CG_opt_level > 1 || value_profile_need_gra)) {
 #else
@@ -1530,6 +1540,10 @@ CG_Generate_Code(
   }
 
   LRA_Allocate_Registers (!region);
+
+#ifdef TARG_X8664
+  GRU_Fuse_Global_Spills (!region);
+#endif
 
 #if defined(TARG_SL)
   if (Run_ipisr)
@@ -1663,6 +1677,7 @@ CG_Generate_Code(
   }
 
 #else 
+#if !defined(TARG_PPC32)
 #ifdef TARG_LOONGSON
   // Mainly concerns about ld from GRA
   if (!CG_localize_tns){
@@ -1681,6 +1696,13 @@ CG_Generate_Code(
   Finalize_Optimized_LRA_And_EBO();
 #endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
+#ifndef TARG_LOONGSON
+  // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
+  if (Is_Target_Orochi()) {
+    CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
+  }
+#endif
+#endif
 #endif
 
 #if defined(TARG_MIPS) && !defined(TARG_SL)
@@ -1698,12 +1720,27 @@ CG_Generate_Code(
 
 #ifdef TARG_X8664
   {
+    /* Perform compute-to opts. */
+    if ((Is_Target_Barcelona() || Is_Target_Orochi()) && CG_compute_to) {
+      for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
+        EBO_Compute_To(bb);
+      }
+    }
+
+    // Generate merge dependency clear if avx128 is being used.
+    if (Is_Target_Orochi() && Is_Target_AVX() && PU_has_avx128) {
+      Generate_Entry_Merge_Clear(region);
+    }
+
     /* Convert all the x87 regs to stack-like regs. */
     extern void Convert_x87_Regs( MEM_POOL* );
     Convert_x87_Regs( &MEM_local_region_pool );
 
     /* When a function returns a structure under -m32, the value of SP will be
        increased by 4 bytes.
+       For a function which has stdcall or fastcall attrubute, the SP also
+       will be adjusted by the same amount which popped at the function
+       return time. 
     */
     if( Is_Target_32bit() ){
       for( BB* bb = REGION_First_BB; bb != NULL; bb = BB_next(bb) ){
@@ -1875,7 +1912,7 @@ CG_Generate_Code(
 #endif // TARG_NVISA
   } /* if (region */
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_IA64)
   else { /* PU */
     // dump EH entry info
     if (Get_Trace (TP_EH, 0x0001)) {
@@ -2041,6 +2078,10 @@ Trace_ST (
   }
 }
 
+static void Check_for_Dump_ALL(INT32 pass, BB *bb, const char * phase)
+{
+
+}
 /* ====================================================================
  *
  * Check_for_Dump

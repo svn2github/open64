@@ -408,9 +408,7 @@ ifneq ($(BUILD_HOST), IA32)
 ifneq ($(BUILD_HOST), IA64)
 ifneq ($(BUILD_HOST), X8664)
 ifneq ($(BUILD_HOST), PPC32)
-ifneq ($(BUILD_HOST), LOONGSON)
    ABORT_BUILD = BUILD_HOST has bad value - $(BUILD_HOST)!
-endif
 endif
 endif
 endif
@@ -565,10 +563,6 @@ STD_COMPILE_OPTS += -DEMULATE_LONGLONG
 STD_COMPILE_OPTS += -DEMULATE_FLOAT_POINT
 endif
 
-#ifeq ($(BUILD_TARGET), LOONGSON)
-#STD_COMPILE_OPTS += -D__GNUC__
-#endif
-
 include ${BUILD_TOT}/../defs.mk
 
 STD_C_OPTS = -std=gnu99 -D_GNU_SOURCE
@@ -606,15 +600,15 @@ endif
 ifeq ($(BUILD_ABI), 64BIT)
  ifeq ($(BUILD_ARCH), MIPS3)
   ifeq ($(BUILD_TYPE), SHARED)
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib64/mips3 -L$(ROOT)/usr/lib64
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips3 -L$(ROOT)/usr/lib64
   else
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib64/mips3/nonshared -L$(ROOT)/usr/lib64/nonshared
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips3/nonshared -L$(ROOT)/usr/lib64/nonshared
   endif
  else # MIPS4
   ifeq ($(BUILD_TYPE), SHARED)
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib64/mips4 -L$(ROOT)/usr/lib64
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4 -L$(ROOT)/usr/lib64
   else
-    STD_LOAD_OPTS += -n32 -L$(ROOT)/usr/lib64/mips4/nonshared -L$(ROOT)/usr/lib64/nonshared
+    STD_LOAD_OPTS += -L$(ROOT)/usr/lib64/mips4/nonshared -L$(ROOT)/usr/lib64/nonshared
   endif
  endif
 endif

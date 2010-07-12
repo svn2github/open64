@@ -928,14 +928,12 @@ add_file_args (string_list_t *args, phases_t index)
 		
 		// Call gcc preprocessor using "gcc -E ...".
 		add_string(args, "-E");
-#ifdef TARG_X8664
 		if (sse2 == TRUE)
 			add_string(args, "-msse2");
 		else if(sse == TRUE)
 			add_string(args, "-msse");
 		else if(mmx == TRUE)
 			add_string(args, "-mmmx");
-#endif
                 
 
 #if defined(TARG_SL)
@@ -1281,7 +1279,6 @@ add_file_args (string_list_t *args, phases_t index)
 #endif
 	case P_c_gfe:
 	case P_cplus_gfe:
-#ifdef TARG_X8664
 		if (sse2 == TRUE)
 			add_string(args, "-msse2");
 		else if(sse == TRUE)
@@ -1289,7 +1286,6 @@ add_file_args (string_list_t *args, phases_t index)
 		else if(mmx == TRUE)
 			add_string(args, "-mmmx");
 		// add -msse3 later when fe support is available
-#endif
 
 		if (show_but_not_run)
 			add_string(args, "-###");
@@ -1621,7 +1617,7 @@ add_file_args (string_list_t *args, phases_t index)
                           add_string(args, "-march=loongson3");
                           break;
                        }
-               default:   add_string(args, "-march=loongson2f");
+               default:   add_string(args, "-march=loongson2e");
                }
 #endif
 
@@ -1801,7 +1797,7 @@ add_file_args (string_list_t *args, phases_t index)
                           add_string(args, "-loongson3");
                           break;
                        }
-               default:   add_string(args, "-loongson2f");
+               default:   add_string(args, "-loongson2e");
                }
 #endif
 
@@ -3906,7 +3902,7 @@ save_ipl_commands (void)
                           add_string(ipl_cmds, "-loongson3");
                           break;
                        }
-               default:   add_string(ipl_cmds, "-loongson2f");
+               default:   add_string(ipl_cmds, "-loongson2e");
                }
 #endif
 

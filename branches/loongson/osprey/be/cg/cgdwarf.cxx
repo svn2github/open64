@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -813,8 +817,10 @@ put_subprogram(DST_flag flag,
    	dwarf_add_AT_unsigned_const (dw_dbg, die, DW_AT_inline, 
 			DST_SUBPROGRAM_def_inline(attr), &dw_error);
     }
-    if (PU_has_inlines(Get_Current_PU()))
-	put_flag (DW_AT_MIPS_has_inlines, die);
+    if((&Get_Current_PU()) != NULL){
+      if (PU_has_inlines(Get_Current_PU()))
+       	put_flag (DW_AT_MIPS_has_inlines, die);
+    }
   }
 }
 
@@ -849,13 +855,14 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
 		DST_ASSOC_INFO_st_index(assoc_info) );
   } else {
 	LABEL_IDX lab;
-	lab = DST_ASSOC_INFO_st_index(assoc_info);
+	lab = DST_ASSOC_INFO_st_idx(assoc_info);
   	FmtAssert ((lab > 0 && lab <= LABEL_Table_Size(DST_ASSOC_INFO_st_level(assoc_info))), 
 	    ("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
 		DST_ASSOC_INFO_st_index(assoc_info) ));
 	return Get_Label_Offset(lab);
   }
+
   FmtAssert ((st != NULL), 
 	("get_ofst_from_label_ASSOC_INFO: bad dst info from fe? (%d,%d)",
 		DST_ASSOC_INFO_st_level(assoc_info), 
@@ -863,6 +870,15 @@ get_ofst_from_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
   return (st != NULL) ? ST_ofst(st) : 0;
 }
 
+static mINT32
+get_ofst_from_inline_label_ASSOC_INFO (DST_ASSOC_INFO assoc_info)
+{
+  LABEL_IDX lab;
+  lab = DST_ASSOC_INFO_st_idx(assoc_info);
+  FmtAssert(lab != 0,
+        ("Label is not Created for inline"));
+  return Get_Label_Offset(lab);
+}
 extern INT
 Offset_from_FP (ST *st)
 {
@@ -1124,7 +1140,6 @@ put_pc_value_symbolic (Dwarf_Unsigned pc_attr,
 			      &dw_error);
 }
 
-#if 0
 static void
 put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
 {
@@ -1136,13 +1151,11 @@ put_pc_value (Dwarf_Unsigned pc_attr, INT32 pc_value, Dwarf_P_Die die)
       cur_text_index,
       &dw_error);
 }
-#endif
 
 static void
 put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 {
   put_name (DST_LEXICAL_BLOCK_name(attr), die, pb_none);
-#if 1
   put_pc_value_symbolic (DW_AT_low_pc,
 			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
@@ -1155,40 +1168,17 @@ put_lexical_block(DST_flag flag, DST_LEXICAL_BLOCK *attr, Dwarf_P_Die die)
 					       cur_text_index),
 			 (Dwarf_Addr) 0,
 			 die);
-#else
-  put_pc_value (DW_AT_low_pc, 
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_low_pc(attr)),
-	die);
-  put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_LEXICAL_BLOCK_high_pc(attr)),
-	die);
-#endif
 }
 
 static void
 put_inlined_subroutine(DST_INLINED_SUBROUTINE *attr, Dwarf_P_Die die)
 {
-#if 1
-  put_pc_value_symbolic (DW_AT_low_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_low_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-  put_pc_value_symbolic (DW_AT_high_pc,
-			 Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					       (LABEL_IDX) DST_ASSOC_INFO_st_index(DST_LEXICAL_BLOCK_high_pc(attr)),
-					       cur_text_index),
-			 (Dwarf_Addr) 0,
-			 die);
-#else
    put_pc_value (DW_AT_low_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_low_pc(attr)),
 	die);
    put_pc_value (DW_AT_high_pc,
-	get_ofst_from_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
+	get_ofst_from_inline_label_ASSOC_INFO(DST_INLINED_SUBROUTINE_high_pc(attr)),
 	die);
-#endif
 
    if (DST_IS_FOREIGN_OBJ (DST_INLINED_SUBROUTINE_abstract_origin(attr))) {
 	/* cross file inlining */
@@ -1213,10 +1203,6 @@ put_concrete_subprogram (DST_INFO_IDX abstract_idx,
 			 INT32        high_pc,
 			 Dwarf_P_Die  die)
 {
-#if 0
-   put_pc_value (DW_AT_low_pc, low_pc, die);
-   put_pc_value (DW_AT_high_pc, high_pc, die);
-#endif
    put_reference( abstract_idx, DW_AT_abstract_origin, die);
 }
 
@@ -2188,7 +2174,6 @@ Traverse_Extra_DST (void)
   Dwarf_P_Die parent;
   BOOL inlined_subp;
   BOOL visit_children;
-
   if (Trace_Dwarf) {
 	fprintf(TFile, "Trace Extra DST\n");
   }
@@ -2334,10 +2319,6 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 		     LABEL_IDX *first_bb_labels,
 		     LABEL_IDX *last_bb_labels,
 		     INT32     pu_entries,
-#elif defined(TARG_MIPS) || defined(TARG_LOONGSON)
-		     LABEL_IDX *eh_adjustsp_label,
-		     LABEL_IDX *eh_callee_saved_reg,
-		     INT32 new_cfa_offset,
 #endif // TARG_X8664
 		     INT32      end_offset,
 		     ST        *PU_st,
@@ -2354,7 +2335,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
   Dwarf_P_Die PU_die;
   Dwarf_P_Expr expr;
   Dwarf_P_Fde fde;
-#ifdef KEY
+#ifdef TARG_X8664
   Dwarf_P_Fde eh_fde = 0;
 #endif
   DST_SUBPROGRAM *PU_attr;
@@ -2435,20 +2416,6 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
     dwarf_add_expr_gen (expr, 
                         Is_Target_64bit() ? DW_OP_breg7 : DW_OP_breg4, 
 			Frame_Len, 0, &dw_error) ;           
-#if 0
-  /* isa_registers.cxx order of registers is different from that of gdb 
-   * Try "info registers".  
-   * If we change the order in isa_registers now, it is total chaos.
-   */
-  if (Current_PU_Stack_Model != SMODEL_SMALL)
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	6 /* REGISTER_machine_id (TN_register_class(FP_TN), TN_register(FP_TN)) */,
-	0, &dw_error);
-  else
-    dwarf_add_expr_gen (expr, DW_OP_bregx,
-	7 /* REGISTER_machine_id (TN_register_class(SP_TN), TN_register(SP_TN)) */,
-	Frame_Len, &dw_error);
-#endif 
 #endif /* TARG_X8664 */
 
   dwarf_add_AT_location_expr(dw_dbg, PU_die, DW_AT_frame_base, expr, &dw_error);
@@ -2464,40 +2431,13 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 						     end_label,
 						     scn_index);
 
-#if defined(TARG_LOONGSON) || defined(TARG_MIPS)
-  Dwarf_Unsigned adjustsp_entry = 0;
-  
-  if (eh_adjustsp_label[0] != LABEL_IDX_ZERO)
-    adjustsp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX, eh_adjustsp_label[0],
-                                           scn_index);
-  Dwarf_Unsigned callee_saved_reg = 0;
-  if (Cgdwarf_Num_Callee_Saved_Regs() &&
-      eh_callee_saved_reg[0] != LABEL_IDX_ZERO)
-    callee_saved_reg = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
-					     eh_callee_saved_reg[0],
-					     scn_index);      
-  
-  // Generate .eh_frame FDE only for C++ or when -DEBUG:eh_frame=on
-  if (Dwarf_Language == DW_LANG_C_plus_plus || DEBUG_Emit_Ehframe) {
-    eh_fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
-                                 begin_entry,
-                                 end_entry,
-                                 adjustsp_entry,
-                                 callee_saved_reg,
-                                 new_cfa_offset,
-                                 end_offset,
-                                 low_pc, high_pc);
-	fde = eh_fde;
- } else
-    fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
-                begin_entry,
-                end_entry,
-                adjustsp_entry,
-                callee_saved_reg,
-                new_cfa_offset,
-                end_offset,
-                low_pc, high_pc);
-#elif TARG_X8664
+#ifndef TARG_X8664
+  fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
+			    begin_entry,
+			    end_entry,
+			    end_offset,
+			    low_pc, high_pc);
+#else
   Dwarf_Unsigned pushbp_entry = Cg_Dwarf_Symtab_Entry(CGD_LABIDX,
 						      eh_pushbp_label[0],
 						      scn_index);
@@ -2533,13 +2473,7 @@ Cg_Dwarf_Process_PU (Elf64_Word	scn_index,
 			    	 adjustsp_entry,
 			    	 callee_saved_reg,
 			    	 end_offset,
-			    	 low_pc, high_pc);
-#else
-  fde = Build_Fde_For_Proc (dw_dbg, REGION_First_BB,
-                begin_entry,
-                end_entry,
-                end_offset,
-                low_pc, high_pc);
+			    	 low_pc, high_pc);  
 #endif // TARG_X8664
 
   Dwarf_Unsigned eh_handle;
@@ -2645,7 +2579,6 @@ Cg_Dwarf_Begin (BOOL is_64bit)
       }
     }
   }
-
 
 #ifdef KEY
   if (!CG_emit_unwind_info)
@@ -2863,9 +2796,8 @@ Print_Directives_For_All_Files(void) {
 	      file_table[count].filename);
     else 
 #endif
-    fprintf(Asm_File, "\t%s\t%d\t\"%s/%s\"\n", AS_FILE, count, 
-	    incl_table[file_table[count].incl_index].path_name, 
-	    file_table[count].filename);
+    fprintf(Asm_File, "\t%s\t%d\t\"%s\"\n", AS_FILE, count,
+            file_table[count].filename);
     count++;
   }
   fputc ('\n', Asm_File);
@@ -3751,8 +3683,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
 	/* GCC sets this to 0, so we do likewise */
         fprintf(asm_file, "\t%s\t0", reloc_name);
 #else /* defined(BUILD_OS_DARWIN) */
-        fprintf(asm_file, "\t%s\t0", reloc_name);
-        //fprintf(asm_file, "\t%s\t%s", reloc_name, ".LCIE");
+        fprintf(asm_file, "\t%s\t%s", reloc_name, ".LCIE");
 #endif /* defined(BUILD_OS_DARWIN) */
 	++k; // skip the DEBUG_FRAME label that is there just as a place-holder
 	break;
@@ -3806,8 +3737,7 @@ Cg_Dwarf_Output_Asm_Bytes_Sym_Relocs (FILE                 *asm_file,
         if ((Gen_PIC_Call_Shared || Gen_PIC_Shared) && 
 	     !strcmp (&Str_Table[reloc_buffer[k].drd_symbol_index], 
 	     "__gxx_personality_v0"))
-	    fprintf (asm_file, "\t%s\tDW.ref.__gxx_personality_v0", reloc_name);
-	    //fprintf (asm_file, "\t%s\t__gxx_personality_v0", reloc_name);
+	    fprintf (asm_file, "\t%s\tDW.ref.__gxx_personality_v0-.", reloc_name);
  	else
 	fprintf(asm_file, "\t%s\t%s", reloc_name,
 		&Str_Table[reloc_buffer[k].drd_symbol_index]);

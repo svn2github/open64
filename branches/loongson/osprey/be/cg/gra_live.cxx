@@ -96,7 +96,7 @@
 #include "cgtarget.h"
 #include "eh_region.h"
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#ifdef TARG_IA64
 extern TN *Caller_GP_TN;  // OSP_426, always mark Caller_GP_TN global
 #endif
 
@@ -610,7 +610,7 @@ Compute_Force_TNs(void)
   }
 #endif
 
-#if !defined(TARG_X8664)
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON) && !defined(TARG_PPC32)
   // OSP_426, always mark Caller_GP_TN global
   if (Caller_GP_TN != NULL) {
     Force_Live_Add(Caller_GP_TN);
@@ -1244,11 +1244,11 @@ Live_Init(
   BB_live_in(bb)      = GTN_SET_CopyD(BB_live_in(bb),
                                       BB_live_use(bb),
                                       &liveness_pool);
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#ifdef TARG_IA64
   /* if current PU haven't landing pad at all, 
    * needn't to added the corresponding defreach and live info
    */
-  if (PU_has_exc_scopes(Get_Current_PU()) && pu_need_LSDA) {
+  if (PU_has_exc_scopes(Get_Current_PU()) && !PU_Need_Not_Create_LSDA ()) {
     extern TN *Caller_GP_TN;
     extern TN *Caller_FP_TN;
     extern TN *Caller_Pfs_TN;
@@ -1929,14 +1929,6 @@ GRA_LIVE_Merge_Blocks( BB *dst, BB *a, BB *b )
   GTN_SET *live_use;
   GTN_SET *live_def;
 
-#if 0
-  /* The 'in' vectors of the merged block is the same as the 'in'
-   * vectors of the first block. Since the first block will become
-   * the merged block, there's nothing to do.
-   */
-  BB_live_in(dst) = GTN_SET_CopyD(BB_live_in(a),&liveness_pool);
-  BB_defreach_in(dst) = GTN_SET_CopyD(BB_defreach_in(a),&liveness_pool);
-#endif
 
   /* The 'out' vectors of the merged block are the 'out' vectors of the
    * block being merged in.
@@ -2460,9 +2452,6 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
       // Don't rename under the following conditions.
       if (TN_is_dedicated(tn) || OP_cond_def(op) || OP_same_res(op)) continue;
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
-      extern TN *Caller_GP_TN;
-#endif
       OP *last_def = (OP *) TN_MAP_Get (op_for_tn, tn);
 #ifdef TARG_LOONGSON
       if ((last_def != NULL) && (OP_code(op) != TOP_ldl && OP_code(op) != TOP_lwl))
@@ -2473,7 +2462,7 @@ Rename_TNs_For_BB (BB *bb, GTN_SET *multiple_defined_set
         // rename tn to new_tn between last_def and op.
         Rename_TN_In_Range (tn, last_def, op);
       }
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#ifdef TARG_IA64
       else if (tn == Caller_GP_TN) {
         // OSP_426, Don't rename the caller GP TN, keep it global
       }

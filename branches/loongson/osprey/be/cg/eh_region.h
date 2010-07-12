@@ -63,9 +63,8 @@ extern void EH_Prune_Range_List(void);
 extern void EH_Write_Range_Table(WN *);
 
 extern ST * EH_Get_PU_Range_ST (void);
-extern void Reset_PU_Range_ST (void);
 extern void EH_Print_Range_List(void);
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#if defined(TARG_IA64)
 extern INITO* EH_Get_PU_Range_INITO(bool);
 extern void Print_PU_EH_Entry(PU &, ST *, FILE *);
 extern bool PU_Need_Not_Create_LSDA (void);

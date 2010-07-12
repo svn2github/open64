@@ -128,8 +128,6 @@
 #include "dwarf_DST_mem.h"
 
 #include "calls.h"
-#include "cxx_template.h"
-#include "dominate.h"
 #include "cgemit.h"
 #include "cgtarget.h"
 #include "irbdata.h"
@@ -243,7 +241,7 @@ BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #elif defined(TARG_LOONGSON)
 BOOL CG_emit_asm_dwarf    = TRUE;
-BOOL CG_emit_unwind_info  = TRUE;
+BOOL CG_emit_unwind_info  = FALSE;
 BOOL CG_emit_unwind_info_Set = FALSE;
 BOOL CG_emit_unwind_directives = FALSE;
 #else
@@ -2554,14 +2552,6 @@ LABEL_IDX *Label_Callee_Saved_Reg=NULL;
 LABEL_IDX *Label_First_BB_PU_Entry=NULL;
 LABEL_IDX *Label_Last_BB_PU_Entry=NULL;
 
-#if defined(TARG_MIPS) || TARG_LOONGSON
-static INT32 new_cfa_offset = 0;
-// We want to generate DWARF for only the first save of GP and return
-// register in a PU (bug 12493).
-static BOOL gp_stored_for_pu = FALSE;
-static BOOL ra_stored_for_pu = FALSE;
-#endif
-
 #define ALLOCATE_LABEL_ENTRY                              \
     (TYPE_MEM_POOL_ALLOC_N(LABEL_IDX,&MEM_src_pool,num_pus))
 
@@ -2638,7 +2628,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 
   if (OP_prefetch(op)) Use_Prefetch = TRUE;
 
-#if defined(KEY)
+#if defined(KEY) && !defined(TARG_LOONGSON)
   static INT32 label_adjustsp_pu = -1;
   static INT32 pu_entry_count = -1;
   BOOL adjustsp_instr = FALSE;
@@ -2747,81 +2737,7 @@ r_assemble_op(OP *op, BB *bb, ISA_BUNDLE *bundle, INT slot)
 	fprintf( Asm_File, "%s:\n", LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
       }
     }
-#elif defined(TARG_MIPS)
-#if 1 //def KEY_DISABLE_13597_FIX
-    static INT32 label_csr_pu = -1;
-#endif // KEY_DISABLE_13597_FIX
-    if ((OP_code(op) == TOP_addiu ||
-         OP_code(op) == TOP_daddiu) &&
-         label_adjustsp_pu != pu_entry_count &&
-         OP_result(op, 0) == SP_TN) {
-      char* buf;
-      LABEL* label;
-      TN * spadjustment;
-      buf = (char *)alloca(strlen(ST_name(entry_sym)) +
-           /* EXTRA_NAME_LEN */ 32);
-      sprintf(buf, ".LEH_adjustsp_%s", ST_name(entry_sym));
-      label = &New_LABEL(CURRENT_SYMTAB, Label_adjustsp[pu_entries]);
-      LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
-      fprintf( Asm_File, "%s:\n", LABEL_name(Label_adjustsp[pu_entries]));
-
-      spadjustment = OP_opnd(op, 1);
-      FmtAssert (TN_is_constant(spadjustment) && TN_has_value(spadjustment),
-                 ("stack adjustment by non-constant amount"));
-      new_cfa_offset = TN_value(spadjustment);
-      if (new_cfa_offset < 0)
-        new_cfa_offset = -new_cfa_offset;
-      label_adjustsp_pu = pu_entry_count;
-      adjustsp_instr = TRUE;
-#if 1 //def KEY_DISABLE_13597_FIX
-    else if (OP_code(op) == TOP_sd &&
-             OP_opnd(op, 1) == SP_TN) {
-      TN * tn = OP_opnd(op, 0);
-      if (TN_is_dedicated(tn) ||
-          (TN_register(tn) != REGISTER_UNDEFINED &&
-           TN_register(tn) <=
-           REGISTER_CLASS_last_register(TN_register_class(tn)))) {
-        PREG_NUM preg = TN_To_Assigned_PREG(tn);
-        ISA_REGISTER_CLASS tn_class = TN_register_class(tn);
-
-        if ((ABI_PROPERTY_Is_callee(tn_class, preg) ||
-             (ABI_PROPERTY_Is_global_ptr(tn_class, preg) &&
-              !gp_stored_for_pu) ||
-             (ABI_PROPERTY_Is_ret_addr(tn_class, preg) &&
-              !ra_stored_for_pu)) &&
-            TN_is_symbol(OP_opnd(op, 2))) {
-
-          static BOOL label_generated = FALSE;
-          SAVE_REG_LOC sr;
-          extern STACK<SAVE_REG_LOC> Saved_Callee_Saved_Regs;
-
-          if (ABI_PROPERTY_Is_global_ptr(tn_class, preg))
-            gp_stored_for_pu = TRUE;
-          else if (ABI_PROPERTY_Is_ret_addr(tn_class, preg))
-            ra_stored_for_pu = TRUE;
-
-          sr.ded_tn = tn;
-          sr.temp = TN_var(OP_opnd(op, 2));
-          sr.user_allocated = FALSE;
-          Saved_Callee_Saved_Regs.Push(sr);
-
-          if (label_csr_pu != pu_entry_count)
-          {
-            char * buf = (char *)alloca(strlen(ST_name(entry_sym)) +
-                                        /* EXTRA_NAME_LEN */ 32);
-            sprintf(buf, ".LEH_csr_%s", ST_name(entry_sym));
-            LABEL * label = &New_LABEL(CURRENT_SYMTAB,
-                                  Label_Callee_Saved_Reg[pu_entries]);
-            LABEL_Init (*label, Save_Str(buf), LKIND_DEFAULT);
-            fprintf(Asm_File, "%s:\n",
-               LABEL_name(Label_Callee_Saved_Reg[pu_entries]));
-            label_csr_pu = pu_entry_count;
-          }
-        }
-      }
-    }
-#endif // KEY_DISABLE_13597_FIX
-#endif // TARG_X8664 || TARG_MIPS
+#endif // TARG_X8664
   }
 
   Cg_Dwarf_First_Op_After_Preamble_End = FALSE;
@@ -6260,6 +6176,7 @@ Trace_Init_Loc ( INT scn_idx, Elf64_Xword scn_ofst, INT32 repeat)
     fprintf ( TFile, "<init>: Section %s (offset %4lld x%d): ",
   	      ST_name(em_scn[scn_idx].sym), (INT64)scn_ofst, repeat );
 }
+
 
 #ifndef TARG_IA64
 // because we have different EH implementation with pathscale-3.0 in cg.
@@ -6973,7 +6890,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
 #if defined(TARG_SL)
   Elf64_Word prev_scn_ofst;
   Elf64_Word skip_space;
-  #define V2BUF_SKIP_SPACE 16  //  still need to handle other vbuf type      
+  #define V2BUF_SKIP_SPACE 16  // we still need to handle other vbuf type      
   #define V4BUF_SKIP_SPACE 48
   #define vector_line_num 16
 #endif  // TARG_SL
@@ -7209,7 +7126,7 @@ Write_INITV (INITV_IDX invidx, INT scn_idx, Elf64_Word scn_ofst)
   return scn_ofst;
 }
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#ifdef TARG_IA64
 static int
 sizeof_signed_leb128 (int value)
 {
@@ -7254,7 +7171,6 @@ EH_Write_Integer_const (
    so we directly output data1 here
    for sym < -127, we have not implement it yet.
   */
-#ifdef TARG_IA64
   if (bsigned) {
     if (sym < 0 && sym > -129) {
       char c = (char)sym;
@@ -7267,20 +7183,6 @@ EH_Write_Integer_const (
   }
   else
     fprintf(Asm_File, "\t.uleb128\t0x%x\n", sym);
-#else
-  if (bsigned) {
-    if (sym < 0 && sym > -129) {
-      char c = (char)sym;
-      unsigned char cc = *(unsigned char*)&c;
-      cc &= 0x7f;
-      fprintf(Asm_File, "\t.byte\t0x%2x\n", cc);
-    }
-    else
-      fprintf(Asm_File, "\t.byte\t0x%x\n", sym);
-  }
-  else
-    fprintf(Asm_File, "\t.uleb128\t0x%x\n", sym);
-#endif
   return scn_ofst + sizeof_signed_leb128(sym);
 }
 
@@ -7363,37 +7265,26 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   nRangeTable++;
   char begin_lab[30], end_lab[30];
   INITV_IDX inv = INITV_next(first);
-#define LSDA_HANDLER_START  "$LFE"
-#define LSDA_START      "$LLSDA"
-#define LSDA_TT_START       "$LLSDATTD"
-#define LSDA_TT_END     "$LLSDATT"
-#define LSDA_CS_START       "$LLSDACSB"
-#define LSDA_CS_END     "$LLSDACSE"
+#define LSDA_HANDLER_START	"thu_LFE_"
+#define LSDA_START		"thu_LSDA_"
+#define LSDA_TT_START		"thu_LSDA_TT_Start_"
+#define LSDA_TT_END		"thu_LSDA_TT_End_"
+#define LSDA_CS_START		"thu_LSDA_CS_Start_"
+#define LSDA_CS_END		"thu_LSDA_CS_End_"
 
   fprintf(Asm_File, ".%s%d:\n", LSDA_HANDLER_START, nRangeTable);
-#ifdef TARG_IA64
   fprintf(Asm_File, "\t.personality\t__gxx_personality_v0#\n");
   fprintf(Asm_File, "\t.handlerdata\n");
   fprintf(Asm_File, "\t.align\t8\n");
-#else
-  fprintf(Asm_File, "\t.globl\t__gxx_personality_v0#\n");
-  fprintf(Asm_File, "\t.align\t2\n");
-#endif
   fprintf(Asm_File, ".%s%d:\n", LSDA_START, nRangeTable);
 
   // lpStart_encoding
   INITV_Init_Integer_2(first, MTYPE_I1, 0xff, 1);
   scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
 
-#ifdef TARG_IA64
   // ttype_encoding
   INITV_Init_Integer_2(first, MTYPE_I1, 0xb4, 1);
   scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
-#else
-  // ttype_encoding
-  INITV_Init_Integer_2(first, MTYPE_I1, 0x0, 1);
-  scn_ofst = Write_INITV (first, scn_idx, scn_ofst);
-#endif
 
   // @type_start
   sprintf(begin_lab, ".%s%d", LSDA_TT_START, nRangeTable);
@@ -7464,18 +7355,12 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
   // end action table
 
   // single type table
-#ifdef TARG_IA64
   fprintf(Asm_File, "\t.align\t8\n");
-#else
-  fprintf(Asm_File, "\t.align\t2\n");
-#endif
-
   inv = INITV_next(type_inv);
   for(; inv && inv != eh_spec_inv; inv = INITV_next(inv)) {
     ST_IDX type_st_idx = 0;
     if (INITVKIND_ZERO != INITV_kind(inv))
       type_st_idx = TCON_uval(INITV_tc_val(inv));
-#ifdef TARG_IA64
     if (type_st_idx == 0)
       fprintf(Asm_File, "\tdata8.ua\t0\n");
     else {
@@ -7484,16 +7369,6 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
     //  else
     //    fprintf(Asm_File, "\tdata8.ua\t%s\n", ST_name(&St_Table[type_st_idx]));
     }
-#else
-    if (type_st_idx == 0)
-      fprintf(Asm_File, "\t.word\t0\n");
-    else {
-    //  if (Gen_PIC_Call_Shared || Gen_PIC_Shared)
-        fprintf(Asm_File, "\t.word\t%s\n", ST_name(&St_Table[type_st_idx]));
-    //  else
-    //    fprintf(Asm_File, "\tdata8.ua\t%s\n", ST_name(&St_Table[type_st_idx]));
-    }
-#endif
   }
 
   // end of single type table
@@ -7516,10 +7391,12 @@ Write_LSDA_INITO (ST* st, INITO* ino, INT scn_idx, Elf64_Xword scn_ofst)
 }
 
 #else // TARG_IA64
+#ifdef KEY
 static Elf64_Xword
 Generate_Exception_Table_Header (INT scn_idx,
                                  Elf64_Xword scn_ofst,
                                  LABEL_IDX *);
+#endif // KEY
 #endif // TARG_IA64
 /* Emit the initialized object to the object file */
 static void
@@ -7650,6 +7527,7 @@ Write_INITO (
 }
 
 #ifndef TARG_IA64
+//#ifdef KEY
 static Elf64_Word
 Write_Diff (
   LABEL_IDX lab1,       /* left symbol */
@@ -7753,7 +7631,7 @@ Generate_Exception_Table_Header (INT scn_idx, Elf64_Xword scn_ofst, LABEL_IDX *l
     fprintf ( Asm_File, "%s:\n", LABEL_name(csb));
     return scn_ofst;
 }
-#endif 
+#endif // KEY
 
 /* change to a new section and new origin */
 static void
@@ -9008,7 +8886,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   Setup_Text_Section_For_BB(REGION_First_BB);
   Is_True(PU_base == text_base, ("first region BB was not in text section"));
 
-#if defined(TARG_IA64) || defined(TARG_LOONGSON)
+#ifdef TARG_IA64
   /* output LSDA */
   if (EH_Get_PU_Range_INITO(false) && EH_Get_PU_Range_ST()) {
     ST* eh_range = EH_Get_PU_Range_ST();
@@ -9057,6 +8935,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
     Elf64_Word symindex;
     INT eh_offset;
     BOOL has_exc_scopes = PU_has_exc_scopes(ST_pu(pu));
+#ifndef TARG_LOONGSON
     if (Object_Code)
     	Em_Add_New_Event (EK_PEND, PC - INST_BYTES, 0, 0, 0, PU_section);
     /* get exception handling info */ 
@@ -9074,8 +8953,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 	Base_Symbol_And_Offset (sym, &base, &ofst);
 	eh_offset = ofst;
 	Init_Section(base);	/* make sure eh_region is inited */
-//#ifdef KEY /* TARG_X8664 */
-#ifdef TARG_X8664
+#ifdef KEY /* TARG_X8664 */
 // emit the begin label instead of the section name, since the section name
 // is same for different PUs, the label is different.
 	symindex = EMT_Put_Elf_Symbol (sym);
@@ -9094,50 +8972,37 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
 #endif // !TARG_NVISA
     }
     // Cg_Dwarf_Process_PU (PU_section, Initial_Pu_PC, PC, pu, pu_dst, symindex, eh_offset);
-#ifdef TARG_X8664
+#ifndef TARG_X8664
     Cg_Dwarf_Process_PU (
-        Em_Create_Section_Symbol(PU_section),
-        Initial_Pu_Label,
-        // For Opteron, we generate a last label at the end of the PU
-        Last_Label,
-        &Label_pushbp[0],
-        &Label_movespbp[0],
-        &Label_adjustsp[0],
-        &Label_Callee_Saved_Reg[0],
-        &Label_First_BB_PU_Entry[0],
-        &Label_Last_BB_PU_Entry[0],
-        pu_entries,
-        0,
-        pu, pu_dst, symindex, eh_offset,
-        // The following two arguments need to go away
-        // once libunwind provides an interface that lets
-        // us specify ranges symbolically.
-        Initial_Pu_PC, PC);
-#elif defined(TARG_MIPS) || defined(TARG_MVP) || defined(TARG_LOONGSON)
-    Cg_Dwarf_Process_PU (
-        Em_Create_Section_Symbol(PU_section),
-        Initial_Pu_Label,
-        Last_Label,
-        &Label_adjustsp[0],
-        &Label_Callee_Saved_Reg[0],
-        new_cfa_offset,
-        0,
-        pu, pu_dst, symindex, eh_offset,
-        // The following two arguments need to go away
-        // once libunwind provides an interface that lets
-        // us specify ranges symbolically.
-        Initial_Pu_PC, PC);
+		Em_Create_Section_Symbol(PU_section),
+		Initial_Pu_Label,
+		Last_Label, Offset_From_Last_Label,
+		pu, pu_dst, symindex, eh_offset,
+		// The following two arguments need to go away
+		// once libunwind provides an interface that lets
+		// us specify ranges symbolically.
+		Initial_Pu_PC, PC);
 #else
     Cg_Dwarf_Process_PU (
-        Em_Create_Section_Symbol(PU_section),
-        Initial_Pu_Label,
-        Last_Label, Offset_From_Last_Label,
-        pu, pu_dst, symindex, eh_offset,
-        // The following two arguments need to go away
-        // once libunwind provides an interface that lets
-        // us specify ranges symbolically.
-        Initial_Pu_PC, PC);
+		Em_Create_Section_Symbol(PU_section),
+		Initial_Pu_Label,
+		// For Opteron, we generate a last label at the end of the PU
+		Last_Label, 
+		&Label_pushbp[0],
+		&Label_movespbp[0],
+		&Label_adjustsp[0],
+		&Label_Callee_Saved_Reg[0],
+		&Label_First_BB_PU_Entry[0],
+		&Label_Last_BB_PU_Entry[0],
+		pu_entries,
+		0,
+		pu, pu_dst, symindex, eh_offset,
+		// The following two arguments need to go away
+		// once libunwind provides an interface that lets
+		// us specify ranges symbolically.
+		Initial_Pu_PC, PC);
 #endif // TARG_X8664
+#endif // TARG_LOONGSON
   }
   if (Run_prompf) {
     fputc ('\n', anl_file);
