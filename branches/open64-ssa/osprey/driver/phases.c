@@ -3020,8 +3020,6 @@ init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
   // Select the appropriate GNU 4 front-end.
   if ((gnu_major_version == 4) && !run_build) {
     switch (gnu_minor_version) {
-      case 0:	// Default is 4.0.
-        break;
       case 2:
 	set_phase_name(P_spin_cc1, "cc142");
 	set_phase_name(P_spin_cc1plus, "cc1plus42");

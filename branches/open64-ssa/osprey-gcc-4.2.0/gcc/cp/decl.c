@@ -9011,7 +9011,7 @@ grokparms (cp_parameter_declarator *first_parm, tree *parms)
 
 
 #ifdef KEY
-// For gs_x ():
+/* For gs_x (): */
 int (*p_copy_fn_p) (tree) = copy_fn_p;
 #endif
 
