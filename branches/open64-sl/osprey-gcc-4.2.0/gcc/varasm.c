@@ -68,7 +68,7 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 
 #ifdef KEY
 #include "gspin-gcc-interface.h"
-#include "diagnostic.h"         // errorcount, sorrycount
+#include "diagnostic.h"         /* errorcount, sorrycount */
 extern void gspin_gxx_emits_decl (tree);
 extern void gspin_gxx_emits_asm (char *);
 
@@ -1881,12 +1881,12 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
 
     if (gspin_invoked (decl)) {
       gs_set_flag_value (decl, GS_DECL_EMITTED_BY_GXX, 1);
-      // bug 11177: Update external_flag so that wgen expands any
-      // initialization it may have.
+      /* bug 11177: Update external_flag so that wgen expands any
+       * initialization it may have. */
       gs_set_flag_value (decl, GS_DECL_EXTERNAL, DECL_EXTERNAL(decl));
       if (DECL_INITIAL (decl) == 0 ||
           DECL_INITIAL (decl) == error_mark_node) {
-        // bug 12645
+        /* bug 12645 */
         gs_set_operand(GS_NODE(decl), GS_DECL_SECTION_NAME,
                        gs_x(DECL_SECTION_NAME(decl)));
       }
@@ -1896,7 +1896,7 @@ assemble_variable (tree decl, int top_level ATTRIBUTE_UNUSED,
         gspin_invoked (DECL_ASSEMBLER_NAME (decl)) &&
         TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (decl)))
       gs_set_flag_value (DECL_ASSEMBLER_NAME(decl),
-                         GS_TREE_SYMBOL_REFERENCED, 1); // bug 11006
+                         GS_TREE_SYMBOL_REFERENCED, 1); /* bug 11006 */
     gspin_gxx_emits_decl (decl);
   }
 #endif
@@ -5037,7 +5037,7 @@ finish_aliases_1 (void)
 	       p->decl, IDENTIFIER_POINTER (p->target));
 #ifdef KEY
       if (flag_spin_file && target_decl) {
-        gs_t gs_decl = gs_x(p->decl);   // Allocate a gs node if necessary.
+        gs_t gs_decl = gs_x(p->decl);   /* Allocate a gs node if necessary. */
         gs_set_operand(gs_decl, GS_DECL_ALIAS_TARGET, gs_x(target_decl));
       }
 #endif
@@ -5133,7 +5133,7 @@ assemble_alias (tree decl, tree target)
 
 #ifdef KEY
     if (flag_spin_file) {
-      gs_t gs_decl = gs_x(decl);        // Allocate a gs node if necessary.
+      gs_t gs_decl = gs_x(decl);        /* Allocate a gs node if necessary. */
       gs_set_operand(gs_decl, GS_DECL_ALIAS_TARGET, gs_x(target_decl));
     }
 #endif
@@ -5560,10 +5560,10 @@ categorize_decl_for_section (tree decl, int reloc)
       {
 	ret = SECCAT_BSS;
 #ifdef KEY
-        // g++ knows it can initialize a DECL to zero by allocating it to
-        // .bss.  A non-GNU front-end may not be this smart.  Delete
-        // DECL_INITIAL to force the non-GNU front-end to allocate DECL to
-        // .bss.  Bug 11303.
+        /* g++ knows it can initialize a DECL to zero by allocating it to
+         * .bss.  A non-GNU front-end may not be this smart.  Delete
+         * DECL_INITIAL to force the non-GNU front-end to allocate DECL to
+         * .bss.  Bug 11303. */
         if (flag_spin_file) {
           if (DECL_INITIAL(decl) != NULL &&
               DECL_INITIAL(decl) != error_mark_node) {

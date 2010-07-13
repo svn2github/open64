@@ -238,9 +238,12 @@ INSTALL_GCC () {
 # Install front-end components
 INSTALL_FE () {
 
-    # GNU3 based FE
-    INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
-    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+    # optional GNU 3.3 based FE
+    if [ -f ${AREA}/gccfe/gfec ] ; then 
+      INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
+      INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+    fi
+
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen42 ${PHASEPATH}/wgen42
     LIBEXEC=libexec/gcc/${PHASE_DIR_PREFIX}-redhat-linux/4.2.0
@@ -297,8 +300,8 @@ INSTALL_WHIRL_STUFF () {
     (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
-    INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
     INSTALL_EXEC_SUB  ${AREA}/libspin_4_2_0/gspin42 ${BIN_DIR}/gspin42
+    (cd ${BIN_DIR}; ln -sf gspin42 gspin)
 
     return 0
 }

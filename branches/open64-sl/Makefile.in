@@ -67,6 +67,7 @@ TOP_BUILDDIR        = @abs_top_builddir@
 BUILD_VENDOR        = @BUILD_VENDOR@
 BUILD_TARGET        = @BUILD_TARGET@
 BUILD_MULTILIB      = @BUILD_MULTILIB@
+BUILD_GNU3          = @BUILD_GNU3@
 
 ifeq ($(MACHINE_TYPE), ia64)
 # ia64
@@ -138,9 +139,12 @@ FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/arith
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)  \
-                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
-                    $(FORT_FE_COMPONENTS) \
-		    $(FIRST_COMPONENTS) 
+                    $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS) \
+                    $(FIRST_COMPONENTS) 
+
+ifeq ($(BUILD_GNU3), YES)
+NATIVE_COMPONENTS += $(GNU3_FE_COMPONENTS)
+endif
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(FORT_FE_COMPONENTS)
@@ -261,12 +265,9 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
-.PHONY: libspin phony_targets first
+.PHONY: phony_targets first
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new:
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
-
-$(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
 
 $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0
@@ -283,7 +284,6 @@ build:
 	$(MAKE) first
 	$(MAKE) phony_targets 
 
-first:libspin
 phony_targets: $(PHONY_TARGET)
 cross: NATIVE_BUILD_DIR = osprey/targia32_ia64_nodebug
 cross: NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_ia64
@@ -388,7 +388,6 @@ ifneq ($(MACHINE_TYPE), SL)
 endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include clobber
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber
 ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
@@ -397,7 +396,7 @@ endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD) clean
 	$(MAKE) -C $(GNUFE_BUILD_DIR) clean
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin; do  \
+		libiberty libunwindP; do  \
 		$(MAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 

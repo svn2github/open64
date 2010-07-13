@@ -6831,9 +6831,9 @@ finish_function (void)
       && !undef_nested_function)
     {
 #ifdef KEY
-	  // Translate to spin before calling c_genericize, which lowers the
-	  // tree and destroys high-level program info useful for program
-	  // optimization.
+	  /* Translate to spin before calling c_genericize, which lowers the
+	   * tree and destroys high-level program info useful for program
+	   * optimization. */
 	  if (flag_spin_file)
 	    gspin (fndecl);
 #endif
@@ -8071,7 +8071,7 @@ c_write_global_declarations (void)
     if (!errorcount)
       exit (EXIT_SUCCESS);
     else
-      exit (2); // Corresponding to RC_USER_ERROR as the ekopath driver expects.
+      exit (2); /* Corresponding to RC_USER_ERROR as the ekopath driver expects. */
   }
 #endif
 

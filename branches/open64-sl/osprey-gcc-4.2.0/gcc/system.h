@@ -606,7 +606,7 @@ extern void fancy_abort (const char *, int, const char *) ATTRIBUTE_NORETURN;
 # undef false
 
 #ifdef KEY
-#include <stdbool.h>    // Sync with libspin and wgen.
+#include <stdbool.h>    /* Sync with libspin and wgen. */
 #else
 # define bool unsigned char
 # define true 1

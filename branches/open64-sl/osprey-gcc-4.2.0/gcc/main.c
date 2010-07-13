@@ -33,7 +33,7 @@ int main (int argc, char **argv);
    to define a different main(), if it so desires.  */
 
 #ifdef KEY
-// Defined in tree.c
+/* Defined in tree.c */
 extern int    gs_argc;
 extern char **gs_argv;
 #endif

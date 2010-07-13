@@ -6240,7 +6240,7 @@ build_self_reference (void)
 }
 
 #ifdef KEY
-// For gs_x ():
+/* For gs_x (): */
 int (*p_is_empty_class) (tree) = is_empty_class;
 #endif
 

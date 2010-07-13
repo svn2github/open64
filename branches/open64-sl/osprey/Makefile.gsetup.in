@@ -87,6 +87,9 @@ endif
 ifndef BUILD_OBJ_DIR
      BUILD_OBJ_DIR  = @abs_top_builddir@
 endif
+ifndef BUILD_SRC
+     BUILD_SRC      = @abs_top_srcdir@
+endif
 ifndef BUILD_TOT
      BUILD_TOT      = @abs_top_srcdir@/osprey
 endif
@@ -132,11 +135,20 @@ endif
 ifndef BUILD_BOTH
      BUILD_BOTH     = @BUILD_BOTH@
 endif
+ifndef BUILD_GNU3
+     BUILD_GNU3     = @BUILD_GNU3@
+endif
 ifndef COMPILER_TARG_DIR
      COMPILER_TARG_DIR = @abs_top_builddir@/osprey/targdir
 endif
 ifndef TOP_BUILDDIR
      TOP_BUILDDIR   = @abs_top_builddir@
+endif
+ifndef GCC_CONFIGURE_TARG
+     GCC_CONFIGURE_TARG = @GCC_CONFIGURE_TARG@
+endif
+ifndef GCC_DIR
+     GCC_DIR = @GCC_DIR@
 endif
 
 #  For cross compilers, there are really 3 separate variables:

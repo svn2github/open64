@@ -101,9 +101,15 @@ BUILD_MULTILIB=NO
 # BUILD_BOTH is (only) used in osprey/Makefile.gsetup.in for setting -fPIC.
 BUILD_BOTH=
 
+# Set BUILD_GNU3 to "YES" to build the GCC 3.3 C/C++ front-end.
+BUILD_GNU3=NO
+
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
 TARG_INFO_NAME=targ_info
+
+# Specify the GCC src directory.
+GCC_DIR=osprey-gcc-4.2.0
 
 # LIB_* and LIB2_* variables will default to the BUILD_* variables if not
 # overridden in one of the case statements below so most platforms will
@@ -281,6 +287,9 @@ AC_SUBST([LIB2_BUILD_HOST])
 AC_SUBST([BUILD_MULTILIB])
 AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
+AC_SUBST([BUILD_GNU3])
+AC_SUBST([GCC_CONFIGURE_TARG])
+AC_SUBST([GCC_DIR])
 
 # List of configurable files to create in object directory.
 AC_CONFIG_FILES([
@@ -318,11 +327,16 @@ AC_CONFIG_FILES([
   osprey/targdir/crayf90/fe90/Makefile
   osprey/targdir/crayf90/libf90sgi/Makefile
   osprey/targdir/crayf90/sgi/Makefile
-  osprey/targdir/gccfe/Makefile
-  osprey/targdir/gccfe/gnu/Makefile
-  osprey/targdir/g++fe/Makefile
-  osprey/targdir/g++fe/gnu/Makefile
 ])
+
+if test $BUILD_GNU3 = "YES"; then
+  AC_CONFIG_FILES([
+    osprey/targdir/gccfe/Makefile
+    osprey/targdir/gccfe/gnu/Makefile
+    osprey/targdir/g++fe/Makefile
+    osprey/targdir/g++fe/gnu/Makefile
+  ])
+fi
 
 # The directories created under targdir_lib (and targdir_lib2) also
 # need to be listed in LIBLIST.  This list is used in targdir_lib/Makefile.in
@@ -330,7 +344,7 @@ AC_CONFIG_FILES([
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
-if test "$BUILD_TARGET" = "SL"; then
+if test "${BUILD_TARGET}" = "SL"; then
 LIBLIST="include libelf"
 else
 LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
@@ -347,7 +361,7 @@ AC_CONFIG_FILES([
   osprey/targdir_lib/libu/Makefile
 ])
 
-if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
   LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
@@ -367,7 +381,7 @@ if test $BUILD_MULTILIB = "YES"; then
     osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
     osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
   ])
-  if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+  if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
     AC_CONFIG_FILES([
       osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in
       osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in
@@ -380,6 +394,8 @@ AC_SUBST([LIBLIST])
 
 # Configure cygnus and GCC subdirectories.
 AC_CONFIG_SUBDIRS(osprey/cygnus)
+# We do not use $GCC_DIR because using AC_CONFIG_SUBDIRS with variables
+# breaks "configure --help=recursive".  See autoconf documentation.
 AC_CONFIG_SUBDIRS(osprey-gcc-4.2.0)
 
 AC_OUTPUT

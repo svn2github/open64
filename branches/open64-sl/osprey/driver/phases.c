@@ -761,6 +761,28 @@ add_file_args_first (string_list_t *args, phases_t index)
 	char p[PATH_BUF_LEN];
 	sprintf(p, "-B%s", get_phase_dir(index));
 	add_string(args, p);
+	if (index == P_gcpp_plus) {
+#if defined(TARG_X8664)
+	  if (abi == ABI_N32)
+	    sprintf(p, "-I%s/../%s/32/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+          else
+	    sprintf(p, "-I%s/../%s/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+#else
+	  sprintf(p, "-I%s/../%s/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+#endif
+	  add_string(args, p);
+#if defined(TARG_X8664) || defined(TARG_NVISA)
+  	  if (abi == ABI_N32)
+	    sprintf(p, "-I%s/../%s/32/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+          else
+	    sprintf(p, "-I%s/../%s/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+#else
+	  sprintf(p, "-I%s/../%s/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+#endif
+	  add_string(args, p);
+	  sprintf(p, "-I%s/%s/libstdc++-v3/libsupc++", BUILD_SRC, GCC_DIR);
+	  add_string(args, p);
+        }
       }
       // -Dfoo before user options, since user might specify -Ufoo.  Bug 6874.
       if (option_was_seen(O_pthread))
@@ -2998,8 +3020,6 @@ init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
   // Select the appropriate GNU 4 front-end.
   if ((gnu_major_version == 4) && !run_build) {
     switch (gnu_minor_version) {
-      case 0:	// Default is 4.0.
-        break;
       case 2:
 	set_phase_name(P_spin_cc1, "cc142");
 	set_phase_name(P_spin_cc1plus, "cc1plus42");

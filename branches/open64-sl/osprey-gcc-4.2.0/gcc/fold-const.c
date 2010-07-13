@@ -4851,7 +4851,7 @@ fold_cond_expr_with_comparison (tree type, tree arg0, tree arg1, tree arg2)
 
 
 #ifndef LOGICAL_OP_NON_SHORT_CIRCUIT
-#ifdef KEY // bug 11517
+#ifdef KEY /* bug 11517 */
 #define LOGICAL_OP_NON_SHORT_CIRCUIT (!flag_spin_file && BRANCH_COST >= 2)
 #else
 #define LOGICAL_OP_NON_SHORT_CIRCUIT (BRANCH_COST >= 2)
@@ -5819,19 +5819,11 @@ extract_muldiv_1 (tree t, tree c, enum tree_code code, tree wide_type,
 
       /* If these are the same operation types, we can associate them
 	 assuming no overflow.  */
-#if defined(TARG_SL)
-      if (tcode == code
-         && 0 != (t1 = const_binop (MULT_EXPR, fold_convert (ctype, op1),
-                                    fold_convert (ctype, c), 1))
-         && ! TREE_OVERFLOW (t1))
-       return fold_build2 (tcode, ctype, fold_convert (ctype, op0), t1);
-#else
       if (tcode == code
 	  && 0 != (t1 = const_binop (MULT_EXPR, fold_convert (ctype, op1),
 				     fold_convert (ctype, c), 0))
 	  && ! TREE_OVERFLOW (t1))
 	return fold_build2 (tcode, ctype, fold_convert (ctype, op0), t1);
-#endif
 
       /* If these operations "cancel" each other, we have the main
 	 optimizations of this pass, which occur when either constant is a
@@ -9108,8 +9100,8 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
 
     case MULT_EXPR:
       /* (-A) * (-B) -> A * B  */
-#ifdef KEY // bug 11662: (-A) * const -> A * (-const) causes str reduction bug,
-      // so doing the old way in GNU3
+#ifdef KEY /* bug 11662: (-A) * const -> A * (-const) causes str reduction bug,
+       * so doing the old way in GNU3 */
       if (flag_spin_file) {
         if (TREE_CODE (arg0) == NEGATE_EXPR && TREE_CODE (arg1) == NEGATE_EXPR)
           return fold (build2(MULT_EXPR, type, TREE_OPERAND (arg0, 0),
@@ -9125,7 +9117,7 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
 	return fold_build2 (MULT_EXPR, type,
 			    fold_convert (type, negate_expr (arg0)),
 			    fold_convert (type, TREE_OPERAND (arg1, 0)));
-#ifdef KEY // bug 11662
+#ifdef KEY
       }
 #endif
 

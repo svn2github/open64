@@ -413,7 +413,7 @@ use_thunk (tree thunk_fndecl, bool emit_p)
 
 #ifdef KEY
   if (flag_spin_file)
-    gspin_gxx_emits_thunk_decl (thunk_fndecl);  // generate code for the thunk
+    gspin_gxx_emits_thunk_decl (thunk_fndecl);  /* generate code for the thunk */
 #endif
 
   /* The back-end expects DECL_INITIAL to contain a BLOCK, so we

@@ -69,10 +69,15 @@ ifeq ($(BUILD_TARGET), LOONGSON)
 LCDEFS += -DLOONGSON
 endif
 
+ifeq ($(BUILD_GNU3), YES)
+LCDEFS += -DBUILD_GNU3
+endif
 
 LCDEFS += -DOPEN64_PRODNAME='"Compiler"'
 
 LCDEFS += -DKEY 
+
+LCDEFS += -DGCC_CONFIGURE_TARG=\"${GCC_CONFIGURE_TARG}\" -DGCC_DIR=\"${GCC_DIR}\" -DBUILD_SRC=\"${BUILD_SRC}\"
 
 # Get the date of the build for perpetual licenses
 psc_build_date := $(shell date '+"%F/%T"')

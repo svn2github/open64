@@ -449,14 +449,12 @@ convert_to_integer (tree type, tree expr)
 	  break;
 
 	CASE_FLT_FN (BUILT_IN_TRUNC):
-	  {
-#ifdef KEY /* bug 12569 */
-	    if (flag_spin_file)
-	      break;
-#endif
-	    tree arglist = TREE_OPERAND (s_expr, 1);
-	    return convert_to_integer (type, TREE_VALUE (arglist));
-	  }
+	  if (!flag_spin_file)
+	    {
+	      tree arglist = TREE_OPERAND (s_expr, 1);
+	      return convert_to_integer (type, TREE_VALUE (arglist));
+	    }
+	  break;
 
 	default:
 	  break;

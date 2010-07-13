@@ -2870,7 +2870,7 @@ do_class_using_decl (tree scope, tree name)
 
 
 #ifdef KEY
-// For gs_x ():
+/* For gs_x (): */
 tree (*p_namespace_binding) (tree, tree) = namespace_binding;
 #endif
 
