@@ -35,6 +35,9 @@
 
 #ifndef w2c_driver_INCLUDED
 #define w2c_driver_INCLUDED
+
+#include "wssa_mgr.h"
+
 extern "C" {
 /* ====================================================================
  * ====================================================================
@@ -297,6 +300,7 @@ extern const char *W2C_Object_Name(const ST *func_st);
 extern void W2C_Translate_Stid_Lhs(char       *strbuf,
 				   UINT        bufsize,
 				   const ST   *stid_st, 
+				   const WSSA::VER_NUM vn, 
 				   mINT64      stid_ofst, 
 				   TY_IDX      stid_ty, 
 				   TYPE_ID     stid_mtype);

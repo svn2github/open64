@@ -87,11 +87,12 @@ TARGETS = ir_b2a ir_size ir_sel ir_all
 COMMON_UTIL_DIR= $(BUILD_TOT)/common/util
 COMMON_COM_DIR= $(BUILD_TOT)/common/com
 COMMON_COM_TARG_DIR= $(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
+BE_COM_DIR= $(BUILD_TOT)/be/com
 
 LDIRT = $(TARGETS)
 
 LCINCS = -I$(BUILD_BASE) -I$(COMMON_COM_DIR) -I$(COMMON_COM_TARG_DIR) \
-	-I$(COMMON_UTIL_DIR) $(XINC) -I$(BUILD_TOT)/include
+	-I$(COMMON_UTIL_DIR) -I$(BE_COM_DIR) $(XINC) -I$(BUILD_TOT)/include
 ifeq ($(BUILD_OS), LINUX)
 LCINCS += -I$(BUILD_AREA)/include/libelf
 endif
@@ -137,6 +138,14 @@ COMMON_COM_CXX_SRC =	\
 	xstats.cxx	\
 	intrn_info.cxx
 
+BE_COM_SRCS =           \
+        wssa_core.cxx   \
+        wssa_sym.cxx    \
+        wssa_mgr.cxx    \
+        wssa_wn.cxx     \
+        wssa_io.cxx     \
+        wssa_utils.cxx 
+ 
 
 COMMON_COM_TARG_CXX_SRCS =	\
 	config_targ.cxx	\
@@ -145,7 +154,8 @@ COMMON_COM_TARG_CXX_SRCS =	\
 
 CXXFILES =		\
 	$(COMMON_COM_CXX_SRC) \
-	$(COMMON_COM_TARG_CXX_SRCS)
+	$(COMMON_COM_TARG_CXX_SRCS) \
+        $(BE_COM_SRCS)
 
 .PHONY: default first last install
 
@@ -170,7 +180,7 @@ install: default
 
 include $(COMMONRULES)
 
-VPATH = $(BUILD_BASE) $(COMMON_COM_DIR) $(COMMON_COM_TARG_DIR)
+VPATH = $(BUILD_BASE) $(COMMON_COM_DIR) $(COMMON_COM_TARG_DIR) $(BE_COM_DIR)
 
 ir_b2a: $(OBJECTS) ir_a2b.o
 	$(link.c++f) -o ir_b2a ir_a2b.o $(OBJECTS) $(LDFLAGS)

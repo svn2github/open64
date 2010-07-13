@@ -127,6 +127,7 @@ extern INT WN_get_dst (void *handle);
 extern INT WN_get_localmap (void *handle);
 extern INT WN_get_feedback (void* handle, PU_Info*pu, MEM_POOL* pool);    
 
+extern INT WN_get_SSA (void *handle, PU_Info *pu);
 /*
  * Read the command line flags used to compile the input file.  The
  * return value is argc (or 0 if the flags are missing) and the argv

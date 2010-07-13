@@ -70,6 +70,9 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/whirl2c/SC
 #include "ty2c.h"
 #include "tcon2c.h"
 #include "wn2c_pragma.h"
+#include "wssa_wn.h"
+#include "pu_info.h"
+#include "config_opt.h"
 
 
 extern BOOL Run_w2fc_early;     /* Defined in be.so */
@@ -741,10 +744,14 @@ Append_A_Clause_Symbol(TOKEN_BUFFER tokens, const WN *clause, WN_OFFSET ofst)
       TY_IDX       object_ty;
       const TY_IDX base_ty = ST_type(st);
       TOKEN_BUFFER sym_tokens = New_Token_Buffer();
+      WSSA::WHIRL_SSA_MANAGER * wsm;
+      wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+      WSSA::VER_NUM vn = wsm?wsm->Get_WN_ver(clause):0;
 
       WN2C_stid_lhs(sym_tokens,
 		    &object_ty,
 		    st,        /* base variable */
+		    vn,        /* symbol version */
 		    ofst,      /* base offset */
 		    base_ty,   /* type of reference */
 		    TY_mtype(base_ty),
@@ -947,6 +954,9 @@ Append_Nest_Clauses(TOKEN_BUFFER tokens,
    const WN    *next_stmt = nest_region;
    WN_PRAGMA_ID nest_kind = WN_PRAGMA_UNDEFINED;
    TOKEN_BUFFER nest_tokens = New_Token_Buffer();
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+   WSSA::VER_NUM idx_ver; /* symbol version for whirl ssa */
 
    Is_True(next_stmt != NULL &&
 	   WN_operator(next_stmt) == OPR_REGION &&
@@ -977,6 +987,7 @@ Append_Nest_Clauses(TOKEN_BUFFER tokens,
 	  */
 	 idx_var = WN_st(WN_index(next_stmt));
 	 idx_ty = ST_type(idx_var);
+	 idx_ver = wsm?wsm->Get_WN_ver(WN_index(next_stmt)):0;
 	 if (ST_sym_class(idx_var) == CLASS_PREG)
 	 {
 	    ST2C_Use_Preg(nest_tokens,
@@ -992,6 +1003,7 @@ Append_Nest_Clauses(TOKEN_BUFFER tokens,
 	    WN2C_stid_lhs(sym_tokens,
 			  &object_ty,
 			  idx_var,          /* base variable */
+			  idx_ver,	    /* symbol version */
 			  WN_idname_offset(WN_index(next_stmt)),
 			  idx_ty,           /* type of reference */
 			  TY_mtype(idx_ty),
@@ -1620,7 +1632,10 @@ WN2C_process_pragma(TOKEN_BUFFER tokens, const WN **next, CONTEXT context)
                                    &apragma);
       else
       {
-	 ST2C_use_translate(tokens, WN_st(apragma), context);
+	 WSSA::WHIRL_SSA_MANAGER * wsm;
+	 wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+	 ST2C_use_translate(tokens, WN_st(apragma), 
+			    wsm?wsm->Get_WN_ver(apragma):0, context);
       }
       break;
 

@@ -60,6 +60,11 @@
 
 #include "symtab_defs.h"
 
+#if defined(BACK_END)
+#include "wssa_verifier.h"                // verify WSSA virtual symbols
+#endif
+
+
 // ======================================================================
 // Auxiliary functions used by ST::Verify()
 // ======================================================================
@@ -136,7 +141,7 @@ ST_Verify_Class_Sclass(ST_CLASS sym_class, ST_SCLASS storage_class) {
 		 (msg, Sclass_Name(storage_class), Class_Name(sym_class)));
 	break;
     case CLASS_NAME:
-         Is_True (storage_class == SCLASS_UNKNOWN ||
+        Is_True (storage_class == SCLASS_UNKNOWN ||
 		  storage_class == SCLASS_COMMENT,
                   (msg, Sclass_Name(storage_class), Class_Name(sym_class)));
         break;
@@ -422,6 +427,7 @@ static void
 ST_Verify_Fields(const ST &s) 
 {
   static char msg[] = "Invalid entry for ST Field: (%s)"; 
+
   if ( ST_sym_class(s) == CLASS_CONST) {
     Is_True( 0 < ST_tcon(s) && ST_tcon(s) < TCON_Table_Size (),
              (msg, "tcon"));

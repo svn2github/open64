@@ -142,6 +142,7 @@ public:
 
    void Stid_Lhs_To_String(ANL_CBUF   *cbuf,
 			   ST         *st, 
+			   const WSSA::VER_NUM vn, 
 			   STAB_OFFSET ofst,
 			   TY_IDX      ty,
 			   MTYPE       mtype);

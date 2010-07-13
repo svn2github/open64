@@ -200,6 +200,9 @@ extern BOOL OPT_Malloc_Alg_Set;
 extern BOOL Early_Goto_Conversion;
 extern BOOL Early_Goto_Conversion_Set;
 extern INT32 OPT_Madd_Height;
+
+extern BOOL OPT_Enable_WHIRL_SSA;  // enable SSA on WHIRL
+
 #endif
 #ifdef __cplusplus
 }

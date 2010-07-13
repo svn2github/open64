@@ -181,6 +181,12 @@ ST_st_idx (const ST* s)
 inline void
 Set_ST_st_idx (ST* s, ST_IDX idx)	{ s->st_idx = idx; }
 
+inline UINT32
+ST_wssa_st_idx (const ST* s)
+  { return (s != NULL? s->wssa_st_idx : 0); }
+inline void
+Set_ST_wsst_st_idx (ST* s, UINT32 idx)	{ s->wssa_st_idx = idx; }
+
 inline BOOL
 ST_is_weak_symbol (const ST* s)		{ return s->flags & ST_IS_WEAK_SYMBOL;}
 inline void

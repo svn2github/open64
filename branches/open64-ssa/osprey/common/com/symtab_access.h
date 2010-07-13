@@ -238,6 +238,16 @@ ST_st_idx (const ST& s)			{ return s.st_idx; }
 inline void
 Set_ST_st_idx (ST& s, ST_IDX idx)	{ s.st_idx = idx; }
 
+inline UINT32
+ST_wssa_st_idx (const ST& s)		{ return s.wssa_st_idx; }
+inline void
+Set_ST_wssa_st_idx (ST& s, UINT32 idx)	{ s.wssa_st_idx = idx; }
+
+inline UINT32
+ST_wssa_st_idx (ST_IDX st)			{ return St_Table[st].wssa_st_idx; }
+inline void
+Set_ST_wssa_st_idx (ST_IDX st, UINT32 idx)	{ St_Table[st].wssa_st_idx = idx;  }
+
 inline ST*
 ST_ptr (ST_IDX idx)                     { return &(St_Table[idx]); }
 

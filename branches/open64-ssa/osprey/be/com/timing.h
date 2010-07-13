@@ -171,7 +171,9 @@ typedef enum {
         T_SPECMT_BG,
         T_SPECMT_PA,
 #endif
-		
+	T_WSSA_EMIT_CU,		/* WSSA PreOpt emitter */
+	T_WSSA_EMIT_Comp,	
+
 	T_LAST			/* Last index defined */
 } TIMER_ID;
 

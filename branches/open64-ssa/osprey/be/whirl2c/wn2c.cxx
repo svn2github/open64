@@ -88,6 +88,12 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/wn2
 #include "inttypes.h" 
 #include "stdarg.h"
 
+#include "wssa_mgr.h"
+#include "wssa_wn.h"
+#include "pu_info.h"
+#include "w2c_wssa.h"
+#include "config_opt.h"
+
 #if defined(__GNUC__) && (__GNUC__ >= 3)
 # define USING_HASH_SET 1
 # include <ext/hash_set>
@@ -1274,7 +1280,7 @@ translator_warning(const char * str, ...) {
 /*------------------ Statement newline directives ----------------------*/
 /*----------------------------------------------------------------------*/
 
-static void 
+void 
 WN2C_Stmt_Newline(TOKEN_BUFFER tokens,
 		  SRCPOS       srcpos)
 {
@@ -2355,6 +2361,7 @@ ret_point:
 static STATUS
 WN2C_lvalue_st(TOKEN_BUFFER tokens,
 	       const ST    *st,          /* Base symbol for lvalue */
+	       const WSSA::VER_NUM vn, 
 	       TY_IDX       addr_ty,     /* Type of base object */
 	       TY_IDX       object_ty,   /* Type of object */
 	       STAB_OFFSET  addr_offset, /* Offset of object from base */
@@ -2401,7 +2408,7 @@ WN2C_lvalue_st(TOKEN_BUFFER tokens,
 	 addr_ty = Stab_Pointer_To(ST_type(st));
       }
 
-      ST2C_use_translate(tokens, st, context);
+      ST2C_use_translate(tokens, st, vn, context);
       base_ptr_ty = Stab_Pointer_To(ST_sym_class(st) == CLASS_FUNC ?
                                                  ST_pu_type(st) : ST_type(st));
 
@@ -2435,8 +2442,12 @@ static STATUS WN2C_ptr_array_wn(TOKEN_BUFFER tokens,
    */
   STATUS        status = EMPTY_STATUS;
   FmtAssert(WN_operator(wn) == OPR_LDID, ("Expecting LDID node in function %s\n", __func__));
+  WSSA::WHIRL_SSA_MANAGER * wsm;
+  wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+  
+  ST2C_use_translate(tokens, WN_st(wn), 
+		     wsm?wsm->Get_WN_ver(wn):0, context);
 
-  ST2C_use_translate(tokens, WN_st(wn), context);
   WN2C_prepend_cast(tokens, object_ty, TRUE);
   if (addr_offset != 0) {
     WN2C_append_addr_plus_const(tokens,
@@ -2864,7 +2875,43 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
    const ST    *st;
    TOKEN_BUFFER tmp_tokens;
    ST_IDX       st_idx;
-      
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+
+   if ( wsm && CURRENT_SYMTAB != GLOBAL_SYMTAB )
+   {
+     const WSSA::WST_SYM_TABLE& wssa_symtab = wsm->Get_sym_table();
+     for ( WSSA::WST_SYM_TABLE::const_iterator iter = wssa_symtab.begin(); 
+           iter != wssa_symtab.end(); 
+           ++iter)
+     {
+       if ( iter->Sym_type() != WSSA::WST_WHIRL )
+	 continue;
+       tmp_tokens = New_Token_Buffer();
+       st = &(St_Table[iter->St_idx()]);
+       for (WSSA::VER_NUM j = 1; j <= iter->Max_ver(); j++)
+       {
+	 if (ST_is_weak_symbol(st))
+	 {
+	   ST2C_weakext_translate(tmp_tokens, st, j, context);
+	 }
+	 else
+	 {
+	   ST2C_decl_translate(tmp_tokens, st, j, context);
+	   Append_Token_Special(tmp_tokens, ';');
+	 }
+	 Append_Indented_Newline(tmp_tokens, lines_between_decls);
+       }
+       if (tokens != NULL)
+	 Append_And_Reclaim_Token_List(tokens, &tmp_tokens);
+       else
+	 Write_And_Reclaim_Tokens(W2C_File[W2C_DOTH_FILE], 
+				  NULL, /* No srcpos map */
+				  &tmp_tokens);
+     }
+     return;
+   }
+   
    /* Declare identifiers from the new symbol table, provided they
     * represent functions or variables that are either defining
     * global definition or that have been referenced in this 
@@ -3131,6 +3178,7 @@ WN2C_Function_Call_Lhs(TOKEN_BUFFER rhs_tokens,  /* The function call */
 	     }
 	     status = WN2C_lvalue_st(lhs_tokens,
 				     result_var,              /* base address */
+				     0,
 				     Stab_Pointer_To(var_ty), /* base type */
 				     ST_type(result_var),
 				     var_offset,
@@ -3340,6 +3388,7 @@ WN2C_Function_Return_Value(TOKEN_BUFFER tokens, /* Statements before return */
 	 {
 	    status = WN2C_lvalue_st(value_tokens,
 				    result_var,             /* base variable */
+				    0,
 				    Stab_Pointer_To(var_ty),/* base addr ty */
 				    PUINFO_RETURN_TY, /* type object loaded */
 				    var_offset,
@@ -3516,8 +3565,16 @@ WN2C_Translate_Stmt_Sequence(TOKEN_BUFFER  tokens,
 	     WN_operator(stmt) != OPR_COMMENT &&
 	     WN_operator(stmt) != OPR_FORWARD_BARRIER &&
 	     WN_operator(stmt) != OPR_BACKWARD_BARRIER)
-	    Append_Token_Special(tokens, ';');
-
+	 {
+   	    Append_Token_Special(tokens, ';');
+	    if ( OPT_Enable_WHIRL_SSA )
+	    {
+	      /* Emit the chi info in a comment */
+	      WSSA::emit_chi_info(tokens, stmt, context);
+	      /* Emit the chi assignment in a comment */
+	      WSSA::emit_chi_assignment(tokens, stmt, context);
+	    }
+	 }
 	 /* Append frequency feedback info in a comment
 	  */
 	 if (W2C_Emit_Frequency                         && 
@@ -3884,6 +3941,14 @@ WN2C_func_entry(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    Is_True(WN_operator(wn) == OPR_FUNC_ENTRY, 
 	   ("Invalid opcode for WN2C_func_entry()"));
 
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+   if ( OPT_Enable_WHIRL_SSA ){
+     /* Build the parent map and label jump map at this point */ 
+     WSSA::parentize(wn);
+     WSSA::setup_label_map(wn);
+   }
+   
    /* Set the state to reflect the current PU, assuming PUinfo
     * already is up to date.
     */
@@ -4028,6 +4093,17 @@ WN2C_block(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       Append_Cplus_Initialization(stmt_tokens, context);
    }
    CONTEXT_set_top_level_expr(context);
+   
+   if ( OPT_Enable_WHIRL_SSA ) {
+     const WN * parent =  WSSA::get_parent(wn);
+     if ( parent )
+     {
+       /* Emit the chi info in a comment */
+       WSSA::emit_chi_info(stmt_tokens, parent, context);
+       /* Emit the chi assignment in a comment */
+       WSSA::emit_chi_assignment(stmt_tokens, parent, context);
+     }
+   }
    if (WN_first(wn) != NULL)
       WN2C_Translate_Stmt_Sequence(
 	 stmt_tokens, WN_first(wn), TRUE/*first_on_newline*/, context);
@@ -4105,6 +4181,9 @@ WN2C_block(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       WN2C_Append_Purple_Funcinfo(tokens);
       Append_Token_String(tokens, "#>");
    }
+   // emit the phi assignment
+   if ( OPT_Enable_WHIRL_SSA )
+     WSSA::emit_phi_assignment_block(tokens, wn, context);
 
    /* The curly brackets for a scope are not indented, so recover
     * the previous indentation before emitting the '}' token.
@@ -4435,6 +4514,10 @@ WN2C_do_while(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 
    WN2C_Stmt_Newline(tokens, CONTEXT_srcpos(context));
 
+   /* Emit the phi assignment */
+   if ( OPT_Enable_WHIRL_SSA )
+     WSSA::emit_phi_assignment(tokens, wn, context, 0, ';');
+
    /* Emit the header of the do-loop */
    Append_Token_String(tokens, "do");
 
@@ -4473,6 +4556,10 @@ WN2C_while_do(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       WN2C_Start_Prompf_Transformed_Loop(tokens, wn, context);
    }
    WN2C_Stmt_Newline(tokens, CONTEXT_srcpos(context));
+
+   /* Emit the phi assignment */
+   if ( OPT_Enable_WHIRL_SSA )
+     WSSA::emit_phi_assignment(tokens, wn, context, 0, ';');
 
    /* Emit the loop header as a while-loop */
    Append_Token_String(tokens, "while");
@@ -4520,11 +4607,20 @@ WN2C_if(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    }
    else /* Not a redundant guard (from whirl2c perspective) */
    {
+      // Emit the phi assignment
+      if (OPT_Enable_WHIRL_SSA && WN_else_is_empty(wn))
+      {
+	WSSA::emit_phi_assignment(tokens, wn, context, 1, ';');
+      }
+
       /* Emit the "if" header */
       Append_Token_String(tokens, "if");
       Append_Token_Special(tokens, '(');
       (void)WN2C_translate(tokens, WN_if_test(wn), context);
       Append_Token_Special(tokens, ')');
+
+      /* Emit the phi info in a comment */
+      WSSA::emit_phi_info(tokens, wn, context);
 
       /* Emit the THEN body on a new line */
       WN2C_incr_indentation_for_stmt_body(WN_then(wn));
@@ -4558,6 +4654,11 @@ WN2C_goto(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 	   WN_operator(wn) == OPR_CASEGOTO ||
 	   WN_operator(wn) == OPR_REGION_EXIT,
 	   ("Invalid operator for WN2C_goto()"));
+   // Emit the phi assignment
+   if ( OPT_Enable_WHIRL_SSA )
+     WSSA::emit_phi_assignment(tokens, WSSA::get_target(wn),
+			       context, WSSA::get_jmp_order(wn), ';');
+
    Append_Token_String(tokens, "goto");
    WN2C_append_label_name(tokens, wn);
 
@@ -4569,6 +4670,12 @@ WN2C_agoto(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 {
    Is_True(WN_operator(wn) == OPR_AGOTO,
            ("Invalid operator for WN2C_agoto()"));
+
+   // Emit the phi assignment
+   if (OPT_Enable_WHIRL_SSA)
+     WSSA::emit_phi_assignment(tokens, WSSA::get_target(wn), 
+			       context, WSSA::get_jmp_order(wn), ';');
+
    Append_Token_String(tokens, "goto *");
 
    if(WN_operator(WN_kid0(wn))==OPR_ILOAD)
@@ -4625,14 +4732,26 @@ WN2C_condbr(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       (void)WN2C_translate(tokens, WN_condbr_cond(wn), context);
    }
    Append_Token_Special(tokens, ')');
-   
-   /* Emit the branch part as a goto statement on a new line */
+
+   if (OPT_Enable_WHIRL_SSA)
+   {
+     Append_Indented_Newline(tokens, 1);
+     Append_Token_Special(tokens, '{');
+   }
    Increment_Indentation();
+
+   // Emit the phi assignment
+   if (OPT_Enable_WHIRL_SSA)
+     WSSA::emit_phi_assignment(tokens, WSSA::get_target(wn), context, 
+			     WSSA::get_jmp_order(wn), ';');
+
+   /* Emit the branch part as a goto statement on a new line */
    Append_Indented_Newline(tokens, 1);
    Append_Token_String(tokens, "goto");
    WN2C_append_label_name(tokens, wn);
    Decrement_Indentation();
-
+   if (OPT_Enable_WHIRL_SSA)
+     Append_Token_Special(tokens, '}');
    return EMPTY_STATUS;
 } /* WN2C_condbr */
 
@@ -4695,6 +4814,10 @@ WN2C_label(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 {
    Is_True(WN_operator(wn) == OPR_LABEL,
 	   ("Invalid operator for WN2C_label()"));
+
+   // Emit the phi assignment
+   if (OPT_Enable_WHIRL_SSA)
+     WSSA::emit_phi_assignment(tokens, wn, context, WSSA::get_jmp_order(wn), ';');
 
    WN2C_append_label_name(tokens, wn);
    Append_Token_Special(tokens, ':');
@@ -5078,6 +5201,8 @@ WN2C_stid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
     */
    TOKEN_BUFFER lhs_tokens;
    TY_IDX       stored_ty;    /* Type of assignment */
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
 
    Is_True(WN_operator(wn) == OPR_STID,
 	   ("Invalid operator for WN2C_stid()"));
@@ -5116,6 +5241,7 @@ WN2C_stid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       WN2C_stid_lhs(lhs_tokens,
 		    &stored_ty,          /* Corrected stored type */
 		    WN_st(wn),           /* base symbol */
+		    wsm?wsm->Get_WN_ver(wn):0,/* symblo version */
 		    offt,
 		    stored_ty,           /* stored type */
 		    WN_opc_dtype(wn),    /* stored mtype */
@@ -5747,6 +5873,10 @@ WN2C_array(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
     int num_dim = array_dims.size();
     UINT cur_dim = 1; //start from innermost one
     base_ty = ST_type(WN_st(base_wn));
+
+    WSSA::WHIRL_SSA_MANAGER * wsm;
+    wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
+
     if (TY_kind(base_ty) == KIND_ARRAY)
       base_ty = Get_Inner_Array_Type(base_ty);
     //fprintf(stderr, "----handling array of struct----\n");
@@ -5755,7 +5885,8 @@ WN2C_array(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 	//try to generate symbolic accesses
 	FmtAssert(fld_stack.size < WN2C_MAX_FLD_LEVEL, ("too many level of field accesses")); 
 	UINT cur_offset = WN_offset(base_wn);
-	ST2C_use_translate(tokens, WN_st(base_wn), context);
+	ST2C_use_translate(tokens, WN_st(base_wn), 
+			   wsm?wsm->Get_WN_ver(base_wn):0, context);
 	base_ty = ST_type(WN_st(base_wn));
 
 	//generate the array base expression
@@ -5820,7 +5951,8 @@ WN2C_array(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 	}
 	
 	offset = WN_Add(Integer_type, offset, WN_Intconst(Integer_type, WN_offset(base_wn)));
-	ST2C_use_translate(tokens, WN_st(base_wn), context);
+	ST2C_use_translate(tokens, WN_st(base_wn), 
+			   wsm?wsm->Get_WN_ver(base_wn):0, context);
 	if (TY_kind(ST_type(WN_st(base_wn))) == KIND_STRUCT) {
 	    //case of a.b[i].c[j], need a cast
 	    Prepend_Token_Special(tokens, '&');
@@ -6426,6 +6558,8 @@ WN2C_ldid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    STATUS       load_status;
    TOKEN_BUFFER expr_tokens;
    STAB_OFFSET  addr_offset;
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
 
    Is_True(WN_operator(wn) == OPR_LDID || 
 	   (WN_operator(wn) == OPR_LDA && 
@@ -6532,6 +6666,7 @@ WN2C_ldid(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       /* Get the lvalue or address of the data to be loaded */
       load_status = WN2C_lvalue_st(expr_tokens,
 				   WN_st(wn),    /* base symbol loaded from */
+				   wsm?wsm->Get_WN_ver(wn):0,
 				   base_addr_ty, /* address loaded from */
 				   object_ty,    /* type of object loaded */
 				   addr_offset,
@@ -6600,6 +6735,8 @@ WN2C_lda(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
    STATUS       lda_status;
    TOKEN_BUFFER expr_tokens;
    STAB_OFFSET  lda_offset;
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
 
    Is_True(WN_operator(wn) == OPR_LDA,
 	   ("Invalid operator for WN2C_lda()"));
@@ -6714,6 +6851,7 @@ WN2C_lda(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
       lda_status = 
 	 WN2C_lvalue_st(expr_tokens, 
 			WN_st(wn),  /* base st and the addr ty */
+			wsm?wsm->Get_WN_ver(wn):0,
                         Stab_Pointer_To(ST_sym_class(WN_st(wn)) == CLASS_FUNC ?
                                    ST_pu_type(WN_st(wn)) : ST_type(WN_st(wn))),
 			object_ty,  /* type addressed */
@@ -7055,10 +7193,16 @@ WN2C_translate(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 #define OPR_LOC OPERATOR_LAST+12 //this comes from ir_reader.cxx
   if(WN_operator(wn) == OPR_LOC)
     last_loc = &wn;
-   
+  
+  if (OPT_Enable_WHIRL_SSA) {
+    /* Emit the mu info in a comment */
+    WSSA::emit_mu_info(tokens, wn, context);
+    /* Emit the mu assignment */
+    WSSA::emit_mu_assignment(tokens, wn, context);
+  }
+
   return WN2C_Opr_Handler[WN_operator(wn)](tokens, wn, context);
 } /* WN2C_translate */
-
 
 void
 WN2C_translate_structured_types(void)
@@ -7102,6 +7246,8 @@ WN2C_translate_purple_main(TOKEN_BUFFER tokens,
    TY_IDX    return_ty;
    const ST *param_st;
    INT       first_param, param;
+   WSSA::WHIRL_SSA_MANAGER * wsm;
+   wsm = OPT_Enable_WHIRL_SSA ? PU_Info_ssa_ptr(Current_PU_Info) : NULL;
 
    Is_True(WN_operator(pu) == OPR_FUNC_ENTRY, 
 	   ("Invalid opcode for WN2C_translate_purple_main()"));
@@ -7123,7 +7269,8 @@ WN2C_translate_purple_main(TOKEN_BUFFER tokens,
    {
       param_st = WN_st(WN_formal(pu, param));
       Append_Indented_Newline(tokens, 1);
-      ST2C_decl_translate(tokens, param_st, context);
+      ST2C_decl_translate(tokens, param_st, 
+			  wsm?wsm->Get_WN_ver(WN_formal(pu, param)):0, context);
       Append_Token_Special(tokens, ';');
    }
 
@@ -7248,6 +7395,7 @@ void
 WN2C_stid_lhs(TOKEN_BUFFER tokens,
 	      TY_IDX      *stored_typ,
 	      const ST    *lhs_st,
+	      const WSSA::VER_NUM vn, 
 	      STAB_OFFSET  stid_ofst,
 	      TY_IDX       stid_ty, 
 	      MTYPE        dtype,
@@ -7284,6 +7432,7 @@ WN2C_stid_lhs(TOKEN_BUFFER tokens,
 			  stid_ofst);      /* offset from base */
       lhs_status = WN2C_lvalue_st(tokens,
 				  lhs_st,      /* base stored into */
+				  vn,
 				  base_ty,     /* base ref stored into */
 				  *stored_typ, /* type of object stored */
 				  stid_ofst,

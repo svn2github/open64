@@ -75,12 +75,15 @@
 static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/whirl2c/SCCS/s.st2c.cxx $ $Revision: 1.2 $";
 #endif /* _KEEP_RCS_ID */
 
+
 #include "whirl2c_common.h"
 #include "PUinfo.h"
 #include "tcon2c.h"
 #include "st2c.h"
 #include "ty2c.h"
 #include "init2c.h"
+#include "stdio.h"
+#include "sstream"
 
 
 /*--------- General purpose macros to get ST attributes ---------------*/
@@ -97,24 +100,22 @@ static char *rcs_id = "$Source: /scratch/mee/2.4-65/kpro64-pending/be/whirl2c/SC
 
 /*------- Handlers for references to and declarations of symbols ------*/
 /*---------------------------------------------------------------------*/
+static void ST2C_ignore(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
 
-static void ST2C_ignore(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
+static void ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_decl_func(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
 
-static void ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_decl_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-
-static void ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-static void ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context);
-
+static void ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
+static void ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context);
 
 /* The following maps every ST class to a function that can translate
  * it to C.
  */
-typedef void (*ST2C_HANDLER_FUNC)(TOKEN_BUFFER, const ST*, CONTEXT);
+typedef void (*ST2C_HANDLER_FUNC)(TOKEN_BUFFER, const ST*, const WSSA::VER_NUM, CONTEXT);
 
 static const ST2C_HANDLER_FUNC ST2C_Decl_Handle[CLASS_COUNT] =
 {
@@ -454,15 +455,19 @@ ST2C_Get_Common_Block_Name(const ST *st)
 /*---------------------------------------------------------------------*/
 
 static void
-ST2C_formal_ref_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_formal_ref_decl(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    TOKEN_BUFFER decl_tokens = New_Token_Buffer();
    
    Is_True(ST_sclass(st) == SCLASS_FORMAL_REF, 
 	   ("Unexpected ST_sclass in ST2C_formal_ref_decl()"));
 
-   Append_Token_String(decl_tokens, 
-		       W2CF_Symtab_Nameof_St(st));    /* name */
+   std::stringstream ss;
+   ss <<  W2CF_Symtab_Nameof_St(st); 
+   if (vn)
+      ss << "v" << vn ;
+   Append_Token_String(decl_tokens, ss.str().c_str());    /* name */
+
    TY2C_translate(decl_tokens, Stab_Pointer_To(ST_type(st)), context); /*type*/
 
    Append_And_Reclaim_Token_List(tokens, &decl_tokens);
@@ -470,12 +475,15 @@ ST2C_formal_ref_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
 
 static void
-ST2C_basic_decl(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_basic_decl(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    TOKEN_BUFFER decl_tokens = New_Token_Buffer();
-   
-   Append_Token_String(decl_tokens, 
-		       W2CF_Symtab_Nameof_St(st));    /* name */
+
+   std::stringstream ss;
+   ss <<  W2CF_Symtab_Nameof_St(st); 
+   if (vn)
+      ss << "v" << vn ;
+   Append_Token_String(decl_tokens, ss.str().c_str());    /* name */
    //WEI:
    //If type of st is struct, make it incomplete because the complete type will
    //be declared in w2c.h (see WN2C_Append_Symtab_Types)
@@ -552,16 +560,15 @@ ST2C_Define_Preg(const char *name, TY_IDX ty, CONTEXT context)
 
 /*----------- hidden routines to handle ST declarations ---------------*/
 /*---------------------------------------------------------------------*/
-
 static void 
-ST2C_ignore(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_ignore(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    return; /* Just ignore it, i.e. do nothing! */
 } /* ST2C_ignore */
 
 
 static void 
-ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(FALSE, 
 	   ("ST2C cannot declare this ST_sym_class (%d)", ST_sym_class(st)));
@@ -569,14 +576,14 @@ ST2C_decl_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
 
 static void 
-ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    INITO_IDX inito;
    Is_True(ST_sym_class(st)==CLASS_VAR, ("expected CLASS_VAR ST"));
 
    if (ST_is_initialized(st) && !Stab_No_Linkage(st)) /* initialize */
    {
-      ST2C_basic_decl(tokens, st, context); /*type, name, storage class*/
+      ST2C_basic_decl(tokens, st, vn, context); /*type, name, version, storage class*/
       inito = Find_INITO_For_Symbol(st);
       if (inito != 0)
       {
@@ -588,7 +595,8 @@ ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
    {
       /* This should only occur for Fortran reference parameters
        */
-      ST2C_formal_ref_decl(tokens, st, context); /*type, name, storage class*/
+      ST2C_formal_ref_decl(tokens, st, vn, context); /*type, name, version, storage class*/
+
    }
    else
    {
@@ -598,28 +606,27 @@ ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
        */
       if (ST_sclass(st) == SCLASS_AUTO)
 	 CONTEXT_set_unqualified_ty2c(context);
-      ST2C_basic_decl(tokens, st, context); /*type, name, storage class*/
+      ST2C_basic_decl(tokens, st, vn, context); /*type, name, version, storage class*/
    }
 } /* ST2C_decl_var */
 
 
 static void 
-ST2C_decl_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_decl_func(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_FUNC, ("expected CLASS_FUNC ST"));
 
    /* Note, this is a function declaration, not a definition! */
-   ST2C_basic_decl(tokens, st, context);   /* type, name and storage class */
+   ST2C_basic_decl(tokens, st, vn, context); /*type, name, version, storage class*/
 
 } /* ST2C_decl_func */
 
 
 static void 
-ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_CONST, ("expected CLASS_CONST ST"));
-
-   ST2C_basic_decl(tokens, st, context);   /* type, name and storage class */
+   ST2C_basic_decl(tokens, st, vn, context); /*type, name, storage class*/
    Append_Token_Special(tokens, '=');
    TCON2C_translate(tokens, STC_val(st));  /* value */
 } /* ST2C_decl_const */
@@ -630,7 +637,7 @@ ST2C_decl_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
 
 static void 
-ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(FALSE, 
 	   ("ST2C cannot use an ST_sym_class (%d)", ST_sym_class(st)));
@@ -638,9 +645,11 @@ ST2C_use_error(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
 
 static void 
-ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_VAR, ("expected CLASS_VAR ST"));
+   
+   std::stringstream ss;
 
    // when compiling UPC, don't output the initialization expression of DGLOBAL vars
    if (Stab_Is_Common_Block(st) && !(ST_sclass(st) == SCLASS_DGLOBAL))
@@ -648,11 +657,17 @@ ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
       /* Do not mark the variable as referenced, since we do not
        * want to declare it in the local scope.
        */
-      Append_Token_String(tokens, ST2C_Get_Common_Block_Name(st));
+      ss << ST2C_Get_Common_Block_Name(st);
+      if (vn)
+	 ss << "v" << vn ;
+      Append_Token_String(tokens, ss.str().c_str());
    }
    else
    {
-      Append_Token_String(tokens, W2CF_Symtab_Nameof_St(st));
+      ss <<  W2CF_Symtab_Nameof_St(st);
+      if (vn)
+	 ss << "v" << vn ;
+      Append_Token_String(tokens, ss.str().c_str());
       /* Mark the variable as referenced, unless it is an external
        * defining variable.
        */
@@ -663,17 +678,23 @@ ST2C_use_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
 
 static void 
-ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_use_func(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_FUNC, ("expected CLASS_FUNC ST"));
-   Append_Token_String(tokens, W2CF_Symtab_Nameof_St(st));
+
+   std::stringstream ss;
+   ss << W2CF_Symtab_Nameof_St(st);
+   if (vn)
+     ss << "v" << vn ;
+   Append_Token_String(tokens, ss.str().c_str());  
+
    if (!Stab_External_Def_Linkage(st))
       Set_BE_ST_w2fc_referenced(st);
 } /* ST2C_use_func */
 
 
 static void 
-ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_use_const(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 {
    Is_True(ST_sym_class(st)==CLASS_CONST, ("expected CLASS_CONST ST"));
    
@@ -728,43 +749,58 @@ ST2C_finalize(void)
 
 } /* ST2C_finalize */
 
+void 
+ST2C_decl_translate(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
+{ 
+   ST2C_Decl_Handle[ST_sym_class(st)](tokens, st, vn, context);
+} /* ST2C_decl_translate */
 
 void 
 ST2C_decl_translate(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 { 
-   ST2C_Decl_Handle[ST_sym_class(st)](tokens, st, context);
+   ST2C_Decl_Handle[ST_sym_class(st)](tokens, st, 0, context);
 } /* ST2C_decl_translate */
 
 
 void 
-ST2C_weakext_translate(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+ST2C_weakext_translate(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
 { 
    Is_True(ST_is_weak_symbol(st), 
 	   ("Expected weak symbol in ST2C_weakext_translate()"));
 
-   ST2C_decl_translate(tokens, st, context);
+   ST2C_decl_translate(tokens, st, vn, context);
    Append_Token_Special(tokens, ';');
    Append_Indented_Newline(tokens, 1/*number of lines*/);
    Append_Token_String(tokens, "#pragma");
    Append_Token_String(tokens, "weak");
-   ST2C_use_translate(tokens, st, context);
+   ST2C_use_translate(tokens, st, vn, context);
 
    if (ST_is_weak_symbol(st) && 
        Has_Base_Block(st) && 
        ST_sym_class(ST_base(st)) != CLASS_BLOCK)
    {
       Append_Token_Special(tokens, '=');
-      ST2C_use_translate(tokens, ST_strong(st), context);
+      ST2C_use_translate(tokens, ST_strong(st), vn, context);
    }
 } /* ST2C_weakext_translate */
 
+void 
+ST2C_weakext_translate(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
+{
+   ST2C_weakext_translate(tokens, st, 0, context);
+}
+
+void 
+ST2C_use_translate(TOKEN_BUFFER tokens, const ST *st, const WSSA::VER_NUM vn, CONTEXT context)
+{ 
+   ST2C_Use_Handle[ST_sym_class(st)](tokens, st, vn, context);
+} /* ST2C_use_translate */
 
 void 
 ST2C_use_translate(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 { 
-   ST2C_Use_Handle[ST_sym_class(st)](tokens, st, context);
+   ST2C_Use_Handle[ST_sym_class(st)](tokens, st, 0, context);
 } /* ST2C_use_translate */
-
 
 void
 ST2C_func_header(TOKEN_BUFFER  tokens, 

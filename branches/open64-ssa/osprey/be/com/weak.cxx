@@ -105,6 +105,7 @@
 #include "topcode.h"
 #include "ti_si.h"
 #endif
+#include "wssa_mgr.h"
 // ----------------------------------------------------------------------
 // symbols defined in lno.so:
 // from be/lno/lnodriver.h
@@ -245,7 +246,7 @@ void (*W2C_Translate_Istore_Lhs_p)(char *strbuf,
 void (*W2C_Translate_Purple_Main_p)(FILE *outfile, const WN *pu,
   const char *region_name);
 void (*W2C_Translate_Stid_Lhs_p)(char *strbuf, UINT bufsize,
-  const ST *stid_st, mINT64 stid_ofst, TY_IDX stid_ty, TYPE_ID stid_mtype);
+  const ST *stid_st, const WSSA::VER_NUM vn, mINT64 stid_ofst, TY_IDX stid_ty, TYPE_ID stid_mtype);
 void (*W2C_Translate_Wn_p)(FILE *outfile, const WN *wn);
 void (*W2C_Translate_Wn_Str_p)(char *strbuf, UINT bufsize, const
   WN *wn);

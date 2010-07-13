@@ -103,9 +103,24 @@
  * ====================================================================
  * ====================================================================
  */
+/* for whirl ssa */
+#include "wssa_mgr.h"
 
 extern void ST2C_initialize(CONTEXT context);
 extern void ST2C_finalize(void);
+
+extern void ST2C_decl_translate(TOKEN_BUFFER tokens,
+                                const ST    *st,
+				const WSSA::VER_NUM vn,
+                                CONTEXT      context);
+extern void ST2C_weakext_translate(TOKEN_BUFFER tokens, 
+				   const ST    *st, 
+				   const WSSA::VER_NUM vn, 
+				   CONTEXT      context);
+extern void ST2C_use_translate(TOKEN_BUFFER tokens,
+                               const ST    *st,
+			       const WSSA::VER_NUM vn,
+                               CONTEXT      context);
 
 extern void ST2C_decl_translate(TOKEN_BUFFER tokens,
                                 const ST    *st,

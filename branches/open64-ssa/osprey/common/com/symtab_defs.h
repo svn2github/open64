@@ -259,6 +259,8 @@ public:
 
     ST_IDX st_idx;			// my own st_idx
 
+    UINT32 wssa_st_idx;                 // index for this ST in SSA
+
     // operations
     
     ST ()  {Fail_FmtAssertion("ST default constructor must not be called.");}

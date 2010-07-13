@@ -76,7 +76,7 @@ extern void (*W2C_Translate_Istore_Lhs_p)(char *strbuf,
 extern void (*W2C_Translate_Purple_Main_p)(FILE *outfile, const WN *pu, 
   const char *region_name);
 extern void (*W2C_Translate_Stid_Lhs_p)(char *strbuf, UINT bufsize,
-  const ST *stid_st, mINT64 stid_ofst, TY_IDX stid_ty, TYPE_ID stid_mtype);
+					const ST *stid_st,const WSSA::VER_NUM vn,  mINT64 stid_ofst, TY_IDX stid_ty, TYPE_ID stid_mtype);
 extern void (*W2C_Translate_Wn_p)(FILE *outfile, const WN *wn);
 extern void (*W2C_Translate_Wn_Str_p)(char *strbuf, UINT bufsize, const
   WN *wn);

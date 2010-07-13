@@ -325,6 +325,9 @@ BOOL Early_Goto_Conversion = TRUE; // Goto conversion applied before VHO(C/C++)
 BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
 
+
+BOOL OPT_Enable_WHIRL_SSA = TRUE;  // SSA on WHIRL, disabled by default
+
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
 
@@ -849,6 +852,10 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,	&Enable_WFE_DFE,	NULL,
     "Enable dead function elimination in the frontend" },
 #endif /* __linux__ */
+
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "wssa",	NULL,
+    0, 0, 0,	&OPT_Enable_WHIRL_SSA,	NULL,
+    "Enable building up SSA on WHIRL" },
 
   /* Obsolete options: */
 

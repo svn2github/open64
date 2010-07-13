@@ -494,7 +494,14 @@ BE_COM_CXX_SRCS = \
   wn_cyg_instrument.cxx \
   wn_instrument.cxx \
   tls.cxx               \
-  be_memop_annot.cxx
+  be_memop_annot.cxx    \
+  wssa_utils.cxx        \
+  wssa_core.cxx         \
+  wssa_sym.cxx          \
+  wssa_mgr.cxx          \
+  wssa_du.cxx           \
+  wssa_wn.cxx           \
+  wssa_io.cxx
 
 ifneq ($(BUILD_SKIP_LNO), TRUE)
 BE_COM_CXX_SRCS += \

@@ -661,6 +661,7 @@ W2CF_TRANSLATOR::Expr_To_String(ANL_CBUF *cbuf, WN *expr)
 void
 W2CF_TRANSLATOR::Stid_Lhs_To_String(ANL_CBUF   *cbuf, 
 				    ST         *st, 
+				    const WSSA::VER_NUM vn, 
 				    STAB_OFFSET ofst,
 				    TY_IDX      ty, 
 				    MTYPE       mtype)
@@ -669,14 +670,14 @@ W2CF_TRANSLATOR::Stid_Lhs_To_String(ANL_CBUF   *cbuf,
    {
       W2C_Push_PU(_pu, WN_func_body(_pu));
       W2C_Translate_Stid_Lhs(_strbuf, _Max_W2cf_String_Size,
-			     st, ofst, ty, mtype);
+			     st, vn, ofst, ty, mtype);
       W2C_Pop_PU();
    }
    else
    {
       W2F_Push_PU(_pu, WN_func_body(_pu));
       W2F_Translate_Stid_Lhs(_strbuf, _Max_W2cf_String_Size,
-			     st, ofst, ty, mtype);
+			     st, vn, ofst, ty, mtype);
       W2F_Pop_PU();
    }
    cbuf->Write_String(_strbuf);

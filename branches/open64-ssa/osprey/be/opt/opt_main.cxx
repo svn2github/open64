@@ -365,6 +365,8 @@
 #include "opt_lclsc.h"
 #endif
 
+#include "wssa_utils.h"   // WHIRL SSA
+
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
@@ -2006,9 +2008,40 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     if (This_preopt_renumbers_pregs(phase)) {
       comp_unit->Emitter()->Preg_renumbering_map().Init();
     }
+
+    if (OPT_Enable_WHIRL_SSA) {
+#ifdef Is_True_On
+      // WSSA, verify CODEREP before emitter
+      comp_unit->Htable()->Verify_var_phi_hash();
+      comp_unit->Verify_version();
+      comp_unit->Verify_CODEMAP();
+#endif
+    }
+    {
+      // trace CODEREP before WSSA emitter
+      if ( Get_Trace(TP_WSSA, TT_WSSA_PREOPT_EMT) ) {
+        fprintf( TFile, "%sCODEREP before WSSA Emitter\n%s", DBar, DBar );
+        comp_unit->Htable()->Print(TFile);
+        comp_unit->Cfg()->Print(TFile);
+      }
+    }
+
     opt_wn = comp_unit->Emitter()->Emit(comp_unit, du_mgr, alias_mgr);
     if (Cur_PU_Feedback)
       Cur_PU_Feedback->Reset_Root_WN(opt_wn);
+
+    if (OPT_Enable_WHIRL_SSA) {
+#ifdef Is_True_On
+      // Verify WHIRL SSA here
+#endif
+    }
+    {
+      // trace WHIRL SSA after WSSA emitter
+      if ( Get_Trace(TP_WSSA, TT_WSSA_PREOPT_EMT) ) {
+        fprintf( TFile, "%sWHIRL after WSSA Emitter\n%s", DBar, DBar );
+        fdump_tree( TFile, opt_wn );
+      }
+    }
 
     // *****************************************************************
     //    Invoke IPA summary phase

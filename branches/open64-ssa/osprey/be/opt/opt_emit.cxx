@@ -107,7 +107,8 @@ static char *rcs_id = 	opt_emit_CXX"$Revision: 1.13 $";
 #include "opt_main.h"
 
 #include "opt_emit_template.h"
-
+#include "wssa_emitter.h"
+#include "pu_info.h"
 extern WN_MAP Prompf_Id_Map;
 #if defined(TARG_NVISA)
 // To get better loop depth comments in the ptx file
@@ -145,6 +146,11 @@ inline void
 BB_NODE::Gen_wn(EMITTER *emitter)
 {
   Gen_bb_wn(this, emitter);
+  if( OPT_Enable_WHIRL_SSA && Firststmt() != NULL &&
+      WN_operator_is(Firststmt(), OPR_LABEL)) {
+    
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI( this, Firststmt() );
+  }
 }
 
 
@@ -394,7 +400,9 @@ Raise_if_stmt(EMITTER *emitter, BB_NODE **bb)
     emitter->Cfg()->Feedback()->Emit_feedback( rwn, bb_cond );
   }
   emitter->Connect_sr_wn( bb_cond->Branch_stmtrep(), rwn );
-
+  if(OPT_Enable_WHIRL_SSA) {
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI(bb_merge, rwn);
+  }
   // if bb_cond has more than one statement, create a BLOCK ...
   if (bb_cond->Firststmt() != bb_cond->Laststmt()) {
     WN *block = WN_CreateBlock();
@@ -930,6 +938,10 @@ Raise_whiledo_stmt_to_whileloop(EMITTER *emitter, BB_NODE *bb, BB_NODE **next_bb
   // bb_end->Loop()->Set_loopstmt(rwn);
 
   emitter->Connect_sr_wn( bb_end->Branch_stmtrep(), rwn );
+  if(OPT_Enable_WHIRL_SSA) {
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI( bb_end, rwn );
+  }
+
 
   // If bb_end contains more than one statement, create a new block to
   // contain the extra statements in the whileend block and the whiledo
@@ -1093,7 +1105,9 @@ Raise_whiledo_stmt_to_doloop(EMITTER *emitter, BB_NODE *bb, BB_NODE *prev_bb, BB
   header->Loop()->Set_loopstmt(rwn);
 
   emitter->Connect_sr_wn( header->Branch_stmtrep(), rwn );
-
+  if(OPT_Enable_WHIRL_SSA) {
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI( header, rwn );
+  }
   // fix bb_merge:  if bb_merge has a label and exactly one pred,
   // the bb_merge is only reachable from the DO-loop, so it is safe to
   // delete the label stmt.  Fix 315023.
@@ -1199,8 +1213,10 @@ Raise_dowhile_stmt(EMITTER *emitter, BB_NODE **bb)
     emitter->Cfg()->Feedback()->Emit_feedback( rwn, bb_end );
   }
   emitter->Connect_sr_wn( bb_end->Branch_stmtrep(), rwn );
-
-  // Move the extra statements in BB_END to the body.
+  if(OPT_Enable_WHIRL_SSA) {
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI( bb_body, rwn );
+  }
+   // Move the extra statements in BB_END to the body.
   if (bb_end->Firststmt() != bb_end->Laststmt()) {
     STMT_CONTAINER stmtcon(WN_first(block_body), WN_last(block_body));
     stmtcon.Append_list(bb_end->Firststmt(), bb_end->Laststmt());
@@ -1253,6 +1269,9 @@ Raise_region_stmt(EMITTER *emitter, BB_NODE **bb)
   // PPP this is a kludge !!! need a node to mark region_entry/func_entry
   emitter->Connect_sr_wn( region_start->Succ()->Node()->First_stmtrep(),
 			 region_wn );
+  if(OPT_Enable_WHIRL_SSA) {
+    emitter->WSSA_Emitter()->WSSA_Copy_PHI( region_start, region_wn );
+  }
 
   // progress onto the next block
   *bb = region_end->Next();
@@ -1547,6 +1566,20 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
   _alias_mgr = alias_mgr;
   _du_mgr = du_mgr;
 
+  // initial wssa emitter
+  if (OPT_Enable_WHIRL_SSA) {
+    WSSA::WHIRL_SSA_MANAGER *wssa_mgr = PU_Info_ssa_ptr(Current_PU_Info);
+    _wssa_emitter = CXX_NEW(WHIRL_SSA_EMITTER(wssa_mgr, _opt_stab, this),
+		  _mem_pool);
+    if ( Get_Trace(TP_WSSA, TT_WSSA_PREOPT_EMT) ) {
+      _wssa_emitter->Set_trace(TRUE);
+      fprintf( TFile, "Entering WSSA Emitter\n");
+    }
+    if ( Get_Trace(TKIND_INFO, TINFO_TIME) ) {
+      _wssa_emitter->Set_trace_time(TRUE);
+    }
+  }
+
   // do we have valid loop-body information, which is necessary for
   // some of the checks
   Cfg()->Analyze_loops();
@@ -1572,8 +1605,21 @@ EMITTER::Emit(COMP_UNIT *cu, DU_MANAGER *du_mgr,
   // prepare for the def-use construction
   du_mgr->Set_alias_mgr(alias_mgr);
 
+  // convert opt_stab's vsym into symtab
+  if(OPT_Enable_WHIRL_SSA) {
+    _wssa_emitter->WSSA_Convert_OPT_Symbol();
+  }
+  
   // generate all of the Whirl
   Raise_func_entry(Cfg()->Func_entry_bb(), Cfg()->Last_bb());
+
+  if (OPT_Enable_WHIRL_SSA) {
+    _wssa_emitter->WSSA_Build_MU_CHI_Version(_opt_func);
+    if(_wssa_emitter->Get_trace()) {
+      fprintf( TFile, "Exiting WSSA Emitter\n");
+    }
+    CXX_DELETE( _wssa_emitter, _mem_pool);
+  }
 
   // construct the def-use information after all Whirl generated
   Compute_use_def(du_mgr);
@@ -1873,6 +1919,7 @@ EMITTER::EMITTER(MEM_POOL *lpool, MEM_POOL *gpool, OPT_PHASE opt_phase):
   _opt_stab = NULL;
   _opt_func = NULL;
   _rgn_entry_stmt = NULL;
+  _wssa_emitter = NULL;
   _has_do_loop = FALSE;
 
   // create a mapping from WN to CODEREP/STMTREP

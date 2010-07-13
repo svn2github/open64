@@ -230,6 +230,11 @@ Initialize_Timing ( BOOL enable )
     Timer ( T_CalcDom_CU) =
 	    Resource_Alloc ( "  Calculate_Dominators", Timer(T_CalcDom_Comp));
 
+    Timer ( T_WSSA_EMIT_Comp) =
+	    Resource_Alloc ( "   WHIRL SSA PreOPT Emitter", NULL );
+    Timer ( T_WSSA_EMIT_CU) =
+	    Resource_Alloc ( "  WHIRL SSA PreOPT Emitter", Timer(T_WSSA_EMIT_Comp));
+
   }
 }
 
@@ -403,6 +408,8 @@ Finish_BE_Timing (
 
 	fprintf(file, "\n");
 	Report_Delta_Time ( file, T_Preopt_CU );
+	Report_Delta_Time ( file, T_WSSA_EMIT_CU );
+
 	Report_Delta_Time ( file, T_LNO_CU );
 	Report_Delta_Time ( file, T_Wopt_CU );
 	Report_Delta_Time ( file, T_W2C_CU );
@@ -437,6 +444,7 @@ Finish_BE_Timing (
     Add_Timer_To_Parent ( T_ORI_CU );
 
     Add_Timer_To_Parent ( T_Preopt_CU );
+    Add_Timer_To_Parent ( T_WSSA_EMIT_CU );
     Add_Timer_To_Parent ( T_LNO_CU );
     Add_Timer_To_Parent ( T_Wopt_CU );
 
@@ -494,6 +502,7 @@ Finish_Compilation_Timing (
 
 	fprintf ( file, "\n" );
 	Report_Delta_Time ( file, T_Preopt_Comp );
+	Report_Delta_Time ( file, T_WSSA_EMIT_Comp );
 	Report_Delta_Time ( file, T_LNO_Comp );
 	Report_Delta_Time ( file, T_Wopt_Comp );
 	Report_Delta_Time ( file, T_W2C_Comp );

@@ -887,6 +887,7 @@ void
 W2C_Translate_Stid_Lhs(char       *strbuf,
 		       UINT        bufsize,
 		       const ST   *stid_st, 
+		       const WSSA::VER_NUM vn, 
 		       STAB_OFFSET stid_ofst, 
 		       TY_IDX      stid_ty, 
 		       TYPE_ID     stid_mtype)
@@ -899,6 +900,7 @@ W2C_Translate_Stid_Lhs(char       *strbuf,
    WN2C_stid_lhs(tokens,
 		 &stored_ty,   /* Corrected stored type */
 		 stid_st,      /* base symbol */
+		 vn,           /* symbol version */
 		 stid_ofst,    /* offset from base */
 		 stid_ty,      /* stored type */
 		 stid_mtype,   /* stored mtype */

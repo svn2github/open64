@@ -167,7 +167,8 @@ WHIRL2C_CXX_SRCS = \
   wn2c.cxx		\
   wn2c_pragma.cxx	\
   init.cxx		\
-  diagnostics.cxx
+  diagnostics.cxx	\
+  w2c_wssa.cxx
 
 WHIRL2C_DRIVER_SRCS = \
   whirl2c.c		\
