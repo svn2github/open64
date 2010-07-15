@@ -639,7 +639,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             numNodes *= 2;
           }
           topoOrderArray[i++] = node;
-
+#if 0
           if (dumped>0) {
             UINT32 card = 0;
             for (PointsToIterator pti(node); pti != 0; ++pti) {
@@ -668,6 +668,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
               dumped -= 1;
             }
           }
+#endif
         }
         // Sort based on topo-order number
         qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
@@ -722,7 +723,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 
   UINT32 endTime = CLOCK_IN_MS();
 
-  if (trace)
+  //if (trace)
     fprintf(stderr,"Solver required %d iter, "
             "processed %d c, %d s, %d l, %d s edges in %.1lfs\n",
             iterCount,copyCount,skewCount,loadCount,storeCount,
@@ -1366,10 +1367,10 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   ConstraintGraphNode *src = edge->srcNode();
   ConstraintGraphNode *dst = edge->destNode();
 
-  if (src->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-    fprintf(stderr,"SOLVE: Copy source %d is not a pointer!\n",src->id());
-  if (dst->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
-    fprintf(stderr,"SOLVE: Copy target %d is not a pointer!\n",dst->id());
+  //if (src->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+  //  fprintf(stderr,"SOLVE: Copy source %d is not a pointer!\n",src->id());
+  //if (dst->checkFlags(CG_NODE_FLAGS_NOT_POINTER))
+  //  fprintf(stderr,"SOLVE: Copy target %d is not a pointer!\n",dst->id());
 
   // Is this constraint context sensitive?
   bool cntxt = 

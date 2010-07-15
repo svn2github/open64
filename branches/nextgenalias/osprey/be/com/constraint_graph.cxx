@@ -670,9 +670,11 @@ ConstraintGraph::adjustNodeForKCycle(ConstraintGraphNode *destNode,
 #endif
 #if 1
         // Instead of -1, reduce the symbol to a single node
-        fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", 
-                pointedToNode->cg_st_idx());
-        st->print(stderr, true);
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+          fprintf(stderr, "Collapsing St cg_st_idx: %llu\n", 
+                  pointedToNode->cg_st_idx());
+          st->print(stderr, true);
+        }
         st->collapse();
         adjPointedToNode = 
                   pointedToNode->cg()->getCGNode(pointedToNode->cg_st_idx(),0);
@@ -4063,8 +4065,9 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
       if (!incompatible)
         continue;
 
-      fprintf(stderr, "Found incompatible node %d in pts set of %d\n",
-              ptdNode->id(), this->id());
+      if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
+        fprintf(stderr, "Found incompatible node %d in pts set of %d\n",
+                ptdNode->id(), this->id());
       //ptdNode->print(stderr);
       //fprintf(stderr, " in pts set of: \n");
       ptdNode->stInfo()->collapse();
@@ -4072,10 +4075,12 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
         FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
                   ("Only single offset expected"));
         repNode = ptdNode->stInfo()->firstOffset();
-        fprintf(stderr, "ptr stinfo:\n");
-        stInfo()->print(stderr);
-        fprintf(stderr, "Identifying rep: %d\n", repNode->id());
-        repNode->stInfo()->print(stderr);
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+          fprintf(stderr, "ptr stinfo:\n");
+          stInfo()->print(stderr);
+          fprintf(stderr, "Identifying rep: %d\n", repNode->id());
+          repNode->stInfo()->print(stderr);
+        }
       } else {
         FmtAssert(ptdNode->stInfo()->firstOffset()->nextOffset() == NULL,
                   ("Only single offset expected"));
@@ -4087,10 +4092,12 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
             ptdNode->id() == repNode->id())
           continue;
         repNode->collapse(ptdNode);
-        fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
-                repNode->id());
-        fprintf(stderr, "ptd stinfo:\n");
-        ptdNode->stInfo()->print(stderr);
+        if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
+          fprintf(stderr, "Collapsing node: %d with %d\n", ptdNode->id(),
+                  repNode->id());
+          fprintf(stderr, "ptd stinfo:\n");
+          ptdNode->stInfo()->print(stderr);
+        }
         // Find the last collasped St of repNode
         ConstraintGraphNode *c = repNode;
         CGNodeId cid = repNode->nextCollapsedSt();
@@ -4133,10 +4140,12 @@ ConstraintGraph::mapAliasedSyms()
       if (!n) {
         newSts.insert(ST_st_idx(base_st));
         n = getCGNode(CG_ST_st_idx(base_st), base_offset);
-        fprintf(stderr, "mapNewBase: mapping node:\n");
-        cur->print(stderr);
-        fprintf(stderr, "          : to node:\n");
-        n->print(stderr);
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG)) {
+          fprintf(stderr, "mapNewBase: mapping node:\n");
+          cur->print(stderr);
+          fprintf(stderr, "          : to node:\n");
+          n->print(stderr);
+        }
         _aliasedSyms[n->id()] = cur->id();
       }
       cur = cur->nextOffset();

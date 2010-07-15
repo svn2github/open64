@@ -1145,53 +1145,31 @@ IPA_NystromAliasAnalyzer::validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx)
   ST *st = &St_Table[stIdx];
   const char *calleeName = ST_name(stIdx);
   if (calleeName[0] == '_' && calleeName[1] == 'Z') {
-    char *demangledName = cplus_demangle(calleeName,0);
-    FmtAssert(demangledName,("Unable to demangle: %s\n",calleeName));
-    //fprintf(stderr,"\tChecking of cs %d can call %s",cs->id(),demangledName);
-    char *colon = strchr(demangledName,':');
-    // If the function is not a class member we cannot call it from here
-    if (!colon) {
+    TY_IDX func_ty_idx = ST_pu_type(st);
+    TYLIST_IDX tylist_index = TY_tylist(Ty_Table[func_ty_idx]);
+    // Get the 'this' ptr type, after the return type
+    TY_IDX this_ptr_ty_idx = Tylist_Table[++tylist_index];
+    if (TY_kind(this_ptr_ty_idx) != KIND_POINTER)
       return false;
-      //if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-      //  fprintf(stderr, "  virtual call cannot call: %s\n",ST_name(st));
-    }
-    *colon = '\0';
-    // At this point we have the demangled class name.  This should
-    // exist in the string table.   We will use this string index
-    // to compare with the nodes in the class hierarchy for the
-    // virtual class at this callsite.
-    STR_IDX strIdx = Save_Str(demangledName);
-    //fprintf(stderr,"\t found str_idx %d for %s\n",(int)strIdx,demangledName);
+    TY_IDX this_ty_idx = TY_pointed(this_ptr_ty_idx);
+
+    // Get callee class
+    TY_INDEX calleeVirtClass = TY_IDX_index(this_ty_idx);
+    //fprintf(stderr, "calleeVirtclass: %s\n",
+    //        TY_name(make_TY_IDX(calleeVirtClass))); 
+    // Get callsite class
     TY_INDEX virtClass = cs->virtualClass() >> 8;
-    TY_INDEX baseClass = IPA_Class_Hierarchy->Get_Base_Class(virtClass,0);
-    hash_set<TY_INDEX> classes;
-    IPA_Class_Hierarchy->Get_Sub_Class_Hierarchy(baseClass,classes);
-    bool match = false;
-    for (hash_set<TY_INDEX>::iterator cls = classes.begin();
-        cls != classes.end(); ++cls ) {
-      TY_INDEX tyIndex = *cls;
-      STR_IDX classNameIdx = TY_name_idx(make_TY_IDX(tyIndex));
-      //fprintf(stderr,"\t  comparing against ty_idx %d: %s with str_idx %d",
-             // tyIndex,TY_name(tyIndex),classNameIdx);
-      if (strIdx == classNameIdx) {
-        //fprintf(stderr," (match)");
-        match = true;
-        break;
-      }
-      //fprintf(stderr,"\n");
+    //fprintf(stderr, "virtClass: %s\n", TY_name(make_TY_IDX(virtClass))); 
+
+    if (calleeVirtClass == virtClass ||
+        IPA_Class_Hierarchy->Is_Ancestor(virtClass, calleeVirtClass) ||
+        IPA_Class_Hierarchy->Is_Ancestor(calleeVirtClass, virtClass))
+    {
+      //fprintf(stderr, "match\n");
+      return true;
     }
-    free(demangledName);
-    if (!match)
-      return false;
-#if 0
-    if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG)) {
-      char *demangleCaller = cplus_demangle(ST_name(st),0);
-      fprintf(stderr,"  CGNode: %d, ST: %s calls %s\n",
-              nodeId,demangleCaller,demangledName);
-      free(demangleCaller);
-    }
-#endif
-    return true;
+
+    return false;
   }
   // Not a mangled C++ name, cannot be called from virtual callsite
   else {
@@ -1318,6 +1296,7 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(
   // "blackhole" in its points-to set.  If that is the case, then
   // the target is determined by an incomplete (escaping) symbol.
   list<pair<IPA_NODE *,CallSiteId> >::const_iterator iter;
+  INT numNewTargets = 0;
   for (iter = indCallList.begin(); iter != indCallList.end(); ++iter) {
     IPA_NODE *caller = iter->first;
     UINT32 id = iter->second;
@@ -1333,12 +1312,7 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(
                 "Incomplete Indirect Call: %s (%d) %s maps to CGNodeId: %d\n",
                 caller->Name(),id,icallNode->stName(),cs->cgNodeId());
       STToNodeMap::const_iterator iter = _stToIndTgtMap.begin();
-      INT numTargets = 0;
       for (; iter != _stToIndTgtMap.end(); ++iter) {
-        if (numTargets > 1000) {
-          fprintf(stderr, "Too many calls..IPA assumed to be incomplete\n");
-          return false;
-        }
         const ST *st = iter->first;
         IPA_NODE *ipaNode = iter->second;
         // If we have a parameter mismatch, then we are likely calling the
@@ -1376,7 +1350,11 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(
           edgeList.push_front(newEdge);
           if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
             fprintf(stderr,"  Now calls %s\n",ST_name(st));
-          numTargets++;
+          numNewTargets++;
+          if (numNewTargets > 75000) {
+            fprintf(stderr, "Too many calls..IPA assumed to be incomplete\n");
+            return false;
+          }
         }
       }
     }
@@ -1566,9 +1544,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   IPA_EscapeAnalysis escAnalFinal(_extCallSet,
                                   _ipaConstraintGraphs,
-                                  completeIndirect
-                                    ? IPA_Enable_Whole_Program_Mode
-                                    : false,
+                                  IPA_Enable_Whole_Program_Mode,
                                   completeIndirect
                                     ? EscapeAnalysis::IPAComplete
                                     : EscapeAnalysis::IPAIncomplete,

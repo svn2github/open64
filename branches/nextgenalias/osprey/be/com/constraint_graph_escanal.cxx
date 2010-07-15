@@ -748,6 +748,8 @@ EscapeAnalysis::perform(void)
 
   init();
 
+  time_t startTime = time(NULL);
+
   UINT32 cnt = 0;
   while (!_workList.empty())  {
     ConstraintGraphNode *node = _workList.pop();
@@ -769,6 +771,10 @@ EscapeAnalysis::perform(void)
     fprintf(stderr,"ESCANAL: global escape = %d\n",_globalEscapeCnt);
     fprintf(stderr,"ESCANAL: observed      = %d\n",_observedCnt);
   }
+
+  time_t endTime = time(NULL);
+
+  fprintf(stderr,"EscapeAnalysis required %ds\n", endTime-startTime);
 }
 
 void
