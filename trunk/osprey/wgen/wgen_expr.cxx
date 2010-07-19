@@ -6393,9 +6393,15 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
-	    if (MTYPE_size_min(mtyp) != 32)
-	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
-			         gs_type_type_precision(gs_tree_type(exp)), wn);
+	    if (MTYPE_size_min(mtyp) != 32) { 
+	      INT cvt_bit = gs_type_type_precision(gs_tree_type(exp));
+	      if (cvt_bit == 0 || cvt_bit == 8 || cvt_bit == 16 || cvt_bit == 32) { 
+	        wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V, cvt_bit, wn);
+	      } else {
+	        wn = WN_CreateExp1(OPR_EXTRACT_BITS, Widen_Mtype(mtyp), MTYPE_V, wn);
+	        WN_set_bit_offset_size(wn, 0, cvt_bit);
+	      }     
+	    }																																											       }
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
