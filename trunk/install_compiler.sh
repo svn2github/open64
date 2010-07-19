@@ -206,12 +206,13 @@ INSTALL_GCC () {
 
     # Make links to gcc runtime libraries
     cd ${ROOT}
+    mkdir $PHASEPATH/64
     if [ "$TARG_HOST" = "x8664" ]
     then
 	for i in open64-gcc-4.2.0/lib64/lib*.so*; do
 	    if [ -e "$i" ]
 	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+		(cd $PHASEPATH/64; ln -sf ../../../../../$i `basename $i`)
 	    fi
 	done
 	for i in open64-gcc-4.2.0/lib/lib*.so*; do
@@ -225,7 +226,7 @@ INSTALL_GCC () {
 	for i in open64-gcc-4.2.0/lib/lib*.so*; do
 	    if [ -e "$i" ]
 	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+		(cd $PHASEPATH/64; ln -sf ../../../../../$i `basename $i`)
 	    fi
 	done
     fi
