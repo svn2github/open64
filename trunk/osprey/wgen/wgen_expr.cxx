@@ -6401,7 +6401,7 @@ WGEN_Expand_Expr (gs_t exp,
 	        wn = WN_CreateExp1(OPR_EXTRACT_BITS, Widen_Mtype(mtyp), MTYPE_V, wn);
 	        WN_set_bit_offset_size(wn, 0, cvt_bit);
 	      }     
-	    }																																											       }
+	    }
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
