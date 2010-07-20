@@ -562,19 +562,14 @@ set_library_paths(string_list_t *args)
       asprintf(&our_path, "%s/lib/",root_prefix);
 #endif
 	} else {
-		asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
+	  asprintf(&our_path, "%s/" LIBPATH "/64", global_toolroot);
+	  add_string(args, concat_strings("-L", our_path));
+	  asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
 
 	free(our_path);
-#ifdef TARG_IA64
-	our_path = get_phase_dir(P_library);
-        add_string (args, concat_strings("-L", our_path));
-
-        our_path= get_phase_dir(P_alt_library);
-        add_string (args, concat_strings("-L", our_path));
-#endif
 }
 
 /*

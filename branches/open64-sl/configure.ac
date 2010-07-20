@@ -173,7 +173,6 @@ case "$target" in
 		GCC_CONFIGURE_TARG=x86_64-redhat-linux
 		GCC_CONFIGURE_COMPILER+=" -m64"
 		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
-		BUILD_MULTILIB=YES
 		;;
 	i*86*-*-linux*)
 		MACHINE_TYPE=i386
@@ -191,7 +190,6 @@ case "$target" in
 		GCC_CONFIGURE_COMPILER+=" -m32"
 		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
 		CYGNUS_CONFIGURE_CFLAGS="-m32"
-		BUILD_MULTILIB=YES
 		;;
 	ia64*-*-linux*)
 		MACHINE_TYPE=ia64
@@ -220,6 +218,10 @@ case "$target" in
 		;;
 esac
 
+UNAME_MACHINE=`uname -m`
+if test "$UNAME_MACHINE" = "x86_64"; then
+   BUILD_MULTILIB=YES
+fi
 # Set default values for LIB_* and LIB2_* variables that were not set above.
 if test "$LIB_MACHINE_TYPE" = ""; then
   LIB_MACHINE_TYPE=$MACHINE_TYPE
