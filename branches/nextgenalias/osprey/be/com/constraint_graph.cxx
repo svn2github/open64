@@ -1997,9 +1997,9 @@ ConstraintGraph::processLHSofStore(WN *stmt)
         addEdge(addrCGNode, tmp1CGNode, ETYPE_SKEW, CQ_HZ, skew, added);
         addrCGNode = tmp1CGNode;
       }
+      cgNodeLHS = addrCGNode;
+      cgNodeLHS->accessSize(MTYPE_byte_size(WN_desc(stmt)));
     }
-    cgNodeLHS = addrCGNode;
-    cgNodeLHS->accessSize(MTYPE_byte_size(WN_desc(stmt)));
   }
 
   if (cgNodeLHS == NULL) {
