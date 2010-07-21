@@ -479,6 +479,11 @@ SUMMARIZE<program>::Summarize (WN *w)
   Set_entry_point (w);
   Process_procedure (w);
 
+  // Generate summary information for Nystrom alias analyzer
+  // must generate CG summary befoer processing alt entry, otherwise
+  // CG summry is recorded on alt_entry's procedure summary
+  generateConstraintGraphSummary(w);
+
   // if the original subroutine contained alternate entry points
   // then we need to create summary procedure nodes for each
   // alternate entry point. The entry points occuring in the
@@ -508,8 +513,6 @@ SUMMARIZE<program>::Summarize (WN *w)
     _alt_entry.Resetidx();
   }
 
-  // Generate summary information for Nystrom alias analyzer
-  generateConstraintGraphSummary(w);
 
 #ifdef KEY
   if (Get_Trace (TP_IPL, TT_IPL_SUMMARY))
