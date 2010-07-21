@@ -400,13 +400,19 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsGBL; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsGBLidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
+      bool change = false;
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(
-                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_GBL);
+        change = cgNode->parent()->addPointsTo(
+                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_GBL);
       } else
-        cgNode->parent()->addPointsTo(pNode, CQ_GBL);
+        change = cgNode->parent()->addPointsTo(pNode, CQ_GBL);
+      // Mark a changed global as modified so that its outgoing edges
+      // gets processed in the solver 
+      if (change && cgNode->parent()->cg() == globalCG()) {
+        ConstraintGraph::solverModList()->push(cgNode->parent());
+      }
     }
     cgNode->parent()->sanitizePointsTo(CQ_GBL);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_GBL),(""));
@@ -415,13 +421,19 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsHZ; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsHZidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
+      bool change = false;
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(
-                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_HZ);
+        change = cgNode->parent()->addPointsTo(
+                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_HZ);
       } else
-        cgNode->parent()->addPointsTo(pNode, CQ_HZ);
+        change = cgNode->parent()->addPointsTo(pNode, CQ_HZ);
+      // Mark a changed global as modified so that its outgoing edges
+      // gets processed in the solver 
+      if (change && cgNode->parent()->cg() == globalCG()) {
+        ConstraintGraph::solverModList()->push(cgNode->parent());
+      }
     }
     cgNode->parent()->sanitizePointsTo(CQ_HZ);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_HZ),(""));
@@ -430,13 +442,17 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     for (UINT32 i = 0; i < numBitsPtsDN; i++) {
       CGNodeId id = (CGNodeId)nodeIds[ptsDNidx + i];
       ConstraintGraphNode *pNode = findUniqueNode(id);
+      bool change = false;
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        cgNode->parent()->addPointsTo(
-                ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_DN);
+        change = cgNode->parent()->addPointsTo(
+                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_DN);
       } else
-        cgNode->parent()->addPointsTo(pNode, CQ_DN);
+        change = cgNode->parent()->addPointsTo(pNode, CQ_DN);
+      if (change && cgNode->parent()->cg() == globalCG()) {
+        ConstraintGraph::solverModList()->push(cgNode->parent());
+      }
     }
     cgNode->parent()->sanitizePointsTo(CQ_DN);
     Is_True(cgNode->parent()->sanityCheckPointsTo(CQ_DN),(""));

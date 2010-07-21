@@ -1261,8 +1261,7 @@ public:
   static EdgeDelta *workList(void) { return _workList; }
   static void workList(EdgeDelta *list)   { _workList = list; }
 
-  static NodeWorkList *solverModList(void)   { return _solverModList; }
-  static void solverModList(NodeWorkList *l) { _solverModList = l; }
+  static NodeWorkList *solverModList(void)   { return &_solverModList; }
 
   static void ipaSimpleOptimizer();
 
@@ -1539,7 +1538,7 @@ private:
   // List of nodes modified by the latest round of copy/skew edge
   // processing in the solver.  Used to reduce outgoing edge walks
   // during the solver.
-  static NodeWorkList *_solverModList;
+  static NodeWorkList _solverModList;
 
   static ConstraintGraphEdge *_addEdge(ConstraintGraphNode *src,
                                        ConstraintGraphNode *dest,

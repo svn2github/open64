@@ -504,6 +504,36 @@ checkNode(ConstraintGraphNode *n)
   }
 }
 
+static void
+checkExcessPtsSet(UINT32& dumped, ConstraintGraphNode *node)
+{
+  if (dumped>0) {
+    UINT32 card = 0;
+    for (PointsToIterator pti(node); pti != 0; ++pti) {
+      PointsTo &pts = *pti;
+      card += pts.numBits();
+    }
+    if (card > 500) {
+      fprintf(stderr,"Excess pts set (card %d):\n",card);
+      fprintf(stderr,"  Node %d, offset %d, ty %s, cg %s\n",
+              node->id(),node->offset(), TY_name(node->ty_idx()),
+              node->cg()->name());
+      fprintf(stderr,"  Points to...\n");
+      for (PointsToIterator pti(node); pti != 0; ++pti) {
+        PointsTo &pts = *pti;
+        for (PointsTo::SparseBitSetIterator iter(&pts,0); iter != 0; ++iter) {
+          ConstraintGraphNode *n = ConstraintGraph::cgNode(*iter);
+          fprintf(stderr,"    Node %d, offset %d, ty %s, cg %s\n",
+                  n->id(),n->offset(), TY_name(n->id()),n->cg()->name());
+          if (n->id() == 4148)
+            n->print(stderr);
+        }
+      }
+      dumped -= 1;
+    }
+  }
+}
+
 static int
 topoCGNodeCompare(const void *n1, const void *n2)
 {
@@ -518,6 +548,8 @@ topoCGNodeCompare(const void *n1, const void *n2)
 bool
 ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 {
+  bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
+
   // TODO: Perform cycle detection, here
   SCCDetection  *sccs = NULL;
   if (_cg)
@@ -529,15 +561,36 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
   EdgeWorkList &copySkewList = edgeDelta().copySkewList();
   EdgeWorkList &loadStoreList = edgeDelta().loadStoreList();
 
-  NodeWorkList modNodeList;
-  ConstraintGraph::solverModList(&modNodeList);
+  // If there are nodes in the modNodeList that were added during build
+  // (eg: buildCGNodeipa), add their edges
+  NodeWorkList &modNodeList = *(ConstraintGraph::solverModList());
+  if (!modNodeList.empty()) {
+    UINT32 numNodes = modNodeList.size();
+    if (trace)
+      fprintf(stderr, "Processing %d initial modified nodes\n",numNodes);
+    ConstraintGraphNode **topoOrderArray =
+      (ConstraintGraphNode **)malloc(sizeof(ConstraintGraphNode *)* numNodes);
+    UINT32 i = 0;
+    while (!modNodeList.empty()) {
+      ConstraintGraphNode *node = modNodeList.pop();
+      topoOrderArray[i++] = node;
+    }
+    // Sort based on topo-order number
+    qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
+    // Add edges to be processed in topological order
+    for ( UINT32 j = 0; j < i; j++) {
+      ConstraintGraphNode *node = topoOrderArray[j];
+      if (trace) fprintf(stderr,"Node %d\n",node->id());
+      ConstraintGraph::addEdgesToWorkList(node);
+    }
+    free(topoOrderArray);
+  }
 
   UINT32 iterCount = 0;
   UINT32 copyCount = 0;
   UINT32 skewCount = 0;
   UINT32 loadCount = 0;
   UINT32 storeCount = 0;
-  bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
 
   UINT32 startTime = CLOCK_IN_MS();
 
@@ -557,7 +610,8 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
           (ConstraintGraphNode **)malloc(sizeof(ConstraintGraphNode *)*
                                          _cg->totalCGNodes());
       UINT32 i = 0;
-      for (CGNodeToIdMapIterator iter = _cg->lBegin(); iter != _cg->lEnd(); ++iter)
+      for (CGNodeToIdMapIterator iter = _cg->lBegin();
+           iter != _cg->lEnd(); ++iter)
         topoOrderArray[i++] = iter->first;
       qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
       // Add edges to be processed in topological order
@@ -603,7 +657,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
       // Determine which edges need to be visited as a result of the
       // most recent round of copy edge processing.  We also do some
       // work on the pts of the modified nodes to improve solver efficiency.
-      //NodeWorkList *modNodes = ConstraintGraph::solverModList();
+      NodeWorkList &modNodeList = *(ConstraintGraph::solverModList());
       if (!modNodeList.empty()) {
         UINT32 numNodes = modNodeList.size();
         if (trace)
@@ -639,36 +693,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
             numNodes *= 2;
           }
           topoOrderArray[i++] = node;
-#if 0
-          if (dumped>0) {
-            UINT32 card = 0;
-            for (PointsToIterator pti(node); pti != 0; ++pti) {
-              PointsTo &pts = *pti;
-              card += pts.numBits();
-            }
-            if (card > 500) {
-              fprintf(stderr,"Excess pts set (card %d):\n",card);
-              fprintf(stderr,"  Node %d, offset %d, ty %s, cg %s\n",
-                      node->id(),node->offset(),
-                      TY_name(node->ty_idx()),
-                      node->cg()->name());
-              fprintf(stderr,"  Points to...\n");
-              for (PointsToIterator pti(node); pti != 0; ++pti) {
-                PointsTo &pts = *pti;
-                for (PointsTo::SparseBitSetIterator iter(&pts,0);
-                    iter != 0; ++iter) {
-                  ConstraintGraphNode *n = ConstraintGraph::cgNode(*iter);
-                  fprintf(stderr,"    Node %d, offset %d, ty %s, cg %s\n",
-                          n->id(),n->offset(),
-                          TY_name(n->id()),n->cg()->name());
-                  if (n->id() == 4148)
-                    n->print(stderr);
-                }
-              }
-              dumped -= 1;
-            }
-          }
-#endif
+          // checkExcessPtsSet(dumped, node);
         }
         // Sort based on topo-order number
         qsort(topoOrderArray,i,sizeof(ConstraintGraphNode *),topoCGNodeCompare);
@@ -679,9 +704,6 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
         if (ConstraintGraph::inIPA()) {
           for (UINT32 j = 0; j < i; j++)
             topoOrderArray[j]->collapseTypeIncompatibleNodes();
-
-          //for (UINT32 j = 0; j < i; j++)
-          //  checkNode(topoOrderArray[j]);
         }
 
         // Add edges to be processed in topological order
@@ -736,7 +758,8 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
   totalStoreCount += storeCount;
   totalTime += (double(endTime-startTime)/1000);
 
-  ConstraintGraph::solverModList(NULL);
+  FmtAssert(ConstraintGraph::solverModList()->empty(), 
+            ("Expecting modNodeList to be empty"));
   if (sccs)
     delete sccs;
 

@@ -774,7 +774,7 @@ EscapeAnalysis::perform(void)
 
   time_t endTime = time(NULL);
 
-  fprintf(stderr,"EscapeAnalysis required %ds\n", endTime-startTime);
+  fprintf(stderr,"EscapeAnalysis required %lds\n", endTime-startTime);
 }
 
 void

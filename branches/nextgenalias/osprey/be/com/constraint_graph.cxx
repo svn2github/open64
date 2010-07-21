@@ -28,7 +28,7 @@ const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
 EdgeDelta *ConstraintGraph::_workList = NULL;
-NodeWorkList *ConstraintGraph::_solverModList = NULL;
+NodeWorkList ConstraintGraph::_solverModList;
 
 // Return off that is pointer aligned
 static INT32 
