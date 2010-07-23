@@ -121,6 +121,20 @@ IPA_irb_adjust_cg_st_idx(UINT64 orig_idx, IPA_NODE* cur_node)
   return (((UINT64)filePUIdx) << 32) | (orig_idx & 0x00000000ffffffffLL);
 }
 
+static void 
+Flat_Pu_Info_Trees(PU_Info* pu_info_tree, DYN_ARRAY<PU_Info*> *pu_infos)
+{
+  for (PU_Info* cur_pu = pu_info_tree; cur_pu != NULL;
+     cur_pu = PU_Info_next(cur_pu)) 
+  {
+    pu_infos->AddElement(cur_pu);
+    if(PU_Info_child(cur_pu)) 
+    {
+      Flat_Pu_Info_Trees(PU_Info_child(cur_pu), pu_infos);
+    }
+  }
+}
+
 void
 IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
 {
@@ -136,9 +150,14 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
   DYN_ARRAY<UINT32> cg_nodeids(Malloc_Mem_Pool);
   DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_MODRANGE> cg_modranges(Malloc_Mem_Pool);
   
-  for (PU_Info* cur_pu = pu_info_tree; cur_pu != NULL;
-       cur_pu = PU_Info_next(cur_pu))
+  // flatten the hierachy put_info_tree then, we can use the loop to iterate.
+  // otherwise we need pass all DYN_Arrays.
+  DYN_ARRAY<PU_Info*> pu_infos(Malloc_Mem_Pool);
+  Flat_Pu_Info_Trees(pu_info_tree, &pu_infos);
+  
+  for (INT pu_idx = 0; pu_idx <= pu_infos.Lastidx();  pu_idx++) 
   {
+    PU_Info* cur_pu = pu_infos[pu_idx];
     IPA_NODE* ipa_node = Get_Node_From_PU(cur_pu);
     
     ConstraintGraph* cg = naa->cg(ipa_node->Node_Index());

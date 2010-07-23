@@ -142,7 +142,7 @@ NystromAliasAnalyzer::aliased(AliasTag tag1, AliasTag tag2)
   QueryCacheIterator iter = _queryCacheMap.find(key);
   if (iter != _queryCacheMap.end()) {
     if (Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
-      fprintf(stderr,"Found <%d,%d> in cache: %d\n",tag1,tag2,iter->second);
+      fprintf(TFile,"Found <%d,%d> in cache: %d\n",tag1,tag2,iter->second);
     return iter->second ? POSSIBLY_ALIASED : NOT_ALIASED;
   }
 
