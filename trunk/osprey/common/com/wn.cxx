@@ -582,6 +582,14 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     WN_set_kid_count(wn, kid_count);
     WN_set_map_id(wn, New_Map_Id());
 
+#ifdef TARG_SL
+    /* SL initialization
+     */
+    WN_Set_vbuf_ofst_adjusted(wn, FALSE);
+    WN_Set_is_internal_mem_ofst(wn, FALSE);
+    WN_Set_is_compgoto_para(wn, FALSE);
+    WN_Set_is_compgoto_for_minor(wn, FALSE);
+#endif
     return wn;
 }
 
@@ -2015,14 +2023,11 @@ WN *WN_CopyNode (const WN* src_wn)
     WN_Copy_u1u2 (wn, src_wn);
     WN_Copy_u3 (wn, src_wn);
 #if defined(TARG_SL)
-    //vbuf_offset 
-    if(WN_is_internal_mem_ofst(src_wn)) 
-	  WN_Set_is_internal_mem_ofst(wn);
+    //vbuf_offset
+    WN_Set_is_internal_mem_ofst(wn, WN_is_internal_mem_ofst(src_wn)); 
     //fork_joint
-    if(WN_is_compgoto_para(src_wn))
-	WN_Set_is_compgoto_para(wn);
-    else if(WN_is_compgoto_for_minor(src_wn))
-	WN_Set_is_compgoto_for_minor(wn);
+    WN_Set_is_compgoto_para(wn, WN_is_compgoto_para(src_wn));
+    WN_Set_is_compgoto_for_minor(wn, WN_is_compgoto_for_minor(src_wn));
 #endif 
 
     WN_set_field_id(wn, WN_field_id(src_wn));

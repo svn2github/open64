@@ -273,7 +273,7 @@ PACKAGE_BUGREPORT=''
 
 ac_subdirs_all="$ac_subdirs_all osprey/cygnus"
 ac_subdirs_all="$ac_subdirs_all osprey-gcc-4.2.0"
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os MACHINE_TYPE BUILD_ABI BUILD_ARCH BUILD_HOST BUILD_TARGET BUILD_OPTIMIZE BUILD_COMPILER BUILD_BOTH LIB_MACHINE_TYPE LIB_BUILD_TARGET LIB_BUILD_ABI LIB_BUILD_ARCH LIB_BUILD_HOST LIB2_MACHINE_TYPE LIB2_BUILD_TARGET LIB2_BUILD_ABI LIB2_BUILD_ARCH LIB2_BUILD_HOST BUILD_MULTILIB COMPILER_TARG_DIR TARG_INFO_NAME BUILD_GNU3 GCC_CONFIGURE_TARG GCC_DIR LIBLIST subdirs LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os MACHINE_TYPE BUILD_ABI BUILD_ARCH BUILD_HOST BUILD_TARGET BUILD_VENDOR BUILD_OPTIMIZE BUILD_COMPILER BUILD_BOTH LIB_MACHINE_TYPE LIB_BUILD_TARGET LIB_BUILD_ABI LIB_BUILD_ARCH LIB_BUILD_HOST LIB2_MACHINE_TYPE LIB2_BUILD_TARGET LIB2_BUILD_ABI LIB2_BUILD_ARCH LIB2_BUILD_HOST BUILD_MULTILIB COMPILER_TARG_DIR TARG_INFO_NAME BUILD_GNU3 GCC_CONFIGURE_TARG GCC_DIR LIBLIST subdirs LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -1478,6 +1478,7 @@ echo "$as_me: error: \"open64 is not supported on $target\"" >&2;}
 esac
 
 CYGNUS_CONFIGURE_CFLAGS=
+BUILD_VENDOR=
 
 # Set variables based on the target machine that the compiler will generate
 # code for.
@@ -1522,6 +1523,20 @@ case "$target" in
 		GCC_CONFIGURE_TARG=ia64-redhat-linux
 		GCC_CONFIGURE_CFLAGS+=" -DTARG_IA64"
 		TARG_INFO_NAME=ipfec_targ_info
+		;;
+	sl*-*-linux*)
+		MACHINE_TYPE=SL
+		BUILD_TARGET=SL
+		BUILD_ABI=N32BIT
+		BUILD_ARCH=MIPS4
+		BUILD_VENDOR=SL
+		CYGNUS_CONFIGURE_HOST=i686-gnu-linux
+		GCC_CONFIGURE_HOST=mips-redhat-linux
+		CYGNUS_CONFIGURE_TARG=mipsel-elf-linux
+		GCC_CONFIGURE_TARG=mips-redhat-linux
+		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_SL"
+		CYGNUS_CONFIGURE_CFLAGS="-m32"
+		BUILD_MULTILIB=NO
 		;;
 	*)
 		{ { echo "$as_me:$LINENO: error: \"open64 is not supported on $target\"" >&5
@@ -1604,6 +1619,7 @@ export GCC_CONFIGURE_CFLAGS
 
 
 
+
 # List of configurable files to create in object directory.
                                                                                                                                                                                                                                                                                                                                                     ac_config_files="$ac_config_files Makefile osprey/Makefile.gsetup osprey/targdir/libspin/Makefile osprey/targdir/libspin_4_2_0/Makefile osprey/targdir/include/Makefile osprey/targdir/driver/Makefile osprey/targdir/libiberty/Makefile osprey/targdir/targ_info/Makefile osprey/targdir/be/Makefile osprey/targdir/libelf/Makefile osprey/targdir/libelfutil/Makefile osprey/targdir/libdwarf/Makefile osprey/targdir/libunwindP/Makefile osprey/targdir/cg/Makefile osprey/targdir/wopt/Makefile osprey/targdir/ipl/Makefile osprey/targdir/lno/Makefile osprey/targdir/lw_inline/Makefile osprey/targdir/ipa/Makefile osprey/targdir/whirl2c/Makefile osprey/targdir/whirl2f/Makefile osprey/targdir/libcomutil/Makefile osprey/targdir/ir_tools/Makefile osprey/targdir/libcmplrs/Makefile osprey/targdir/wgen/Makefile osprey/targdir/libcif/Makefile osprey/targdir/arith/Makefile osprey/targdir/orc_ict/Makefile osprey/targdir/orc_intel/Makefile osprey/targdir/libkapi/Makefile osprey/targdir/crayf90/Makefile osprey/targdir/crayf90/fe90/Makefile osprey/targdir/crayf90/libf90sgi/Makefile osprey/targdir/crayf90/sgi/Makefile"
 
@@ -1619,12 +1635,16 @@ fi
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
+if test "${BUILD_TARGET}" = "SL"; then
+LIBLIST="include libelf"
+else
 LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+fi
 
                                                                                 ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile osprey/targdir_lib/libelf/Makefile osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libfortran/Makefile osprey/targdir_lib/libhugetlbfs/Makefile osprey/targdir_lib/libmv/Makefile osprey/targdir_lib/libu/Makefile"
 
 
-if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
   LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
                                 ac_config_files="$ac_config_files osprey/targdir_lib/libopen64rt/Makefile osprey/targdir_lib/libinstr2/Makefile osprey/targdir_lib/libacml_mv/Makefile"
 
@@ -1633,7 +1653,7 @@ fi
 if test $BUILD_MULTILIB = "YES"; then
                                                                                   ac_config_files="$ac_config_files osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in osprey/targdir_lib2/libelf/Makefile:osprey/targdir_lib/libelf/Makefile.in osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in"
 
-  if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+  if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
                                   ac_config_files="$ac_config_files osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in osprey/targdir_lib2/libacml_mv/Makefile:osprey/targdir_lib/libacml_mv/Makefile.in"
 
   fi
@@ -2363,6 +2383,7 @@ s,@BUILD_ABI@,$BUILD_ABI,;t t
 s,@BUILD_ARCH@,$BUILD_ARCH,;t t
 s,@BUILD_HOST@,$BUILD_HOST,;t t
 s,@BUILD_TARGET@,$BUILD_TARGET,;t t
+s,@BUILD_VENDOR@,$BUILD_VENDOR,;t t
 s,@BUILD_OPTIMIZE@,$BUILD_OPTIMIZE,;t t
 s,@BUILD_COMPILER@,$BUILD_COMPILER,;t t
 s,@BUILD_BOTH@,$BUILD_BOTH,;t t

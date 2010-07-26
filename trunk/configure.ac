@@ -154,6 +154,7 @@ case "$host" in
 esac
 
 CYGNUS_CONFIGURE_CFLAGS=
+BUILD_VENDOR=
 
 # Set variables based on the target machine that the compiler will generate
 # code for.
@@ -198,6 +199,20 @@ case "$target" in
 		GCC_CONFIGURE_TARG=ia64-redhat-linux
 		GCC_CONFIGURE_CFLAGS+=" -DTARG_IA64"
 		TARG_INFO_NAME=ipfec_targ_info
+		;;
+	sl*-*-linux*)
+		MACHINE_TYPE=SL
+		BUILD_TARGET=SL
+		BUILD_ABI=N32BIT
+		BUILD_ARCH=MIPS4
+		BUILD_VENDOR=SL
+		CYGNUS_CONFIGURE_HOST=i686-gnu-linux
+		GCC_CONFIGURE_HOST=mips-redhat-linux
+		CYGNUS_CONFIGURE_TARG=mipsel-elf-linux
+		GCC_CONFIGURE_TARG=mips-redhat-linux
+		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_SL"
+		CYGNUS_CONFIGURE_CFLAGS="-m32"
+		BUILD_MULTILIB=NO
 		;;
 	*)
 		AC_MSG_ERROR(["open64 is not supported on $target"])
@@ -258,6 +273,7 @@ AC_SUBST([BUILD_ABI])
 AC_SUBST([BUILD_ARCH])
 AC_SUBST([BUILD_HOST])
 AC_SUBST([BUILD_TARGET])
+AC_SUBST([BUILD_VENDOR])
 AC_SUBST([BUILD_OPTIMIZE])
 AC_SUBST([BUILD_COMPILER])
 AC_SUBST([BUILD_BOTH])
@@ -331,7 +347,11 @@ fi
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
+if test "${BUILD_TARGET}" = "SL"; then
+LIBLIST="include libelf"
+else
 LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+fi
 
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
@@ -344,7 +364,7 @@ AC_CONFIG_FILES([
   osprey/targdir_lib/libu/Makefile
 ])
 
-if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
   LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
@@ -364,7 +384,7 @@ if test $BUILD_MULTILIB = "YES"; then
     osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
     osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
   ])
-  if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+  if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
     AC_CONFIG_FILES([
       osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in
       osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in

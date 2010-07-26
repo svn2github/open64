@@ -751,7 +751,7 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 #if defined(TARG_SL)
   // set flag for vbuf offset wn node. 
   if (exp->Is_flag_set(CF_INTERNAL_MEM_OFFSET)) {
-    WN_Set_is_internal_mem_ofst(wn);
+    WN_Set_is_internal_mem_ofst(wn, TRUE);
   }
 
   extern INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc);
@@ -858,10 +858,8 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       rwn = WN_CreateCompgoto(num_entries, rhs_wn, block_wn, default_wn, 0);
     }
 #ifdef TARG_SL //fork_joint
-     if (srep->Fork_stmt_flags())
-	 	WN_Set_is_compgoto_para(rwn);
-     else if(srep->Minor_fork_stmt_flags()) 
-	 	WN_Set_is_compgoto_for_minor(rwn);
+     WN_Set_is_compgoto_para(rwn, srep->Fork_stmt_flags());
+     WN_Set_is_compgoto_for_minor(rwn, srep->Minor_fork_stmt_flags());
 #endif 
     break;
 
@@ -1167,8 +1165,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       WN_set_field_id(rwn, lhs->I_field_id());
 #if defined(TARG_SL)
       // support vbuf istore automatic expansion 
-      if(srep->SL2_internal_mem_ofst())
-        WN_Set_is_internal_mem_ofst(rwn); 
+      WN_Set_is_internal_mem_ofst(rwn, srep->SL2_internal_mem_ofst());  
 #endif 
 #if defined(TARG_X8664) || defined(TARG_LOONGSON) // bug 6910
       if (emitter->Htable()->Phase() != MAINOPT_PHASE &&

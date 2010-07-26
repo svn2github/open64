@@ -64,6 +64,8 @@ LIB2_BUILD_DIR      = osprey/targdir_lib2
 
 TOP_SRCDIR          = @abs_top_srcdir@
 TOP_BUILDDIR        = @abs_top_builddir@
+BUILD_VENDOR        = @BUILD_VENDOR@
+BUILD_TARGET        = @BUILD_TARGET@
 BUILD_MULTILIB      = @BUILD_MULTILIB@
 BUILD_GNU3          = @BUILD_GNU3@
 
@@ -118,8 +120,10 @@ GNU3_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc
 
+ifneq ($(MACHINE_TYPE), SL)
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+endif
 
 FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/include \
@@ -289,6 +293,12 @@ cross: $(CROSS_PHONY_TARGET)
 
 backend: $(BASIC_PHONY_TARGET)
 
+ifeq ($(BUILD_TARGET), SL)
+install:
+	export TOOLROOT=@prefix@; \
+	export TOP_SRCDIR=$(TOP_SRCDIR); \
+		$(TOP_SRCDIR)/INSTALL.cross.sl @abs_top_builddir@
+else
 install:
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
 	    install-common
@@ -305,6 +315,7 @@ install:
 	export TOOLROOT=@prefix@; \
 	export TOP_SRCDIR=$(TOP_SRCDIR); \
 		$(TOP_SRCDIR)/install_compiler.sh $(MACHINE_TYPE)
+endif
 install-cross:
 	export TOOLROOT=@prefix@; $(TOP_SRCDIR)/install_compiler.sh ia64-cross
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
@@ -374,7 +385,9 @@ clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libkapi clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
+ifneq ($(MACHINE_TYPE), SL) 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber

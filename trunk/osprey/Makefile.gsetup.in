@@ -120,6 +120,9 @@ endif
 ifndef BUILD_TARGET
      BUILD_TARGET   = @BUILD_TARGET@
 endif
+ifndef BUILD_VENDOR
+     BUILD_VENDOR   = @BUILD_VENDOR@
+endif
 ifndef BUILD_COMPILER
      BUILD_COMPILER = @BUILD_COMPILER@
 endif

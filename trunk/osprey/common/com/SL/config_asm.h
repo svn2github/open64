@@ -168,6 +168,9 @@ static char *config_asm_rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/comm
 #define AS_IDENT	"#ident" /* Make this ASM_CMNT_START if no ident */
 #define AS_HIDDEN	".hidden"
 
+#define AS_INTERNAL     "#.internal"
+#define AS_PROTECTED    "#.protected"
+
 extern BOOL CG_emit_non_gas_syntax;
 
 /* The directive for emitting an address depends on the target pointer

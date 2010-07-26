@@ -1621,11 +1621,11 @@ static void Convert_SL2_Section_To_Pdo(WN *sections, WN *pragma)
   if((WN_PRAGMA_ID) WN_pragma(pragma) == WN_PRAGMA_SL2_MINOR_PSECTION_BEGIN) 
 // minor thread
   {
-    WN_Set_is_compgoto_for_minor(cgoto);	
+     WN_Set_is_compgoto_for_minor(cgoto, TRUE);	
   }
   else if((WN_PRAGMA_ID) WN_pragma(pragma) == WN_PRAGMA_SL2_MAJOR_PSECTION_BEGIN ) //main thread
   {
-      WN_Set_is_compgoto_para(cgoto); 
+     WN_Set_is_compgoto_para(cgoto, TRUE); 
   }	  
 
   WN_Set_Linenum(cgoto,WN_Get_Linenum(sections));

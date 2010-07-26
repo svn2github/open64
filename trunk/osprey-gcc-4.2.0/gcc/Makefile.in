@@ -1290,7 +1290,12 @@ config.status: $(srcdir)/configure $(srcdir)/config.gcc
 
 #all.internal: start.encap rest.encap doc
 # For Open64 compiler, omit doc
+# For MIPS/SL compiler, omit rest.encap
+ifneq (, $(filter mips%, $(target)))
+all.internal: start.encap
+else
 all.internal: start.encap rest.encap
+endif
 
 # This is what to compile if making a cross-compiler.
 all.cross: native gcc-cross$(exeext) cpp$(exeext) specs \

@@ -40,6 +40,11 @@ using std::vector;
 #define Min_uINT5 0
 #define Max_uINT5 31
 /*
+ * 6-bit unsign immediate integer
+ */
+#define Min_uINT6 0
+#define Max_uINT6 63
+/*
  * 7-bit signed immediate integer
  */
 #define Min_sINT7 -64
@@ -288,31 +293,39 @@ Repl_Size16_Instr::Replace_LDU () {
 }
 
 /*
- * Computer the pc-relative offset
+ * Compute the length of BB in byte
  */
-static int 
-Label_Offset (OP *op, LABEL_IDX lab) {
-  int i=0;
-  BB *cur_bb = OP_bb(op);
-  OP *tmp_op;
-  if (OP_bb(op) == NULL)   return (Max_INT5+1);//false
- 
-  BB *targ_bb = Get_Label_BB(lab);
-
-  i = 0;
-  cur_bb = OP_bb(op);
-
-  for (cur_bb = BB_next(cur_bb); cur_bb; cur_bb = BB_next(cur_bb)) {
-      if (BB_asm(cur_bb)) 
-	  return (Max_uINT5+1);
-      else if (BB_call(cur_bb) || BB_exit(cur_bb) || BB_zdl_prolog(cur_bb)) {
-	  i = i + 4;	 // jr/jplnk/loop/ret for quad-word alignment
-      } else if ((i > Max_uINT5) || (cur_bb == targ_bb)) 
-	  return i;
-      i = i + BB_length(cur_bb);
-    
+static int
+BB_Byte_Size(BB *bb){
+  OP *cur;
+  int length= 0;
+  for(cur = BB_first_op(bb); cur; cur = OP_next(cur)){
+    length += (OP_16bit_op(cur))? 2:4;
   }
-
+  return length;
+}
+/*
+ * check the pc-relative offset is in 64byte(br16 offset is 6bit)
+ */
+static BOOL
+Is_Br16_Offset (OP *op, LABEL_IDX lab) {
+  int offset=0;
+  BB *cur_bb = OP_bb(op);
+  if (OP_bb(op) == NULL)   return FALSE;
+  BB *targ_bb = Get_Label_BB(lab);
+  for (cur_bb = BB_next(cur_bb); cur_bb; cur_bb = BB_next(cur_bb)) {
+    if (BB_asm(cur_bb))
+       return FALSE;
+    else if (offset > Max_uINT6)
+       return FALSE;
+    else if (cur_bb == targ_bb)
+       return TRUE;
+    else if (BB_call(cur_bb) || BB_exit(cur_bb) || BB_zdl_prolog(cur_bb)){
+      offset = offset + 16; // jr/jplnk/loop/ret for quad-word alignment
+    }
+    offset = offset + BB_Byte_Size(cur_bb);
+  }
+  return FALSE;
 }
 
 /*replace br.eq br.ne */
@@ -334,9 +347,8 @@ Repl_Size16_Instr::Replace_BR() {
   
   if (tn_registers_identical(op2tn, Zero_TN)) {
   	if (TN_is_label(op3tn)) {
-	 LABEL_IDX lab = TN_label(op3tn); 
-      	 int offset = Label_Offset(_cur_op, lab);
-         if ((offset <=Max_INT5) && (offset >= Min_uINT5) ) {
+	 LABEL_IDX lab = TN_label(op3tn);
+         if (Is_Br16_Offset(_cur_op, lab)) { 
 	   OP_Change_Opcode(_cur_op, newtop);
            return TRUE;
          } 
@@ -843,10 +855,8 @@ void Check_Br16 () {
       TN *op3tn = OP_opnd (op, 2);
       Is_True(tn_registers_identical(op2tn, Zero_TN), ("second operand is zero"));
       if (TN_is_label(op3tn)) {
-	 LABEL_IDX lab = TN_label(op3tn); 
-      	 int offset = Label_Offset(op, lab);
-         int upbound = Max_INT5;
-         if (offset > upbound) {
+	 LABEL_IDX lab = TN_label(op3tn);
+         if (Is_Br16_Offset(op, lab)) { 
 	   TOP newtop = (OP_code(op)==TOP_br16_eqz) ? TOP_beq : TOP_bne ;
            OP_Change_Opcode(op, newtop);
 	   OP *prev16 = OP_prev_real_op(op);
