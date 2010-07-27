@@ -2839,8 +2839,9 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
       si->print(stderr,true);
-      FmtAssert(false,("Need to fix getCGNode: too many offsets!\n"));
-      offset = -1;
+      fprintf(stderr, "getCGNode: too many offsets..collapsing!\n");
+      si->collapse();
+      offset = 0;
       // Check if node exists, if so return it
       if ((cgNode = checkCGNode(cg_st_idx, offset)) != NULL)
         return cgNode;

@@ -357,12 +357,33 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
     if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
       if (summNode.collapsedParent() != 0) {
         ConstraintGraphNode *cp = findUniqueNode(summNode.collapsedParent());
-        FmtAssert(cgNode->collapsedParent() == 0 ||
-                  cgNode->collapsedParent() == cp->id(),
-                  ("Attempting to collapse node: %d that has an existing "
-                   "collapsed parent: %d to new collapsed parent: %d\n",
-                   cgNode->id(), cgNode->collapsedParent(), cp->id()));
-        cgNode->collapsedParent(cp->id());
+        //FmtAssert(cgNode->collapsedParent() == 0 ||
+        //          cgNode->collapsedParent() == cp->id(),
+        //          ("Attempting to collapse node: %d that has an existing "
+        //           "collapsed parent: %d to new collapsed parent: %d\n",
+        //           cgNode->id(), cgNode->collapsedParent(), cp->id()));
+        if (cgNode->collapsedParent() != 0 &&
+            cgNode->collapsedParent() != cp->id()) 
+        {
+          // We found a node which has two different collapsed parent's
+          // from different procedures. If both the parents are from the same
+          // stInfo, collapse the StInfo, which will indirectly force their
+          // collapsed parents to be the same
+          ConstraintGraphNode *origcp = 
+                    ConstraintGraph::cgNode(cgNode->collapsedParent());
+          FmtAssert(origcp->stInfo() == cp->stInfo(),
+                    ("Attempting to collapse node: %d that has an existing "
+                     "collapsed parent: %d to new collapsed parent: %d\n",
+                     cgNode->id(), cgNode->collapsedParent(), cp->id()));
+          StInfo *st = origcp->stInfo();
+          if (st->checkFlags(CG_ST_FLAGS_MODRANGE)) {
+            ModulusRange *outerRange = st->modRange();
+            ModulusRange::setModulus(outerRange, 1, _memPool);
+          } else
+            st->mod(1);
+          st->addFlags(CG_ST_FLAGS_ADJUST_MODULUS);
+        } else
+          cgNode->collapsedParent(cp->id());
       }
     }
   }
