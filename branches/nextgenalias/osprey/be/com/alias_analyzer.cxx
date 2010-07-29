@@ -117,6 +117,12 @@ AliasAnalyzer::transferAliasTag(WN *dstWN, const WN *srcWN)
     setAliasTag(dstWN, tag);
 }
 
+void 
+AliasAnalyzer::print_All_AliasTag(FILE* f)
+{
+    return;
+}
+
 bool
 AliasAnalyzer::checkQueryFile(UINT32 pu, AliasTag tag1, AliasTag tag2,
                               bool &result)

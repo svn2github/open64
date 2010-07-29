@@ -156,6 +156,8 @@ public:
    }
 
    bool isPostIPA() const { return _isPostIPA; }
+   void print_AliasTag(AliasTag tag, FILE* f);
+   void print_All_AliasTag(FILE* f);
 
 private:
 

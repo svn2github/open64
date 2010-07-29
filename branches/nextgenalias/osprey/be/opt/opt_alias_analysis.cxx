@@ -3942,6 +3942,12 @@ void OPT_STAB::Compute_FFA(RID *const rid)
     }
   }
 
+  if (Get_Trace(TP_ALIAS, NYSTROM_ALIAS_TAG_FLAG)) {
+    AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+    if (aa) {
+      aa->print_All_AliasTag(stderr);
+    }
+  }
 
   // The following code is last-minute for v7.3 beta, and should be
   // deleted and replaced with something smarter after that

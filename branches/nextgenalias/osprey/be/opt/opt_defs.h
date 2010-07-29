@@ -169,6 +169,8 @@ Is_fortran(void)
                                                 during IPA for BE */
 #define NYSTROM_CG_BUILD_FLAG     0x00000100 /* CG build trace */
 #define NYSTROM_SUMMARY_FLAG      0x00000200 /* IPA-BE summary trace */
+#define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
+                                                Transfer_alias_tag_to_occ_and_aux */
 
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */

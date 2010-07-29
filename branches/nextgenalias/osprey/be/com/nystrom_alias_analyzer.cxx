@@ -550,6 +550,28 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
   }
 }
 
+void
+NystromAliasAnalyzer::print_AliasTag(AliasTag tag, FILE* file)
+{
+    hash_map<UINT32, AliasTagInfo *>::iterator iter = 
+                                        _aliasTagInfo.find((UINT32)tag);
+    if (iter == _aliasTagInfo.end()) {
+        fprintf(file, "tag has no point to info\n");
+        return;
+    }
+    
+    fprintf(file, "alias tag %d: points to cg nodes ", tag); 
+    _aliasTagInfo[tag]->print(file);
+    fprintf(file, "\n");
+}
+
+void
+NystromAliasAnalyzer::print_All_AliasTag(FILE* f)
+{
+    for(UINT32 tag = 0 ; tag < (UINT32)_nextAliasTag; tag++) {
+        print_AliasTag((AliasTag)tag, f);
+    }
+}
 
 StInfo *
 ConstraintGraph::buildStInfo(SUMMARY_CONSTRAINT_GRAPH_STINFO *summ)

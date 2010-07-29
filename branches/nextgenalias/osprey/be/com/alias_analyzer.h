@@ -104,6 +104,7 @@ public:
    // Create_vector_alias()
    // Valid_alias()
    virtual void transferAliasTag(WN *dstWN, const WN *srcWN);
+   virtual void print_All_AliasTag(FILE* f);
 
    // Require interfaces to support ALIAS_MANAGER routines
    // Create_local_alias()
