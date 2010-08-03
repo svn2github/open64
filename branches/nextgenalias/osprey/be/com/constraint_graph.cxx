@@ -1589,6 +1589,8 @@ ConstraintGraph::processExpr(WN *expr)
       case OPR_IDNAME:
         cgNode = getCGNode(expr);
         cgNode->addFlags(CG_NODE_FLAGS_FORMAL_PARAM);
+        if(ST_sclass(WN_st(expr)) == SCLASS_FORMAL_REF)
+            cgNode->addFlags(CG_NODE_FLAGS_FORMAL_REF_PARAM);
         _parameters.push_back(cgNode->id());
         break;
       case OPR_INTCONST:
@@ -3526,6 +3528,8 @@ ConstraintGraphNode::print(FILE *file)
     fprintf(file, " UNKNOWN");
   if (checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
     fprintf(file, " FPARAM");
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_REF_PARAM))
+    fprintf(file, " FPARAM_REF");
   if (checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM))
     fprintf(file, " APARAM");
   if (checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))
@@ -3594,6 +3598,8 @@ void ConstraintGraphNode::print(ostream& ostr)
     ostr << " UNKNOWN";
   if (checkFlags(CG_NODE_FLAGS_FORMAL_PARAM))
     ostr << " FPARAM";
+  if (checkFlags(CG_NODE_FLAGS_FORMAL_REF_PARAM))
+    ostr << " FPARAM_REF";
   if (checkFlags(CG_NODE_FLAGS_ACTUAL_PARAM))
     ostr << " APARAM";
   if (checkFlags(CG_NODE_FLAGS_FORMAL_RETURN))

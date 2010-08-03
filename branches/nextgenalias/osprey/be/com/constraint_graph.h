@@ -101,6 +101,8 @@ class EdgeDelta;
                                                 // been replaced.
 #define CG_NODE_FLAGS_COLLAPSED_PARENT 0x00100000 // Target of a collapse
 
+#define CG_NODE_FLAGS_FORMAL_REF_PARAM 0x00200000 // formal parm, SCLASS_FORMAL_REF
+
 // Call site flags
 #define CS_FLAGS_UNKNOWN     0x01
 #define CS_FLAGS_INDIRECT    0x02

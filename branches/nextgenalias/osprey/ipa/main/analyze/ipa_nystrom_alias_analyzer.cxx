@@ -1686,8 +1686,18 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
     bool added = false;
     INT64 size = formal->stInfo()->varSize();
     CGEdgeSet edgeSet;
-    added = addPtrAlignedEdges(actual->parent(),formal->parent(),
+    // if formal is fortran's formal_ref parameter, it's passed by reference
+    // caller pass a pointer to callee, callee access formal parameter by value.
+    // this will be lowered until cg lowering.
+    // so add load edge from actual to formal_ref.
+    if(formal->checkFlags(CG_NODE_FLAGS_FORMAL_REF_PARAM))  {
+      added = addPtrAlignedEdges(actual->parent(),formal->parent(),
+                               ETYPE_LOAD, CQ_DN,size,edgeSet);
+    }
+    else {
+      added = addPtrAlignedEdges(actual->parent(),formal->parent(),
                                ETYPE_COPY,CQ_DN,size,edgeSet);
+    }
     if (added)
       delta.add(edgeSet);
   }
