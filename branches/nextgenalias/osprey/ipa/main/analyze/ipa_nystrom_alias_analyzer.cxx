@@ -1112,6 +1112,9 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
                                         list<IPA_NODE *> &revTopOrder,
                                         UINT32 round)
 {
+  if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
+    fprintf(stderr,"#### start call graph prep ####\n");
+  }
   // TODO:  We need to perform SCC detection here and then
   // perform unification after the edges have been added.
   // The topological ordering may be useful in computing the
@@ -1173,7 +1176,9 @@ IPA_NystromAliasAnalyzer::callGraphPrep(IPA_CALL_GRAPH *ipaCallGraph,
         topoStack.pop();
       }
   }
-
+  if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
+    fprintf(stderr,"#### end call graph prep ####\n");
+  }
 }
 
 bool
@@ -1221,6 +1226,9 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
                       list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                       list<IPAEdge> &edgeList)
 {
+  if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
+    fprintf(stderr,"#### start update call graph ####\n");
+  }
   // Walk each indirect call site and determine if there exists
   // an edge in the call graph for each CGNode in the points-to
   // set of the indirect call.
@@ -1319,6 +1327,9 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
         }
       }
     }
+  }
+  if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
+    fprintf(stderr,"#### end update call graph ####\n");
   }
 }
 
@@ -1420,7 +1431,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
   //ConstraintGraph::ipaSimpleOptimizer();
 
-  if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+  if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG) ||
+      Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG))
     fprintf(stderr,"IPA Nystrom: Solver Begin\n");
 
   if (Get_Trace(TP_ALIAS, NYSTROM_MEMORY_TRACE_FLAG)) {
@@ -1460,7 +1472,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     round++;
     FmtAssert(revTopOrder.empty(),("solver: expected rev top order list empty"));
 
-    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG)) {
+    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG) ||
+        Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
       fprintf(stderr,"#### Round %d ####\n",round);
       fprintf(stderr,"#### Round %d Top-Down ####\n",round);
     }
@@ -1499,7 +1512,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
     } while (1);
 
-    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG))
+    if (Get_Trace(TP_ALIAS, NYSTROM_SOLVER_FLAG) ||
+        Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG))
        fprintf(stderr,"#### Round %d Bottom-Up ####\n",round);
 
     // Bottom up

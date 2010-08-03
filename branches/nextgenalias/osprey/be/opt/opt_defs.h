@@ -171,6 +171,9 @@ Is_fortran(void)
 #define NYSTROM_SUMMARY_FLAG      0x00000200 /* IPA-BE summary trace */
 #define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
                                                 Transfer_alias_tag_to_occ_and_aux */
+#define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
+                                                Transfer_alias_tag_to_occ_and_aux */
+#define NYSTROM_LW_SOLVER_FLAG    0x00000800 /* light weight trace constraint graph solver */
 
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */

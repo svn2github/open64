@@ -2840,8 +2840,13 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   // to offset zero.
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
-      si->print(stderr,true);
-      fprintf(stderr, "getCGNode: too many offsets..collapsing!\n");
+      if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
+        fprintf(stderr, "getCGNode: too many offsets..collapsing %d!\n", cg_st_idx);
+      }
+      else {
+        si->print(stderr,true);
+        fprintf(stderr, "getCGNode: too many offsets..collapsing!\n");
+      }
       si->collapse();
       offset = 0;
       // Check if node exists, if so return it

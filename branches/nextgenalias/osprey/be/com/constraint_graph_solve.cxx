@@ -549,6 +549,7 @@ bool
 ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 {
   bool trace = Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG);
+  bool lw_trace = Get_Trace(TP_ALIAS,NYSTROM_LW_SOLVER_FLAG);
 
   // TODO: Perform cycle detection, here
   SCCDetection  *sccs = NULL;
@@ -625,11 +626,14 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 
     ++iterCount;
 
-    if (trace) {
+    if (trace || lw_trace) {
       fprintf(stderr,"Solver Iteration %d\n",iterCount);
       ConstraintGraph::stats();
     }
     do {
+      if (lw_trace) {
+        fprintf(stderr,"start solve copySkewList, size is %d\n", copySkewList.size());
+      }
       while (!copySkewList.empty()) {
         ConstraintGraphEdge *edge = copySkewList.pop();
         if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
@@ -653,10 +657,16 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
           skewCount += 1;
         }
       }
+      if (lw_trace) {
+        fprintf(stderr,"end solve copySkewList\n");
+      }
 
       // Determine which edges need to be visited as a result of the
       // most recent round of copy edge processing.  We also do some
       // work on the pts of the modified nodes to improve solver efficiency.
+      if (lw_trace) {
+        fprintf(stderr,"start solve modNodeList, size is %d\n", modNodeList.size());
+      }
       NodeWorkList &modNodeList = *(ConstraintGraph::solverModList());
       if (!modNodeList.empty()) {
         UINT32 numNodes = modNodeList.size();
@@ -711,9 +721,15 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
           ConstraintGraph::addEdgesToWorkList(topoOrderArray[j]);
         free(topoOrderArray);
       }
+      if (lw_trace) {
+        fprintf(stderr,"end solve modNodeList\n");
+      }
 
     } while (!copySkewList.empty());
 
+    if (lw_trace) {
+      fprintf(stderr,"start solve loadStoreList, size is %d\n", loadStoreList.size());
+    }
     while (!loadStoreList.empty()) {
       ConstraintGraphEdge *edge = loadStoreList.pop();
       if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
@@ -740,6 +756,9 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
           return false;
         storeCount += 1;
       }
+    }
+    if (lw_trace) {
+      fprintf(stderr,"end solve loadStoreList\n");
     }
   } while (!copySkewList.empty());
 
