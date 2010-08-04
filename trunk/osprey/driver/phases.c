@@ -2124,7 +2124,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
-            if (option_was_seen(O_shared)) {
+            if (option_was_seen(O_shared) || option_was_seen(O_pie) ||
+                option_was_seen(O_fpie) || option_was_seen(O_fPIE)) {
                 add_library(args, "open64rt_shared");
             } else {
                 add_library(args, "open64rt");
