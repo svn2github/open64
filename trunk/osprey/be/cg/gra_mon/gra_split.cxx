@@ -339,13 +339,13 @@ Regs_Used( TN* tn, GRA_BB* gbb, ISA_REGISTER_CLASS rc, LRANGE* lrange,
 
 #ifdef TARG_SL   //minor_reg_alloc
 /* exclude registers used in parallel region */ 
-   if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
-   	  RID* rid = BB_rid(gbb->Bb());
-	  GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
-	  Is_True((region),  ("para region is NULL"));
-	  REGISTER_SET exclude_set = region->Registers_Exclude(rc);
-	  used = REGISTER_SET_Union(used,  exclude_set);
-   }
+  if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
+    RID* rid = BB_rid(gbb->Bb());
+    GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
+    Is_True((region),  ("para region is NULL"));
+    REGISTER_SET exclude_set = region->Registers_Exclude(rc);
+    used = REGISTER_SET_Union(used,  exclude_set);
+  }
 #endif 
 
   return used;
