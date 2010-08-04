@@ -1038,6 +1038,8 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
 	}
 	return AC_PTR_OBJ_PAIR(lda_class, ldid_class);
       }
+    case OPR_LDA_LABEL:
+      return AC_PTR_OBJ_PAIR(Const_addr_class(), Global_class());
     case OPR_INTCONST:
       // TODO: Maybe find a way to
       // assign base_id's to integer constants so we can match them up

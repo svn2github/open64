@@ -226,10 +226,10 @@ GRA_GRANT_Local_Register( GRA_BB* gbb, ISA_REGISTER_CLASS rc, REGISTER reg )
 #if defined (TARG_SL)
     if ((REGISTER_SET_MemberP(REGISTER_CLASS_function_value(rc), reg))) {
       if (BB_call(gbb->Bb()))
-	if (GTN_SET_MemberP(BB_live_out(gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)))
-	  return;
-	else if (GTN_SET_MemberP(BB_live_in (gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)))
-	  return;
+        if (GTN_SET_MemberP(BB_live_out(gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)))
+          return;
+        else if (GTN_SET_MemberP(BB_live_in (gbb->Bb()),Build_Dedicated_TN(rc, reg, 8)))
+          return;
     }
     else
 #endif
@@ -293,15 +293,15 @@ GRA_GRANT_Unused_Caller_Saved(void)
 					  gbb->Registers_Used(rc));
       FOR_ALL_REGISTER_SET_members(free_regs, reg) {
 #ifdef TARG_SL2 //minor_reg_alloc
-	if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) 
-	{
-	   GRA_PARA_REGION* region  = gra_para_region_mgr.Get(BB_rid(gbb->Bb()));
-	   if( !REGISTER_SET_Intersection1(region->Registers_Exclude(rc), reg)) 
-	   	GRA_GRANT_Local_Register(gbb, rc, reg);
-	}
-       else 
+        if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) 
+        {
+          GRA_PARA_REGION* region  = gra_para_region_mgr.Get(BB_rid(gbb->Bb()));
+          if( !REGISTER_SET_Intersection1(region->Registers_Exclude(rc), reg)) 
+            GRA_GRANT_Local_Register(gbb, rc, reg);
+        }
+        else 
 #endif 
-	GRA_GRANT_Local_Register(gbb, rc, reg);
+          GRA_GRANT_Local_Register(gbb, rc, reg);
       }
     }
   }

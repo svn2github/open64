@@ -1689,6 +1689,10 @@ extern BOOL Is_Dwarf_Section_To_Emit(const char *name)
 	    return FALSE;
 	  }
 	}
+	if(Debug_Level < 1 && strncmp(name, ".debug_", 7) == 0) {
+	  //do not emit .debug_ sections if no '-g'
+	  return FALSE;
+	}
         return TRUE;
 }
 

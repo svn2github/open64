@@ -848,7 +848,7 @@ ALL_CPPFLAGS = $(INCLUDES) $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
 #LIBGSPIN = ../../../libspin/libgspin42.a
 #This is a symbol link, create by the CONFIGURE script
 #LIBGSPIN = ../../../libspin/libgspin42.a
-LIBGSPIN = ../libgspin42.a
+LIBGSPIN = ../../osprey/targdir/libspin_4_2_0/libgspin42.a
 
 # Build and host support libraries.
 LIBIBERTY = ../libiberty/libiberty.a
@@ -1290,7 +1290,12 @@ config.status: $(srcdir)/configure $(srcdir)/config.gcc
 
 #all.internal: start.encap rest.encap doc
 # For Open64 compiler, omit doc
+# For MIPS/SL compiler, omit rest.encap
+ifneq (, $(filter mips%, $(target)))
+all.internal: start.encap
+else
 all.internal: start.encap rest.encap
+endif
 
 # This is what to compile if making a cross-compiler.
 all.cross: native gcc-cross$(exeext) cpp$(exeext) specs \

@@ -748,7 +748,7 @@ public:
   INTRINSIC Intrinsic(void) const     { return u1.nonarr.u11.intrinsic; }
   void      Set_intrinsic(INTRINSIC i) { u1.nonarr.u11.intrinsic = i; }
 #if defined(TARG_SL)
-  BOOL      Is_C3_Intrinsic()         { ((u1.nonarr.u11.intrinsic >= INTRN_C3_INTRINSIC_BEGIN) &&
+  BOOL      Is_C3_Intrinsic()         { return ((u1.nonarr.u11.intrinsic >= INTRN_C3_INTRINSIC_BEGIN) &&
 			                (u1.nonarr.u11.intrinsic <= INTRN_C3_INTRINSIC_END)); };
 #endif
 #ifdef KEY

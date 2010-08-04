@@ -481,10 +481,10 @@ Create_GRA_BBs_And_Regions(void)
     RID * rid = BB_rid(bb);
     GRA_PARA_REGION* para_region = gra_para_region_mgr.Get(rid);
     if(rid && RID_TYPE_minor(rid)) {
-	gra_para_region_mgr.Add_Rid_Into_Minor_Vector(rid);
+      gra_para_region_mgr.Add_Rid_Into_Minor_Vector(rid);
     }	
     if(para_region) 
-	para_region->Add_BB(bb);
+      para_region->Add_BB(bb);
 #endif
 
 
@@ -2245,40 +2245,39 @@ Compute_GRA_Fat_Point(void) {
 void 
 Mark_Lrange_For_Minor_Thread()
 {
-    ISA_REGISTER_CLASS rc;
-    GRA_REGION_RC_NL_LRANGE_ITER iter0;
-    GRA_REGION_GBB_ITER          gbb_iter;
-    GRA_REGION *region = gra_region_mgr.Complement_Region();
+  ISA_REGISTER_CLASS rc;
+  GRA_REGION_RC_NL_LRANGE_ITER iter0;
+  GRA_REGION_GBB_ITER          gbb_iter;
+  GRA_REGION *region = gra_region_mgr.Complement_Region();
 
-//    FOR_ALL_ISA_REGISTER_CLASS( rc ) {
-      rc = ISA_REGISTER_CLASS_integer;
-      for (iter0.Init(region,rc); ! iter0.Done(); iter0.Step()) {
-	 LRANGE* lrange0 = iter0.Current();
-	 LRANGE_LIVE_GBB_ITER live_gbb_iter;
-	 LRANGE_LUNIT_ITER lunit_iter; 
-/*  for now we think the rid_count greater than 2 means the lrange spans multi-region, 
-  *  there only two parallel regions active at same time in minor mode
-  */ 
-        vector<INT> met_rid;
-        for (lunit_iter.Init(lrange0); !lunit_iter.Done(); lunit_iter.Step()) 
-        {
-            LUNIT* lunit = lunit_iter.Current();
-	     GRA_BB *live_gbb = lunit->Gbb();
-	     BB* bb = live_gbb->Bb();
-	     if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {  // NULL for func_entry region 
-              if(find(met_rid.begin(), met_rid.end(), RID_id(BB_rid(bb))) == met_rid.end()) {
-                 met_rid.push_back(RID_id(BB_rid(bb)));
-              }		
-	     }
-	 }
-	 if(met_rid.size() > 1 && met_rid.size() < 3) 
-	 {
-	    lrange0->Spans_Multiregions_Set();
-	 }
-	 met_rid.clear();
+  // FOR_ALL_ISA_REGISTER_CLASS( rc ) {
+  rc = ISA_REGISTER_CLASS_integer;
+  for (iter0.Init(region,rc); ! iter0.Done(); iter0.Step()) {
+    LRANGE* lrange0 = iter0.Current();
+    LRANGE_LIVE_GBB_ITER live_gbb_iter;
+    LRANGE_LUNIT_ITER lunit_iter; 
+    /*  for now we think the rid_count greater than 2 means the lrange spans multi-region, 
+     *  there only two parallel regions active at same time in minor mode
+     */ 
+    vector<INT> met_rid;
+    for (lunit_iter.Init(lrange0); !lunit_iter.Done(); lunit_iter.Step()) 
+    {
+      LUNIT* lunit = lunit_iter.Current();
+      GRA_BB *live_gbb = lunit->Gbb();
+      BB* bb = live_gbb->Bb();
+      if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {  // NULL for func_entry region 
+        if(find(met_rid.begin(), met_rid.end(), RID_id(BB_rid(bb))) == met_rid.end()) {
+          met_rid.push_back(RID_id(BB_rid(bb)));
+        }		
       }
-//}
-   
+    }
+    if(met_rid.size() > 1 && met_rid.size() < 3) 
+    {
+      lrange0->Spans_Multiregions_Set();
+    }
+    met_rid.clear();
+  }
+  //}
 }
 #endif 
 

@@ -3695,7 +3695,7 @@ void OPT_STAB::Print_aux_entry(AUX_ID i, FILE *fp)
     break;
   }
   if (psym->Is_real_var() || psym->Is_virtual()) {
-    if (bbl->Len() > 0) {
+    if (bbl && bbl->Len() > 0) {
       fprintf(fp, "       defined in BBs ");
       bbl->Print(fp);
       fprintf(fp, "\n");

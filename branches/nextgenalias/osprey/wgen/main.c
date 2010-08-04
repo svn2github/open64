@@ -171,11 +171,7 @@ Process_Cc1_Command_Line(gs_t arg_list)
   argv = gs_s(gs_index(arg_list, 0));
   char *command = Last_Pathname_Component(argv);
 //printf("%s\n", command);
-#ifdef FE_GNU_4_2_0
-  lang_cplus = !strcmp(command, "cc1plus42");
-#else
-  lang_cplus = !strcmp(command, "cc1plus");
-#endif
+  lang_cplus = !strncmp(command, "cc1plus", strlen("cc1plus"));
 
   // if not set by the command line, set default value by language
   if (emit_exceptions == -1)

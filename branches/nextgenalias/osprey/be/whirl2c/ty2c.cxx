@@ -99,7 +99,7 @@ typedef struct SCALAR_C_NAME
 const char TY2C_Aligned_Block_Name[] = "__block";
 
 #if defined(TARG_X8664)
-#define MTYPE_PREDEF MTYPE_V16F8
+#define MTYPE_PREDEF MTYPE_V32F8
 #else
 #define MTYPE_PREDEF MTYPE_F16
 #endif /* TARG_X8664 */

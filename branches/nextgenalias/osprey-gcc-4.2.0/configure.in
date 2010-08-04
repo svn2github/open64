@@ -735,6 +735,7 @@ case "${target}" in
     noconfigdirs="$noconfigdirs target-newlib target-libgloss ${libgcj}"
     ;;
   mips*-*-linux*)
+    skipdirs="$skipdirs target-libstdc++-v3"
     noconfigdirs="$noconfigdirs target-newlib target-libgloss"
     ;;
   mips*-*-*)

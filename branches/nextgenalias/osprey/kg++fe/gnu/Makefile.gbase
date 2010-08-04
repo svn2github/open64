@@ -212,7 +212,8 @@ INC_DIRS =		\
   $(GNU_TARG_DIR)	\
   $(GNU_CONFIG_DIR)	\
   $(GNU_CONFIG_TARG_DIR)\
-  $(BUILD_TOT)/include/gnu
+  $(BUILD_TOT)/include/gnu\
+  $(TARGDIR)/g++fe/gnu
 
 SRC_DIRS +=		\
   $(GNU_CP_DIR)

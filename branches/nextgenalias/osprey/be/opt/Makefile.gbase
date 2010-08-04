@@ -130,7 +130,7 @@ LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
 WOPT_DIRS = \
   $(BE_COM_DIR)		\
   $(BE_OPT_DIR)		\
-  $(COMMON_UTIL_DIR)	\
+  $(COMMON_UTIL_DIR)
 
 WOPT_HEADER_DIRS = \
   $(WOPT_DIRS)		\
@@ -145,16 +145,15 @@ WOPT_HEADER_DIRS = \
   $(TARGDIR)/targ_info	\
   $(TARGDIR)/include	\
   $(TARG_BE_DIR)
-  
+
+
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
 #----------------------------------------------------------------------
 
 BE_COM_CXX_SRCS = \
-  cxx_template.cxx	\
-
-BE_OPT_SRCS = \
+  cxx_template.cxx
 
 BE_OPT_CXX_SRCS = \
   opt_alias_class.cxx	\
@@ -245,11 +244,10 @@ BACK_END_CXX_SRCS = $(BE_COM_CXX_SRCS) $(BE_OPT_CXX_SRCS)
 endif
 
 COMMON_UTIL_SRCS = \
-  bitset.c		\
+  bitset.c
 
 BACK_END_SRCS = \
-  $(BE_OPT_SRCS)		\
-  $(COMMON_UTIL_SRCS)		\
+  $(COMMON_UTIL_SRCS)
 
 BACK_END_OBJS = $(BACK_END_SRCS:.c=.o)
 BACK_END_CXX_OBJS   = $(BACK_END_CXX_SRCS:.cxx=.o)

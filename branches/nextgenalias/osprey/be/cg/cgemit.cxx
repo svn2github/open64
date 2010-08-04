@@ -995,7 +995,6 @@ static void Print_Dynsym (FILE *pfile, ST *st)
     }
   }
   else {
-#if defined(TARG_X8664)
     const char *eclass_label = NULL;
     switch (ST_export(st)) {
       case EXPORT_INTERNAL:
@@ -1015,7 +1014,6 @@ static void Print_Dynsym (FILE *pfile, ST *st)
       EMT_Write_Qualified_Name(pfile, st);
       putc ('\n', pfile);
     }
-#endif
   }
 }
 
@@ -8230,8 +8228,13 @@ Check_If_Should_Align_PU (INT curpc)
   else {
 	q = CGTARG_Text_Alignment();
   }
+#if defined(TARG_SL)
+  /* SL has 16bit(half word) instruction */
+  return curpc % q;
+#else
   q /= INST_BYTES;	/* so word-sized */
   return (q - ((curpc/INST_BYTES) % q)) % q;
+#endif
 }
 
 /* Scan the BBs in the region looking for cold BBs. If one is found,
@@ -8488,10 +8491,18 @@ Setup_Text_Section_For_PU (ST *pu)
       // these bytes will never be executed so just insert 0's and
       // then we don't have to worry about how to generate a nop for
       // the target arch.
+#if defined(TARG_SL)
+      Fail_FmtAssertion("Setup_Text_Section_For_PU: not explemented");
+#endif
       Em_Add_Zeros_To_Scn (PU_section, i * INST_BYTES, 1);
     }
     // increment text_PC by 'num' bundles
+#if defined(TARG_SL)
+    int align_t = CGTARG_Text_Alignment();
+    text_PC = text_PC + (align_t - text_PC % align_t);
+#else
     text_PC = text_PC + (i * INST_BYTES);
+#endif
   }
 
 #if !defined(TARG_X8664) && !defined(TARG_NVISA) && !defined(TARG_LOONGSON)

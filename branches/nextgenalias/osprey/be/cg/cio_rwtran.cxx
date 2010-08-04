@@ -172,10 +172,11 @@ static const char rcs_id[] = "";
 #include "cio_rwtran.h"
 #include "gra_live.h"
 #include "data_layout.h"
-
 #include <vector>
 #include <map>
 #include "cxx_memory.h"
+#include "pqs_cg.h"
+
 
 
 // ======================================================================
@@ -206,6 +207,7 @@ BOOL  CIO_enable_write_removal = TRUE;
 BOOL  CIO_enable_cse_removal   = TRUE;
 INT32 CIO_rw_max_omega         = 8;
 
+#define CICSE_MAX_TRACE_LEVEL 3
 
 // ======================================================================
 //
@@ -1739,6 +1741,8 @@ CIO_RWTRAN::Write_Candidate_Arc( ARC *arc )
 // -> basis == TRUE iff this OP is a memory read or write.  The source of
 //    this OP can be propagated, but no sources should be propagated to
 //    it from its operands.
+// -> keep_pred, this entry is a source entry and op has predicate,
+//    should it keep predicate when optimized with CICSE
 // -> potential_match is the index of the closest CICSE_entry before this
 //    one that could possibly produce the same value in a different
 //    iteration.  potential_match == 0 if there is none, or if basis ==
@@ -1766,6 +1770,7 @@ struct CICSE_entry {
   INT    source;
   UINT8  omega;
   BOOL   basis;
+  BOOL   keep_pred;
   INT    potential_match;
   INT    last_nonzero_opnd_source;
   INT    opnd_source[OP_MAX_FIXED_OPNDS];
@@ -1786,6 +1791,9 @@ struct CICSE_entry {
 //    exactly one of them has duplicate_source == FALSE.
 // -> op is the OP to be eliminated
 // -> souce is the OP that will generate the values instead of op
+// -> source index in cicse table, used for getting cicse entry info
+//    this is only used when back trace if a op can be executed 
+//    unconditionally.
 // -> omega equals the number of iterations ago that source matches op
 // -> new_tns is an array of TNs that store the results of the source OP.
 //    Each new_tn either is the result TN of the source OP, or a newly
@@ -1801,6 +1809,7 @@ struct CICSE_change {
   BOOL   duplicate_source;
   OP    *op;
   OP    *source;
+  INT    source_idx;
   UINT8  omega;
   TN    *new_tns[OP_MAX_FIXED_RESULTS];
   BOOL   need_copy[OP_MAX_FIXED_RESULTS];
@@ -2007,6 +2016,214 @@ CIO_RWTRAN::Append_TN_Copy( TN *tn_dest, TN *tn_from, OP *point, UINT8 omega )
   return op_copy;
 }
 
+// ======================================================================
+//
+// CICSE_Check_OP_Unconditionally
+//   check if cicse_table[index] is can executed unconditionally in BB.
+//   1. result TN is local TN not GTN and unique assign in BB.
+//      this can guarantee unconditionaly assign to this reuslt will 
+//      not affect other read/write
+//   2. All TN's opnd_source's op is also "Unconditionally"
+//      this guarantee when unconditionally exectute this op, no
+// ======================================================================
+BOOL CICSE_Check_OP_Unconditionally( CICSE_entry *cicse_table, INT index,
+                                     UINT32 level )
+{
+  // this means no definitly define op in BB.
+  // can't get any analysis result.
+  if ( index == 0 ) {
+    return FALSE;
+  }
+
+  CICSE_entry& entry = cicse_table[index];
+  OP* op = entry.op;
+  Is_True(op, ("checking NULL op\n"));
+
+  // flag1 means this op being checked by CICSE_Check_OP_Unconditionally
+  // this can avoid inifite deeper trace and lead check return false.
+  if ( OP_flag1( op ) ) {
+    return TRUE;
+  }
+
+  // if op has no predicate, return ture.
+  if ( !OP_has_predicate( op )
+    || OP_opnd( op, OP_PREDICATE_OPND ) == True_TN ) {
+    return TRUE;
+  }
+
+  // exceed detect level limitation.
+  // no more check
+  if ( level >= CICSE_MAX_TRACE_LEVEL ) {
+    return FALSE;
+  }
+
+
+  // 1. result tn is global or result is not unique, return false.
+  for ( INT i = 0; i < OP_results(op); i++ ) {
+    if ( TN_is_global_reg( OP_result( op, i ) ) ) {
+      return FALSE;
+    }
+    else if ( !entry.result_unique[i] ) {
+      return FALSE;
+    }
+  }
+
+  if ( entry.source == 0 ) {
+    // no source info
+    for ( INT i = 0 ; i < OP_opnds( op ); i++ ) {
+      TN* opnd = OP_opnd(op, i);
+#ifdef TARG_IA64
+      if ( TN_is_predicate(opnd) && i == OP_PREDICATE_OPND ) {
+        continue;
+      }
+#endif
+      // only allow TN be constant, GTN sp,bp, r0, f0, f1
+      if ( TN_is_constant( opnd ) || ( opnd == FP_TN )
+#ifdef TARG_IA64
+          || ( opnd == Zero_TN ) || ( opnd == FOne_TN ) || ( opnd == FZero_TN )
+#endif
+         ) {
+      }
+      else {
+        return FALSE;
+      }
+    }
+  }
+  else {
+    // check all source tn
+    for ( INT i = 0; i < OP_opnds( op ); i++ ) {
+      TN* opnd = OP_opnd( op, i );
+#ifdef TARG_IA64
+      if ( TN_is_predicate( opnd ) && i == OP_PREDICATE_OPND ) {
+        continue;
+      }
+#endif
+      if ( TN_is_constant( opnd ) ) {
+      }
+      else if ( TN_is_register( opnd ) &&
+               !TN_is_global_reg( opnd ) ) {
+        Set_OP_flag1( op );
+        INT opnd_src_index = entry.opnd_source[i];
+        if ( !CICSE_Check_OP_Unconditionally( cicse_table, opnd_src_index,
+            level+1 ) ) {
+          Reset_OP_flag1( op );
+          return FALSE;
+        }
+        Reset_OP_flag1( op );
+      }
+      else
+        return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+// ======================================================================
+//
+// CICSE_Mark_OP_Unconditionally
+//   recursivly mark op and its opnd_source's op
+// ======================================================================
+void CICSE_Mark_OP_Unconditionally( CICSE_entry *cicse_table, INT index,
+                                    UINT32 level )
+{
+  if ( index == 0 ) {
+    return;
+  }
+  CICSE_entry& entry = cicse_table[index];
+  OP* op = entry.op;
+  Is_True( op, ( "checking NULL op\n" ) );
+  
+  if ( OP_flag1( op ) ) {
+    return;
+  }
+  if ( level >= CICSE_MAX_TRACE_LEVEL ) {
+    return;
+  }
+
+  if ( OP_has_predicate( op ) &&
+       OP_opnd( op, OP_PREDICATE_OPND ) != True_TN ) {
+    // check this is op only write local TN and local TN is unique assigned.
+    for ( INT i = 0; i < OP_results(op); i++ ) {
+      Is_True ( !TN_is_global_reg( OP_result( op, i ) ) &&
+        entry.result_unique[i], ( "assign TN must be local and unqiue assign." ) );
+    }
+    Set_OP_opnd( op, OP_PREDICATE_OPND, True_TN );
+
+    for ( INT i = 0; i < OP_opnds ( op ); i++ ) {
+      if ( i == OP_PREDICATE_OPND )
+        continue;
+      TN* opnd = OP_opnd(op, i);
+      if ( TN_is_register( opnd ) && !TN_is_global_reg( opnd ) ) {
+        INT opnd_src_idx = entry.opnd_source[i];
+        Set_OP_flag1( op );
+        CICSE_Mark_OP_Unconditionally( cicse_table, opnd_src_idx, level+1 );
+        Reset_OP_flag1( op );
+      }
+      else {
+        // TN can only be constant TN or unchanged GTN
+        Is_True( TN_is_constant( opnd ) || opnd == FP_TN 
+#ifdef TARG_IA64
+          || ( opnd == Zero_TN ||
+               opnd == FOne_TN || opnd == FZero_TN )
+#endif
+          ,("unexpected source in op when mark it unconditionally\n"));
+      }
+    }
+  }
+}
+
+// ======================================================================
+//
+
+// CICSE_Check_Predicate_Subset
+//   check if op's predicate is subset of source op's predicate
+// ======================================================================
+BOOL CICSE_Check_Predicate_Subset( CICSE_entry *cicse_table, INT op_index,
+                                   INT source_index )
+{
+  OP* op = cicse_table[op_index].op;
+  OP* src_op = cicse_table[source_index].op;
+  Is_True( OP_has_predicate( op ), 
+    ("op must have predicate, same with source op\n") );
+
+  Is_True( ( cicse_table[op_index].source != 0 &&
+             cicse_table[source_index].source != 0 ), 
+           ("two op must have non-zero source\n") );
+
+  TN* op_pred = OP_opnd( op, OP_PREDICATE_OPND );
+  TN* src_op_pred = OP_opnd( src_op, OP_PREDICATE_OPND );
+  
+
+  if ( src_op_pred == True_TN )
+    return TRUE;
+  
+  if ( op_pred == True_TN )
+    return FALSE;
+
+  // if omega is different, return false
+  if ( cicse_table[op_index].opnd_omega[OP_PREDICATE_OPND] !=
+       cicse_table[source_index].opnd_omega[OP_PREDICATE_OPND] )
+    return FALSE;
+  
+  // if two predicate are same, return true.
+  // 1. TN number same
+  // 2. def is unqiue assign in BB.
+  if ( TN_number( op_pred ) == TN_number( src_op_pred ) &&
+       !TN_is_global_reg( op_pred ) ) {
+    INT pred_src = cicse_table[op_index].opnd_source[OP_PREDICATE_OPND];
+    Is_True( pred_src != 0, ("not found local predicate\n") );
+    if ( cicse_table[pred_src].result_unique )
+      return TRUE;
+  }
+
+  // check if one predicate is subset of another.
+  // using pqs_manager
+  if ( PQSCG_is_subset_of( op_pred, src_op_pred ) ) {
+    return TRUE;
+  }
+  return FALSE;
+}
 
 // ======================================================================
 //
@@ -2440,6 +2657,95 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	}  // index1 while loop
       }  // index2 for loop
     } while ( change );
+
+    // for non store op with predicate, whose predicate is not True_TN 
+    // optimization will remove its predicate, so before this action
+    // we should guarantee if this op's all opnd_src[] op can be executed
+    // unconditionally.
+    //
+    // the conditions to check if a op can be executed unconditionally
+    // 1. this op assign to a local Tn and this local TN is assgined once
+    //    in BB
+    // 2. all its opnd_src op can be assgined unconditionally.
+    //
+    // clear flag1, used as visited flag
+    op = BB_first_op( body );
+    for ( index = 1; index <= op_count; ++index ) {
+      Reset_OP_flag1(op);
+      op = OP_next( op );
+
+      cicse_table[index].keep_pred = TRUE;
+    }
+    // if all find cicse opptr is not valid, abor early
+    BOOL find_valid_opt = FALSE;
+    for ( index = op_count; index > 0; --index ) {
+
+      CICSE_entry& entry = cicse_table[index];
+
+      if ( entry.source != 0 && entry.source != index ) {
+        CICSE_entry& entry_src = cicse_table[entry.source];
+        // if op and its source op all have predicate
+        // check if op's predicate is subset of source op's predicate
+        // suppose ops are
+        // (p1)  source_op
+        // ....
+        // (p2)  op1
+        // ....
+        // (p3)  op2
+        //
+        // all entries keep predicate are initialized true
+        //
+        // if p2 is subset of p1,
+        //   no change
+        // if p2 is not subset of p1,
+        //   if source_op can execute with true_TN
+        //     record not keep predicate on source_op and op1
+        //   else
+        //     don't change, mark op1 can't be optimized
+        //
+        // when analysis op2
+        // if source_op need keep predicate
+        //   check if p3 is subset of p1
+        //   ...
+        // else this indicate source_op can execute unconditionally
+        //   no further check. op2 can optimized withCICSE
+        //   
+        if( !OP_has_predicate( entry_src.op)
+            || OP_opnd( entry_src.op, OP_PREDICATE_OPND ) == True_TN ) {
+          find_valid_opt = TRUE;
+          continue;
+        }
+
+        // source op can executed without predicate
+        if (entry_src.keep_pred == FALSE) {
+          find_valid_opt = TRUE;
+          continue;
+        }
+
+        BOOL is_subset = CICSE_Check_Predicate_Subset( cicse_table, index, entry.source );
+        if ( is_subset ) {
+          find_valid_opt = TRUE;
+          // do nothing
+        }
+        else if ( OP_load( entry.op ) ) {
+          if ( !CICSE_Check_OP_Unconditionally( cicse_table, entry.source, 0 ) ) {
+            entry.source = 0;
+          }
+          else {
+            find_valid_opt = TRUE;
+            entry_src.keep_pred = FALSE;
+          }
+        }
+        else {
+          find_valid_opt = TRUE;
+          entry_src.keep_pred = FALSE;
+        }
+      }
+    }
+
+    // early abor to avoid following asssertion.
+    if ( find_valid_opt == FALSE )
+      return FALSE;
   }  // preform CICSE analysis
 
   // Display cicse_table
@@ -2480,6 +2786,7 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
     change.duplicate_source = FALSE;
     change.op               = entry.op;
     change.source           = cicse_table[entry.source].op;
+    change.source_idx       = entry.source;
     change.omega            = entry.omega;
 
     // Have we seen this source OP before?
@@ -2666,7 +2973,18 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
       if ( OP_has_predicate( change.source )
 	   && OP_opnd( change.source, OP_PREDICATE_OPND ) != True_TN ) {
 	TN *tn_pred = OP_opnd( change.source, OP_PREDICATE_OPND );
-	Set_OP_opnd( change.source, OP_PREDICATE_OPND, True_TN );
+	// change all its opnd_src's op be unconditionally
+    // recursivly if load can execute unconditionally.
+    if(cicse_table[change.source_idx].keep_pred) {
+      // do nothing for original op
+    }
+    else if(OP_load(change.source)) {
+      CICSE_Mark_OP_Unconditionally(cicse_table, change.source_idx, 0);
+
+    }
+    else {
+      Set_OP_opnd( change.source, OP_PREDICATE_OPND, True_TN );
+    }
 	for ( INT res = OP_results( change.source ) - 1; res >= 0; --res ) {
 	  TN *tn_old = OP_result( change.source, res );
 	  TN *tn_new = change.new_tns[res];

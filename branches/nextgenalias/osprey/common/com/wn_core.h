@@ -552,17 +552,17 @@ public:
 #define WN_Set_div_in_actual(x, y) (((x)->div_in_actual) = (y)) 
 
 #define WN_vbuf_ofst_adjusted(x) ((x)->sl_ext.vbuf_ofst_adjusted)
-#define WN_Set_vbuf_ofst_adjusted(x) ((x)->sl_ext.vbuf_ofst_adjusted = TRUE)
+#define WN_Set_vbuf_ofst_adjusted(x, y) ((x)->sl_ext.vbuf_ofst_adjusted = y)
 
 
 #define WN_is_internal_mem_ofst(x) ((x)->sl_ext.is_internal_mem_ofst)
-#define WN_Set_is_internal_mem_ofst(x) ((x)->sl_ext.is_internal_mem_ofst = TRUE)
+#define WN_Set_is_internal_mem_ofst(x, y) ((x)->sl_ext.is_internal_mem_ofst = y)
 
 #define WN_is_compgoto_para(x) ((x) ->sl_ext.compgoto_para)
-#define WN_Set_is_compgoto_para(x) ((x) ->sl_ext.compgoto_para = TRUE)
+#define WN_Set_is_compgoto_para(x, y) ((x) ->sl_ext.compgoto_para = y)
 
 #define WN_is_compgoto_for_minor(x) ((x) ->sl_ext.compgoto_for_minor)
-#define WN_Set_is_compgoto_for_minor(x)  ((x) ->sl_ext.compgoto_for_minor = TRUE)
+#define WN_Set_is_compgoto_for_minor(x, y)  ((x) ->sl_ext.compgoto_for_minor = y)
 #endif // TARG_SL
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS

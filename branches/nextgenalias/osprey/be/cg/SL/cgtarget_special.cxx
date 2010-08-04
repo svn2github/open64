@@ -64,7 +64,6 @@ static INT32 Get_CBUS_Workaround_LD_ST_Offset(OP *op)
   }
   offset = atoi(buf.str);
   
-  printf("tn_offset = %d, offset = %d\n", offset_t, offset);
   if (!((OP_code(op) == TOP_pop16) || (OP_code(op) == TOP_push16))) {
     offset = offset >> 2;
   }

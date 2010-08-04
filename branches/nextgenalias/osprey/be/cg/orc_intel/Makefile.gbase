@@ -169,7 +169,7 @@ COMMON_UTIL_TARG_DIR 	= $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 INCLUDE_DIR 		= $(ROOT)/usr/include
 IPA_COM_DIR 		= $(BUILD_TOT)/ipa/common/
 LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
-TARG_TARG_INFO 		= $(TARGDIR)/targ_info
+TARG_TARG_INFO          = $(TARGDIR)/targ_info
 
 # These are the directories in which to look for source files.
 

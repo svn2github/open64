@@ -4905,102 +4905,13 @@ int	compare_names(long	*id1,
 
    TRACE (Func_Entry, "compare_names", NULL);
 
-# if !(defined(_HOST_OS_IRIX) || defined(_HOST_OS_LINUX) || defined(_HOST_OS_DARWIN))
-#  pragma _CRI shortloop
-# endif
-
-   for (i = 0; i < WORD_LEN((id1_len > id2_len) ? id1_len : id2_len); i++) {
-      matched = id1[i] - id2[i];
-
-      if (matched != 0) {
-         break;
-      }
-   }
-
-# if defined(_HOST_LITTLE_ENDIAN)
-
-
-   if (matched) {
-
-      /* some callers of this routine use the sign of the returned value */
-      /* to determine ordering for insertion of the non-matched sym.     */
-      /* (Strings are written into the table storage by byte copy, which */
-      /* mean that, in terms of reading longs on little endian machine,  */
-      /* they are stored big-ending (i.e. a long load will byte swap the */
-      /* data in the register before the subtract)...Compare the bytes   */
-      /* in order...                                                     */
-
-      unsigned char* i1 = (unsigned char *) &id1[i]; 
-      unsigned char* i2 = (unsigned char *) &id2[i];
-
-# ifdef _HOST64
-# ifdef _WHIRL_HOST64_TARGET64
-      signed long t, t1, t2;
-/*
-      int i;
-      fprintf(stderr, "compare_names:");
-      fprintf(stderr, " id1 = ");
-      for (i = 0; i < 8; i++)
-        if (i1[i] == 0)
-          break;
-        else
-          fprintf(stderr, "%c", i1[i]);
-      fprintf(stderr, " id2 = ");
-      for (i = 0; i < 8; i++)
-        if (i2[i] == 0)
-          break;
-        else
-          fprintf(stderr, "%c", i2[i]);
-      fprintf(stderr, "\n");
-*/
-      t1 = 0;
-      t2 = 0;
-      t = i1[0]; t = t << 56; t1 += t;
-      t = i1[1]; t = t << 48; t1 += t;
-      t = i1[2]; t = t << 40; t1 += t;
-      t = i1[3]; t = t << 32; t1 += t;
-      t = i1[4]; t = t << 24; t1 += t;
-      t = i1[5]; t = t << 16; t1 += t;
-      t = i1[6]; t = t <<  8; t1 += t;
-      t = i1[7];              t1 += t;
-      t = i2[0]; t = t << 56; t2 += t;
-      t = i2[1]; t = t << 48; t2 += t;
-      t = i2[2]; t = t << 40; t2 += t;
-      t = i2[3]; t = t << 32; t2 += t;
-      t = i2[4]; t = t << 24; t2 += t;
-      t = i2[5]; t = t << 16; t2 += t;
-      t = i2[6]; t = t <<  8; t2 += t;
-      t = i2[7];              t2 += t;
-      matched = t1 - t2;
-/*
-      fprintf(stderr, "compare_names: t1 = %ld, t2 = %ld, matched = %ld\n",
-              t1, t2, matched);
-*/
-#else
-      matched = (signed long) (i1[0]<<56 | i1[1]<<48 | i1[2]<<40| i1[3]<<32
-                 | i1[4]<<24 | i1[5]<<16 | i1[6]<<8 | i1[7]  )
-                              -
-                (signed long) (i2[0]<<56 | i2[1]<<48 | i2[2]<<40| i2[3]<<32
-                 | i2[4]<<24 | i2[5]<<16 | i2[6]<<8 | i2[7] );
-#endif 
-#else
-      matched = (signed long) (i1[0]<<24 | i1[1]<<16 | i1[2]<<8 | i1[3] )
-                              -
-                (signed long) (i2[0]<<24 | i2[1]<<16 | i2[2]<<8 | i2[3] );
-
-#endif
-   }
-#endif
-
-
-   TRACE (Func_Exit, "compare_names", NULL);
-
-# ifdef _HOST64
-# ifdef _WHIRL_HOST64_TARGET64
+   matched = strncmp((char *) id1, (char *) id2,
+		     WORD_LEN((id1_len > id2_len) ? id1_len : id2_len) *
+			sizeof(long));
   if (matched)
     matched = matched > 0 ? 1 : -1;
-#endif
-#endif
+
+  TRACE (Func_Exit, "compare_names", NULL);
 
    return(matched);
 

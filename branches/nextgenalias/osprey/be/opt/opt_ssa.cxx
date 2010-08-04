@@ -603,6 +603,7 @@ void SSA::Construct(CODEMAP *htable, CFG *cfg, OPT_STAB *opt_stab)
 
   OPT_POOL_Pop(&defs_bb_pool, SSA_DUMP_FLAG);
   OPT_POOL_Delete(&defs_bb_pool, SSA_DUMP_FLAG);
+  _opt_stab->Reset_def_bbs();
 
   MEM_POOL rename_pool;
   OPT_POOL_Initialize(&rename_pool, "SSA rename pool", FALSE, SSA_DUMP_FLAG);
@@ -1281,13 +1282,13 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     stmt = bb->Add_stmtnode(wn, mem_pool);
 
 #ifdef TARG_SL //fork_joint
-    if(WN_is_compgoto_para(wn)) 
-       stmt->Set_fork_stmt_flags(TRUE);
-    else if(WN_is_compgoto_for_minor(wn)) 
-	stmt -> Set_minor_fork_stmt_flags(TRUE);
+    stmt->Set_fork_stmt_flags(WN_is_compgoto_para(wn));
+    stmt->Set_minor_fork_stmt_flags(WN_is_compgoto_for_minor(wn));
     // mark istore for vbuf automatic expansion 
     if (WN_operator(wn) == OPR_ISTORE && WN_is_internal_mem_ofst(wn))
-      stmt->Set_SL2_internal_mem_ofst(TRUE); 
+      stmt->Set_SL2_internal_mem_ofst(TRUE);
+    else
+      stmt->Set_SL2_internal_mem_ofst(FALSE); 
 #endif 
 
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);

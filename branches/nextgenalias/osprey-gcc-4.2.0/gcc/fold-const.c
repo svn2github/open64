@@ -4851,7 +4851,7 @@ fold_cond_expr_with_comparison (tree type, tree arg0, tree arg1, tree arg2)
 
 
 #ifndef LOGICAL_OP_NON_SHORT_CIRCUIT
-#ifdef KEY // bug 11517
+#ifdef KEY /* bug 11517 */
 #define LOGICAL_OP_NON_SHORT_CIRCUIT (!flag_spin_file && BRANCH_COST >= 2)
 #else
 #define LOGICAL_OP_NON_SHORT_CIRCUIT (BRANCH_COST >= 2)
@@ -9100,8 +9100,8 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
 
     case MULT_EXPR:
       /* (-A) * (-B) -> A * B  */
-#ifdef KEY // bug 11662: (-A) * const -> A * (-const) causes str reduction bug,
-      // so doing the old way in GNU3
+#ifdef KEY /* bug 11662: (-A) * const -> A * (-const) causes str reduction bug,
+       * so doing the old way in GNU3 */
       if (flag_spin_file) {
         if (TREE_CODE (arg0) == NEGATE_EXPR && TREE_CODE (arg1) == NEGATE_EXPR)
           return fold (build2(MULT_EXPR, type, TREE_OPERAND (arg0, 0),
@@ -9117,7 +9117,7 @@ fold_binary (enum tree_code code, tree type, tree op0, tree op1)
 	return fold_build2 (MULT_EXPR, type,
 			    fold_convert (type, negate_expr (arg0)),
 			    fold_convert (type, TREE_OPERAND (arg1, 0)));
-#ifdef KEY // bug 11662
+#ifdef KEY
       }
 #endif
 

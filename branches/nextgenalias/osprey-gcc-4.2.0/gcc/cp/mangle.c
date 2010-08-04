@@ -329,9 +329,9 @@ decl_is_template_id (const tree decl, tree* const template_info)
   else
     {
 #ifdef KEY
-      // If called from the spin translator, the DECL_ARGUMENTS can be NULL,
-      // which will cause seg fault when checking INNERMOST_TEMPLATE_PARMS.  If
-      // so, quit and indicate that the name cannot be reliably mangled.
+      /* If called from the spin translator, the DECL_ARGUMENTS can be NULL,
+       * which will cause seg fault when checking INNERMOST_TEMPLATE_PARMS.  If
+       * so, quit and indicate that the name cannot be reliably mangled. */
       if (flag_spin_file) {
         if (DECL_LANG_SPECIFIC (decl) != NULL
             && DECL_USE_TEMPLATE (decl)
@@ -1237,9 +1237,9 @@ write_integer_cst (const tree cst)
 {
 #ifdef KEY
   int sign;
-  // CST is expected to be an INTEGER_CST, but it may be something else if
-  // mangling is called from the spin translator.  In this case, mangling
-  // fails.  Bug 11271.
+  /* CST is expected to be an INTEGER_CST, but it may be something else if
+   * mangling is called from the spin translator.  In this case, mangling
+   * fails.  Bug 11271. */
   if (flag_spin_file &&
       TREE_CODE(cst) != INTEGER_CST) {
     cannot_mangle_name = 1;

@@ -3867,12 +3867,12 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
    */
 
   const int mask = 32768 ;
-  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f
-  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f
-  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f
-  const int simd_omask = 0xfbff; // bit 10: f 1011 f f
-  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f
-  const int simd_pmask = 0xefff; // bit 12: 1110 f f f
+  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f  - Invalid operation
+  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f  - Denormal
+  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f  - Divide by zero
+  const int simd_omask = 0xfbff; // bit 10: f 1011 f f  - Overflow
+  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f  - Underflow
+  const int simd_pmask = 0xefff; // bit 12: 1110 f f f  - Precision
   // bits 16..31 are 0, and must remain 0
 
   if( Is_Target_64bit() ){

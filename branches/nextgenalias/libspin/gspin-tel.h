@@ -279,7 +279,7 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
 #define GS_THUNK_VIRTUAL_OFFSET		40
 #define GS_DECL_NAMED_RETURN_OBJECT	41
 #define GS_DECL_FLAG2                   42
-// ---- begin GS_DECL_FLAG2 definition ----
+/* ---- begin GS_DECL_FLAG2 definition ---- */
 #  define GS_DECL_TLS_MODEL             0    /* 3 bits */
 #  define GS_DECL_TLS_MODEL_BITS        3    
 #  define GS_DECL_VISIBILITY_SPECIFIED  3    /* 1 bit */
@@ -287,9 +287,9 @@ extern gs_t gs_build_2(gs_tree_code_class_t code_class,
 #  define GS_DECL_VISIBILITY_BITS       2    
 #  define GS_DECL_FLAG2_LAST            6    /* next available bits, change it when */
                                              /* you add more flags */
-// ---- end GS_DECL_FLAG2 definition ----
+/* ---- end GS_DECL_FLAG2 definition ---- */
 
-//   ==== end GS_TCC_DECLARATION fields
+/*   ==== end GS_TCC_DECLARATION fields */
 
 
 /* ------------------------------------- */

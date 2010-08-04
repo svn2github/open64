@@ -103,6 +103,7 @@ SRC_DIRS = \
   $(TARGINFO_ISA_DIR)		\
   $(TARGINFO_PROC_DIR)		\
   $(TARGINFO_ABI_DIR)           \
+  $(TARGINFO_DIR)/include	\
   $(COMMON_COM_DIR)		\
   $(COMMON_UTIL_DIR)
 

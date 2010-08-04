@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -6393,9 +6393,15 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
-	    if (MTYPE_size_min(mtyp) != 32)
-	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
-			         MTYPE_size_min(mtyp), wn);
+	    if (MTYPE_size_min(mtyp) != 32) { 
+	      INT cvt_bit = gs_type_type_precision(gs_tree_type(exp));
+	      if (cvt_bit == 0 || cvt_bit == 8 || cvt_bit == 16 || cvt_bit == 32) { 
+	        wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V, cvt_bit, wn);
+	      } else {
+	        wn = WN_CreateExp1(OPR_EXTRACT_BITS, Widen_Mtype(mtyp), MTYPE_V, wn);
+	        WN_set_bit_offset_size(wn, 0, cvt_bit);
+	      }     
+	    }
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
@@ -8194,7 +8200,43 @@ WGEN_Expand_Expr (gs_t exp,
                  if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN;
                 else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN;
-                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'log'");
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_ATAN2:
+              case GSBI_BUILT_IN_ATAN2F:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4ATAN2;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8ATAN2;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'atan2'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_SINH:
+              case GSBI_BUILT_IN_SINHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4SINH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8SINH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'sinh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_COSH:
+              case GSBI_BUILT_IN_COSHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4COSH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8COSH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'cosh'");
+                intrinsic_op = TRUE;
+                break;
+
+              case GSBI_BUILT_IN_TANH:
+              case GSBI_BUILT_IN_TANHF:
+                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
+                 if (ret_mtype == MTYPE_F4) iopc = INTRN_F4TANH;
+                else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8TANH;
+                else Fail_FmtAssertion ("unexpected mtype for intrinsic 'tanh'");
                 intrinsic_op = TRUE;
                 break;
 

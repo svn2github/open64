@@ -91,9 +91,9 @@ HANDLE DRA_file_mmap_handle = NULL;
 
 static void DRA_Make_File_Name();
 
-static char* basename(char *const s);
+static char* get_base_name(char *const s);
 
-static char* dirname(char *const s);
+static char* get_dir_name(char *const s);
 
 
 // =====================================================================
@@ -313,11 +313,11 @@ DRA_Make_File_Name()
   char *obj_file_name = Obj_File_Name ? 
     Obj_File_Name : New_Extension (Src_File_Name, ".o");
   
-  char *dir = dirname(obj_file_name);
+  char *dir = get_dir_name(obj_file_name);
   strcpy (DRA_file_name, dir);
   strcat (DRA_file_name, DRA_DIRECTORY);
 
-  char *base = basename(obj_file_name);
+  char *base = get_base_name(obj_file_name);
   INT baselen = strlen(base);
   
   if (base[baselen-2] == '.' && base[baselen-1] == 'o')
@@ -335,7 +335,7 @@ static char tempbuf[MAXPATHLEN];
 
 
 static char*
-basename(char *const s)
+get_base_name(char *const s)
 {
   register char *p;
   register char *const t = tempbuf;
@@ -357,7 +357,7 @@ basename(char *const s)
 
 
 static char*
-dirname(char *const s)
+get_dir_name(char *const s)
 {
   register char *p;
   register char *const t = tempbuf;

@@ -128,6 +128,7 @@ class SNL_NEST_INFO {
   BOOL			Innermost() const {return _innermost;}
   void			Print(FILE*) const;
   void			Exclude_Outer_Loops(INT how_many);
+  BOOL                  All_Var_Expandable(int nloops);
 
   SX_INFO& Privatizability_Info()
     {return _privatizability_info;}

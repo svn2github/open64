@@ -11437,11 +11437,9 @@ static WN *lower_compgoto(WN *block, WN *tree, LOWER_ACTIONS actions)
     if ( Cur_PU_Feedback )
       Cur_PU_Feedback->FB_lower_compgoto( tree, xgoto, wn_truebr );
 
-#ifdef TARG_SL2 //fork_joint
-    if(WN_is_compgoto_para(tree)) 
-		WN_Set_is_compgoto_para(xgoto);
-    else if(WN_is_compgoto_for_minor(tree))
-		WN_Set_is_compgoto_for_minor(xgoto);
+#ifdef TARG_SL //fork_joint
+    WN_Set_is_compgoto_para(xgoto, WN_is_compgoto_para(tree));
+    WN_Set_is_compgoto_for_minor(xgoto, WN_is_compgoto_for_minor(tree));
 #endif 
 
     return xgoto;

@@ -168,7 +168,7 @@ COMMON_UTIL_TARG_DIR 	= $(COMMON_UTIL_DIR)/$(BUILD_TARGET_DIR)
 INCLUDE_DIR 		= $(ROOT)/usr/include
 IPA_COM_DIR 		= $(BUILD_TOT)/ipa/common/
 LIBCOMUTIL_DIR 		= $(BUILD_TOT)/libcomutil
-TARG_TARG_INFO 		= $(TARGDIR)/targ_info
+TARG_TARG_INFO          = $(TARGDIR)/targ_info
 
 # These are the directories in which to look for source files.
 
@@ -191,7 +191,7 @@ HEADER_DIRS = \
   $(COMMON_UTIL_DIR)	\
   $(TARG_BE)		\
   $(BE_CG_DIR)          \
-  $(BE_CG_TARG_DIR)          \
+  $(BE_CG_TARG_DIR)     \
   $(BE_ORC_ICT_DIR)	\
   $(BE_ORC_INTEL_DIR)	\
   $(BE_BE_DIR)		\
@@ -200,6 +200,11 @@ HEADER_DIRS = \
   $(TARG_TARG_INFO)	\
   $(BE_PROMPF_DIR)	\
   $(TARG_CG)		\
+
+
+#  $(TARGDIR)/targ_info \
+#  $(TARGDIR)/cg  \
+#  $(TARGDIR)/orc_ict \
 
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.

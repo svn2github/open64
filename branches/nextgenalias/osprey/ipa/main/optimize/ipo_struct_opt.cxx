@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1962,6 +1962,7 @@ static void traverse_wn_tree_for_array_remapping_legality_1(WN *wn,
           else if (WN_operator(wn2) == OPR_ISTORE &&
                    WN_operator(WN_kid0(wn2)) == OPR_LDID &&
                    WN_st(WN_kid0(wn2)) == malloc_st &&
+                   WN_has_sym(WN_kid1(wn2)) &&
                    WN_st(WN_kid1(wn2)) != NULL &&
                    ST_class(WN_st(WN_kid1(wn2))) == CLASS_VAR)
           {

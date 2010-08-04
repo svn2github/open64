@@ -248,38 +248,37 @@ Initialize(void)
 void 
 Get_Rid_For_Lrange(LRANGE* lrange,  vector <RID*> * rid_vec )
 {
-
-     LRANGE_LIVE_GBB_ITER live_gbb_iter;
-     BB* bb;
-     if(lrange->Type()== LRANGE_TYPE_REGION) { //region for major thread;
-	  return; 
-     }
-     if(lrange->Type() ==LRANGE_TYPE_LOCAL) {
-         bb = lrange->Gbb()->Bb();
-         RID* rid =  BB_rid(bb);
-         if(rid ) { // don't split register for major fork 
-           if(RID_TYPE_major(rid)) 
-		  return;
-	    else { // for minor fork 
-		 rid_vec->push_back(rid);
-		 return;
-	    }		
-	  }
-     }
-     else { //complement region 
-       Is_True((lrange->Type()==LRANGE_TYPE_COMPLEMENT), ("unknown region type")); 
-	LRANGE_LUNIT_ITER lunit_iter;
-       for (lunit_iter.Init(lrange); ! lunit_iter.Done(); lunit_iter.Step()) 
-       {
-           LUNIT* lunit = lunit_iter.Current();
-           GRA_BB* gbb = lunit->Gbb();
-	    bb = gbb->Bb();
-	    if(BB_rid(bb) && (find(rid_vec->begin(), rid_vec->end(), BB_rid(bb)) == rid_vec->end())) {
-	    	rid_vec->push_back(BB_rid(bb));
-	   }		
-       }
-     }
-     return;
+  LRANGE_LIVE_GBB_ITER live_gbb_iter;
+  BB* bb;
+  if(lrange->Type()== LRANGE_TYPE_REGION) { //region for major thread;
+    return; 
+  }
+  if(lrange->Type() ==LRANGE_TYPE_LOCAL) {
+    bb = lrange->Gbb()->Bb();
+    RID* rid =  BB_rid(bb);
+    if(rid ) { // don't split register for major fork 
+      if(RID_TYPE_major(rid)) 
+        return;
+      else { // for minor fork 
+        rid_vec->push_back(rid);
+        return;
+      }		
+    }
+  }
+  else { //complement region 
+    Is_True((lrange->Type()==LRANGE_TYPE_COMPLEMENT), ("unknown region type")); 
+    LRANGE_LUNIT_ITER lunit_iter;
+    for (lunit_iter.Init(lrange); ! lunit_iter.Done(); lunit_iter.Step()) 
+    {
+      LUNIT* lunit = lunit_iter.Current();
+      GRA_BB* gbb = lunit->Gbb();
+      bb = gbb->Bb();
+      if(BB_rid(bb) && (find(rid_vec->begin(), rid_vec->end(), BB_rid(bb)) == rid_vec->end())) {
+        rid_vec->push_back(BB_rid(bb));
+      }		
+    }
+  }
+  return;
 }
 #endif
 
@@ -335,20 +334,20 @@ Update_Register_Info( LRANGE* lrange, REGISTER reg, BOOL reclaim = FALSE )
   }
 
 #ifdef TARG_SL //minor_reg_alloc
-//  if( !lrange->Spans_Multiregions()) {
-     vector< RID* > rid_vec;
-     vector<RID* >::iterator iter; 
-     Get_Rid_For_Lrange(lrange, &rid_vec);
-   for(iter = rid_vec.begin(); iter != rid_vec.end(); iter++) {
-   	RID* rid = *iter; 
-     if(rid && RID_TYPE_minor(rid)) {
-	 RID * pair_rid =  gra_para_region_mgr.Get_Pair_Rid(rid);
-	 Is_True((pair_rid), ("pair_rid is NULL"));
-	 GRA_PARA_REGION* pair_region = gra_para_region_mgr.Get(pair_rid);
-	 pair_region->Add_One_Exclude_Register(rc,  reg);
-     }	 
-   }
-//  }
+//if( !lrange->Spans_Multiregions()) {
+  vector< RID* > rid_vec;
+  vector<RID* >::iterator iter; 
+  Get_Rid_For_Lrange(lrange, &rid_vec);
+  for(iter = rid_vec.begin(); iter != rid_vec.end(); iter++) {
+    RID* rid = *iter; 
+    if(rid && RID_TYPE_minor(rid)) {
+      RID * pair_rid =  gra_para_region_mgr.Get_Pair_Rid(rid);
+      Is_True((pair_rid), ("pair_rid is NULL"));
+      GRA_PARA_REGION* pair_region = gra_para_region_mgr.Get(pair_rid);
+      pair_region->Add_One_Exclude_Register(rc,  reg);
+    }	 
+  }
+//}
 #endif 
   
 }
@@ -689,20 +688,19 @@ Choose_Register( LRANGE* lrange, GRA_REGION* region )
       current_lrange = 0;
 #endif // TARG_IA64
 #ifdef TARG_SL //minor_reg_alloc
-//  if(!lrange->Spans_Multiregions()) 
-//  {
-     vector< RID*> rid_vec; 
-     vector< RID* >::iterator iter; 
-     Get_Rid_For_Lrange(lrange, &rid_vec);
+//if(!lrange->Spans_Multiregions()) {
+  vector< RID*> rid_vec; 
+  vector< RID* >::iterator iter; 
+  Get_Rid_For_Lrange(lrange, &rid_vec);
   for(iter=rid_vec.begin(); iter !=rid_vec.end(); iter++ ) {	 
-     RID* rid = *iter;
-     if(rid && RID_TYPE_minor(rid)) {	 
-	 GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
-	 REGISTER_SET exclude_set =  region->Registers_Exclude(lrange->Rc());
-       allowed = REGISTER_SET_Difference(allowed, exclude_set);
-     }	 
+    RID* rid = *iter;
+    if(rid && RID_TYPE_minor(rid)) {	 
+      GRA_PARA_REGION* region = gra_para_region_mgr.Get(rid);
+      REGISTER_SET exclude_set =  region->Registers_Exclude(lrange->Rc());
+      allowed = REGISTER_SET_Difference(allowed, exclude_set);
+    }	 
   }
-// }
+//}
 #endif 
 
   if ( lrange->Has_Wired_Register() ) {
@@ -918,11 +916,11 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
 
 #ifdef TARG_SL2 //minor_reg_alloc
       BB* bb = gbb->Bb();
-     if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {
-     	 GRA_PARA_REGION* region = gra_para_region_mgr.Get(BB_rid(bb));
-	 REGISTER_SET exclude_set =  region->Registers_Exclude(rc);
+      if(BB_rid(bb) && RID_TYPE_minor(BB_rid(bb))) {
+        GRA_PARA_REGION* region = gra_para_region_mgr.Get(BB_rid(bb));
+        REGISTER_SET exclude_set =  region->Registers_Exclude(rc);
         allowed = REGISTER_SET_Difference(allowed,  exclude_set);
-     }
+      }
 #endif 
 
 #ifdef HAS_STACKED_REGISTERS
@@ -967,12 +965,12 @@ Force_Color_Some_Locals( GRA_REGION* region, ISA_REGISTER_CLASS rc )
         GRA_GRANT_Local_Register(gbb,rc,reg);
 #ifdef TARG_SL //minor_reg_alloc
         if(BB_rid(gbb->Bb()) && RID_TYPE_minor(BB_rid(gbb->Bb()))) {
-		RID* rid = BB_rid(gbb->Bb());
-		RID* pair_rid = gra_para_region_mgr.Get_Pair_Rid(rid);
-		GRA_PARA_REGION * pair_region = 
-			gra_para_region_mgr.Get(pair_rid);
-		pair_region->Add_One_Exclude_Register(rc,  reg);
-       }			
+          RID* rid = BB_rid(gbb->Bb());
+          RID* pair_rid = gra_para_region_mgr.Get_Pair_Rid(rid);
+          GRA_PARA_REGION * pair_region = 
+            gra_para_region_mgr.Get(pair_rid);
+          pair_region->Add_One_Exclude_Register(rc,  reg);
+        }			
 #endif 
       }
       else {
@@ -1454,18 +1452,18 @@ GRA_Optimize_Restore_Regs(BB* exit, BB_SET* call_set, BB_SET* pr_set, BB_SET* lc
 void 
 Set_Children_GRA_Colored (RID * rid) 
 {
-    RID* kid; 
+  RID* kid; 
 
-    if(rid == NULL) return; //func_entry rid
-    
-    RID_was_gra_Set(rid);
-    RID_has_reg_alloc_Set(rid);
+  if(rid == NULL) return; //func_entry rid
 
-    for(kid = RID_first_kid(rid); kid != NULL; kid = RID_next(kid))
-    {
-        Set_Children_GRA_Colored(kid); 
-    }
-    return; 
+  RID_was_gra_Set(rid);
+  RID_has_reg_alloc_Set(rid);
+
+  for(kid = RID_first_kid(rid); kid != NULL; kid = RID_next(kid))
+  {
+    Set_Children_GRA_Colored(kid); 
+  }
+  return; 
 }
 #endif // TARG_SL
 

@@ -151,6 +151,8 @@ static void set_f90_source_form(string_list_t *args,boolean set_line_length) ;
 static void set_stack_size();
 #endif
 
+extern int run_build;
+
 static phases_t
 post_fe_phase (void);
 
@@ -560,19 +562,14 @@ set_library_paths(string_list_t *args)
       asprintf(&our_path, "%s/lib/",root_prefix);
 #endif
 	} else {
-		asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
+	  asprintf(&our_path, "%s/" LIBPATH "/64", global_toolroot);
+	  add_string(args, concat_strings("-L", our_path));
+	  asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
 
 	free(our_path);
-#ifdef TARG_IA64
-	our_path = get_phase_dir(P_library);
-        add_string (args, concat_strings("-L", our_path));
-
-        our_path= get_phase_dir(P_alt_library);
-        add_string (args, concat_strings("-L", our_path));
-#endif
 }
 
 /*
@@ -755,6 +752,33 @@ add_file_args_first (string_list_t *args, phases_t index)
   switch (index) {
     case P_gcpp:
     case P_gcpp_plus:
+      if (run_build) {
+	char p[PATH_BUF_LEN];
+	sprintf(p, "-B%s", get_phase_dir(index));
+	add_string(args, p);
+	if (index == P_gcpp_plus) {
+#if defined(TARG_X8664)
+	  if (abi == ABI_N32)
+	    sprintf(p, "-I%s/../%s/32/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+          else
+	    sprintf(p, "-I%s/../%s/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+#else
+	  sprintf(p, "-I%s/../%s/libstdc++-v3/include/%s", get_phase_dir(index),GCC_CONFIGURE_TARG,GCC_CONFIGURE_TARG);
+#endif
+	  add_string(args, p);
+#if defined(TARG_X8664) || defined(TARG_NVISA)
+  	  if (abi == ABI_N32)
+	    sprintf(p, "-I%s/../%s/32/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+          else
+	    sprintf(p, "-I%s/../%s/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+#else
+	  sprintf(p, "-I%s/../%s/libstdc++-v3/include", get_phase_dir(index),GCC_CONFIGURE_TARG);
+#endif
+	  add_string(args, p);
+	  sprintf(p, "-I%s/%s/libstdc++-v3/libsupc++", BUILD_SRC, GCC_DIR);
+	  add_string(args, p);
+        }
+      }
       // -Dfoo before user options, since user might specify -Ufoo.  Bug 6874.
       if (option_was_seen(O_pthread))
 	add_string(args, "-D_REENTRANT");
@@ -1643,6 +1667,11 @@ add_file_args (string_list_t *args, phases_t index)
 		}
 		current_phase = P_any_as;
 #if defined TARG_X8664 || ( defined(KEY) && !defined(CROSS_COMPILATION))
+      		if (run_build) {
+			char p[PATH_BUF_LEN];
+			sprintf(p, "-B%s", get_phase_dir(index));
+			add_string(args, p);
+      		}
 		add_string(args, "-c");		// gcc -c
 #endif
 #ifdef TARG_SL
@@ -1706,6 +1735,11 @@ add_file_args (string_list_t *args, phases_t index)
 		else
 		  add_string(args, "-mabi=64");
 #endif
+      		if (run_build) {
+			char p[PATH_BUF_LEN];
+			sprintf(p, "-B%s", get_phase_dir(index));
+			add_string(args, p);
+      		}
 		set_library_paths(args);
 		if (outfile != NULL) {
 			add_string(args, "-o");
@@ -2994,10 +3028,8 @@ void
 init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
 {
   // Select the appropriate GNU 4 front-end.
-  if (gnu_major_version == 4) {
+  if ((gnu_major_version == 4) && !run_build) {
     switch (gnu_minor_version) {
-      case 0:	// Default is 4.0.
-        break;
       case 2:
 	set_phase_name(P_spin_cc1, "cc142");
 	set_phase_name(P_spin_cc1plus, "cc1plus42");
