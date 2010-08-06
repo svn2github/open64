@@ -339,9 +339,10 @@ SCCDetection::findAndUnify(UINT32 noMergeMask)
 }
 
 void
-EdgeDelta::add(CGEdgeSet &edgeSet)
+EdgeDelta::add(list<ConstraintGraphEdge *> &edgeList)
 {
-  for (CGEdgeSetIterator iter = edgeSet.begin(); iter != edgeSet.end(); iter++)
+  for (list<ConstraintGraphEdge *>::iterator iter = edgeList.begin(); 
+       iter != edgeList.end(); iter++)
     add(*iter);
 }
       
@@ -637,7 +638,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
       while (!copySkewList.empty()) {
         ConstraintGraphEdge *edge = copySkewList.pop();
         if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
-          ConstraintGraph::removeEdge(edge);
+          CXX_DELETE(edge,ConstraintGraph::edgePool());
           continue;
         }
         if (trace) {
@@ -733,7 +734,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
     while (!loadStoreList.empty()) {
       ConstraintGraphEdge *edge = loadStoreList.pop();
       if (edge->checkFlags(CG_EDGE_TO_BE_DELETED)) {
-        ConstraintGraph::removeEdge(edge);
+        CXX_DELETE(edge,ConstraintGraph::edgePool());
         continue;
       }
       if (trace) {
@@ -1645,9 +1646,9 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
     }
 #endif
 
-    CGEdgeSet newEdgeSet;
+    list<ConstraintGraphEdge *> newEdgeList;
     added = ConstraintGraph::addPtrAlignedEdges(copySrc, copyDst, ETYPE_COPY,
-                                                qual, size, newEdgeSet);
+                                                qual, size, newEdgeList);
     if (added) {
 #if 0
      if (nodeRep->offset() == -1) {
@@ -1658,7 +1659,7 @@ ConstraintGraphSolve::addCopiesForLoadStore(ConstraintGraphNode *src,
         }
       }
 #endif
-      edgeDelta().add(newEdgeSet);
+      edgeDelta().add(newEdgeList);
     }
   }
 }

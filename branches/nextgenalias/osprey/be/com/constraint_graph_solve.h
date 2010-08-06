@@ -16,7 +16,7 @@ public:
   ~EdgeDelta() {}
 
   void add(ConstraintGraphEdge *e);
-  void add(CGEdgeSet &edgeSet);
+  void add(list<ConstraintGraphEdge *> &edgeList);
   EdgeWorkList &copySkewList() { return _copySkew; }
   EdgeWorkList &loadStoreList() { return _loadStore; }
 

@@ -1210,7 +1210,7 @@ public:
                                  CGEdgeType etype,
                                  CGEdgeQual qual,
                                  INT32 sizeOrSkew,
-                                 CGEdgeSet &edgeSet,
+                                 list<ConstraintGraphEdge *> &edgeList,
                                  UINT16 flags = 0);
 
   static ConstraintGraphEdge *addEdge(ConstraintGraphNode *src,
@@ -1264,6 +1264,8 @@ public:
   static void workList(EdgeDelta *list)   { _workList = list; }
 
   static NodeWorkList *solverModList(void)   { return &_solverModList; }
+
+  static MEM_POOL *edgePool() { return edgeMemPool; }
 
   static void ipaSimpleOptimizer();
 

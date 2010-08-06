@@ -1699,21 +1699,21 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
 
     bool added = false;
     INT64 size = formal->stInfo()->varSize();
-    CGEdgeSet edgeSet;
+    list<ConstraintGraphEdge *> edgeList;
     // if formal is fortran's formal_ref parameter, it's passed by reference
     // caller pass a pointer to callee, callee access formal parameter by value.
     // this will be lowered until cg lowering.
     // so add load edge from actual to formal_ref.
     if(formal->checkFlags(CG_NODE_FLAGS_FORMAL_REF_PARAM))  {
       added = addPtrAlignedEdges(actual->parent(),formal->parent(),
-                               ETYPE_LOAD, CQ_DN,size,edgeSet);
+                               ETYPE_LOAD, CQ_DN,size,edgeList);
     }
     else {
       added = addPtrAlignedEdges(actual->parent(),formal->parent(),
-                               ETYPE_COPY,CQ_DN,size,edgeSet);
+                               ETYPE_COPY,CQ_DN,size,edgeList);
     }
     if (added)
-      delta.add(edgeSet);
+      delta.add(edgeList);
   }
 
   // If we have more actuals than formals either we either have a
@@ -1732,11 +1732,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         continue;
       INT64 size = actual->stInfo()->varSize();
       bool added = false;
-      CGEdgeSet edgeSet;
+      list<ConstraintGraphEdge *> edgeList;
       added = addPtrAlignedEdges(actual->parent(),lastFormal->parent(),
-                                 ETYPE_COPY,CQ_DN,size,edgeSet);
+                                 ETYPE_COPY,CQ_DN,size,edgeList);
       if (added)
-        delta.add(edgeSet);
+        delta.add(edgeList);
     }
   }
 
@@ -1824,11 +1824,11 @@ ConstraintGraph::connect(CallSiteId id, ConstraintGraph *callee,
         continue;
       INT64 size = actualRet->stInfo()->varSize();
       bool added = false;
-      CGEdgeSet edgeSet;
+      list<ConstraintGraphEdge *> edgeList;
       added = addPtrAlignedEdges(formalRet->parent(),actualRet->parent(),
-                                 ETYPE_COPY,CQ_UP,size,edgeSet);
+                                 ETYPE_COPY,CQ_UP,size,edgeList);
       if (added)
-        delta.add(edgeSet);
+        delta.add(edgeList);
     }
   }
 }
@@ -1865,12 +1865,21 @@ IPA_NystromAliasAnalyzer::updateLocalSyms(IPA_NODE *node)
     FmtAssert(cgStInfoMap.find(old_cg_st_idx) != cgStInfoMap.end(),
               ("Could not find old_cg_st_idx"));
     cgStInfoMap.erase(cgStInfoMap.find(old_cg_st_idx));
-    ConstraintGraphNode *cgNode = stInfo->firstOffset();
-    while (cgNode) {
-      FmtAssert(cgNodeToIdMap.find(cgNode) != cgNodeToIdMap.end(),
-                ("Could not find node: %d", cgNode->id()));
+    // Remove all CGNodes that could be associated with the StInfo
+    // We have to walk the map here, since after a collapsing the collapsed
+    // nodes will not be in the offset list of the StInfo
+    hash_set<CGNodeId> remNodes;
+    for (CGNodeToIdMapIterator iter = cgNodeToIdMap.begin();
+      iter != cgNodeToIdMap.end(); iter++) {
+      ConstraintGraphNode *cgNode = iter->first;
+      if (cgNode->cg_st_idx() != old_cg_st_idx)
+        continue;
+      remNodes.insert(cgNode->id());
+    }
+    for (hash_set<CGNodeId>::const_iterator iter = remNodes.begin();
+       iter != remNodes.end(); iter++) {
+      ConstraintGraphNode *cgNode = ConstraintGraph::cgNode(*iter);
       cgNodeToIdMap.erase(cgNodeToIdMap.find(cgNode));
-      cgNode = cgNode->nextOffset();
     }
   }
 

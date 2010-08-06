@@ -381,7 +381,7 @@ void
 StInfo::initBlk(UINT64 size, UINT32 flags, MEM_POOL *memPool)
 {
   _flags = flags;
-  _maxOffsets = 512;
+  _maxOffsets = 256;
   _numOffsets = 0;
   _firstOffset = 0;
   _ty_idx = 0;
@@ -400,7 +400,7 @@ StInfo::init(TY_IDX ty_idx, UINT32 flags, MEM_POOL *memPool)
 {
   _flags = flags;
   _varSize = 0;
-  _maxOffsets = 512;
+  _maxOffsets = 256;
   _numOffsets = 0;
   _firstOffset = 0;
   _ty_idx = ty_idx;
@@ -2508,7 +2508,7 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
                                     CGEdgeType etype,
                                     CGEdgeQual qual,
                                     INT32 sizeOrSkew,
-                                    CGEdgeSet &edgeSet,
+                                    list<ConstraintGraphEdge *> &edgeList,
                                     UINT16 flags)
 {
   bool added = false;
@@ -2578,7 +2578,7 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
           _addEdge(nsrc2->parent(), ndest2->parent(), etype, qual,
                    Pointer_Size, eadded2, flags);
       added |= (eadded1 | eadded2);
-      edgeSet.insert(edge1);
+      edgeList.push_front(edge1);
     }
     return added;
   } 
@@ -2609,7 +2609,7 @@ ConstraintGraph::addPtrAlignedEdges(ConstraintGraphNode *src,
     ConstraintGraphEdge *edge = 
               _addEdge(nsrc1->parent(), ndest1->parent(), etype, qual,
                        sizeOrSkew, added, flags);
-    edgeSet.insert(edge);
+    edgeList.push_front(edge);
     return added;
   }
 }
@@ -2670,11 +2670,11 @@ ConstraintGraph::addEdge(ConstraintGraphNode *src, ConstraintGraphNode *dest,
     return _addEdge(src, dest, etype, qual, sizeOrSkew, added, flags);
   else
   {
-    CGEdgeSet edgeSet;
+    list<ConstraintGraphEdge *> edgeList;
     added = addPtrAlignedEdges(src, dest, etype, qual, sizeOrSkew,
-                               edgeSet, flags);
+                               edgeList, flags);
     // We could potentially add multiple edges. Return the first one
-    return edgeSet.empty() ? NULL : *(edgeSet.begin());
+    return edgeList.empty() ? NULL : edgeList.front();
   }
 }
 
@@ -2683,10 +2683,7 @@ ConstraintGraph::removeEdge(ConstraintGraphEdge *edge)
 {
   edge->srcNode()->removeOutEdge(edge);
   edge->destNode()->removeInEdge(edge);
-  if (!edge->checkFlags(CG_EDGE_IN_WORKLIST))
-    CXX_DELETE(edge,edgeMemPool);
-  else
-    edge->addFlags(CG_EDGE_TO_BE_DELETED);
+  edge->addFlags(CG_EDGE_TO_BE_DELETED);
 }
 
 TY_IDX
@@ -2841,11 +2838,8 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
       if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
-        fprintf(stderr, "getCGNode: too many offsets..collapsing %d!\n", cg_st_idx);
-      }
-      else {
-        si->print(stderr,true);
-        fprintf(stderr, "getCGNode: too many offsets..collapsing!\n");
+        fprintf(stderr, "getCGNode: too many offsets..collapsing %ld!\n", cg_st_idx);
+        //si->print(stderr,true);
       }
       si->collapse();
       offset = 0;
@@ -3969,8 +3963,8 @@ ConstraintGraph::remapCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx)
   char buf1[128];
   char buf2[128];
   if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
-    fprintf(stderr, "  remapCGNode: node id:%d: old idx: %s to new idx:%s "
-            "in cg: %s\n", node->id(),
+    fprintf(stderr, "  remapCGNode: node id:%d: off:%d old idx: %s to "
+            "new idx:%s in cg: %s\n", node->id(), node->offset(),
              printCGStIdx(node->cg_st_idx(), buf1, 128),
              printCGStIdx(new_cg_st_idx, buf2, 128),
              name());
