@@ -134,6 +134,9 @@ HEADER_DIRS += $(TARGDIR)/include/libelf
 endif
 endif
 
+HEADER_DIRS += $(BUILD_TOT)/include/gnu
+
+
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
 #----------------------------------------------------------------------
