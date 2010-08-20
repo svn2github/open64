@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -604,6 +604,8 @@ extern void RID_Fprint(FILE *, RID *);
 
 /* Print the tree of RIDs rooted at rid to TFile */
 extern void RID_Tree_Print(FILE *, RID *);
+
+extern bool RID_is_valid(RID *, RID*);
 
 /* Print the tree of RIDs rooted at the RID of the given WN to TFile */
 extern void RID_WN_Tree_Print(FILE *, WN *);

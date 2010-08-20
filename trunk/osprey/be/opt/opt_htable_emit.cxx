@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -417,6 +421,15 @@ ML_WHIRL_EMITTER::Emit(void)
 	Is_Trace(Trace(),(TFile,"Push_region(RGN %d), prev_wn = 0x%p\n",
 		  RID_id(bb->Regioninfo()->Rid()),prev_wn));
       }
+
+    // Add an assertion to make sure that the BB layout is right with respect
+    // to eh_region. That is, if BB is inside a valid eh region (dce may 
+    // remove some eh region and make rid invalid), its BB rid should 
+    // match with the top eh_region's rid
+    if (bb->Kind() != BB_REGIONEXIT && bb->EH_region() && bb->Rid() && 
+        RID_is_valid(Cfg()->Rid(), bb->Rid()))
+        Is_True(bb->Rid() == _region_stack.Top()->Region_start()->Rid(),
+        ("ML_WHIRL_EMITTER::Emit: BB region id not match"));
 
       // generate alternate entry statement if necessary
       if ( bb->Kind() == BB_ENTRY && bb->Entrywn() &&

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -531,20 +531,6 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
-          // aes and avx
-	  if (!strncasecmp(cp, "aes=on", 6)){
-	    add_option_seen(O_maes);
-	    toggle(&aes, TRUE);
-	  }else if (!strncasecmp(cp, "aes=off", 7)){
-	    add_option_seen(O_mno_aes);
-	    toggle(&aes, FALSE);
-	  }else if (!strncasecmp(cp, "avx=on", 6)){
-	    add_option_seen(O_mavx);
-	    toggle(&avx, TRUE);
-	  }else if (!strncasecmp(cp, "avx=off", 7)){
-	    add_option_seen(O_mno_avx);
-	    toggle(&avx, FALSE);
-          }
 #endif
 #ifdef TARG_LOONGSON
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
@@ -561,9 +547,26 @@ Process_Targ_Group ( char *targ_args )
 	    toggle ( &abi, ABI_W64 );
 	  }
 #endif
+	} else {
+#ifdef TARG_X8664
+          // non abi TARG options
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
+#endif
 	}
 	break;
-
 
       case 'f':
 #ifdef TARG_X8664
@@ -1852,7 +1855,7 @@ static struct
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
   { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE,  FALSE,
     TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
-  { "orochi",   "orochi",		ABI_64,		TRUE,	TRUE,  TRUE,
+  { "bdver1",   "bdver1",		ABI_64,		TRUE,	TRUE,  TRUE,
     TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE  },
   { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE,  TRUE,
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
@@ -2417,6 +2420,15 @@ Process_Hugepage_Group(char * hugepage_args)
             else
                 continue;
         }
+        else if (strncmp(p, "bd=", 3) == 0) {
+            p = &p[3];
+            hugepage_alloc = ALLOC_BD;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
         else if (strncmp(p, "bdt=", 4) == 0) {
             p = &p[4];
             hugepage_alloc = ALLOC_BDT;
@@ -2464,5 +2476,36 @@ Process_Hugepage_Group(char * hugepage_args)
     if (!has_err) 
         add_option_seen(O_HP);
 }
+
+#ifdef TARG_X8664
+
+static void
+Process_fp(char *level)
+{
+    if (!strcmp(level, "strict")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "strict-contract")) {
+	/* Same as strict but allow contractions like fma (floating
+	   point multiply and add) if they are available.  */
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "relaxed")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=2"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=1"));
+    }
+    else if (!strcmp(level, "aggressive")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=3"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=2"));
+	add_option_seen(add_string_option(O_TENV_, "simd_amask=off"));
+	add_option_seen(add_string_option(O_TENV_, "simd_fmask=off"));
+    }
+    else {
+	warning("Ignored illegal argument: %s in -fp-accuracy", level);
+    }
+}
+#endif
 
 #include "opt_action.i"

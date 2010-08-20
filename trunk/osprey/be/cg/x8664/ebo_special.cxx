@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -127,7 +127,7 @@ static const char source_file[] = __FILE__;
 #include "config_lno.h"
 
 extern BOOL TN_live_out_of( TN*, BB* );
-
+extern void Set_flags_strcmp_expand();
 
 /* Define a macro to strip off any bits outside of the left most 4 bytes. */
 #define TRUNC_32(val) (val & 0x00000000ffffffffll)
@@ -166,7 +166,7 @@ static TOP Get_Top_For_Addr_Mode (TOP, ADDR_MODE);
 static OP *Compose_Mem_Op_And_Copy_Info (OP *op, TN *index, TN *offset,
 					 TN *scale, TN *base,
 					 EBO_TN_INFO **load_actual_tninfo);
-
+void expand_strcmp_bb(BB * call_bb);
 /* Initialize and finalize ebo special routines. */
 void
 EBO_Special_Start (MEM_POOL *pool)
@@ -2769,6 +2769,671 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   return FALSE;
 }
 
+
+// define X8664 status flag register marco.
+// the expression SF==OF is treated as a sigle status flag register.
+// because SF==OF is used in jl/jge
+// some transformation may affect SF or OF, but not change SF==OF
+#define OF_MASK   0x00000001
+#define SF_MASK   0x00000002
+#define ZF_MASK   0x00000004
+#define AF_MASK   0x00000008
+#define CF_MASK   0x00000010
+#define PF_MASK   0x00000020
+#define SF_EQ_OF_MASK   0x00000040
+#define ALL_FLAG_MASK   0x0000005f
+
+/*
+ * Test_Compare_Size
+ *    return test/compare instruction's compare operand size.
+ */
+static 
+INT32 Test_Compare_Size( const TOP top )
+{
+  switch ( top ) {
+    case TOP_test8:
+    case TOP_testx8:
+    case TOP_testxx8:
+    case TOP_testxxx8:
+    case TOP_testi8:
+    case TOP_cmp8:
+    case TOP_cmpx8:
+    case TOP_cmpxx8:
+    case TOP_cmpxxx8:
+    case TOP_cmpi8:
+    case TOP_cmpxi8:
+    case TOP_cmpxxi8:
+    case TOP_cmpxxxi8:
+      return 1;
+    case TOP_test16:
+    case TOP_testx16:
+    case TOP_testxx16:
+    case TOP_testxxx16:
+    case TOP_testi16:
+    case TOP_cmp16:
+    case TOP_cmpx16:
+    case TOP_cmpxx16:
+    case TOP_cmpxxx16:
+    case TOP_cmpi16:
+    case TOP_cmpxi16:
+    case TOP_cmpxxi16:
+    case TOP_cmpxxxi16:
+      return 2;
+    case TOP_test32:
+    case TOP_testx32:
+    case TOP_testxx32:
+    case TOP_testxxx32:
+    case TOP_testi32:
+    case TOP_cmp32:
+    case TOP_cmpx32:
+    case TOP_cmpxx32:
+    case TOP_cmpxxx32:
+    case TOP_cmpi32:
+    case TOP_cmpxi32:
+    case TOP_cmpxxi32:
+    case TOP_cmpxxxi32:
+      return 4;
+    case TOP_test64:
+    case TOP_testx64:
+    case TOP_testxx64:
+    case TOP_testxxx64:
+    case TOP_testi64:
+    case TOP_cmp64:
+    case TOP_cmpx64:
+    case TOP_cmpxx64:
+    case TOP_cmpxxx64:
+    case TOP_cmpi64:
+    case TOP_cmpxi64:
+    case TOP_cmpxxi64:
+    case TOP_cmpxxxi64:
+      return 8;
+  }
+  Is_True (FALSE, ("unexpected op\n"));
+  return 0;
+}
+
+/*
+ * Read_Flags_Mask
+ *    return which status regsiter flag is read by top instruction.
+ * For unkonwed instruction read rflags,just assume read all rflags
+ */
+static 
+INT32 Read_Flags_Mask ( const TOP top )
+{
+  Is_True ( TOP_is_read_rflags ( top ), (" unxpected op \n") ) ;
+  switch ( top ) {
+    case TOP_jb:
+    case TOP_jae:
+    case TOP_cmovb:
+    case TOP_cmovae:
+    case TOP_fcmovb:
+    case TOP_fcmovnb:
+      return CF_MASK;
+    case TOP_jp:
+    case TOP_jnp:
+    case TOP_cmovp:
+    case TOP_cmovnp:
+    case TOP_fcmovu:
+    case TOP_fcmovnu:
+      return PF_MASK;
+    case TOP_je:
+    case TOP_jne:
+    case TOP_cmove:
+    case TOP_cmovne:
+    case TOP_fcmove:
+    case TOP_fcmovne:
+      return ZF_MASK;
+    case TOP_jbe:
+    case TOP_ja:
+    case TOP_cmovbe:
+    case TOP_cmova:
+    case TOP_fcmovbe:
+    case TOP_fcmovnbe:
+      return CF_MASK | ZF_MASK;
+    case TOP_jl:
+    case TOP_jge:
+    case TOP_cmovl:
+    case TOP_cmovge:
+      return SF_EQ_OF_MASK;
+    case TOP_jle:
+    case TOP_jg:
+    case TOP_cmovle:
+    case TOP_cmovg:
+      return SF_EQ_OF_MASK | ZF_MASK;
+    case TOP_js:
+    case TOP_jns:
+    case TOP_cmovs:
+    case TOP_cmovns:
+      return SF_MASK;
+  }
+  return ALL_FLAG_MASK;
+}
+
+/*
+ * table for indicate which status flag register will be affected by 
+ * mov-ext/load-ext opt.
+ */
+
+#define TEST_IDX(same_src_size, sign0, sign1)   \
+          ( ( ( ( same_src_size ) & 1 ) << 2 ) | \
+            ( ( ( sign0 ) & 1 ) << 1)  | \
+            ( ( sign1 ) & 1 ) )
+
+static INT32 Test_Updated_Flags[8] = 
+     { // list 8 combinations for BOOL vlaue same_src_size, sign0, sign1
+       // the first case is test's two srouce are same size movzbl
+       SF_MASK,
+       SF_MASK,
+       SF_MASK,
+       0,
+       SF_MASK,
+       SF_MASK | ZF_MASK, // exception is movzbl + movswl change to testb, only affect SF
+       SF_MASK | ZF_MASK, // however movzwl+movsbl change to testb, affect SF and ZF
+       SF_MASK | ZF_MASK,
+     };
+
+#define TESTI_IDX(sign, tmsb,  smsb, in)   \
+          (( ( ( sign ) & 1 ) << 3 ) | \
+            ( ( ( tmsb ) & 1 ) << 2 ) | \
+            ( ( ( smsb ) & 1 ) << 1)  | \
+            ( ( in ) & 1 ) )
+// ZF,SF,PF
+static INT32 TestI_Updated_Flags[16] = 
+     { // sign, constant  test msb, src_size msb, in range
+       // in range means [0,255], [0,65535]
+       0,             // 0, 0, 0, 0
+       0,             // 0, 0, 0, 1
+       SF_MASK, // 0, 0, 1, 0
+       SF_MASK, // 0, 0, 1, 1
+       0,             // 0, 1, 0, 0
+       0,             // 0, 1, 0, 1
+       SF_MASK, // 0, 1, 1, 0
+       SF_MASK, // 0, 1, 1, 1
+       
+       ZF_MASK, // 1, 0, 0, 0
+       0,             // 1, 0, 0, 1
+       SF_MASK|ZF_MASK, // 1, 0, 1, 0
+       SF_MASK, // 1, 0, 1, 1
+       
+       SF_MASK|ZF_MASK,             // 1, 1, 0, 0
+       SF_MASK,             // 1, 1, 0, 1
+       ZF_MASK, // 1, 1, 1, 0
+       0, // 1, 1, 1, 1
+     };
+
+
+static INT32 Compare_Updated_Flags[8] = 
+     { // list 8 combinations for BOOL vlaue same_src_size, sign0, sign1
+       SF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       OF_MASK | SF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+       ZF_MASK | SF_MASK | CF_MASK | OF_MASK | SF_EQ_OF_MASK,
+     };
+
+
+/*
+ * if src's in op is really a mov-ext, get extend info.
+ * if not, assume, there is a movll or movqq instruction for src.
+ *   this can unfiy two src.
+ */
+static 
+TN* Test_Get_Size_Ext_Info ( const OP* mov_op, SIZE_EXT_INFO* info,
+                             INT32 test_size, TN* src)
+{
+  if ( mov_op && TOP_is_move_ext ( OP_code( mov_op ) ) ) {
+    Get_Size_Ext_Info ( OP_code ( mov_op ), info );
+    return OP_opnd ( mov_op, 0 );
+  }
+  else {
+    info->src_size = test_size;
+    info->dest_size = test_size;
+    info->sign_ext = FALSE;
+    return src;
+  }
+}
+
+/*
+ * suppose a constant is used in cmpi/testi, treat it as a mov extend to 
+ * unfiy the processing.
+ * For example:
+ * movzbl %ax, %eax
+ * cmpl $1, %eax
+ *
+ * treat $1 is movzbl $1
+ */
+static
+void Get_Constant_Size_Ext_Info ( INT64 val, SIZE_EXT_INFO* info,
+                                  INT32 test_size )
+{
+  info->dest_size = test_size;
+  if ( val >= 0 ) {
+    info->sign_ext = FALSE;
+    if ( val <= 0xff ) {
+      info->src_size = 1;
+    }
+    else if ( val <= 0xffff ) {
+      info->src_size = 2;
+    }
+    else if ( val <= 0xffffffffLL ) {
+      info->src_size = 4;
+    }
+    else {
+      info->src_size = 8;
+    }
+  }
+  else {
+    info->sign_ext = TRUE;
+    if ( val >= -128 ) {
+      info->src_size = 1;
+    }
+    else if( val >= -65536 ) {
+      info->src_size = 2;
+    }
+    else if ( val >= 0xffffffff80000000LL ) {
+      info->src_size = 4;
+    }
+    else {
+      info->src_size = 8;
+    }
+  }
+}
+
+/*
+ * check if a TN (after register allocation)'s def at def_op
+ * can live to current op.
+ * This is used to check if def_op's source is stiall valid
+ * form def_op to current_op
+ */
+static
+BOOL is_movext_source_tn_valid(OP *current_op, OP* mov_ext_op, TN *tn)
+{
+  // Now the condition is strict.
+  // mov_op and current_op is same BB.
+  INT num_results;
+  
+  Is_True ( TOP_is_move_ext ( OP_code( mov_ext_op ) ), 
+            ("expect mov_ext op\n") );
+
+  if( OP_bb ( current_op ) != OP_bb ( mov_ext_op ) )  {
+    return FALSE;
+  }
+
+  OP *op = OP_next ( mov_ext_op );
+  while ( op ) {
+    if ( op == current_op ) {
+      return TRUE;
+    }
+    num_results = OP_results ( op );
+      
+    for ( int resnum = 0; resnum < num_results; resnum++ ) {
+      if ( tn_registers_identical ( tn, OP_result ( op, resnum ) ) ) {
+        return FALSE;
+      }
+    }
+      
+    op = OP_next ( op );
+  }
+  
+  return FALSE;
+}
+
+/*
+ * ICMP_Is_Replaced
+ *  Replace mov-ext/load-ext + test/compare with more precious instruction
+ *  Expect remove mov-ext and load-ext instruction.
+ *  When mov-ext is not removed, it seems no harm.
+ *  When load-ext is not revmoed, maybe introduce more memory load.
+ *    Maybe need provide a function to load_exectue to tell if load-ext combine
+ *    is legal or not.
+ *    Or borrow some logical from load_exectue opt.
+ */
+extern INT32 Current_PU_Count();
+static 
+BOOL ICMP_Is_Replaced ( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
+{ 
+  const TOP top = OP_code( op );
+  Is_True( TOP_is_icmp ( top ), ( "unexpected opcode" ) );
+  TN* src0 = opnd_tn[0];
+  TN* src1 = opnd_tn[1];
+  EBO_TN_INFO *tninfo0 = opnd_tninfo[0];
+  EBO_TN_INFO *tninfo1 = opnd_tninfo[1];
+
+  // 1. op must be test or comapre
+  //    category test/compare into test/testi/compare/comparei
+  BOOL is_test = FALSE;
+  BOOL is_testi = FALSE;
+  BOOL is_cmp = FALSE;
+  BOOL is_cmpi = FALSE;
+  switch ( top ) {
+    case TOP_test8:
+    case TOP_test16:
+    case TOP_test32:
+    case TOP_test64:
+      if ( TN_has_value(src1) )
+        is_testi = TRUE;
+      else if ( TN_has_value(src0) ) {
+        is_testi = TRUE;
+        // interchange src0, src1
+        src0 = opnd_tn[1];
+        src1 = opnd_tn[0];
+        tninfo0 = opnd_tninfo[1];
+        tninfo1 = opnd_tninfo[0];
+      }
+      else 
+        is_test = TRUE;
+      break;
+    case TOP_testi8:
+    case TOP_testi16:
+    case TOP_testi32:
+    case TOP_testi64:
+      is_testi = TRUE;
+      break;
+    case TOP_cmp8:
+    case TOP_cmp16:
+    case TOP_cmp32:
+    case TOP_cmp64:
+      if ( TN_has_value(src1) )
+        is_cmpi = TRUE;
+      else if ( TN_has_value(src0) ) 
+        return FALSE;
+      else 
+        is_cmp = TRUE;
+      break;
+    case TOP_cmpi8:
+    case TOP_cmpi16:
+    case TOP_cmpi32:
+    case TOP_cmpi64:
+      is_cmpi = TRUE;
+      break;
+    default:
+      return FALSE;
+  }
+
+  // 2. test's src register's in_op is mov-ext or load-ext
+  //    compare's src register are mov-ext or load-ext
+  // 
+  //    here genreate change_mask indicate which status flag register
+  //    will be changed if test/compare is changed.
+  INT32 change_mask = 0;
+  OP* mov_ext0 = NULL;
+  OP* mov_ext1 = NULL;
+  INT32 test_size = Test_Compare_Size( top );
+  struct SIZE_EXT_INFO ext_info0;
+  struct SIZE_EXT_INFO ext_info1;
+  TN* new_src0;     // source in new op
+  TN* new_src1;
+  
+  if ( is_test ) {
+    mov_ext0 = tninfo0 == NULL ? NULL : tninfo0->in_op;
+    if ( TNs_Are_Equivalent ( src0, src1 ) ) {
+      mov_ext1 = mov_ext0;
+    }
+    else {
+      mov_ext1 = tninfo1 == NULL ? NULL : tninfo1->in_op;
+    }
+
+    if (mov_ext0 == NULL && mov_ext1 == NULL)
+      return FALSE;
+
+    new_src0 = Test_Get_Size_Ext_Info ( mov_ext0, &ext_info0, test_size, src0 );
+    new_src1 = Test_Get_Size_Ext_Info ( mov_ext1, &ext_info1, test_size, src1 );
+
+    if ( ext_info0.src_size >= test_size && ext_info1.src_size >= test_size )
+        return FALSE;
+
+    if ( ext_info0.dest_size != test_size || ext_info1.dest_size != test_size )
+       return FALSE;
+
+    // special case for movzbl, movswl as input
+    // unsgined mov-ext has smaller src_size
+    if ( ext_info0.sign_ext != ext_info1.sign_ext &&
+        ( ( !ext_info0.sign_ext && ext_info0.src_size < ext_info1.src_size ) ||
+          ( !ext_info1.sign_ext && ext_info1.src_size < ext_info0.src_size ) ) ) {
+       change_mask = SF_MASK;
+    }
+    // movsbl, movswl, can chagne to testw, not change movsbl's dest TN
+    else if ( ext_info0.sign_ext &&
+              ext_info1.sign_ext &&
+              ext_info0.src_size != ext_info1.src_size &&
+              ext_info0.src_size < test_size &&
+              ext_info1.src_size < test_size ) {
+       if (ext_info0.src_size < ext_info1.src_size) {
+         new_src0 = Test_Get_Size_Ext_Info ( NULL, &ext_info0, test_size, src0 );
+       }
+       else {
+         new_src1 = Test_Get_Size_Ext_Info ( NULL, &ext_info1, test_size, src1 );
+       }
+       change_mask = SF_MASK;
+    }
+    else {
+      INT32 idx = TEST_IDX ( ext_info0.src_size != ext_info1.src_size,
+        ext_info0.sign_ext, ext_info1.sign_ext );
+     
+      change_mask = Test_Updated_Flags[idx];
+    }
+    
+  }
+  else if ( is_testi ) {
+    Is_True ( TN_has_value ( src1 ), ("testi src1 expect to be constant\n") );
+    INT64 val = TN_value ( src1 );
+    mov_ext0 = tninfo0 == NULL ? NULL : tninfo0->in_op;
+    if(mov_ext0 == NULL)
+      return FALSE;
+    new_src0 = Test_Get_Size_Ext_Info ( mov_ext0, &ext_info0, test_size, src0 );
+    if ( ext_info0.src_size >= test_size || ext_info0.dest_size != test_size )
+      return FALSE;
+
+     // sign, constant  test msb, src_size msb, in range
+     INT test_msb =  ( val >> ( test_size * 8 -1 ) ) & 0x1;
+     INT src_msb =   ( val >> ( ext_info0.src_size * 8 - 1 ) ) & 0x1;
+     BOOL inrange = val & ( ~ ( ( 1 << ext_info0.src_size ) - 1 ) ) == 0;
+     INT32 idx = TESTI_IDX ( ext_info0.sign_ext, test_msb, src_msb, inrange );
+     change_mask = TestI_Updated_Flags[idx];
+     new_src1 = src1;
+  }
+  else if ( is_cmp ) {
+    mov_ext0 = tninfo0 == NULL ? NULL : tninfo0->in_op;
+    mov_ext1 = tninfo1 == NULL ? NULL : tninfo1->in_op;
+    if ( mov_ext0 == NULL && mov_ext1 == NULL )
+      return FALSE;
+    new_src0 = Test_Get_Size_Ext_Info ( mov_ext0, &ext_info0, test_size, src0 );
+    new_src1 = Test_Get_Size_Ext_Info ( mov_ext1, &ext_info1, test_size, src1 );
+
+    if ( ext_info0.src_size >= test_size && ext_info1.src_size >= test_size )
+        return FALSE;
+
+    if ( ext_info0.dest_size != test_size || ext_info1.dest_size != test_size )
+       return FALSE;
+
+    INT32 idx = TEST_IDX ( ext_info0.src_size != ext_info1.src_size,
+        ext_info0.sign_ext, ext_info1.sign_ext );
+     
+    change_mask = Compare_Updated_Flags[idx];
+  }
+  else if ( is_cmpi ) {
+    Is_True ( TN_has_value(src1), ("cmpi src1 expect to be constant\n") );
+    INT64 val = TN_value ( src1 );
+    mov_ext0 = tninfo0 == NULL ? NULL : tninfo0->in_op;
+    if ( mov_ext0 == NULL )
+      return FALSE;
+    new_src0 = Test_Get_Size_Ext_Info ( mov_ext0, &ext_info0, test_size, src0 );
+    if ( ext_info0.src_size >= test_size || ext_info0.dest_size != test_size )
+      return FALSE;
+
+    // consider constant as movzbl or movsbl and use Compare_Updated_Flags
+    new_src1 = src1;
+    Get_Constant_Size_Ext_Info ( val, &ext_info1, test_size );
+    if ( ext_info1.src_size >= test_size )
+      return FALSE;
+    if ( ext_info1.src_size < ext_info0.src_size )
+      ext_info1.src_size = ext_info0.src_size;
+    INT32 idx = TEST_IDX ( ext_info0.src_size != ext_info1.src_size,
+        ext_info0.sign_ext, ext_info1.sign_ext );
+     
+    change_mask = Compare_Updated_Flags[idx];
+  }
+  else {
+    return FALSE;
+  }
+
+  // this means all flags is changed.
+  if ( change_mask == ALL_FLAG_MASK )
+    return FALSE;
+  
+  // 3. gather which status flag used by jump or cmov
+  //    search ops after test/comapre, if find op update rflags, abort
+  //    Determin if its valid to perform transform
+  if ( change_mask != 0 ) {
+    OP* next_op = OP_next ( op );
+    while ( next_op ) {
+      TOP next_top = OP_code ( next_op );
+
+      if ( TOP_is_read_rflags ( next_top ) ) {
+        INT32 read_flags = Read_Flags_Mask ( next_top );
+        if ( read_flags & change_mask )
+          return FALSE;
+      }
+
+      if ( TOP_is_change_rflags ( next_top ) ) {
+        break;
+      }
+      next_op = OP_next(next_op);
+    }
+  }
+  // check if mov-ext's result TN will live out of BB.
+  // like
+  // char a
+  // if ( a > 10 )
+  //    use a;
+  BOOL find_opt = FALSE;
+  if ( mov_ext0 && new_src0 != src0 && 
+       !TN_live_out_of( OP_result(mov_ext0 , 0 ), OP_bb ( op ) ) ) {
+    find_opt = TRUE;
+  }
+  if ( mov_ext1 && new_src1 != src1 && 
+       !TN_live_out_of( OP_result(mov_ext1 , 0 ), OP_bb ( op ) ) ) {
+    find_opt = TRUE;
+  }
+  if ( find_opt == FALSE )
+    return FALSE;
+
+
+  // 4. check TN register is not modified through definition to usage.
+  //    like movzbl %al, %esi
+  //         movzbl %bx, %eax
+  //         testl %esi, %eax
+  //    it can't change to 
+  //         testb %al, %bx
+  //    check if %al is modified in later code sequence.
+  if ( mov_ext0 && new_src0 != src0 &&
+       !is_movext_source_tn_valid ( op, mov_ext0, new_src0 ) ) {
+    return FALSE;
+  }
+  if ( mov_ext1 && new_src1 != src1 &&
+       !is_movext_source_tn_valid ( op, mov_ext1, new_src1 ) ) {
+    return FALSE;
+  } 
+ 
+  // 4. transform here
+  TOP new_top;
+  if ( is_test ) {
+    INT32 new_size = MIN ( ext_info0.src_size, ext_info1.src_size );
+    if(new_size == 1)
+        new_top = TOP_test8;
+    else if(new_size == 2)
+        new_top = TOP_test16;
+    else if(new_size == 4)
+        new_top = TOP_test32;
+    else
+        return FALSE;
+  }
+  else if ( is_testi ) {
+    INT32 new_size = ext_info0.src_size;
+    INT64 new_val = TN_Value ( new_src1 );
+    // truncate value to avoid warning in assembler
+    if(new_size == 1) {
+        new_val &= 0xff;
+        new_top = TOP_testi8;
+    }
+    else if(new_size == 2) {
+        new_val &= 0xffff;
+        new_top = TOP_testi16;
+    }
+    else if(new_size == 4) {
+        new_val &= 0xffffffff;
+        new_top = TOP_testi32;
+    }
+    else
+        return FALSE;
+    new_src1 = Dup_TN ( new_src1 );
+    Set_TN_size ( new_src1, new_size );
+    Set_TN_value ( new_src1, new_val );
+  }
+  else if ( is_cmp ) {
+    INT32 new_size = MIN ( ext_info0.src_size, ext_info1.src_size );
+    if ( new_size == 1 )
+        new_top = TOP_cmp8;
+    else if(new_size == 2)
+        new_top = TOP_cmp16;
+    else if(new_size == 4)
+        new_top = TOP_cmp32;
+    else
+        return FALSE;
+  }
+  else if ( is_cmpi ) {
+    INT32 new_size = ext_info0.src_size;
+    INT64 new_val = TN_Value ( new_src1 );
+    // if value is unsigned, truncate
+    // if value is signed, truncate and sign ext.
+    if ( new_size == 1 ) {
+      if ( ext_info0.sign_ext )
+        new_val =  ( new_val << ( sizeof(INT64) * 8 - 8 ) ) >> ( sizeof(INT64) * 8 - 8 );
+      else
+        new_val &= 0xff;
+      new_top = TOP_cmpi8;
+    }
+    else if ( new_size == 2 ) {
+      if(ext_info0.sign_ext)
+        new_val =  ( new_val << ( sizeof(INT64) * 8 - 16 ) ) >> ( sizeof(INT64) * 8 - 16 );
+      else
+        new_val &= 0xffff;
+      new_top = TOP_cmpi16;
+    }
+    else if ( new_size == 4 ) {
+      if(ext_info0.sign_ext)
+        new_val =  ( new_val << ( sizeof(INT64) * 8 - 32 ) ) >> ( sizeof(INT64) * 8 - 32 );
+      else
+        new_val &= 0xffffffff;
+      new_top = TOP_cmpi32;
+    }
+    else
+        return FALSE;
+    new_src1 = Dup_TN ( new_src1 );
+    Set_TN_size ( new_src1, new_size );
+    Set_TN_value ( new_src1, new_val );
+  }
+  else {
+    return FALSE;
+  }
+
+  OP* new_op = Mk_OP( new_top, Rflags_TN(), new_src0, new_src1 );
+  Set_OP_unrolling( new_op, OP_unrolling ( op ) );
+  Set_OP_orig_idx( new_op, OP_map_idx ( op ) );
+  Set_OP_unroll_bb( new_op, OP_unroll_bb ( op ) );
+  
+  Copy_WN_For_Memory_OP( new_op, op );
+  if ( OP_volatile( op ) )
+     Set_OP_volatile( op );
+  OP_srcpos( new_op ) = OP_srcpos( op );
+  BB_Insert_Op_After( OP_bb(op), op, new_op );
+  return TRUE;
+}
+
+
 extern void dump_bb (BB *bb);
 extern void dump_tn (TN *tn);
 
@@ -2832,7 +3497,13 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
       return TRUE;
   }
 
-  if( ( top == TOP_test32 || top == TOP_test64 ) &&
+  if ( CG_Movext_ICMP && TOP_is_icmp ( top ) ) {
+    if ( ICMP_Is_Replaced ( op, opnd_tn, opnd_tninfo ) )
+      return TRUE;
+  }
+
+  if( ( top == TOP_test8 || top == TOP_test16 ||
+        top == TOP_test32 || top == TOP_test64 ) &&
       TNs_Are_Equivalent( OP_opnd(op,0), OP_opnd(op,1) ) ){
 
     const EBO_TN_INFO* tninfo = opnd_tninfo[0];
@@ -2940,7 +3611,9 @@ BOOL Special_Sequence( OP *op, TN **opnd_tn, EBO_TN_INFO **opnd_tninfo )
     OP* test_op = tninfo == NULL ? NULL : tninfo->in_op;
     if ( test_op && 
 	 ( OP_code( test_op ) == TOP_test32 ||
-	   OP_code( test_op ) == TOP_test64 ) &&
+	   OP_code( test_op ) == TOP_test64 ||
+       OP_code( test_op ) == TOP_test8  ||
+       OP_code( test_op ) == TOP_test16 ) &&
 	 TNs_Are_Equivalent( OP_opnd(test_op, 0), OP_opnd(test_op, 1) ) ) {
       const EBO_TN_INFO* test_tninfo = get_tn_info( OP_opnd(test_op, 0 ));
       OP* set_op = test_tninfo == NULL ? NULL : test_tninfo->in_op;
@@ -3775,6 +4448,8 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_stlpd,	TOP_stlpdx,	TOP_stlpdxx,	TOP_stlpd_n32},
   {TOP_UNDEFINED, TOP_staps,	TOP_stapsx,	TOP_stapsxx,	TOP_staps_n32},
   {TOP_UNDEFINED, TOP_stapd,	TOP_stapdx,	TOP_stapdxx,	TOP_stapd_n32},
+  {TOP_UNDEFINED, TOP_stups,	TOP_stupsx,	TOP_stupsxx,	TOP_stups_n32},
+  {TOP_UNDEFINED, TOP_stupd,	TOP_stupdx,	TOP_stupdxx,	TOP_stupd_n32},
   {TOP_UNDEFINED, TOP_ldhps,	TOP_ldhpsx,	TOP_ldhpsxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_ldhpd,	TOP_ldhpdx,	TOP_ldhpdxx,	TOP_ldhpd_n32},
   {TOP_UNDEFINED, TOP_sthps,	TOP_sthpsx,	TOP_sthpsxx,	TOP_UNDEFINED},
@@ -4002,10 +4677,14 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_cmpi32,	TOP_cmpxi32,	TOP_cmpxxi32,	TOP_cmpxxxi32,	TOP_UNDEFINED},
   {TOP_cmpi64,	TOP_cmpxi64,	TOP_cmpxxi64,	TOP_cmpxxxi64,	TOP_UNDEFINED},
 
+  {TOP_test8,	TOP_testx8,	    TOP_testxx8,	TOP_testxxx8,	TOP_UNDEFINED},
+  {TOP_test16,	TOP_testx16,	TOP_testxx16,	TOP_testxxx16,	TOP_UNDEFINED},
   {TOP_test32,	TOP_testx32,	TOP_testxx32,	TOP_testxxx32,	TOP_UNDEFINED},
   {TOP_test64,	TOP_testx64,	TOP_testxx64,	TOP_testxxx64,	TOP_UNDEFINED},
   {TOP_comiss,	TOP_comixss,	TOP_comixxss,	TOP_comixxxss,	TOP_UNDEFINED},
-  {TOP_comisd,	       TOP_comixsd,	    TOP_comixxsd,	  TOP_comixxxsd, 	    TOP_UNDEFINED},
+  {TOP_comisd,	TOP_comixsd,	TOP_comixxsd,	TOP_comixxxsd, 	TOP_UNDEFINED},
+  {TOP_vcomiss,	TOP_vcomixss,	TOP_vcomixxss,	TOP_vcomixxxss,	TOP_UNDEFINED},
+  {TOP_vcomisd,	TOP_vcomixsd,	TOP_vcomixxsd,	TOP_vcomixxxsd,	TOP_UNDEFINED},
   {TOP_vfmaddss,       TOP_vfmaddxss,	    TOP_vfmaddxxss,	  TOP_vfmaddxxxss,          TOP_UNDEFINED},
   {TOP_vfmaddsd,       TOP_vfmaddxsd,	    TOP_vfmaddxxsd,	  TOP_vfmaddxxxsd,          TOP_UNDEFINED},
   {TOP_vfmaddps,       TOP_vfmaddxps,	    TOP_vfmaddxxps,	  TOP_vfmaddxxxps,          TOP_UNDEFINED},
@@ -4440,6 +5119,69 @@ Compose_Mem_Op_And_Copy_Info(OP* op, TN* index_tn, TN* offset_tn, TN* scale_tn,
   return new_op;
 }
 
+static
+BOOL examine_backward_bb(BS * visit_set, OP* last_op, OP *def_op, TN* base_tn) 
+{
+
+    Is_True(!BS_MemberP(visit_set, BB_id(OP_bb(last_op))), ("bb should not visited"));
+    Is_True(TN_is_gra_homeable(base_tn), ("only homeable tn is passed"));
+    
+    visit_set = BS_Union1D(visit_set, BB_id(OP_bb(last_op)), &MEM_local_pool);
+    OP* op = NULL;
+    for (op = last_op; op != NULL; op = OP_prev(op)) {
+
+        if (op == def_op)  break;
+
+        if (OP_store(op)) {
+            WN *wn = Get_WN_From_Memory_OP(op);
+            if (wn != NULL) {
+
+                // if there is no alias manager, be conservative
+                if (Alias_Manager == NULL) return TRUE;
+                
+                ALIAS_RESULT result = Aliased(Alias_Manager, TN_home(base_tn), wn);
+                if (result == POSSIBLY_ALIASED || result == SAME_LOCATION )
+                    return TRUE;
+            }
+        }
+   }
+
+   return FALSE;
+
+}
+
+static
+BOOL search_preds_for_alias(BS* visit_set, OP * last_op, OP *def_op, TN* base_tn)
+{
+    if (!BS_MemberP(visit_set, BB_id(OP_bb(last_op)) && 
+        examine_backward_bb(visit_set, last_op, def_op, base_tn)))
+        return TRUE;
+    
+    BBLIST *lst;
+    for (lst = BB_preds(OP_bb(last_op)); lst != NULL; lst = BBLIST_next(lst)) {
+        BB * cur_bb = BBLIST_item(lst);
+        if (BB_last_op(cur_bb) &&
+            search_preds_for_alias(visit_set, BB_last_op(cur_bb), def_op, base_tn)) 
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+// check whether there is a store that is alias with base_tn's home
+// in the path from def_op to use_op
+static
+BOOL alias_store_in_path(OP* use_op, OP* def_op, TN* base_tn)
+{
+    BB_SET* visit_set = BB_SET_Universe(PU_BB_Count+2, &MEM_local_pool);
+    BS_ClearD(visit_set);
+    
+    if(search_preds_for_alias(visit_set, use_op, def_op, base_tn))
+        return TRUE;
+
+    return FALSE;
+    
+}
 
 BOOL EBO_Merge_Memory_Addr( OP* op,
 			    TN** opnd_tn,
@@ -4503,6 +5245,23 @@ BOOL EBO_Merge_Memory_Addr( OP* op,
   TN* rip = Rip_TN();
   if ( index_tn == rip || base_tn == rip )
     return FALSE;
+
+  // when base_tn is gra_homeable and there is an alias
+  // def in between, we need to make tn to be none homeable
+  // For example,
+  // s1: t = ld x
+  // s2: t1 = t
+  // s3: st x
+  // s4: st t1
+  // after ebo merging address, s4 changes to
+  // s4: st t
+  // If t is homeable and is chosen to be spilled, it will be restored
+  // from its home location at s4. Thus, it will have wrong value. 
+  if(base_tn != NULL && TN_is_gra_homeable(base_tn) &&
+     alias_store_in_path(op, addr_op, base_tn)){
+     Reset_TN_is_gra_homeable(base_tn);
+     Set_TN_home(base_tn, NULL);
+  }
 
   OP* new_op = Compose_Mem_Op_And_Copy_Info(op, index_tn, offset_tn, scale_tn,
 					    base_tn, actual_tninfo);
@@ -4780,8 +5539,17 @@ static BOOL test_is_replaced( OP* alu_op, OP* test_op, const EBO_TN_INFO* tninfo
     */
     if( OP_load( alu_op ) &&
 	!TN_live_out_of( OP_result(alu_op,0), OP_bb(test_op) ) ){
-      new_op = Mk_OP( OP_code(test_op) == TOP_test64 ? TOP_cmpi64 : TOP_cmpi32,
-		      Rflags_TN(), OP_opnd(test_op,0), Gen_Literal_TN( 0, 4) );
+      TOP cmpi_op;
+      if( OP_code ( test_op ) == TOP_test64 )
+        cmpi_op = TOP_cmpi64;
+      else if( OP_code ( test_op ) == TOP_test32 )
+        cmpi_op = TOP_cmpi32;
+      else if( OP_code ( test_op ) == TOP_test16 )
+        cmpi_op = TOP_cmpi16;
+      else if( OP_code ( test_op ) == TOP_test8 )
+        cmpi_op = TOP_cmpi8;
+      new_op = Mk_OP( cmpi_op, Rflags_TN(), OP_opnd(test_op,0), Gen_Literal_TN( 0, 4) );
+
       Set_OP_unrolling( new_op, OP_unrolling(test_op) );
       Set_OP_orig_idx( new_op, OP_map_idx(test_op) );
       Set_OP_unroll_bb( new_op, OP_unroll_bb(test_op) );
@@ -5880,6 +6648,10 @@ static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
   const TOP top = OP_code(alu_op);
   BOOL ret_val;
 
+  // no alignment constraint on orochi targets for vector ops
+  if (Is_Target_Orochi() && OP_sse5(alu_op))
+    return TRUE;
+
   switch (top) {
   case TOP_vcvtdq2pd:
   case TOP_vcvtps2pd:
@@ -5895,6 +6667,22 @@ static BOOL EBO_Allowable_Unaligned_Vector( OP *alu_op )
   return ret_val;
 }
 
+static BOOL Process_Side_Effects(TN** opnd_tn, 
+                                 EBO_TN_INFO** actual_tninfo,
+                                 BOOL rval,
+                                 BOOL opnds_swapped)
+{
+  if ( !rval && opnds_swapped ) {
+    // return operands to original state
+    TN *tmp = opnd_tn[0];
+    EBO_TN_INFO* tninfo = actual_tninfo[0];
+    actual_tninfo[0] = actual_tninfo[1];
+    opnd_tn[0] = opnd_tn[1];
+    actual_tninfo[1] = tninfo;
+    opnd_tn[1] = tmp;
+  }
+  return rval;
+}
 
 BOOL EBO_Load_Execution( OP* alu_op, 
                          TN** opnd_tn,     
@@ -5905,6 +6693,8 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if (!(EBO_Opt_Mask & EBO_LOAD_EXECUTION)) return FALSE;
 #endif
   const TOP top = OP_code(alu_op);
+  BOOL opnds_swapped = FALSE;
+  BOOL rval = FALSE;
 
   if( top == TOP_xor64 ||
       top == TOP_or64  ||
@@ -5935,11 +6725,13 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
-#ifdef TARG_X8664
   } else if ( EBO_Is_FMA4(alu_op) ) {
     int i;
     OP *mul_in_op = actual_tninfo[1]->in_op;
     OP *add_sub_in_op2 = actual_tninfo[2]->in_op;
+
+    if (CG_fma4_load_exec == FALSE)
+      return FALSE;
 
     i = (mul_in_op && OP_load(mul_in_op)) ? 1 : -1;
     if (i == -1) {
@@ -5958,9 +6750,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
         actual_tninfo[1] = tninfo;
         opnd_tn[1] = tmp;
         i = 1;
+        opnds_swapped = TRUE;
       } else
         return FALSE;
     } 
+
+    // none of the load operands for fma4 can be move contrained
+    if (actual_tninfo[i]->in_opinfo->op_must_not_be_moved)
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     alu_cmp_idx = i;
     if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5968,7 +6765,6 @@ BOOL EBO_Load_Execution( OP* alu_op,
       opnd0_indx = OP_opnds(alu_op) - 1 - i;
       Is_True( opnd0_indx >= 0, ("NYI") );
     }
-#endif
   } else {
     for( int i = OP_opnds(alu_op) - 1; i >= 0; i-- ){
       if( TN_is_register( OP_opnd( alu_op, i ) ) ){
@@ -5988,7 +6784,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if (( EBO_flow_safe ) && 
       ( ld_op != NULL) && 
       ( ld_opinfo->op_must_not_be_moved ))
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   if( ld_op == NULL || !OP_load( ld_op ) ||
       ld_opinfo->op_must_not_be_moved ){
@@ -5997,7 +6793,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
     if( !EBO_flow_safe ) {
       if( !TOP_is_commutative( OP_code(alu_op) ) )
-        return FALSE;
+        return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     } 
 
     tninfo = actual_tninfo[0];
@@ -6006,14 +6802,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
 
     if( ld_op == NULL || !OP_load( ld_op ) ||
 	ld_opinfo->op_must_not_be_moved )
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     // Check whether we can swap opnd0 and opnd1 of <alu_op>
     TN* result = OP_result( alu_op, 0 );
     TN* opnd0 = OP_opnd( alu_op, 0 );
 
     if( EBO_in_peep && TNs_Are_Equivalent( result, opnd0 ) )
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
     opnd0_indx = 1;
   }
@@ -6021,13 +6817,13 @@ BOOL EBO_Load_Execution( OP* alu_op,
   BB* bb = OP_bb( alu_op );
 
   if( (OP_bb( ld_op ) != bb) && !EBO_flow_safe )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
 #ifdef TARG_X8664
   if ((OP_bb( ld_op ) != bb) && EBO_flow_safe ) {
     BB *ld_bb = OP_bb( ld_op );
     if (!BS_MemberP(BB_dom_set(bb), BB_id(ld_bb)))
-      return FALSE; 
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 #endif
 
@@ -6041,7 +6837,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if( OP_unalign_mem( ld_op ) &&
       !EBO_Allowable_Unaligned_Vector( alu_op ) &&
       TOP_is_vector_op( OP_code(ld_op) ) ){
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   /* Check <index> and <base> will not be re-defined between
@@ -6062,14 +6858,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
   if( mode == N32_MODE ){
     // We need to add one more addressing mode for m32.
     //DevWarn( "Support me!!!" );
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   if( index_reg >= 0 ){
     const TN* opnd = OP_opnd( ld_op, index_reg );
     const EBO_TN_INFO* ptinfo = get_tn_info( opnd );
     if( ptinfo != NULL && ptinfo->sequence_num >= tninfo->sequence_num ){
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     }
   }
 
@@ -6077,7 +6873,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
     const TN* opnd = OP_opnd( ld_op, base_reg );
     const EBO_TN_INFO* ptinfo = get_tn_info( opnd );
     if( ptinfo != NULL && ptinfo->sequence_num >= tninfo->sequence_num ){
-      return FALSE;
+      return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
     }
   }
 
@@ -6101,7 +6897,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
          pred_op &&	// Bug 7596
 #endif
 	 OP_store( pred_op ) )
-	return FALSE;
+        return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
       opinfo = opinfo->same;
     }
@@ -6110,7 +6906,7 @@ BOOL EBO_Load_Execution( OP* alu_op,
   TOP new_top = Load_Execute_Format( ld_op, alu_op, mode );
 
   if( new_top == TOP_UNDEFINED )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   if( EBO_flow_safe && (opnd0_indx == 1) ) {
     new_top = Fit_Cmp_By_Load_Usage( new_top, TRUE );
@@ -6122,14 +6918,14 @@ BOOL EBO_Load_Execution( OP* alu_op,
    */
   if( ( load_uses > CG_load_execute ) &&
       ( CGTARG_Latency(top) < CGTARG_Latency(new_top) ) ){
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   // If load is volatile, replace with exactly one load-exe OP, in order to
   // maintain the same number of memory accesses.
   if (OP_volatile(ld_op) &&
       load_uses != 1) {
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   TN* offset = OP_opnd( ld_op, OP_find_opnd_use( ld_op, OU_offset ) );
@@ -6152,14 +6948,16 @@ BOOL EBO_Load_Execution( OP* alu_op,
   OP* new_op = NULL;
 
   if (OP_sse5(alu_op) && EBO_Is_FMA4(alu_op)) {
-    return EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
-                                         scale, index, offset,
-                                         result, ld_op, alu_op, 
-                                         actual_tninfo);
+    // succeed or fail based on layout match
+    rval = EBO_Process_SSE5_Load_Execute(new_top, mode, alu_cmp_idx, base,
+                                           scale, index, offset,
+                                           result, ld_op, alu_op, 
+                                           actual_tninfo);
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
   if( OP_opnds(alu_op) > 2 )
-    return FALSE;
+    return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
 
   // Standard Load Execute processing
   if( mode == BASE_MODE ){
@@ -7206,17 +8004,17 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
   if (!(EBO_Opt_Mask & EBO_FOLD_LOAD_DUPLICATE)) return FALSE;
 #endif
 
-  if (OP_code(op) != TOP_fmovddup)
-    return FALSE;
-
-  if (OP_code(op) != TOP_vmovddup)
+  BOOL do_unpckhpd = FALSE;
+  if (OP_code(op) != TOP_fmovddup && OP_code(op) != TOP_vmovddup)
     return FALSE;
 
   OP* shuf_op = actual_tninfo[0]->in_op;
   if (!shuf_op || shuf_op->bb != op->bb || 
       (OP_code(shuf_op) != TOP_shufpd && 
        OP_code(shuf_op) != TOP_ldhpd &&
-       OP_code(shuf_op) != TOP_ldapd))
+       OP_code(shuf_op) != TOP_ldapd &&
+       OP_code(shuf_op) != TOP_ldupd &&
+       OP_code(shuf_op) != TOP_ldsd))
     return FALSE;
 
   if (!TOP_is_load(OP_code(shuf_op)) &&
@@ -7249,88 +8047,101 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
 
   EBO_TN_INFO *loaded_tn_info = get_tn_info( OP_opnd(shuf_op, 0) );
   OP* load = loaded_tn_info->in_op;
-  if (!load || load->bb != shuf_op->bb || !TOP_is_load(OP_code(load)))
-    return FALSE;
-
-  EBO_TN_INFO *src_info = get_tn_info( OP_result(load, 0) );
-  if (loaded_tn_info->sequence_num > src_info->sequence_num)
-    return FALSE;
-  
   OP* new_op = NULL;
-  INT base_loc = OP_find_opnd_use( load, OU_base );
-  INT offset_loc = OP_find_opnd_use( load, OU_offset );
-  INT index_loc = OP_find_opnd_use( load, OU_index );
-  INT scale_loc = OP_find_opnd_use( load, OU_scale );
-  
-  TN *base   = NULL;
-  TN *offset   = NULL;
-  TN *index   = NULL;
-  TN *scale   = NULL;
-  if (base_loc >= 0) 
-    base = OP_opnd( load, OP_find_opnd_use( load, OU_base ) );
-  if (offset_loc >= 0) 
-    offset = OP_opnd( load, OP_find_opnd_use( load, OU_offset ) );
-  if (index_loc >= 0) 
-    index = OP_opnd( load, OP_find_opnd_use( load, OU_index ) );
-  if (scale_loc >= 0) 
-    scale = OP_opnd( load, OP_find_opnd_use( load, OU_scale ) );
-  
-  if (!offset || TN_is_symbol(offset))
+  if (!load || load->bb != shuf_op->bb || !TOP_is_load(OP_code(load)))
+  {
+    if(OP_code(shuf_op) == TOP_shufpd && 
+       TNs_Are_Equivalent(OP_opnd(shuf_op, 1), OP_opnd(shuf_op, 0)))
+    {
+      do_unpckhpd = TRUE; 
+      new_op = Mk_OP (TOP_unpckhpd, 
+		    OP_result(op, 0), 
+		    OP_opnd(shuf_op, 0), 
+		    OP_opnd(shuf_op, 0)); 
+    } else
     return FALSE;
-  
-  // base and index, if defined, should not be re-defined between
-  // load and op.
-  if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
-    return FALSE;
-  if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
-    return FALSE;
-  
-  TOP topcode;
-  if (base && offset && index && scale) {
-    topcode = TOP_fmovddupxx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupxx;
-    new_op = Mk_OP (topcode, 
-  		    OP_result(op, 0), 
-  		    OP_opnd(load, 0), 
+  }
+
+  if (!do_unpckhpd)
+  {
+    EBO_TN_INFO *src_info = get_tn_info( OP_result(load, 0) );
+    if (loaded_tn_info->sequence_num > src_info->sequence_num)
+      return FALSE;
+
+    INT base_loc = OP_find_opnd_use( load, OU_base );
+    INT offset_loc = OP_find_opnd_use( load, OU_offset );
+    INT index_loc = OP_find_opnd_use( load, OU_index );
+    INT scale_loc = OP_find_opnd_use( load, OU_scale );
+
+    TN *base   = NULL;
+    TN *offset   = NULL;
+    TN *index   = NULL;
+    TN *scale   = NULL;
+    if (base_loc >= 0) 
+      base = OP_opnd( load, OP_find_opnd_use( load, OU_base ) );
+    if (offset_loc >= 0) 
+      offset = OP_opnd( load, OP_find_opnd_use( load, OU_offset ) );
+    if (index_loc >= 0) 
+      index = OP_opnd( load, OP_find_opnd_use( load, OU_index ) );
+    if (scale_loc >= 0) 
+      scale = OP_opnd( load, OP_find_opnd_use( load, OU_scale ) );
+
+    if (!offset || TN_is_symbol(offset))
+      return FALSE;
+
+    // base and index, if defined, should not be re-defined between
+    // load and op.
+    if (base_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, base_loc))
+      return FALSE;
+    if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
+      return FALSE;
+
+    TOP topcode;
+    if (base && offset && index && scale) {
+      topcode = TOP_fmovddupxx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupxx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
 		    OP_opnd(load, 1), 
 		    OP_opnd(load, 2), 
 		    OP_opnd(load, 3));
-  } else if (base && offset) {
-    topcode = TOP_fmovddupx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupx;
-    new_op = Mk_OP (topcode, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1));
-  } else if (index && scale && offset) {
-    topcode = TOP_fmovddupxxx;
-    if (Is_Target_Orochi() && Is_Target_AVX())
-      topcode = TOP_vmovddupxxx;
-    new_op = Mk_OP (topcode, 
-		    OP_result(op, 0), 
-		    OP_opnd(load, 0), 
-		    OP_opnd(load, 1), 
-		    OP_opnd(load, 2));
-  }
-  
-  if ( op == shuf_op /* op uses result of a load */ &&
-       TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
-		 Gen_Literal_TN( offset_value - 8, 
-				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );    
-  }
-  else if ( !TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
-    INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
-    INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
-    Set_OP_opnd( new_op, offset_loc, 
+    } else if (base && offset) {
+      topcode = TOP_fmovddupx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
+	  OP_opnd(load, 1));
+    } else if (index && scale && offset) {
+      topcode = TOP_fmovddupxxx;
+      if (Is_Target_Orochi() && Is_Target_AVX())
+	topcode = TOP_vmovddupxxx;
+      new_op = Mk_OP (topcode, 
+	  OP_result(op, 0), 
+	  OP_opnd(load, 0), 
+	  OP_opnd(load, 1), 
+	  OP_opnd(load, 2));
+    }
+
+    if ( op == shuf_op /* op uses result of a load */ &&
+	TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
+      INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
+      INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
+      Set_OP_opnd( new_op, offset_loc, 
+	  Gen_Literal_TN( offset_value - 8, 
+	    TN_size( OP_opnd( new_op, offset_loc ) ) ) );    
+    }
+    else if ( op != shuf_op && !TOP_is_vector_high_loadstore( OP_code( load ) ) ) {
+      INT offset_loc = OP_find_opnd_use( new_op, OU_offset );
+      INT offset_value = TN_value( OP_opnd( new_op, offset_loc ) );
+      Set_OP_opnd( new_op, offset_loc, 
 		 Gen_Literal_TN( offset_value + 8, 
 				 TN_size( OP_opnd( new_op, offset_loc ) ) ) );
+    }
   }
-
   if (new_op) {
     if (shuf_op != op) {
       if( EBO_Trace_Data_Flow ){
@@ -7375,4 +8186,236 @@ EBO_Can_Eliminate_Zero_Opnd_OP (OP *op)
       return TRUE;
   }
   return FALSE;
+}
+void expand_strcmp_bb(BB * call_bb) {
+  int i;
+  BB *bb;
+  TOP loadc;
+  int dont_expand = 0;
+  BB *beg_bb, *diff_bb, *same_bb, *cmpz_bb, *cmpbyte2_bb, *incidx_bb, *old_succ;
+  TN *beglb_tn, *difflb_tn, *oldsucclb_tn, *samelb_tn;
+  TN *arg1,*stack_arg1,*stack_arg2,*char1of1, *cmp_res, *arg2, *cmpz_res, *char2of1, *char1of2,*result, *ret_reg,*char1of3;
+  LABEL_IDX beglb, difflb, oldsucclb, samelb;
+  OP *ld_arg1, *ld_byte1, *ld_byte3, *cmp_bytes, *ld_arg2, *jne, *cmpz_byte, *je, *ld_byte2,*ld1,*ld2;
+  OP *inc_arg1, *inc_arg2, *reset_result, *jmp, *set_result, *op_iter;
+  static int first_store = 1;
+
+  Set_flags_strcmp_expand();
+  is_str_expand = TRUE;
+  /* assume that call to strcmp is the last op. This assumption is correct,
+     but should we have an IsTrue and verify to make sure?
+     verify that last op of BB is call to strcmp.
+     can also be jmp */
+  OP* last_op = BB_last_op(call_bb);
+  Is_True(OP_code(last_op) == TOP_call, ("Last op of BB is not a call"));
+
+  if (OP_code(last_op) == TOP_call) {
+    BBLIST* old_ftsucc_list = BBlist_Fall_Thru_Succ(call_bb);
+    if (old_ftsucc_list)
+      old_succ = old_ftsucc_list->item;
+  }
+
+  TOP last_op_code = OP_code(last_op);
+  if(last_op_code != TOP_call) {
+    fprintf(stderr, "unexpected opcode\n");
+  }
+
+  BB* last_bb;
+  for(last_bb = REGION_First_BB; BB_next(last_bb); last_bb = BB_next(last_bb))
+    ;
+  REGISTER rx,reg;
+  ISA_REGISTER_CLASS rc;
+  arg1 = 0;
+  arg2 = 0;
+
+  for (ld_arg1 = OP_prev(last_op); ld_arg1; ld_arg1 = OP_prev(ld_arg1)) {
+      result = OP_result(ld_arg1, 0);
+      if((OP_code(ld_arg1) == TOP_store32) && (first_store == 1))
+      {
+        TN *opnd = OP_opnd(ld_arg1, 0);
+        arg2 = opnd;
+        stack_arg2 = OP_opnd(ld_arg1, 1);
+        first_store++;
+      }
+      else
+      {
+        if((OP_code(ld_arg1) == TOP_store32) && (first_store == 2))
+        {
+          TN *opnd = OP_opnd(ld_arg1, 0);
+          arg1 = opnd;
+          stack_arg1 = OP_opnd(ld_arg1, 1);
+          first_store = 1;
+          break;
+        }
+      }
+    }
+    /* Create the 6 blocks needed to expand strcmp.
+     * Add them between the call block and its successor.
+     * Chain them together by setting their prev/next fields.
+     * Set up their pred/succ and fallthrough attributes
+     */
+  BB* mylist = Gen_BB_N (6);
+
+  beg_bb = &mylist[0];
+  beglb = Gen_Label_For_BB(beg_bb);
+  beglb_tn = Gen_Label_TN(beglb, 0);
+
+  diff_bb = &mylist[5];
+  difflb = Gen_Label_For_BB(diff_bb);
+  difflb_tn = Gen_Label_TN(difflb, 0);
+  Unlink_Pred_Succ(call_bb, old_succ);
+  Target_Simple_Fall_Through_BB(call_bb, &mylist[0]);
+
+  for(i = 1; i < 6; i++){
+    Insert_BB(&mylist[i], &mylist[i-1]);
+    if (i != 5)
+      Target_Simple_Fall_Through_BB(&mylist[i-1], &mylist[i]);
+  }
+
+  Target_Simple_Fall_Through_BB(&mylist[5], old_succ);
+  Set_TN_is_global_reg(arg1); //This will make TN6 map to %rsi stay
+  Set_TN_is_global_reg(arg2);
+  Reset_TN_is_gra_homeable(arg1);
+  Reset_TN_is_gra_homeable(arg2);
+  Reset_TN_is_rematerializable(arg1);
+  Reset_TN_is_rematerializable(arg2);
+  Set_TN_home(arg1,NULL);
+  Set_TN_home(arg2,NULL);
+  Set_TN_is_global_reg(stack_arg1); //This will make TN6 map to %rsi stay
+  Set_TN_is_global_reg(stack_arg2);
+  char1of1 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  Set_TN_is_global_reg(char1of1);
+  char1of2 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 4);
+  Set_TN_is_global_reg(char1of2);
+  char1of3 = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 1);
+  Set_TN_is_global_reg(char1of3);
+  ld_byte1 = Mk_OP(TOP_ld32,char1of1,arg1,Gen_Literal_TN(0, 4));
+
+  BB_Append_Op(beg_bb,ld_byte1);
+
+
+  cmp_res = Gen_Register_TN(ISA_REGISTER_CLASS_rflags, 8);
+  Set_TN_is_global_reg(cmp_res);
+  cmp_bytes = Mk_OP(TOP_cmpxxx8, cmp_res, char1of1, arg2,
+                    Gen_Literal_TN(1, 8) /* scaling factor */,
+                    Gen_Literal_TN(0,8));
+  BB_Append_Op(beg_bb, cmp_bytes);
+  jne = Mk_OP(TOP_jne, cmp_res, difflb_tn);
+  BB_Append_Op(beg_bb, jne);
+  oldsucclb = Gen_Label_For_BB(old_succ);
+  oldsucclb_tn = Gen_Label_TN(oldsucclb, 0);
+  Link_Pred_Succ(beg_bb, diff_bb);
+  BB_Remove_Op(call_bb, last_op);
+  /* remove the tag that says this is a call block */
+
+  ANNOTATION *ant = ANNOT_Get(BB_annotations(call_bb), ANNOT_CALLINFO);
+  BB_annotations(call_bb) = ANNOT_Unlink(BB_annotations(call_bb), ant);
+  Reset_BB_call(call_bb);
+
+  same_bb = &mylist[4];
+
+  samelb = Gen_Label_For_BB(same_bb);
+  samelb_tn = Gen_Label_TN(samelb, 0);
+
+  cmpz_bb = &mylist[1];
+  cmpz_res = cmp_res;
+  cmpz_byte = Mk_OP(TOP_test8, cmpz_res, char1of1, char1of1);
+  BB_Append_Op(cmpz_bb, cmpz_byte);
+  je = Mk_OP(TOP_je, cmpz_res, samelb_tn);
+  BB_Append_Op(cmpz_bb, je);
+  Link_Pred_Succ(cmpz_bb, same_bb);
+  cmpbyte2_bb = &mylist[2];
+  char2of1 = char1of1;
+  ld_byte2 = Mk_OP(TOP_ld8_32, char2of1, arg1, Gen_Literal_TN(1, 8));
+  BB_Append_Op(cmpbyte2_bb, ld_byte2);
+ cmp_bytes = Mk_OP(TOP_cmpxxx8, cmp_res, char2of1, arg2, Gen_Literal_TN(1, 8), Gen_Literal_TN(1,8));
+  BB_Append_Op(cmpbyte2_bb, cmp_bytes);
+  jne = Mk_OP(TOP_jne, cmp_res, difflb_tn);
+  BB_Append_Op(cmpbyte2_bb, jne);
+  Link_Pred_Succ(cmpbyte2_bb, diff_bb);
+
+
+  incidx_bb = &mylist[3];
+  TOP ptr_add = Is_Target_32bit() ? TOP_add32 : TOP_add64;
+  inc_arg1 = Mk_OP(ptr_add, arg1, arg1, Gen_Literal_TN(2, 8));
+  BB_Append_Op(incidx_bb, inc_arg1);
+  inc_arg2 = Mk_OP(ptr_add, arg2, arg2, Gen_Literal_TN(2, 8));
+  BB_Append_Op(incidx_bb, inc_arg2);
+
+  cmpz_byte = Mk_OP(TOP_test8, cmpz_res, char1of1, char1of1);
+  BB_Append_Op(incidx_bb, cmpz_byte);
+  jne = Mk_OP(TOP_jne, cmpz_res, beglb_tn);
+  BB_Append_Op(incidx_bb, jne);
+  Link_Pred_Succ(incidx_bb, beg_bb);
+  if(Is_Target_32bit()){
+    loadc = TOP_zero32;
+  }
+  else
+   loadc = TOP_zero64;
+  result = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+  Set_TN_is_global_reg(result);
+  reset_result = Mk_OP(loadc, result, Gen_Literal_TN(0, 8));
+  BB_Append_Op(same_bb, reset_result);
+  jmp = Mk_OP(TOP_jmp, oldsucclb_tn);
+  Link_Pred_Succ(same_bb, old_succ);
+
+  set_result = Mk_OP(TOP_sbb32, result, result, result);
+  BB_Append_Op(diff_bb, set_result);
+  set_result = Mk_OP(TOP_or32, result, Gen_Literal_TN(1, 8));
+  BB_Append_Op(diff_bb, set_result);
+  ld_byte1 = Mk_OP(TOP_ld32,arg1,stack_arg1/*arg1*/,Gen_Literal_TN(0, 4));
+  ld_byte2 = Mk_OP(TOP_ld32,arg2,stack_arg2/*arg1*/,Gen_Literal_TN(4, 8));
+  BB_Prepend_Op(old_succ,ld_byte1);
+  BB_Prepend_Op(old_succ,ld_byte2);
+  BB_Append_Op(same_bb, jmp);
+
+  if (BB_preds_len(old_succ) == 2) {
+    /* %eax in this block refers to result of strcmp,
+       replace its use with the result register in all
+       ops of old_succ till it is defined
+     */
+    int result_reg_def = 0;
+    for (op_iter = BB_first_op(old_succ); (!result_reg_def && op_iter);
+         op_iter = OP_next(op_iter)) {
+      for (i = 0; i < OP_opnds(op_iter); i++) {
+        TN *otn = OP_opnd(op_iter, i);
+        if (TN_is_dedicated(otn) // the dedicated tag should be removed
+            && (TN_register_and_class(otn) == CLASS_AND_REG_v0)) { //<-- int ret value
+
+          Set_OP_opnd(op_iter, i, result);
+        }
+      }
+      for (i = 0; i < OP_results(op_iter); i++) {
+        TN *rtn = OP_result(op_iter, i);
+        if (TN_is_dedicated(rtn)
+            && (TN_register_and_class(rtn) == CLASS_AND_REG_v0)) {
+          result_reg_def = 1;
+          continue;
+        }
+      }
+    }
+  }
+  else {
+    /* %eax in this block could refer to result of call to another
+       instruction in one of the other predecessor. In this case,
+       put result of strcmp in %eax in bb #9 and #10.
+     */
+    /* this case is unlikely to happen. check with a test case. if so, place an assertion here.*/
+    ret_reg = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+    Set_TN_register_and_class(ret_reg, CLASS_AND_REG_v0);//missing a call in this or earlier block-maybe
+    Set_TN_is_dedicated(ret_reg); // might not need this
+    Set_TN_is_global_reg(ret_reg);
+    TOP mov = Is_Target_32bit() ? TOP_mov32 : TOP_mov64;
+    OP *copy_result = Mk_OP(mov, ret_reg, result);
+   BB_Insert_Op(same_bb, jmp, copy_result, true);
+
+    ret_reg = Gen_Register_TN(ISA_REGISTER_CLASS_integer, 8);
+    Set_TN_register_and_class(ret_reg, CLASS_AND_REG_v0);//missing a call in this or earlier block-maybe
+    Set_TN_is_dedicated(ret_reg); // might not need this
+    Set_TN_is_global_reg(ret_reg);
+    mov = Is_Target_32bit() ? TOP_mov32 : TOP_mov64;
+    copy_result = Mk_OP(mov, ret_reg, result);
+    BB_Append_Op(diff_bb, copy_result);
+  }
+  GRA_LIVE_Recalc_Liveness(NULL);
 }

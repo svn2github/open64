@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2008 PathScale, LLC.  All Rights Reserved.
  */
 
@@ -116,7 +120,7 @@ public:
 
 extern void Inter_Iteration_Cses(WN *func_nd);
 #ifdef KEY
-extern void Invariant_Factorization(WN *func_nd);
+extern BOOL Invariant_Factorization(WN *func_nd);
 extern BOOL Is_Invariant_Factorization_Beneficial(WN *loop);
 #endif
 #ifdef _KEEP_RCS_ID

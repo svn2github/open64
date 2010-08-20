@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -206,6 +206,7 @@ extern void Early_Terminate (INT status);
  * of BB_Is_Cold.
  */
 enum { IHOT=FALSE, ICOLD=TRUE };
+static BOOL is_strcmp_expand = FALSE;
 
 /* Overload BB flag <local_flag1> to indicate if a BB is cold or hot --
  * it's less overhead than BB_Is_Cold.
@@ -1918,7 +1919,14 @@ static void r_assemble_list (
 #else
     fprintf (Asm_File, " [%d*II+%d]", OP_scycle(op) / ii, OP_scycle(op) % ii);
     } else if (BB_scheduled(bb))
+#ifdef TARG_X8664
+        if (Is_Target_Orochi())
+          fprintf (Asm_File, " [%d], [%d]", OP_scycle(op), OP_dgroup(op));
+        else
+          fprintf (Asm_File, " [%d]", OP_scycle(op));
+#else
         fprintf (Asm_File, " [%d]", OP_scycle(op));
+#endif
 #endif
   if (vstr_len(comment) == 0) {
     WN *wn = Get_WN_From_Memory_OP (op);
@@ -2124,6 +2132,10 @@ static void Verify_Operand(
     FmtAssert(FALSE, ("unhandled vtype in Verify_Operand"));
   }
 }
+void Set_flags_strcmp_expand()
+{
+   is_strcmp_expand = TRUE;
+}
 
 /* ====================================================================
  *
@@ -2165,7 +2177,8 @@ static void Verify_Instruction(OP *op)
     // Don't complain if jnp appears in a BB without a compare OP.  This is
     // because Expand_Ordered_Select_Compare can generate a compare followed by
     // 2 conditional branches, the second of which is jnp.
-    FmtAssert(prev != NULL || OP_code(op) == TOP_jnp,
+    if(!is_strcmp_expand)
+      FmtAssert(prev != NULL || OP_code(op) == TOP_jnp,
 	      ("set_rflags op is missing") );
   }
 
@@ -9421,7 +9434,7 @@ Target_Name (TARGET_PROCESSOR t)
   {
     case TARGET_opteron: return "opteron";
     case TARGET_barcelona: return "barcelona";
-    case TARGET_orochi: return "orochi";
+    case TARGET_orochi: return "bdver1";
     case TARGET_athlon64: return "athlon64";
     case TARGET_athlon: return "athlon";
     case TARGET_em64t: return "em64t";

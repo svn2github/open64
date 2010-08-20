@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -85,9 +85,10 @@ UINT32 WOPT_Alias_Class_Limit = UINT32_MAX;	// no limit
 INT32  WOPT_Ldx_Ratio_RegIns = 1;
 BOOL  WOPT_Enable_Add_Do_Loop_Info = TRUE;
 BOOL  WOPT_Enable_Add_Label_Loop_Info = TRUE;
-BOOL  WOPT_Enable_Aggressive_Code_Motion = TRUE;
+UINT32 WOPT_Enable_Aggressive_Code_Motion = TRUE;
 INT32 WOPT_Enable_Aggressive_CM_Limit = INT32_MAX;
-INT32 WOPT_Enable_Aggressive_CM_Threshold = 70;
+INT32 WOPT_Enable_Aggressive_CM_Branch_Threshold = 10;
+INT32 WOPT_Enable_Aggressive_CM_Switch_Threshold = 20;
 BOOL  WOPT_Enable_Aggressive_dce = TRUE;
 BOOL  WOPT_Enable_Aggressive_dce_for_bbs = TRUE;
 BOOL  WOPT_Enable_Aggressive_Doloop_Promotion = FALSE;
@@ -321,10 +322,10 @@ BOOL  WOPT_Enable_Pt_Keep_Track_Ptr = TRUE;  // POINTS_TO keeps track of pointer
   // POINTS_TO keeps track of complex address of iload/istore. 
 BOOL  WOPT_Enable_Aggr_Pt_Keep_Track_Ptr = TRUE; 
 BOOL  WOPT_Enable_Noreturn_Attr_Opt = TRUE;
+BOOL  WOPT_Enable_Nothrow_Opt = TRUE;
+BOOL  WOPT_Enable_Multiver_and_Unroll_Opt = TRUE;
 BOOL  WOPT_Enable_Pt_Summary = FALSE;  // points-to summary/annotation 
-INT32 WOPT_Enable_If_Merge_Limit = -1;  // Limit number of if-merging transformations per function.
-INT32 WOPT_Enable_Tail_Dup_Limit = -1; // Limit number of tail-duplication transformations per function.
-INT32 WOPT_Enable_If_Cond_Limit = -1;  // Limit number of if-condition transformations per function.
+INT32 WOPT_Enable_Pro_Loop_Limit = -1;  // Limit number of if-condition transformations per function.
 INT32 WOPT_Tail_Dup_Max_Clone = -1; // Limit code size bloats (in statement count)
                                                   // due to tail-duplication.
 INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusion transformation for
@@ -333,7 +334,7 @@ INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop
                                                         // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
-
+BOOL  WOPT_Simplify_Bit_Op = TRUE; // Enable specialized bit operation optimizations.
 BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
 
 BOOL  WOPT_Enable_Mem_Clear_Remove = TRUE;  // Enables removal of redundant mem clear after a calloc
@@ -394,12 +395,14 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,	&WOPT_Enable_Add_Do_Loop_Info, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "add_label_loop_info",	"add_label",
     0, 0, 0,	&WOPT_Enable_Add_Label_Loop_Info, NULL },
-  { OVK_BOOL,	OV_VISIBLE,	TRUE, "aggcm",		"aggcm",
-    0, 0, 0,	&WOPT_Enable_Aggressive_Code_Motion, NULL },
+  { OVK_UINT32,	OV_VISIBLE,	TRUE, "aggcm",		"aggcm",
+    1, 0, 2,	&WOPT_Enable_Aggressive_Code_Motion, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_limit",		"",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_Aggressive_CM_Limit, NULL },
-  { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_threshold",	"aggcm_thres",
-    0, 0, 101,	&WOPT_Enable_Aggressive_CM_Threshold, NULL },
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_switch_threshold",	"aggcm_switch_thres",
+    20, 0, INT32_MAX,	&WOPT_Enable_Aggressive_CM_Switch_Threshold, NULL },
+  { OVK_INT32,	OV_VISIBLE,	TRUE, "aggcm_branch_threshold",	"aggcm_branch_thres",
+    10, 0, INT32_MAX,	&WOPT_Enable_Aggressive_CM_Branch_Threshold, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "agglftr",		"agglftr",
     0, 0, 0,	&WOPT_Enable_Aggressive_Lftr, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "aggphi_simp",		"aggphi",
@@ -771,18 +774,16 @@ static OPTION_DESC Options_WOPT[] = {
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "simp_bit_op", "simp_bit_op",
+    FALSE, 0, 1, &WOPT_Simplify_Bit_Op, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "reasso_cse", "reasso_cse",
     TRUE, 0, 1, &WOPT_Enable_Reassociation_CSE, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_clear_remove", "mem_clear_remove",
     FALSE, 0, 1, &WOPT_Enable_Mem_Clear_Remove, NULL },
-  { OVK_INT32,  OV_VISIBLE,    FALSE, "if_merge_limit",              "",
-    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Merge_Limit, NULL },
-  { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_limit",              "",
-    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Tail_Dup_Limit, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "tail_dup_max_clone",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Tail_Dup_Max_Clone, NULL },
-  { OVK_INT32,  OV_VISIBLE,    FALSE, "if_cond_limit",              "",
-    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_If_Cond_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_fusion_func_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Fusion_Func_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_interchange_func_limit",              "",
@@ -829,6 +830,10 @@ static OPTION_DESC Options_WOPT[] = {
     0, 0, 0,   &WOPT_Enable_Aggr_Pt_Keep_Track_Ptr, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "noreturn_attr",   NULL, 
     0, 0, 0,   &WOPT_Enable_Noreturn_Attr_Opt, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "nothrow_opt",   NULL, 
+    0, 0, 0,   &WOPT_Enable_Nothrow_Opt, NULL },
+  { OVK_BOOL,  OV_INTERNAL,    TRUE, "multiver_unroll",   NULL, 
+    0, 0, 0,   &WOPT_Enable_Multiver_and_Unroll_Opt, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "pt_summary",   NULL, 
     0, 0, 0,   &WOPT_Enable_Pt_Summary, NULL },
   { OVK_BOOL,  OV_INTERNAL,    TRUE, "loop_multiver",   NULL, 

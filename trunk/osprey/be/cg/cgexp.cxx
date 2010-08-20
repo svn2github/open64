@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -190,6 +190,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_ISTOREX:
   case OPR_ISTORE:
   case OPR_STID:
+	if ( variant & V_HIGH64);
 	if ( V_align_all(variant) != 0 ) {
 #if defined(TARG_SL)
           if (CG_check_packed)
@@ -198,7 +199,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 		Expand_Misaligned_Store (desc, op1, op2, op3, variant, ops);
 	}
 	else {
-#if defined(TARG_MIPS) || defined(TARG_X8664) || defined(TARG_PPC32)
+#if defined(TARG_MIPS) || defined(TARG_PPC32)
 		Expand_Store (desc, op1, op2, op3, ops);
 #else
 		Expand_Store (desc, op1, op2, op3, variant, ops);
@@ -419,7 +420,7 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
   case OPR_FLOOR:
 #ifdef TARG_X8664
     if( MTYPE_is_float( rtype ) ){
-      if( MTYPE_is_quad( rtype ) )
+      if( MTYPE_is_F10( rtype ) )
 	Expand_Float_To_Float_Floorl( result, op1, rtype, desc, ops );
       else if( rtype == MTYPE_F8 )
 	Expand_Float_To_Float_Floor( result, op1, rtype, desc, ops );
@@ -484,6 +485,26 @@ Expand_OP (OPCODE opcode, TN *result, TN *op1, TN *op2, TN *op3, VARIANT variant
 	break;
 
 #endif /* TARG_X8664 */
+#ifdef TARG_X8664
+  case OPR_COMPLEX:
+	FmtAssert(opcode == OPC_V16C8PAIR,
+		("Expand_OP:  unexpected PAIR opcode %s", OPCODE_name(opcode)));
+	extern void Expand_Complex(OPCODE, TN*, TN*, TN*,OPS*);
+	extern void Expand_Firstpart(OPCODE, TN*, TN*, OPS*);
+	extern void Expand_Secondpart(OPCODE, TN*, TN*, OPS*);
+	Expand_Complex(opcode, result, op1, op2, ops);
+	break;
+  case OPR_REALPART:
+	FmtAssert(opcode == OPC_F8FIRSTPART,
+		("Expand_OP:  unexpected FIRSTPART opcode %s", OPCODE_name(opcode)));
+	Expand_Firstpart(opcode, result, op1, ops);
+	break;
+  case OPR_IMAGPART:
+	FmtAssert(opcode == OPC_F8SECONDPART,
+		("Expand_OP:  unexpected SECONDPART opcode %s", OPCODE_name(opcode)));
+	Expand_Secondpart(opcode, result, op1, ops);
+	break;
+#endif
   default:
 	FmtAssert(FALSE, 
 		("Expand_OP:  unexpected opcode %s", OPCODE_name(opcode)));

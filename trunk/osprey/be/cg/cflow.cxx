@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -328,6 +328,64 @@ BB_last_OP_computes_got (BB* bb)
 {
   OP *last_op = BB_last_op(bb);
   return ((last_op != NULL) && OP_computes_got(last_op));
+}
+
+static void
+Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
+{
+  // only consider sign comparision
+  switch (br_variant) {
+    case V_BR_I4EQ:
+    case V_BR_I4NE:
+    case V_BR_I4GE: 
+    case V_BR_I4GT: 
+    case V_BR_I4LE: 
+    case V_BR_I4LT: 
+    case V_BR_I8EQ:
+    case V_BR_I8NE:
+    case V_BR_I8GE: 
+    case V_BR_I8GT: 
+    case V_BR_I8LE: 
+    case V_BR_I8LT:
+        break;
+    default:
+        return;
+  }
+
+  // sign extend the constant value
+  const TOP top = OP_code( compare_op );
+  switch ( top ) {
+    case TOP_test8:
+    case TOP_testx8:
+    case TOP_testxx8:
+    case TOP_testxxx8:
+    case TOP_testi8:
+    case TOP_cmp8:
+    case TOP_cmpx8:
+    case TOP_cmpxx8:
+    case TOP_cmpxxx8:
+    case TOP_cmpi8:
+    case TOP_cmpxi8:
+    case TOP_cmpxxi8:
+    case TOP_cmpxxxi8:
+      *v = ( (*v) << ( sizeof(INT64) * 8 - 8 ) ) >> ( sizeof(INT64) * 8 - 8 );
+      return;
+    case TOP_test16:
+    case TOP_testx16:
+    case TOP_testxx16:
+    case TOP_testxxx16:
+    case TOP_testi16:
+    case TOP_cmp16:
+    case TOP_cmpx16:
+    case TOP_cmpxx16:
+    case TOP_cmpxxx16:
+    case TOP_cmpi16:
+    case TOP_cmpxi16:
+    case TOP_cmpxxi16:
+    case TOP_cmpxxxi16:
+      *v = ( (*v) << ( sizeof(INT64) * 8 - 16 ) ) >> ( sizeof(INT64) * 8 - 16 );
+      return;
+  }
 }
 #endif
 
@@ -1496,6 +1554,7 @@ Finalize_BB(BB *bp)
 
 
 #ifdef TARG_X8664
+
 /* ====================================================================
  *
  * Br_Fuse_BB
@@ -1510,8 +1569,12 @@ Br_Fuse_BB(BB *bp)
   if (BBINFO_kind(bp) == BBKIND_LOGIF) {
     OP *br = BB_branch_op(bp);
     OP *cmp = BBINFO_compare_op(bp);
-    if (cmp != NULL && OP_bb(cmp) == bp) {
-      ARC_LIST *anti_arcs;
+    // now see if we pass the entrance criteria
+    if ((cmp != NULL) && 
+        (OP_load_exe(cmp) == false) &&
+        (br != cmp) &&
+        (OP_bb(cmp) == bp)) {
+      ARC_LIST *arcs;
       OP *cmp_next = OP_next(cmp);
 
       // If we are already optimal, do nothing.
@@ -1528,19 +1591,24 @@ Br_Fuse_BB(BB *bp)
                              NULL);
 
       // Check for anti-deps on the cmp's src operands
-      for (anti_arcs = OP_succs(cmp);
-           anti_arcs != NULL; anti_arcs = ARC_LIST_rest(anti_arcs)) {
-        ARC *anti_arc = ARC_LIST_first(anti_arcs);
-        OP *succ_op = ARC_succ(anti_arc);
-        if (ARC_kind(anti_arc) != CG_DEP_REGANTI) continue;
+      for (arcs = OP_succs(cmp);
+           arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+        ARC *arc = ARC_LIST_first(arcs);
+        OP *succ_op = ARC_succ(arc);
+        if (succ_op == br) continue;
 
-        // if the current def precedes the br we cannot perform the fuse.
+        // any other reader/writer represents a scheduling barrier
         if (OP_Precedes(succ_op, br)) {
           CG_DEP_Delete_Graph (bp);
-          return; 
+          return;
         }
       }
 
+      // Even if the cmp still winds up in the last
+      // slot of the last dispatch group, and the fusion
+      // does not happen, this is not a destructive activity.
+      OP_scycle(cmp) = OP_scycle(br);
+      OP_dgroup(cmp) = OP_dgroup(br);
       BB_Move_Op_Before(bp, br, bp, cmp);
       CG_DEP_Delete_Graph (bp);
     }
@@ -2617,8 +2685,14 @@ Convert_If_To_Goto ( BB *bp )
   Is_True(tn1 != NULL, ("compare with no operands in BB:%d", BB_id(bp)));
 
   if (!TN_Value_At_Op(tn1, compare_op, &v1)) goto try_identities;
+#ifdef TARG_X8664
+  Extend_Short_Cmp_Src(compare_op, br_variant, &v1);
+#endif
 
   if (tn2 && !TN_Value_At_Op(tn2, compare_op, &v2)) goto try_identities;
+#ifdef TARG_X8664
+  Extend_Short_Cmp_Src(compare_op, br_variant, &v2);
+#endif
 
   /* Evaluate the condition.
    */

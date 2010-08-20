@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3234,7 +3234,9 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	valid =	((rtype == MTYPE_I1 || rtype == MTYPE_I2 || 
 		  rtype == MTYPE_I4 || rtype == MTYPE_I8 || 
 		  rtype == MTYPE_F4 || rtype == MTYPE_F8 ||
-		  rtype == MTYPE_FQ ||
+		  rtype == MTYPE_FQ || 
+                  rtype == MTYPE_F10 || rtype == MTYPE_F16 ||
+                  rtype == MTYPE_C10 || rtype == MTYPE_C16 ||
 		  rtype == MTYPE_C4 || rtype == MTYPE_C8 ||
 		  rtype == MTYPE_V16C4 || rtype == MTYPE_V16C8 ||
 		  rtype == MTYPE_V16F4 || rtype == MTYPE_V16F8 ||
@@ -3328,7 +3330,7 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
 	break;
       case OPR_SHUFFLE:
         valid = (desc == rtype &&
-		 MTYPE_is_vector(desc));
+		 (MTYPE_is_vector(desc)) || desc == MTYPE_C8);
 	break;
 #endif /* TARG_X8664 */
       default:

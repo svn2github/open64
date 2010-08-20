@@ -90,10 +90,10 @@ SECTIONS
   /* We don't maintain address congruence here, because saving
    * hugepages is more important than saving executable size. */
 
+  . = ALIGN (0x40000000); /* Align to 1G */
   /* Exception handling  */
   .eh_frame       : /* ONLY_IF_RW */ { KEEP (*(.eh_frame)) } :hdata
   .gcc_except_table   : /* ONLY_IF_RW */ { KEEP (*(.gcc_except_table)) *(.gcc_except_table.*) } :hdata
-  . = ALIGN (0x40000000); /* Align to 1G */
 
   /* Thread Local Storage sections  */
   .tdata	  : { *(.tdata .tdata.* .gnu.linkonce.td.*) } :hdata

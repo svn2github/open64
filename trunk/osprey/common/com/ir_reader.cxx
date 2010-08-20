@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -255,7 +255,6 @@ BOOL IR_dump_map_info = FALSE;
 BOOL IR_dump_region = FALSE;
 BOOL IR_DUMPDEP_info = FALSE;
 BOOL IR_dump_line_numbers = TRUE;
-BOOL IR_dump_wn_addr = FALSE;
 
 WN_MAP IR_alias_map = WN_MAP_UNDEFINED;
 const struct ALIAS_MANAGER *IR_alias_mgr = NULL;
@@ -905,8 +904,11 @@ static void ir_put_wn(WN * wn, INT indent)
     	fprintf(ir_ofile, "### error: null WN pointer\n");
    	return;
     } else {
+	if (IR_dump_wn_id) {
+	    fprintf(ir_ofile, "[%6u] ", WN_id(wn));
+	}
 	if (IR_dump_wn_addr) {
-	    fprintf(ir_ofile, "0x%8p: ", wn);
+	    fprintf(ir_ofile, "%8p: ", wn);
 	}
 	opcode = WN_opcode(wn);
     }

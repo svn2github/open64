@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -910,6 +910,18 @@ BOOL Valid_alias(const ALIAS_MANAGER *am, WN *wn)
   return FALSE;
 }
 
+static
+BOOL equivalent_struct(TY_IDX ty1, TY_IDX ty2)
+{
+    if (ty1 == ty2 ||
+        (!TY_anonymous(ty1) && TY_name_idx(ty1) == TY_name_idx(ty2) &&
+         TY_kind(ty1) == TY_kind(ty2) && TY_kind(ty1) == KIND_STRUCT)) { 
+        return TRUE;
+    }    
+
+    return FALSE;
+}
+
 
 //  Alias analysis for two WN *
 //
@@ -991,8 +1003,17 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
 
   if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
       OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
-    if (am->Rule()->Aliased_Memop(pt1, pt2, ignore_loop_carried)) // OSP-172
-      return POSSIBLY_ALIASED;
+  
+    // when the high level type show that pt1 and pt2 are two structs with same name, these
+    // two structs could be equivelant type, thus could not rely on their high level type
+    if (equivalent_struct(pt1->Highlevel_Ty(),pt2->Highlevel_Ty())) {
+        if (am->Rule()->Aliased_Memop(pt1, pt2, pt1->Ty(), pt2->Ty(), ignore_loop_carried)) // OSP-172
+          return POSSIBLY_ALIASED;
+    }else {
+        if (am->Rule()->Aliased_Memop(pt1, pt2, ignore_loop_carried))
+          return POSSIBLY_ALIASED;
+    }      
+        
   } else {
     // cannot apply ANSI type rule to STORE <--> STORE.
     if (am->Rule()->Aliased_Memop(pt1, pt2, (TY_IDX)NULL, (TY_IDX)NULL, 

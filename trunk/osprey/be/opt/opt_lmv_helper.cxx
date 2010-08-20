@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -148,7 +148,7 @@ MA_POINTER::Pointed_ty (void) const {
 
   TY_IDX pt_ty = TY_pointed(_ty);
 
-  if (_kind == MA_PTR_LDA) {
+  if (_kind == MA_PTR_LDA && TY_kind(pt_ty) == KIND_STRUCT) {
     if (_is_lda._afield_id != (TY_IDX)0)
       pt_ty = get_field_type (pt_ty, _is_lda._afield_id);
   }

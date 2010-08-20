@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -103,6 +103,7 @@ static char *rcs_id = 	opt_wn_CXX"$Revision: 1.31 $";
 #include "config_opt.h"		// for Delay_U64_Lowering
 #include "opt_cvtl_rule.h"
 #include "opt_main.h"
+#include "wn_simp.h"
 
 
 STMT_ITER::STMT_ITER(WN *f)
@@ -554,13 +555,13 @@ Ldid_from_mtype( MTYPE mtype )
     case MTYPE_U8:	return OPC_U8U8LDID;
     case MTYPE_F4:	return OPC_F4F4LDID;
     case MTYPE_F8:	return OPC_F8F8LDID;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10:	return OPC_F10F10LDID;
 #endif
     case MTYPE_FQ:	return OPC_FQFQLDID;
     case MTYPE_C4:	return OPC_C4C4LDID;
     case MTYPE_C8:	return OPC_C8C8LDID;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_C10:	return OPC_C10C10LDID;
 #endif
     case MTYPE_CQ:	return OPC_CQCQLDID;
@@ -699,8 +700,11 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return MTYPE_C8;
 #if defined(TARG_IA64)
       case 32: return MTYPE_C10;
+#elif defined(TARG_X8664) 
+      case 24:  // -m32 long double complex
+      case 32: return MTYPE_C10;
 #else
-      case 24:
+      case 24:  // -m32 long double complex
       case 32: return MTYPE_CQ;
 #endif
     }
@@ -710,6 +714,9 @@ Mtype_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return MTYPE_F4;
       case 8:  return MTYPE_F8;
 #if defined(TARG_IA64)
+      case 16: return MTYPE_F10;
+#elif defined(TARG_X8664) 
+      case 12:  // -m32 long double
       case 16: return MTYPE_F10;
 #else
       case 12:
@@ -815,6 +822,9 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return OPC_C8C8LDID;
 #if defined(TARG_IA64)
       case 32: return OPC_C10C10LDID;
+#elif defined(TARG_X8664)
+      case 24:
+      case 32: return OPC_C10C10LDID;
 #else
       case 24:
       case 32: return OPC_CQCQLDID;
@@ -826,6 +836,9 @@ Ldid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4F4LDID;
       case 8:  return OPC_F8F8LDID;
 #if defined(TARG_IA64)
+      case 16: return OPC_F10F10LDID;
+#elif defined(TARG_X8664)
+      case 12:
       case 16: return OPC_F10F10LDID;
 #else
       case 12:
@@ -931,6 +944,9 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 16: return OPC_C8STID;
 #if defined(TARG_IA64)
       case 32: return OPC_C10STID;
+#elif defined(TARG_X8664)
+      case 24:
+      case 32: return OPC_C10STID;
 #else
       case 24:
       case 32: return OPC_CQSTID;
@@ -942,6 +958,9 @@ Stid_from_mtype_class_and_size( INT mtype_class, INT bytes )
       case 4:  return OPC_F4STID;
       case 8:  return OPC_F8STID;
 #if defined(TARG_IA64)
+      case 16: return OPC_F10STID;
+#elif defined(TARG_X8664)
+      case 12:
       case 16: return OPC_F10STID;
 #else
       case 12:
@@ -1775,4 +1794,245 @@ BOOL OPERATOR_is_volatile(OPERATOR oper)
 BOOL OPCODE_is_volatile(OPCODE opc)
 {
   return OPERATOR_is_volatile(OPCODE_operator(opc));
+}
+
+// Evaluate value of an integral WHIRL, return it in *val.
+// Return FALSE if wn is not evaluatable. wn_map gives a WHIRL-to-WHIRL
+// map that maps a WHIRL to another WHIRL containing the same value.
+// (TODO: Implementation is incomplete for all operators)
+BOOL
+WN_get_val(WN * wn, int * val, const WN_MAP& wn_map)
+{
+  int val1, val2;
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_INTCONST) {
+    *val = WN_const_val(wn);
+    return TRUE;
+  }
+  else if (wn_map) {
+    WN * wn_val = (WN *) WN_MAP_Get(wn_map, wn);
+    if (wn_val)
+      return WN_get_val(wn_val, val, wn_map);
+  }
+
+  switch (opr) {
+  case OPR_ADD:
+    if (WN_get_val(WN_kid(wn,0), &val1, wn_map)
+	&& WN_get_val(WN_kid(wn, 1), &val2, wn_map)) {
+      *val = val1 + val2;
+      return TRUE;
+    }
+    break;
+    
+  default:
+    ;
+  }
+
+  return FALSE;
+}
+
+// Walk nodes in the given WHIRL tree, collect operands for ADD operators.
+//
+// For example, given the following tree,
+//   I4I4LDID  0 <st 2> 
+//   I4I4LDID 49 <st 80>
+//  I4SUB
+//  I4INTCONST -1 (0xffffffffffffffff)
+// I4ADD
+//
+// We will collect two nodes:
+//   I4I4LDID  0 <st 2> 
+//   I4I4LDID 49 <st 80>
+//  I4SUB
+//
+//  I4INTCONST -1 (0xffffffffffffffff)
+
+static STACK<WN *> * 
+Collect_operands(WN * wn, MEM_POOL * pool)
+{
+  STACK<WN *> * stack1 = NULL;
+  STACK<WN *> * stack2 = NULL;
+  OPERATOR opr = WN_operator(wn);
+
+  if ((opr == OPR_ADD) || (OPERATOR_is_load(opr))) {
+    stack1 = CXX_NEW(STACK<WN *>(pool), pool);
+    stack1->Push(wn);
+  }
+
+  while (stack1 && !stack1->Is_Empty()) {
+    WN * wn_iter = stack1->Pop();
+    OPERATOR opr_iter = WN_operator(wn_iter);
+
+    if (opr_iter == OPR_ADD) {
+      stack1->Push(WN_kid(wn_iter, 0));
+      stack1->Push(WN_kid(wn_iter, 1));
+    }
+    else {
+      if (stack2 == NULL)
+	stack2 = CXX_NEW(STACK<WN *>(pool), pool);
+
+      stack2->Push(wn_iter);
+    }
+  }
+
+  if (stack1)
+    CXX_DELETE(stack1, pool);
+
+  return stack2;
+}
+
+// Query whether two integral WHIRLs have disjointed value ranges.
+// Return FALSE if this is not the case or if we can't tell.
+// lo_map and hi_map are maps from "WN *" to "UNSIGNED long long" that
+// give low/high boundaries.
+BOOL
+WN_has_disjoint_val_range(WN * wn1, WN * wn2, const WN_MAP& lo_map, const WN_MAP& hi_map)
+{
+  FmtAssert((MTYPE_is_integral(WN_rtype(wn1)) && MTYPE_is_integral(WN_rtype(wn2))),
+	    ("Expect integral values"));
+
+  OPERATOR opr1 = WN_operator(wn1);
+  OPERATOR opr2 = WN_operator(wn2);
+  int val;
+
+  if ((opr1 == OPR_INTCONST) && (opr2 == OPR_INTCONST)) {
+    return (WN_const_val(wn1) != WN_const_val(wn2));
+  }
+  else if (opr1 == OPR_INTCONST) {
+    // Swap parameters so that the second one is a constant.
+    return WN_has_disjoint_val_range(wn2, wn1, lo_map, hi_map);
+  }
+  else if (WN_is_power_of_2(wn1) && WN_is_power_of_2(wn2)) {
+    // Only need to compare position of TRUE bits for power-of-2 values.
+    WN * bit1 = WN_get_bit_from_expr(wn1); 
+
+    if (opr2 == OPR_INTCONST) {
+      int bit2 = WN_get_bit_from_const(wn2);
+
+      if (WN_get_val(bit1, &val, lo_map) && (val > bit2))
+	return TRUE;
+      else if (WN_get_val(bit1, &val, hi_map) && (val < bit2))
+	return TRUE;
+    }
+    else {
+      WN * bit2 = WN_get_bit_from_expr(wn2);
+
+      if (WN_has_disjoint_val_range(bit1, bit2, lo_map, hi_map))
+	return TRUE;
+    }
+  }
+  else if ( opr2 == OPR_INTCONST) {
+    int int_val = WN_const_val(wn2);
+
+    if (WN_get_val(wn1, &val, lo_map) && (val > int_val))
+      return TRUE;
+    else if (WN_get_val(wn1, &val, hi_map) && (val < int_val))
+      return TRUE;
+  }
+  else {
+    MEM_POOL * pool = Malloc_Mem_Pool;
+    STACK<WN *> * stack1 = Collect_operands(wn1, pool);
+    STACK<WN *> * stack2 = Collect_operands(wn2, pool);
+    STACK<WN *> * stack_tmp = NULL;
+
+    // Shuffle stack1 and stack2 so that stack1 contains more elements.
+    if ((!stack1 && stack2)
+	|| ((stack1 && stack2) 
+	    && (stack1->Elements() < stack2->Elements()))) {
+      stack_tmp = stack1;
+      stack1 = stack2;
+      stack2 = stack_tmp;
+    }
+
+    // Evaluate diff of stack1 and stack2.
+
+    int delta = 0;
+
+    if (stack1) {
+      for (int i = 0; i < stack1->Elements(); i++) {
+	WN * wn_iter = stack1->Top_nth(i);
+	if (WN_operator(wn_iter) == OPR_INTCONST) 
+	  delta += WN_const_val(wn_iter);
+      }
+    }
+
+    if (stack2) {
+      for (int i = 0; i < stack2->Elements(); i++) {
+	WN * wn_iter = stack2->Top_nth(i);
+	if (WN_operator(wn_iter) == OPR_INTCONST) 
+	  delta -= WN_const_val(wn_iter);
+      }
+    }
+
+    int delta_lo = delta;
+    int delta_hi = delta;
+
+    if (stack2) {
+      for (int i = 0; i < stack2->Elements(); i++) {
+	WN * wn2_iter = stack2->Top_nth(i);
+	
+	if (WN_operator(wn2_iter) == OPR_INTCONST)
+	  continue;
+
+	BOOL found = FALSE;
+
+	for (int j = 0; j < stack1->Elements(); j++) {
+	  WN * wn1_iter = stack1->Top_nth(j);
+
+	  if (wn1_iter && (WN_Simp_Compare_Trees(wn1_iter, wn2_iter) == 0)) {
+	    stack1->DeleteTop(j);
+	    found = TRUE;
+	    break;
+	  }
+	}
+
+	if (!found) {
+	  int val;
+
+	  if (WN_get_val(wn2_iter, &val, lo_map)) 
+	    delta_hi -= val;
+	  else if (WN_get_val(wn2_iter, &val, hi_map))
+	    delta_lo -= val;
+	  else {
+	    CXX_DELETE(stack1, pool);
+	    CXX_DELETE(stack2, pool);
+	    return FALSE;
+	  }
+	}
+      }
+    }
+
+    if (stack1) {
+      for (int i = 0; i < stack1->Elements(); i++) {
+	WN * wn_iter = stack1->Top_nth(i);
+	int val;
+
+	if (WN_operator(wn_iter) == OPR_INTCONST)
+	  continue;
+	
+	if (WN_get_val(wn_iter, &val, lo_map)) 
+	  delta_lo += val;
+	else if (WN_get_val(wn_iter, &val, hi_map))
+	  delta_hi += val;
+	else {
+	  CXX_DELETE(stack1, pool);
+	  if (stack2)
+	    CXX_DELETE(stack2, pool);
+	  return FALSE;
+	}
+      }
+    }
+
+    if (stack1)
+      CXX_DELETE(stack1, pool);
+
+    if (stack2)
+      CXX_DELETE(stack2, pool);
+
+    if ((delta_lo > 0) || (delta_hi < 0))
+      return TRUE;
+  }
+
+  return FALSE;
 }

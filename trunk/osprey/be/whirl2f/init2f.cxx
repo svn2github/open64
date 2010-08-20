@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -122,12 +126,14 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
 	 UINT64    u8;
 	 float     f[2];
 	 double    d[2];
+         long double ld;
 	 QUAD_TYPE q;
       } val1;
       union
       {
 	 float     f;
 	 double    d;
+         long double ld;
 	 QUAD_TYPE q;
       } val2;
    } TCON_VALUE;
@@ -193,6 +199,12 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
       *tcon = Host_To_Targ_Float(mtype, rep.val.val1.d[0]);
       break;
 
+#if defined(TARG_X8664) || defined(TARG_IA64)
+   case MTYPE_F10:
+      *tcon = Host_To_Targ_Float_10(mtype, rep.val.val1.ld);
+      break;
+#endif
+
    case MTYPE_FQ:
      *tcon = Host_To_Targ_Quad(rep.val.val1.q);
      break;
@@ -204,6 +216,12 @@ Set_Tcon_Value(TCON *tcon, MTYPE mtype, INT typesize, char *bytes)
    case MTYPE_C8: 
      *tcon = Host_To_Targ_Complex (mtype,rep.val.val1.d[0],rep.val.val1.d[1]);
      break;
+
+#if defined(TARG_X8664) || defined(TARG_IA64)
+   case MTYPE_C10:     
+     *tcon = Host_To_Targ_Complex_10 (mtype, rep.val.val1.ld,rep.val.val2.ld);
+     break;
+#endif
 
    case MTYPE_CQ:     
      *tcon = Host_To_Targ_Complex_Quad (rep.val.val1.q,rep.val.val2.q);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2015,8 +2015,8 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_mulxxss,           TOP_vmulxxss},
     {TOP_mulxxxsd,          TOP_vmulxxxsd},
     {TOP_mulxxxss,          TOP_vmulxxxss},
-    {TOP_movsd,             TOP_vmovsd},
-    {TOP_movss,             TOP_vmovss},
+    {TOP_movsd,             TOP_vmovapd},
+    {TOP_movss,             TOP_vmovaps},
     {TOP_movdq,             TOP_vmovdqa},
     {TOP_movapd,            TOP_vmovapd},
     {TOP_movaps,            TOP_vmovaps},
@@ -2102,8 +2102,14 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_sthpsxx,           TOP_vsthpsxx},
     {TOP_staps,             TOP_vstaps},
     {TOP_staps_n32,         TOP_vstaps_n32},
-    {TOP_stupd,             TOP_vstupd},
     {TOP_stups,             TOP_vstups},
+    {TOP_stupsx,            TOP_vstupsx},
+    {TOP_stupsxx,           TOP_vstupsxx},
+    {TOP_stups_n32,         TOP_vstups_n32},
+    {TOP_stupd,             TOP_vstupd},
+    {TOP_stupdx,            TOP_vstupdx},
+    {TOP_stupdxx,           TOP_vstupdxx},
+    {TOP_stupd_n32,         TOP_vstupd_n32},
     {TOP_stapd,             TOP_vstapd},
     {TOP_stapd_n32,         TOP_vstapd_n32},
     {TOP_stapsx,            TOP_vstapsx},

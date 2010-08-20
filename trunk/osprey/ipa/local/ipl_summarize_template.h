@@ -1581,18 +1581,15 @@ SUMMARIZE<program>::Process_procedure (WN* w)
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
             // This ifdef is redundant, but just for clarity.
-            if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL
-                // Ignore virtual function candidate for icall_opt and let
-                // devirtualization to handle them. This is a workaround to  
-                // to let icall_opt and devirtualization working together
-                && !WN_Call_Is_Virtual(w2))
-	      Process_icall (proc, w2, loopnest, probability);
+            if (Cur_PU_Feedback && WN_operator(w2) == OPR_ICALL && 
+                  !WN_Call_Is_Virtual(w2))
+	       Process_icall (proc, w2, loopnest, probability);
 #endif
 #endif // KEY
-
-            if (/*!Cur_PU_Feedback && */ WN_Call_Is_Virtual(w2)
-                    && IPA_Enable_Fast_Static_Analysis_VF == TRUE) {
-	        Process_virtual_function (proc, w2, loopnest, probability);
+            if ( IPA_Enable_Fast_Static_Analysis_VF == TRUE && 
+                  WN_Call_Is_Virtual(w2)) {
+                  // add the virtual function dummy callsite if appropriate
+	          Process_virtual_function (proc, w2, loopnest, probability);
             }
 
             proc->Incr_call_count ();
@@ -1994,7 +1991,7 @@ SUMMARIZE<program>::Process_procedure (WN* w)
       // of the PU size.
       for (i = label_use_map.begin(); i != label_use_map.end(); i++)
       {
-        Is_True ((*i).second.wn, ("Process_procedure: Undefined label?"));
+        Is_True (Do_Altentry || (*i).second.wn, ("Process_procedure: Undefined label?"));
         if (!(*i).second.seen)
         {
           unused_labels++;
@@ -2164,8 +2161,10 @@ Notes for File 1:
 template <PROGRAM program>
 void
 SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc, 
-        WN * wn, INT loopnest, float probability){
+        WN * wn, INT loopnest, float probability)
+{
   Is_True (WN_operator (wn) == OPR_ICALL, ("Process_virtual_function: ICALL expected"));
+
 
   SUMMARY_CALLSITE * cs = New_callsite();
   cs->Set_callsite_id (proc->Get_callsite_count());
@@ -2209,24 +2208,25 @@ SUMMARIZE<program>::Process_virtual_function (SUMMARY_PROCEDURE * proc,
 // that IPA may add for this icall. Fix other summary data as if proc now
 // has another callsite.
 template <PROGRAM program>
-void
+SUMMARY_CALLSITE *
 SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
                                    INT loopnest, float probability)
 {
   Is_True (WN_operator (wn) == OPR_ICALL, ("Process_icall: ICALL expected"));
 
+  SUMMARY_CALLSITE * cs = NULL;
   // Tune this parameter
   const int freq_threshold = IPA_Icall_Min_Freq;
 
   const FB_Info_Call& info_call = Cur_PU_Feedback->Query_call(wn);
   if (!info_call.freq_entry.Known())
-    return;
+    return cs;
   if (info_call.freq_entry.Value() < freq_threshold)
-    return;
+    return cs;
 
   FB_Info_Icall info_icall = Cur_PU_Feedback->Query_icall(wn);
   if (info_icall.Is_uninit())
-    return;
+    return cs;
 
   if (info_icall.tnv._exec_counter < info_call.freq_entry.Value())
   {
@@ -2242,7 +2242,7 @@ SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
   const UINT64 callee_addr    = info_icall.tnv._values[0];
 
   if (exec_counter == 0 || callee_counter == 0)
-    return;
+    return cs;
 
   // For now, we have decided to proceed with ICALL transformation for
   // this icall, IPA will finally decide whether to actually transform it.
@@ -2253,7 +2253,7 @@ SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
   // prototype. Since this ST is just for temporary use in summary data, we
   // do not try to be accurate here.
 
-  SUMMARY_CALLSITE * cs = New_callsite();
+  cs = New_callsite();
   cs->Set_callsite_id (proc->Get_callsite_count());
   cs->Set_loopnest (loopnest);
   cs->Set_probability (probability);
@@ -2296,7 +2296,7 @@ SUMMARIZE<program>::Process_icall (SUMMARY_PROCEDURE * proc, WN * wn,
 
   proc->Incr_callsite_count ();
   proc->Incr_call_count ();
-  return;
+  return cs;
 } // SUMMARIZE::Process_icall
 #endif // KEY && !(_STANDALONE_INLINER) && !(_LIGHTWEIGHT_INLINER)
 

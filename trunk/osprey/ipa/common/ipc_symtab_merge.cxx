@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1151,7 +1151,8 @@ Synch_Pu_With_Pu (PU& merged_pu, const PU& original_pu)
 	PU_IS_MAINPU | PU_UPLEVEL | PU_MP_NEEDS_LNO | PU_HAS_ALLOCA |
 	PU_IN_ELF_SECTION | PU_HAS_MP | PU_MP | PU_HAS_NAMELIST |
 	PU_HAS_RETURN_ADDRESS | PU_HAS_REGION | PU_HAS_INLINES |
-	PU_CALLS_SETJMP | PU_CALLS_LONGJMP | PU_HAS_USER_ALLOCA;
+	PU_CALLS_SETJMP | PU_CALLS_LONGJMP | PU_HAS_USER_ALLOCA |
+	PU_HAS_ATTR_NORETURN | PU_NOTHROW;
 
     const UINT64 original_flags = original_pu.flags;
     UINT64 merged_flags = merged_pu.flags;

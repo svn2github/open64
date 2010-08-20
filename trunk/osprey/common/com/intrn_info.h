@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -73,6 +73,9 @@ typedef enum INTRN_RETKIND {
   IRETURN_SZT,               /* size_t */
   IRETURN_PC,                /* pointer to char */
   IRETURN_F10,               /* MTYPE_F10 */
+  IRETURN_C10,               /* MTYPE_C10 */
+  IRETURN_F16,               /* MTYPE_F16 */
+  IRETURN_C16,               /* MTYPE_C16 */
 #ifdef TARG_X8664
   IRETURN_V16I2,	     /* MTYPE_V16I2 */
   IRETURN_V16I4,	     /* MTYPE_V16I4 */
@@ -101,6 +104,12 @@ typedef enum INTRN_RETKIND {
   IRETURN_PPI4,         /* return type of ctype_toupper_loc() and ctype_tolower_loc() */
 } INTRN_RETKIND;
 #define INTRN_RETKIND_LAST IRETURN_F10
+
+#if defined(TARG_IA64) || defined(TARG_X8664)
+#define IRETURN_LD IRETURN_F10
+#else
+#define IRETURN_LD IRETURN_FQ
+#endif
 
 // some defines to make parameters more readable
 #define BYVAL		TRUE

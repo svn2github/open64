@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -165,6 +165,7 @@ BE_OPT_CXX_SRCS = \
   opt_cfg.cxx		\
   opt_reasso.cxx     \
   opt_cfg_trans.cxx	\
+  opt_proactive.cxx     \
   opt_combine.cxx	\
   opt_cond_const.cxx	\
   opt_count.cxx	        \
@@ -234,7 +235,8 @@ BE_OPT_CXX_SRCS = \
   opt_lclsc.cxx         \
   opt_misc.cxx          \
   opt_lmv.cxx           \
-  opt_lmv_helper.cxx
+  opt_lmv_helper.cxx   \
+  opt_peel_unroll.cxx
 
 ifeq ($(BUILD_PCH), USE_PCH)
 BACK_END_PCH_OBJS = $(BE_OPT_CXX_SRCS:.cxx=.o)

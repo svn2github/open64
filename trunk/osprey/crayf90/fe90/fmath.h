@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -327,8 +331,8 @@
 #define TINY_REAL16_F90_Y "0.0"
 #endif
 /* IEEE: */
-#define TINY_REAL4_F90_IEEE   "1.175494350822287508E-38"
-#define TINY_REAL8_F90_IEEE   "2.225073858507201383E-308"
+#define TINY_REAL4_F90_IEEE   "1.1754944E-38"
+#define TINY_REAL8_F90_IEEE   "2.2250738585072014E-308"
 
 /* until REAL16 is ready on Cray ieee, this must be the same as REAL8 */
 #if (defined(_TARGET_OS_IRIX) || defined(_TARGET_OS_LINUX) || defined(_TARGET_OS_DARWIN))

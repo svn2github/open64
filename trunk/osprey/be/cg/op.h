@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -344,6 +344,9 @@ typedef struct op {
   mUINT16	orig_bb_id;	/* id of orig bb before speculation */
 #endif
   mINT16	scycle;		/* Start cycle */
+#ifdef TARG_X8664
+  mINT16	d_group;	/* Dispatch group */
+#endif
   mTOP		opr;		/* Opcode. topcode.h */
   mUINT8	unrolling;	/* which unrolled replication (if any) */
 #if defined(TARG_SL)
@@ -398,6 +401,9 @@ typedef struct op {
 #define OP_variant(o)	((o)->variant)
 #endif
 #define OP_scycle(o)	((o)->scycle)
+#ifdef TARG_X8664
+#define OP_dgroup(o)	((o)->d_group)
+#endif
 #define OP_flags(o)	((o)->flags)
 #ifdef TARG_IA64
 #define OP_flags_val_prof(o)    ((o)->flag_value_profile)
@@ -713,6 +719,8 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_load_exe(o)		(TOP_is_load_exe(OP_code(o)))
 #define OP_load_exe_store(o)	(TOP_is_load_exe_store(OP_code(o)))
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
+#define OP_mcode(o)             (TOP_is_mcode(OP_code(o)))
+#define OP_is4(o)               (TOP_is_is4_reg(OP_code(o)))
 #else
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
 #endif

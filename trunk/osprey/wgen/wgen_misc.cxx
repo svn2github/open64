@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -141,6 +141,7 @@ enum debug_info_level
 enum debug_info_level debug_info_level;
 // End gnu/flags.h data decl
 
+BOOL gv_cond_expr = FALSE;
 
 
 /* ====================================================================
@@ -841,8 +842,14 @@ WGEN_Get_Guard_Var()
   // Top of stack is NULL_TREE.  Replace top of stack with a real guard
   // variable.
   guard_vars.pop_back();	// Pop off the NULL_TREE.
+  //Set flag gv_cond_expr to indicate a new guard variable for a 
+  //conditional expression is being created.
+  //See comments for WGEN_add_guard_var in wgen_expr.cxx 
+  //for information on conditional expressions.
+  gv_cond_expr = TRUE;
   t = gs_build_decl(GS_VAR_DECL, gs_integer_type_node());
   Get_ST(t);
+  gv_cond_expr = FALSE;
   guard_vars.push_back(t);	// Push new guard variable onto stack.
   return t;
 }

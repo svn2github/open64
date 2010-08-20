@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -991,8 +991,10 @@ add_file_args (string_list_t *args, phases_t index)
 			    input_source = construct_name(input_source,"ii");
 			else if (source_lang == L_as) {
 			    input_source = construct_name(input_source,"s");
-			    if (!keep_flag)
+			    if (!keep_flag) {
 			      input_source = concat_strings(input_source, ".s");
+			      mark_for_cleanup(input_source);
+			    }
 			}
 			else
 			    input_source = construct_name(input_source,"i");
@@ -2342,14 +2344,24 @@ postprocess_ld_args (string_list_t *args)
                     HUGEPAGE_DESC desc;
 
                     for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                        if (desc->alloc == ALLOC_BDT && !do_link) {
+                        if ((desc->alloc == ALLOC_BD
+			     || desc->alloc == ALLOC_BDT)
+			    && !do_link) {
                             /* libhugetlbfs linker script only supports dynamic link. 
                              */
                             if (!option_was_seen(O_static)) {
-                                if (desc->size == SIZE_2M)
-                                    dir = concat_strings(dir, "/elf.xBDT");
-                                else if (desc->size == SIZE_1G)
-                                    dir = concat_strings(dir, "/elf_1G.xBDT");
+				if (desc->alloc == ALLOC_BD) {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBD");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBD");
+				}
+				else {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBDT");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBDT");
+				}
                                 
                                 add_after_string(args, p, concat_strings("-Wl,-T", dir));
                                 do_link = TRUE;

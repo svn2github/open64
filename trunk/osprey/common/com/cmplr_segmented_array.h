@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* -*- c++ -*-
  *
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
@@ -469,7 +473,7 @@ RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
     map.push_back(pair<T*, BOOL>(marker, own_memory));
     new_size -= block_size;
     marker += block_size;
-    own_memory += false;	//Only the first entry can be freed for a block that
+    own_memory = FALSE;         //Only the first entry can be freed for a block that
 				//is larger than block_size. By: Jon Hsu, 11 May 2001.
   } while (new_size);
 } // RELATED_SEGMENTED_ARRAY<T,block_size>::Update_Map

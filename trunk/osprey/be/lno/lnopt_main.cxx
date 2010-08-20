@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -907,6 +907,7 @@ Fully_Unroll_Short_Loops(WN* wn)
   }
   else if (oper == OPR_DO_LOOP    &&
            !Do_Loop_Has_Calls(wn) &&
+           !Do_Loop_Has_EH_Regions(wn) &&
 #ifndef KEY
            (!Do_Loop_Has_Exits(wn) || Do_Loop_Is_Regular(wn)) &&
 	   !Do_Loop_Has_Conditional(wn) &&
@@ -1598,14 +1599,16 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       }
       if (graph_is_ok)
       { 
-        Invariant_Factorization(func_nd);
-        Array_Dependence_Graph->Erase_Graph();
-        graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
-        if (graph_is_ok)
-	    { 
-           Minvariant_Removal(func_nd, Array_Dependence_Graph);
-	    }
-
+        BOOL rebuild_dg = Invariant_Factorization(func_nd);
+        if (rebuild_dg)
+        {
+          Array_Dependence_Graph->Erase_Graph();
+          graph_is_ok =  Build_Array_Dependence_Graph (func_nd);
+          if (graph_is_ok)
+	  { 
+             Minvariant_Removal(func_nd, Array_Dependence_Graph);
+          }
+	}
         for(INT ii=0; ii<unroll_and_jammed_loops->Elements(); ii++){
             WN *loop = unroll_and_jammed_loops->Bottom_nth(ii);
             INT64 trip_count = Num_Iters(loop);

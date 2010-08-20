@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2335,6 +2339,20 @@ CIO_RWTRAN::CICSE_Transform( BB *body )
 	  source = 0;
 	  break;
 	}
+      }
+      // same as above:  stores have results also
+      if (OP_results(op) == 0 && OP_store(op))
+      {
+        for (INT res = OP_opnds(op) - 1; res >= 0; res--) {
+          TN *tn = OP_opnd(op, res);
+          if (TN_is_global_reg(tn)) {
+            CICSE_entry &source_entry = cicse_table[index];
+            Reset_OP_flag1(source_entry.op);
+            source_entry.source = 0;
+            source = 0;
+            break;
+          }
+        }
       }
 #endif
       entry.opnd_source[opnd] = source;

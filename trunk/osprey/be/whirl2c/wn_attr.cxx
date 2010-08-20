@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -251,6 +251,9 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
    case IRETURN_F8:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_F8);
       break;
+   case IRETURN_F10:
+      ret_ty = Stab_Mtype_To_Ty(MTYPE_F10);
+      break;
    case IRETURN_FQ:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_FQ);
       break;
@@ -259,6 +262,9 @@ WN_intrinsic_return_ty(OPCODE wn_opc, INTRINSIC intr_opc, const WN *call)
       break;
    case IRETURN_C8:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_C8);
+      break;
+   case IRETURN_C10:
+      ret_ty = Stab_Mtype_To_Ty(MTYPE_C10);
       break;
    case IRETURN_CQ:
       ret_ty = Stab_Mtype_To_Ty(MTYPE_CQ);

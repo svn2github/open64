@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -109,9 +109,11 @@
 		    ((TCON_ty(c) == MTYPE_U8) ? TCON_U8(c) : TCON_U4(c)))
 
 #define TCON_R8(c)	((c).vals.dval)
+#define TCON_R10(c)	((c).vals.ldval)
 #define TCON_R16(c)	((c).vals.qval)
 
 #define TCON_IR8(c)	((c).cmplxval.dival)
+#define TCON_IR10(c)	((c).cmplxval.ldival)
 #define TCON_IR16(c)	((c).cmplxval.qival)
 /* The internal representation of 32-bit floats may be double: */
 #ifdef TCON_R4_IS_DOUBLE
@@ -127,9 +129,11 @@
 
 #define Set_TCON_R4(c,v)	(TCON_R4(c) = v)
 #define Set_TCON_R8(c,v)	(TCON_R8(c) = v)
+#define Set_TCON_R10(c,v)	(TCON_R10(c) = v)
 #define Set_TCON_R16(c,v)	(TCON_R16(c) = v)
 #define Set_TCON_IR4(c,v)	(TCON_IR4(c) = v)
 #define Set_TCON_IR8(c,v)	(TCON_IR8(c) = v)
+#define Set_TCON_IR10(c,v)	(TCON_IR10(c) = v)
 #define Set_TCON_IR16(c,v)	(TCON_IR16(c) = v)
 /* WARNING:  We haven't carefully checked the implications of using
  * doubles for 32-bit floats -- must be done if turned on.

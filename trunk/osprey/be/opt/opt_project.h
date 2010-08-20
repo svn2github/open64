@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 // ====================================================================
 // ====================================================================
@@ -190,7 +194,7 @@ Sin_cos_intrinsic(const INTRINSIC intrinsic)
 inline BOOL
 Projectable_operation(const CODEREP *const cr)
 {
-  return (Projectable_operation(cr->Op()) ||
+  return (Projectable_operation(cr->Op()) || OPCODE_rtype(cr->Op()) == MTYPE_V16C8 ||
 	  (OPCODE_operator(cr->Op()) == OPR_INTRINSIC_OP &&
 	   Sin_cos_intrinsic((INTRINSIC) cr->Intrinsic())));
 }

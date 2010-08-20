@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -665,6 +665,16 @@ int parse_elf_relinked(struct dl_phdr_info *info, size_t size, void *data)
                         DEBUG("HUGETLB_DISABLE_MAPPING_TEXT set, not mapping text\n");
                         continue;
                 }
+                if (! (info->dlpi_phdr[i].p_flags & PF_W)
+		    && (info->dlpi_phdr[i].p_flags & PF_LINUX_HUGETLB_NTM)) {
+		    if (getenv("HUGETLB_ENABLE_MAPPING_TEXT")) {
+			DEBUG("HUGETLB_ENABLE_MAPPING_TEXT set, mapping text\n");
+		    }
+		    else {
+			DEBUG("no text mapping, PF_LINUX_HUGETLB_NTM set in physical header flags\n");
+			continue;
+		    }
+		}
 #endif
 
 		if (save_phdr(htlb_num_segs, i, &info->dlpi_phdr[i]))
@@ -975,13 +985,21 @@ static void remap_segments(struct seg_info *seg, int num)
 
         unsigned long oldbrk;
         unsigned long seg_start = 0;
+        unsigned total_pages = 0;
+	int map_private = hugepage_elf_stype == SIZE_2M;
 
+	if (getenv("HUGETLB_ELF_MAP_SHARED") != NULL) {
+	    DEBUG("HUGETLB_ELF_MAP_SHARED set\n");
+	    map_private = 0;
+	}
         newbrk = oldbrk = (unsigned long) sbrk(0);
         DEBUG("Old brk=0x%lx\n", oldbrk);
 
         for (i = 0; i < num; i++) {
             unsigned long slice_start, slice_end;
             unsigned long offset = (unsigned long) seg[i].vaddr + seg[i].memsz;
+	    unsigned long pages = (seg[i].memsz + hpage_size - 1 ) / hpage_size ;
+	    unsigned long cow_pages = (seg[i].filesz + seg[i].extrasz + hpage_size - 1 ) / hpage_size ;
             DEBUG("%p+0x%lx\n", seg[i].vaddr, seg[i].memsz);
             slice_start = hugetlb_slice_start((unsigned long) seg[i].vaddr);
             slice_end = hugetlb_slice_end(offset);
@@ -994,18 +1012,56 @@ static void remap_segments(struct seg_info *seg, int num)
             if ((seg_start == 0) || (slice_start < seg_start))
                 seg_start = slice_start;
 
-            /* Attempt to put heap and data in the same page for 1G huge pages */
-            if (hugepage_elf_stype == SIZE_1G) {
-                if (offset > (unsigned long) heapbase)
-                    heapbase = (void *) offset;
+	    if (seg[i].prot & PROT_WRITE) {
+		char *env;
+		int npages;
+		unsigned long memsz;
+
+                /* Attempt to put heap and data in the same page for 1G huge pages
+                 */
+                if (hugepage_elf_stype == SIZE_1G) {
+                    /* Normally we start out with heapbase == heaptop,
+                     * but now heapbase is the start of the data section,
+                     * and heaptop is the end of BSS aligned up.
+                     */
+                    heapbase = seg[i].vaddr;
+                    heaptop = seg[i].vaddr + seg[i].memsz;
+                    heaptop = (void *) ALIGN_UP((unsigned long) heaptop, 16);
+                    mapsize = hpage_size;
+                }
+		if (map_private) {
+		    DEBUG("reserving %ld pages for COW faults on segment %d\n", cow_pages, i);
+		    total_pages += cow_pages;
+		}
+		if ((env = getenv("HUGETLB_BD_PAGES")) != NULL) {
+		    npages = atol(env);
+		    memsz = npages * hpage_size;
+		    DEBUG("HUGETLB_BD_PAGES set, seg index %d to %d pages\n", i, npages);
+		    if (seg[i].memsz < memsz) {
+			DEBUG("seg index %d memsz set to %ld via HUGETLB_BD_PAGES\n",
+			      i, memsz);
+			seg[i].memsz = memsz;
+                        mapsize = memsz;
+                        newbrk = seg_start + memsz;
+		    }
+		    else {
+			DEBUG("HUGETLB_BD_PAGES setting has no effect since it is too small\n");
+		    }
+		}
             }
+	    pages = (seg[i].memsz + hpage_size - 1 ) / hpage_size ;
+            DEBUG("reserving %ld pages for segment %d\n", pages, i);
+	    total_pages += pages;
+        }
+        if (hugepage_elf_stype == SIZE_1G) {
+            __hugetlbfs_setup_bd_morecore();
         }
 
         DEBUG("New brk=0x%lx\n", newbrk);
         DEBUG("Seg start=0x%lx\n", seg_start);
 
         if (newbrk > seg_start) {
-            hugepages_seg_total = (newbrk - seg_start) / hpage_size;
+            hugepages_seg_total = total_pages;
             DEBUG("Mapping segments uses %ld huge pages.\n", hugepages_seg_total);
         }
         
@@ -1021,7 +1077,8 @@ static void remap_segments(struct seg_info *seg, int num)
                 heapbase = 0;
         }
 
-        munmap((void *)oldbrk, newbrk - oldbrk);
+        if (newbrk != oldbrk)
+            munmap((void *)oldbrk, newbrk - oldbrk);
 #endif
 
 	/*
@@ -1046,9 +1103,30 @@ static void remap_segments(struct seg_info *seg, int num)
 	 * segments before the MMU segment is ok for hugepages */
 	for (i = 0; i < num; i++) {
 		unsigned long mapsize = ALIGN(seg[i].memsz, hpage_size);
+#ifdef OPEN64_MOD
+		int mmap_flags = (map_private ? MAP_PRIVATE : MAP_SHARED)|MAP_FIXED;
 
+		/*
+		 * If this is a read-only mapping whose contents are
+		 * entirely contained within the file, then use MAP_NORESERVE.
+		 * The assumption is that the pages already exist in the
+		 * page cache for the hugetlbfs file since it was prepared
+		 * earlier and that mprotect() will not be called which would
+		 * require a COW
+		 */
+		if (map_private && !(seg[i].prot & PROT_WRITE) &&
+				seg[i].filesz == seg[i].memsz)
+			mmap_flags |= MAP_NORESERVE;
+
+		/* Note MAP_PRIVATE (COW) would be needed if writable
+		 * segment sharing was allowed (it is currently disabled).
+		 */
+		p = mmap(seg[i].vaddr, mapsize, seg[i].prot,
+			 mmap_flags, seg[i].fd, 0);
+#else
 		p = mmap(seg[i].vaddr, mapsize, seg[i].prot,
 			 MAP_PRIVATE|MAP_FIXED, seg[i].fd, 0);
+#endif
 		if (p == MAP_FAILED)
 			unmapped_abort("Failed to map hugepage segment %u: "
 				       "%p-%p (errno=%u)\n", i, seg[i].vaddr,

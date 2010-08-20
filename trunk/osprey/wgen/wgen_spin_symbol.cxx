@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -96,6 +96,7 @@ typedef struct {
 extern int pstatic_as_global;
 extern BOOL flag_no_common;
 extern gs_t decl_arguments;
+extern BOOL gv_cond_expr;
 
 extern void Push_Deferred_Function(gs_t);
 extern char *WGEN_Tree_Node_Name(gs_t op);
@@ -411,7 +412,9 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 	TYPE_ID mtype;
 	INT64 tsize;
 	BOOL variable_size = FALSE;
+        
 	gs_t type_size = gs_type_size(type_tree);
+        gs_string_t type_mode  = gs_type_mode (type_tree);
 #ifndef KEY
 	UINT align = gs_type_align(type_tree) / BITSPERBYTE;
 #endif
@@ -544,14 +547,27 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		switch (tsize) {
 		case 4:  mtype = MTYPE_F4; break;
 		case 8:  mtype = MTYPE_F8; break;
-#ifdef TARG_IA64
-		case 12:
-		case 16: mtype = MTYPE_F10; break;
+#if defined(TARG_IA64) || defined(TARG_X8664)
+                // the correct way to get the type is from type mode
+                // so it can support float_128
+                case 12:
+                  FmtAssert(!TARGET_64BIT, ("Get_TY unexpected size"));
+                  // fall through
+                case 16: 
+                  {
+#ifdef SUPPORT_FLOAT128
+                     if (strcmp("XF", type_mode) == 0)
+                       mtype = MTYPE_F10; 
+                     else if (strcmp("TF",type_mode) == 0)
+                       mtype = MTYPE_F16;
+                     else 
+                       FmtAssert(FALSE, ("Get_TY unexpected size"));
+#else
+                     mtype = MTYPE_F10;
 #endif
-#ifdef TARG_X8664
-		case 12: mtype = MTYPE_FQ; break;
-#endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+                     break;
+                  }
+#elif defined(TARG_MIPS) || defined(TARG_IA32) 
 		case 16: mtype = MTYPE_FQ; break;
 #endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
@@ -564,13 +580,27 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		case 4: ErrMsg (EC_Unsupported_Type, "Complex integer");
 		case  8:  mtype = MTYPE_C4; break;
 		case 16:  mtype = MTYPE_C8; break;
-#ifdef TARG_IA64
-		case 32: mtype = MTYPE_C10; break;
+#if defined(TARG_IA64) || defined(TARG_X8664)
+                // the correct way to get the type is from type mode
+                // so it can support float_128
+                case 24:
+                  FmtAssert(!TARGET_64BIT, ("Get_TY unexpected size"));
+                  // fall through
+                case 32: 
+                  {
+#ifdef SUPPORT_FLOAT128
+                     if (strcmp("XC", type_mode) == 0)
+                       mtype = MTYPE_C10; 
+                     else if (strcmp("TC",type_mode) == 0)
+                       mtype = MTYPE_C16;
+                     else 
+                       FmtAssert(FALSE, ("Get_TY unexpected size"));
+#else
+                     mtype = MTYPE_C10;
 #endif
-#ifdef TARG_X8664
-		case 24:  mtype = MTYPE_CQ; break;
-#endif
-#if defined(TARG_MIPS) || defined(TARG_IA32) || defined(TARG_X8664)
+                     break;
+                  }
+#elif defined(TARG_MIPS) || defined(TARG_IA32) 
 		case 32: mtype = MTYPE_CQ; break;
 #endif /* TARG_MIPS */
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
@@ -1527,7 +1557,6 @@ Create_ST_For_Tree (gs_t decl_node)
   ST_EXPORT  eclass;
   SYMTAB_IDX level;
   static INT anon_count = 0;
-  BOOL anon_st = FALSE;
 
 
   // If the decl is a function decl, and there are duplicate decls for the
@@ -1546,7 +1575,6 @@ Create_ST_For_Tree (gs_t decl_node)
   if (gs_tree_code(decl_node) == GS_RESULT_DECL) {
     sprintf(tempname, ".result_decl_%d", gs_decl_uid(decl_node));
     name = tempname;
-    anon_st = TRUE;
   }
   else if ((gs_tree_code(decl_node) == GS_FUNCTION_DECL ||
             gs_tree_code(decl_node) == GS_PARM_DECL ||
@@ -1561,7 +1589,6 @@ Create_ST_For_Tree (gs_t decl_node)
   else {
     sprintf(tempname, "anon%d", ++anon_count);
     name = tempname;
-    anon_st = TRUE;
   }
 
 #ifdef KEY
@@ -1651,6 +1678,20 @@ Create_ST_For_Tree (gs_t decl_node)
             eclass != EXPORT_LOCAL &&
             eclass != EXPORT_LOCAL_INTERNAL)
 	  Set_ST_is_weak_symbol(st);
+
+        // process attributes for FUNCTION_DECL
+        gs_t attr_list = gs_decl_attributes(decl_node);
+        for ( ; attr_list != NULL; attr_list = gs_tree_chain(attr_list) ) {
+                Is_True(gs_tree_code(attr_list) == GS_TREE_LIST,
+                                ("lookup_attributes: TREE_LIST node not found"));
+                gs_t attr = gs_tree_purpose(attr_list);
+                if ( is_attribute("noreturn", attr) ) // __attribute__((noreturn))
+                        Set_PU_has_attr_noreturn (pu);
+        }
+
+        if (gs_tree_nothrow (decl_node)) {
+          Set_PU_nothrow (pu);
+        }
       }
       break;
 
@@ -1813,8 +1854,10 @@ Create_ST_For_Tree (gs_t decl_node)
             }
           }
         }
-        // Make g++ guard variables local unless it's weak.
 	if (guard_var) {
+          // This is a guard variable created by the g++ front-end to protect
+          // against multiple initializations (and destruction) of symbols 
+          // with static storage class. Make it local unless it's weak.
 	  level = GLOBAL_SYMTAB;
           if ( gs_decl_weak(decl_node) ) {
 	    sclass = SCLASS_UGLOBAL;
@@ -1825,6 +1868,17 @@ Create_ST_For_Tree (gs_t decl_node)
             eclass = EXPORT_LOCAL;
           }
 	}
+        else if (gv_cond_expr) {
+          //Make guard variable for condtional expressions a local stack 
+          //variable to avoid being over-written when evaluating nested 
+          //conditional expressions.
+          //See comments for WGEN_add_guard_var in wgen_expr.cxx 
+          //for information on conditional expressions.
+          level = DECL_SYMTAB_IDX(decl_node) ?
+                  DECL_SYMTAB_IDX(decl_node) : CURRENT_SYMTAB;
+          sclass = SCLASS_AUTO;
+          eclass = EXPORT_LOCAL;
+	} 
 
 	// The tree under DECL_ARG_TYPE(decl_node) could reference decl_node.
 	// If that's the case, the Get_TY would create the ST for decl_node.
@@ -1882,7 +1936,7 @@ Create_ST_For_Tree (gs_t decl_node)
 	     (lang_cplus && gs_cp_decl_threadprivate_p (decl_node))))
 	  Set_ST_is_thread_private (st);
 
-	if (gs_tree_code (decl_node) == GS_VAR_DECL && anon_st)
+	if (gs_tree_code (decl_node) == GS_VAR_DECL && sclass == SCLASS_AUTO)
 	  WGEN_add_pragma_to_enclosing_regions (WN_PRAGMA_LOCAL, st);
 #endif
 

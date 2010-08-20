@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2008, 2009. PathScale, LLC. All Rights Reserved.
+ */
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1859,6 +1862,12 @@ cwh_addr_address_ST(ST * st, OFFSET_64 off, TY_IDX ty)
   case SCLASS_FORMAL:
 
     DevAssert((TY_kind(ty) == KIND_POINTER),("formal & non-pointer"));
+
+    if (ST_is_value_parm(st) && !ST_auxst_is_rslt_tmp(st) &&
+       !BY_VALUE(ty)) {
+       wn = cwh_addr_lda(st,off,ty);
+       return wn;
+    }
 
     wn = cwh_addr_ldid(st,0,ty);
     if (off != 0)

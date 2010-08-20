@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -378,11 +382,11 @@ Gather_Scatter_Scalar_Expand(WN*                                loop,
 	     wtype == MTYPE_F8 || wtype == MTYPE_C4) ? 8 :
   (wtype == MTYPE_I4 || wtype == MTYPE_U4 ||
    wtype == MTYPE_F4) ? 4 :
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
   (wtype == MTYPE_F10) ? 16 :
 #endif
   (wtype == MTYPE_FQ || wtype == MTYPE_C8) ? 16 :
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
   (wtype == MTYPE_C10 || wtype == MTYPE_CQ) ? 32 :
 #else
   (wtype == MTYPE_CQ) ? 32 :
@@ -891,7 +895,7 @@ INT64 Get_FP_Counts(WN* wn)
 	(OPCODE_rtype(opcode)==MTYPE_F4)|| 
 	(OPCODE_rtype(opcode)==MTYPE_F8)|| (OPCODE_desc(opcode)==MTYPE_C4) || 
 	(OPCODE_desc(opcode)==MTYPE_C8) || (OPCODE_rtype(opcode)==MTYPE_C4)||
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
 	OPCODE_desc(opcode) == MTYPE_F10 || OPCODE_rtype(opcode) == MTYPE_F10 ||
 	OPCODE_desc(opcode) == MTYPE_C10 || OPCODE_rtype(opcode) == MTYPE_C10 ||
 #endif
@@ -1330,7 +1334,7 @@ Perform_Gather_Scatter(
     DYN_ARRAY<SCALAR_NODE*> site_I1(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_U1(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_U1(&PHASE25_default_pool);
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     DYN_ARRAY<SCALAR_NODE*> use_F10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> site_F10(&PHASE25_default_pool);
     DYN_ARRAY<SCALAR_NODE*> use_C10(&PHASE25_default_pool);
@@ -1397,7 +1401,7 @@ Perform_Gather_Scatter(
 	use_U1.AddElement(exposed_use[i-1]->Bottom_nth(j));
 	site_U1.AddElement(exposed_site[i-1]->Bottom_nth(j));
 	break;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       case MTYPE_F10:
         use_F10.AddElement(exposed_use[i-1]->Bottom_nth(j));
         site_F10.AddElement(exposed_site[i-1]->Bottom_nth(j));
@@ -1468,7 +1472,7 @@ Perform_Gather_Scatter(
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
 				   loop_current, use_U1, site_U1, 
 				   if_stmt, &alloc_loop,&dealloc_loop);
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     if (use_F10.Elements())
       Gather_Scatter_Scalar_Expand(loop_first, ld_inc, tile_loop,
                                    loop_current, use_F10, site_F10,

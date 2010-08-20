@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -144,7 +144,7 @@ private:
   CODEREP  *_incr_var;  
   CODEREP  *_init_value;
   CODEREP  *_step_value;  // the value that the var incremented every time
-  MTYPE     _dtype;
+  MTYPE     _dtype : 8;
   BOOL      _is_primary;
 
   IV_CAND(const IV_CAND&);
@@ -312,6 +312,8 @@ private:
   void     Reset_dont_prop(CODEREP *cr, const BB_LOOP *loop);
 
   void     Set_rebuild_loops(void) { _rebuild_loops = TRUE; }
+
+  void     Canon_loop_end_br (BB_LOOP*, IV_CAND*);
 
 public:
   IVR(COMP_UNIT *cu, BOOL trace);

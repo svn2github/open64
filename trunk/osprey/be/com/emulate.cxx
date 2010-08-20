@@ -845,9 +845,18 @@ static WN *checkForZero(WN *block, TYPE_ID type, PREG_NUM xN, WN *if_else, WN *v
 
     Is_True(MTYPE_is_float(type), ("unexpected type"));
 
-    cond =  WN_EQ(type, 
+    if (type != MTYPE_V16C8)
+      cond =  WN_EQ(type, 
 		  WN_LdidPreg(type, xN),
 		  WN_Zerocon(type));
+    else
+    {
+      cond = WN_LAND( 
+        WN_EQ(MTYPE_F8, WN_Unary(OPR_FIRSTPART, MTYPE_F8, 
+          WN_LdidPreg(type, xN)), WN_Zerocon(MTYPE_F8)), 
+        WN_EQ(MTYPE_F8, WN_Unary(OPR_SECONDPART, MTYPE_F8, 
+          WN_LdidPreg(type, xN)), WN_Zerocon(MTYPE_F8))); 
+    }
 
     IF = WN_CreateIf(cond, if_then, if_else);
     WN_INSERT_BlockLast(block, IF);
@@ -2153,7 +2162,8 @@ static WN *em_complex_exp(WN *block, WN *x)
 {
   TYPE_ID	type = WN_rtype(x);
   TYPE_ID	rtype = Mtype_complex_to_real(type);
-  PREG_NUM	zN, expN;
+  PREG_NUM	zN, expN, iN;
+  BOOL		paired_input = FALSE;
   WN		*cosine,*sine;
   WN		*exp;
   WN		*realpart, *imagpart ;
@@ -2165,11 +2175,16 @@ static WN *em_complex_exp(WN *block, WN *x)
    case MTYPE_F8: expID = INTRN_F8EXP; cosID = INTRN_F8COS; sinID = INTRN_F8SIN; break;
    case MTYPE_FQ: expID = INTRN_FQEXP; cosID = INTRN_FQCOS; sinID = INTRN_FQSIN; break;
   }
-  
-  zN = AssignExpr(block, x, type);
+  if (WN_operator(x) == OPR_PAIR && rtype == MTYPE_F8)
+  {
+    paired_input = TRUE;
+    iN = AssignExpr(block, WN_COPY_Tree(WN_kid1(x)), rtype);
+  } else
+    zN = AssignExpr(block, x, type);
   exp= Intrinsic(rtype,
 		 expID,
 		 1,
+		 paired_input? WN_COPY_Tree(WN_kid0(x)) :
 		 WN_Realpart(rtype,WN_LdidPreg(type, zN)), NULL);
   
   expN = AssignExpr(block, exp, rtype);
@@ -2177,11 +2192,13 @@ static WN *em_complex_exp(WN *block, WN *x)
   cosine = Intrinsic(rtype,
 		     cosID,
 		     1,
+		     paired_input?WN_LdidPreg(rtype, iN):
 		     WN_Imagpart(rtype,WN_LdidPreg(type, zN)), NULL);
   
   sine = Intrinsic(rtype,
 		   sinID,
 		   1,
+		   paired_input?WN_LdidPreg(rtype, iN):
 		   WN_Imagpart(rtype,WN_LdidPreg(type, zN)), NULL);
   /*
    *	cis  =  cos(iz) + i*sin(iz);
@@ -2189,6 +2206,11 @@ static WN *em_complex_exp(WN *block, WN *x)
    *	real =  e**(rz) * REAL(cis);
    *	imag =  e**(rz) * IMAG(cis);
    */
+  /* it is a performance hack that sincos is not called directly, WOPT 
+   * would combine them. The gain is that as the imagine part is used 
+   * twice(fakely), so that the expression would be not evaluated 
+   * between the two calls. Virtually reduce load/store, as all xmm 
+   * registers are not saved by callee.  * */
   realpart = WN_Mpy(rtype,
 		    WN_LdidPreg(rtype, expN),
 		    cosine);
@@ -2387,8 +2409,10 @@ static WN *em_complex_sin(WN *block, WN *x)
  *  If (Fast_Complex_Allowed == FALSE) will generate more accurate code
  *  but divide by zero for xN and yN both zero !!!
  *
+ * Mod: xN and yN is not PREG anymore, as some of the following code 
+ * can not deal with PREG
  * ==================================================================== */
-static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
+static WN *em_preg_hypot(WN *block, TYPE_ID type, WN *xT, WN *yT)
 {
   if (Fast_Complex_Allowed)
   {
@@ -2399,12 +2423,12 @@ static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
     WN	*x2, *y2, *add, *hypot;
     
     x2 = WN_Mpy(type,
-		WN_LdidPreg(type, xN),
-		WN_LdidPreg(type, xN));
+		WN_COPY_Tree(xT),
+		WN_COPY_Tree(xT));
 
     y2 = WN_Mpy(type,
-		WN_LdidPreg(type, yN),
-		WN_LdidPreg(type, yN));
+		WN_COPY_Tree(yT),
+		WN_COPY_Tree(yT));
 
     add = WN_Add(type, x2, y2);
  
@@ -2432,11 +2456,11 @@ static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
     WN	*cond, *w, *z, *div, *mpy, *add, *sqrt, *hypot, *az;
     
     axN = AssignExpr(block,
-		     WN_Abs(type, WN_LdidPreg(type, xN)),
+		     WN_Abs(type, WN_COPY_Tree(xT)),
 		     type);
     
     ayN = AssignExpr(block,
-		     WN_Abs(type, WN_LdidPreg(type, yN)),
+		     WN_Abs(type, WN_COPY_Tree(yT)),
 		     type);
     
    /*
@@ -2451,8 +2475,8 @@ static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
 
     w = WN_Select(type,
 		  cond,
-		  WN_LdidPreg(type, yN),
-		  WN_LdidPreg(type, xN));
+		  WN_COPY_Tree(yT),
+		  WN_COPY_Tree(xT));
 
     cond = WN_GT(type,
 		 WN_LdidPreg(type, axN),
@@ -2460,8 +2484,8 @@ static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
 
     z = WN_Select(type,
 		  cond,
-		  WN_LdidPreg(type, xN),
-		  WN_LdidPreg(type, yN));
+		  WN_COPY_Tree(xT),
+		  WN_COPY_Tree(yT));
 
     zN = AssignExpr(block, z, type);
 
@@ -2499,14 +2523,10 @@ static WN *em_preg_hypot(WN *block, TYPE_ID type, PREG_NUM xN, PREG_NUM yN)
 static WN *em_hypot(WN *block, WN *x, WN *y) 
 {
   TYPE_ID	type = WN_rtype(x);
-  PREG_NUM	xN, yN;
 
   Is_True((type == WN_rtype(y)), ("em_hypot(): type mismatch"));
 
-  xN = AssignExpr(block, x, type);
-  yN = AssignExpr(block, y, type);
-
-  return em_preg_hypot(block, type, xN, yN);
+  return em_preg_hypot(block, type, x, y); 
 }
 
 /* ====================================================================
@@ -2633,6 +2653,9 @@ static WN *em_complex_abs(WN *block, WN *z)
 static WN *em_complex_sqrt_preg(WN *block, TYPE_ID type, PREG_NUM zN_in) 
 {
   PREG_NUM	ziN, zN, absN, t1N, t2N, t3N;
+  if (type == MTYPE_V16C8)
+    type = MTYPE_C8;
+
   TYPE_ID	rtype = Mtype_complex_to_real(type);
 
   zN = AssignExpr(block,WN_Realpart(rtype,WN_LdidPreg(type,zN_in)),rtype);
@@ -2644,7 +2667,7 @@ static WN *em_complex_sqrt_preg(WN *block, TYPE_ID type, PREG_NUM zN_in)
     */
     WN	*norm, *add, *mpy, *sqrt;
 
-    norm = em_preg_hypot(block, rtype, zN, ziN);
+    norm = em_preg_hypot(block, rtype, WN_LdidPreg(rtype, zN), WN_LdidPreg(rtype, ziN));
 
     absN = AssignExpr(block, norm, rtype);
 
@@ -4365,6 +4388,10 @@ extern WN *intrinsic_runtime(WN *block, WN *tree)
      *  This is known in the FE as RSTYLE_VIA_FIRST_ARG
      *  The parameter is by reference
      */
+#ifdef TARG_X8664
+    if (WN_rtype(tree) == MTYPE_V16C8)
+      WN_set_rtype(tree, MTYPE_C8);
+#endif
     TYPE_ID	rtype = WN_rtype(tree);
 
     switch(rtype)

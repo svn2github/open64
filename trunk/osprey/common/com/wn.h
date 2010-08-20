@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -1498,6 +1502,28 @@ WN_generic_call (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, INT32 n, ST *sym)
     return WN_generic_call (opr, rtype, desc, n, ST_st_idx (sym));
 }
 
+inline BOOL
+OPERATOR_is_scalar_load (OPERATOR opr)
+{
+    return (opr == OPR_LDID || opr == OPR_LDBITS);
+}
+
+inline BOOL
+OPERATOR_is_scalar_store (OPERATOR opr)
+{
+    return (opr == OPR_STID || opr == OPR_STBITS);
+}
+
+inline BOOL 
+OPERATOR_is_scalar_iload (OPERATOR opr)
+{
+    return (opr == OPR_ILOAD || opr == OPR_ILDBITS || opr == OPR_ILOADX);
+}
+inline BOOL
+OPERATOR_is_scalar_istore (OPERATOR opr)
+{
+    return (opr == OPR_ISTORE || opr == OPR_ISTBITS || opr == OPR_ISTOREX);
+}
 
 extern WN* WN_CreateAffirm (WN* condition);
 extern WN* WN_CreateAlloca (WN* size);
@@ -1509,6 +1535,12 @@ extern void WN_set_st_addr_saved (WN *);
 extern BOOL WN_has_side_effects (const WN*);
 
 extern WN *WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt);
+extern BOOL WN_is_executable(WN *);
+extern BOOL WN_is_bit_op(WN *);
+extern int  WN_get_bit_from_const(WN *);
+extern WN * WN_get_bit_from_expr(WN *);
+extern BOOL WN_is_power_of_2(WN *);
+extern WN * WN_get_bit_reduction(WN *);
 
 #if defined(TARG_SL)
 extern WN* WN_CreateFork(INT32 label_number, BOOL major);

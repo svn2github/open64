@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -282,6 +282,59 @@ BB_like_entry(BB* bb)
     return FALSE;
 }
 
+#ifdef TARG_X8664
+/*
+ * Handle the GNU regparm extension (including fastcall) on IA-32:
+ *
+ * Is this BB a non-standard call that takes the register as an argument?
+ */
+static BOOL
+Is_Regparm_Call(BB *bb, INT regnum)
+{
+    if (!Is_Target_32bit() || !BB_call(bb))
+        return FALSE;
+
+    CALLINFO *call_info = ANNOT_callinfo(
+        ANNOT_Get(BB_annotations(bb), ANNOT_CALLINFO));
+
+    ST *call_st = CALLINFO_call_st(call_info);
+    WN *call_wn = CALLINFO_call_wn(call_info);
+
+    TY_IDX func_type = call_st ? ST_pu_type(call_st) : WN_ty(call_wn);
+    INT regparm = TY_register_parm(func_type);
+
+    return (regnum == RAX && regparm > 0) ||
+        (regnum == RDX && regparm > 1) ||
+        (regnum == RCX && regparm > 2);
+}
+#endif
+
+/*
+ * Is this BB a call that returns via the first arg?
+ */
+static BOOL
+Return_Via_First_Arg(BB *bb)
+{
+    if (!BB_call(bb))
+        return FALSE;
+
+    CALLINFO *call_info = ANNOT_callinfo(
+        ANNOT_Get(BB_annotations(bb), ANNOT_CALLINFO));
+
+    ST *call_st = CALLINFO_call_st(call_info);
+    WN *call_wn = CALLINFO_call_wn(call_info);
+
+    TY_IDX func_type = call_st ? ST_pu_type(call_st) : WN_ty(call_wn);
+
+    return RETURN_INFO_return_via_first_arg(Get_Return_Info(
+        TY_ret_type(func_type),
+        No_Simulated
+#ifdef TARG_X8664
+        , call_st ? PU_ff2c_abi(Pu_Table[ST_pu(call_st)]) : FALSE
+#endif
+        ));
+}
+
 /*
  * Check if a dedicated TN is global, and if so, make it local.
  * Our assumptions are that a use of a param reg should be in the
@@ -354,6 +407,8 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 	else if (regnum==RAX && def && BB_call(current_bb)) {
 	    	/* RAX is used to pass number of SSE regs used */
 	}
+    else if (def && Is_Regparm_Call(current_bb, regnum))
+        ;    // okay
 #endif
 	else if (is_func_arg || is_func_retval) {
 		if (def && is_func_arg && BB_call(current_bb))
@@ -376,18 +431,8 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 #endif // TARG_X8664 || TARG_SL
 		else if (def && is_func_arg && BB_asm(current_bb))
 			;	// okay
-		else if (def && is_func_retval && BB_call(current_bb)
-		    && RETURN_INFO_return_via_first_arg(Get_Return_Info(
-			  TY_ret_type(ST_pu_type(CALLINFO_call_st(
-			    ANNOT_callinfo(ANNOT_Get(
-				BB_annotations(current_bb),ANNOT_CALLINFO)) ))),
-			  No_Simulated
-#ifdef TARG_X8664
-			  , PU_ff2c_abi(Pu_Table[ST_pu(CALLINFO_call_st(
-			    ANNOT_callinfo(ANNOT_Get(
-				BB_annotations(current_bb),ANNOT_CALLINFO)) ))])
-#endif
-			  ) ) )
+        else if (def && is_func_retval
+            && Return_Via_First_Arg(current_bb))
 			// can return via first arg in retval reg.
 			;	// okay
 		else if (!def && is_func_retval && BB_entry(current_bb)

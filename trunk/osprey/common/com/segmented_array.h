@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* -*- c++ -*-
  *
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
@@ -359,9 +363,9 @@ SEGMENTED_ARRAY<T,block_size>::Update_Map(T    *marker,
 {
   do {
     map.push_back(std::pair<T*, BOOL>(marker, own_memory));
-    // own_memory = FALSE;
     new_size -= block_size;
     marker += block_size;
+    own_memory = FALSE;
   } while (new_size);
 } // SEGMENTED_ARRAY<T,block_size>::Update_Map
 

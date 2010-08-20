@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -119,12 +119,23 @@
 
 /* For fp_class */
 
+#if 0
+// double extended precision 80bits
+#define DEMANTWIDTH      64
+#define DEEXPWIDTH       15
+#define DESIGNMASK       0x7fff ffff ffff ffff ffffll
+#define DEEXPMASK        0x8000 ffff ffff ffff ffffll
+#define DEQNANBITMASK    0xffff 7fff ffff ffff ffffll
+#endif
+
+// double precision 64bits
 #define DMANTWIDTH      52
 #define DEXPWIDTH       11
 #define DSIGNMASK       0x7fffffffffffffffll
 #define DEXPMASK        0x800fffffffffffffll
 #define DQNANBITMASK    0xfff7ffffffffffffll
 
+// single precision 32bits
 #define MANTWIDTH       23
 #define EXPWIDTH        8
 #define SIGNMASK        0x7fffffff
@@ -254,6 +265,11 @@ Check_TCON ( TCON *tc )
 	       ("High order word of %s TCON non zero %x",
 		Mtype_Name(TCON_ty(*tc)), TCON_v1(*tc)) );
      break;
+    case MTYPE_F10:
+     Is_True ( TCON_v3(*tc) == 0,
+	       ("High order word of %s TCON non zero %x",
+		Mtype_Name(TCON_ty(*tc)), TCON_v1(*tc)) );
+    break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_FQ:
      Is_True ( TCON_v3(*tc) == 0,
@@ -323,6 +339,24 @@ static TCON complex_sqrt(TCON c0)
 	 TCON_R8(r) = di / TCON_IR8(r) /2;
       }
       break;
+
+    case MTYPE_C10:
+      { 
+         long double ldr, ldi, ldmag;
+         ldr = TCON_R10(c0);
+         ldi = TCON_IR10(c0);
+         if( (ldmag = hypotl(ldr, ldi)) == 0.)
+	   TCON_R10(r) = TCON_IR10(r) = 0.;
+         else if (ldr > 0) {
+	    TCON_R10(r) = sqrtl(0.5 * (ldmag + ldr) );
+	    TCON_IR10(r) = ldi / TCON_R10(r) / 2;
+         } else {
+	    TCON_IR10(r) = sqrtl(0.5 * (ldmag - ldr) );
+	    if (ldi < 0) TCON_IR10(r) = -TCON_IR10(r);
+	    TCON_R10(r) = ldi / TCON_IR10(r) /2;
+         }
+      }
+      break;
       
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
@@ -372,12 +406,19 @@ static TCON complex_divide(TCON c0, TCON c1)
 
    switch (TCON_ty(c0)) {
     case MTYPE_C4:
+    case MTYPE_F4:
       {
 	 float c0r,c0i,c1r,c1i,t1,t2,t3;
 	 c0r = TCON_R4(c0);
-	 c0i = TCON_IR4(c0);
+	 if(TCON_ty(c0) != MTYPE_C4)
+           c0i = 0.0;
+	 else
+  	   c0i = TCON_IR4(c0);
 	 c1r = TCON_R4(c1);
-	 c1i = TCON_IR4(c1);
+	 if(TCON_ty(c1) != MTYPE_C4)
+	   c1i = 0.0;
+	 else
+	   c1i = TCON_IR4(c1);
 	 if (fabsf(c1r) < fabsf(c1i)) {
 	    t2 = c1r*(c1r/c1i) + c1i;
 	    t1 = (c0i*(c1r/c1i) - c0r)/t2;
@@ -393,12 +434,19 @@ static TCON complex_divide(TCON c0, TCON c1)
       break;
       
     case MTYPE_C8:
+    case MTYPE_F8:
       {
 	 double c0r,c0i,c1r,c1i,t1,t2,t3;
 	 c0r = TCON_R8(c0);
-	 c0i = TCON_IR8(c0);
+	 if (TCON_ty(c0) == MTYPE_C8)
+	   c0i = TCON_IR8(c0);
+	 else
+           c0i = 0.0;
 	 c1r = TCON_R8(c1);
-	 c1i = TCON_IR8(c1);
+	 if (TCON_ty(c1) == MTYPE_C8)
+	   c1i = TCON_IR8(c1);
+	 else
+           c1i = 0.0;
 	 if (fabs(c1r) < fabs(c1i)) {
 	    t2 = c1r*(c1r/c1i) + c1i;
 	    t1 = (c0i*(c1r/c1i) - c0r)/t2;
@@ -413,16 +461,44 @@ static TCON complex_divide(TCON c0, TCON c1)
       }
       break;
       
+    case MTYPE_C10:
+      {
+	 long double c0r,c0i,c1r,c1i,t1,t2,t3;
+	 c0r = TCON_R10(c0);
+	 c0i = TCON_IR10(c0);
+	 c1r = TCON_R10(c1);
+	 c1i = TCON_IR10(c1);
+	 if (fabsl(c1r) < fabsl(c1i)) {
+	    t2 = c1r*(c1r/c1i) + c1i;
+	    t1 = (c0i*(c1r/c1i) - c0r)/t2;
+	    t3 = (c0r*(c1r/c1i) + c0i)/t2;
+	 } else {
+	    t2 = c1i*(c1i/c1r) + c1r;
+	    t1 = (c0i - c0r*(c1i/c1r))/t2;
+	    t3 = (c0i*(c1i/c1r) + c0r)/t2;
+	 }	    
+	 TCON_R10(r) = t3;
+	 TCON_IR10(r) = t1;
+      }
+      break;
+      
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
+    case MTYPE_FQ:
       {
 	 QUAD_TYPE c0r,c0i,c1r,c1i,t1,t2,t3,t4,ar,ai,q0;
 	 INT err;
 	 q0 = 0.0;
 	 c0r = TCON_R16(c0);
-	 c0i = TCON_IR16(c0);
+	 if (TCON_ty(c0) == MTYPE_CQ)
+	   c0i = TCON_IR16(c0);
+	 else
+           c0i = 0.0;
 	 c1r = TCON_R16(c1);
-	 c1i = TCON_IR16(c1);
+	 if (TCON_ty(c1) == MTYPE_CQ)
+	   c1i = TCON_IR16(c1);
+	 else
+           c1i = 0.0;
 	 ar = c1r;
 	 ai = c1i;
 	 if ( ar < q0 ) ar = -ar;
@@ -680,6 +756,20 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
        }
        TCON_v1(c0) = 0;
        break;
+     case MTYPE_F10:
+       switch (opr) {
+         case OPR_EQ: TCON_v0(c0) = TCON_R10(c0) == TCON_R10(c1); break;
+         case OPR_NE: TCON_v0(c0) = TCON_R10(c0) != TCON_R10(c1); break;
+         case OPR_LT: TCON_v0(c0) = TCON_R10(c0) <  TCON_R10(c1); break;
+         case OPR_LE: TCON_v0(c0) = TCON_R10(c0) <= TCON_R10(c1); break;
+         case OPR_GT: TCON_v0(c0) = TCON_R10(c0) >  TCON_R10(c1); break;
+         case OPR_GE: TCON_v0(c0) = TCON_R10(c0) >= TCON_R10(c1); break;
+       }
+       TCON_v1(c0) = 0;
+       TCON_v2(c0) = 0;
+       TCON_v3(c0) = 0;
+       break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
      case MTYPE_FQ:
        // Bug#395
@@ -719,6 +809,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
        TCON_v1(c0) = 0;
        break;
      case MTYPE_C8:
+     case MTYPE_V16C8:
        switch (opr) {
        case OPR_EQ: TCON_v0(c0) = (TCON_R8(c0) == TCON_R8(c1)) && 
 				  (TCON_IR8(c0) == TCON_IR8(c1)); break; 
@@ -726,6 +817,17 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 				  (TCON_IR8(c0) != TCON_IR8(c1)); break; 
        }
        TCON_v1(c0) = 0;
+       break;
+     case MTYPE_C10:
+       switch (opr) {
+       case OPR_EQ: TCON_v0(c0) = (TCON_R10(c0) == TCON_R10(c1)) && 
+				  (TCON_IR10(c0) == TCON_IR10(c1)); break; 
+       case OPR_NE: TCON_v0(c0) = (TCON_R10(c0) != TCON_R10(c1)) || 
+				  (TCON_IR10(c0) != TCON_IR10(c1)); break; 
+       }
+       TCON_v1(c0) = 0;
+       TCON_v2(c0) = 0;
+       TCON_v3(c0) = 0;
        break;
 #ifdef TARG_NEEDS_QUAD_OPS
      case MTYPE_CQ:
@@ -760,9 +862,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
     case OPC_F4PAREN:
     case OPC_F8PAREN:
+    case OPC_F10PAREN:
     case OPC_FQPAREN:
     case OPC_C4PAREN:
     case OPC_C8PAREN:
+    case OPC_C10PAREN:
     case OPC_CQPAREN:
       /* just c0 */
       break;
@@ -850,6 +954,18 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_F4, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_F8, c0);
       break;
+
+    case OPC_F10F8CVT:
+    case OPC_F10F4CVT:
+      c0 = Targ_Conv(MTYPE_F10, c0);
+      break;
+    case OPC_F4F10CVT:
+      c0 = Targ_Conv(MTYPE_F4, c0);
+      break;
+    case OPC_F8F10CVT:
+      c0 = Targ_Conv(MTYPE_F8, c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQF4CVT:
       Is_True(TCON_ty(c0) == MTYPE_F4, ("Illegal operand to %s", OPCODE_name(op)));
@@ -876,6 +992,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_I4, c0);
       break;
+    case OPC_I4F10CVT:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_I4, c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I4FQCVT:
       Is_True(TCON_ty(c0) == MTYPE_FQ, ("Illegal operand to %s", OPCODE_name(op)));
@@ -890,6 +1011,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_I8, c0);
       break;
+    case OPC_I8F10CVT:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_I8, c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I8FQCVT:
       Is_True(TCON_ty(c0) == MTYPE_FQ, ("Illegal operand to %s", OPCODE_name(op)));
@@ -905,6 +1031,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_U4, c0);
       break;
+    case OPC_U4F10CVT:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_U4, c0);
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_U4FQCVT:
       Is_True(TCON_ty(c0) == MTYPE_FQ, ("Illegal operand to %s", OPCODE_name(op)));
@@ -917,6 +1047,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
     case OPC_U8F8CVT:
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_U8, c0);
+      break;
+    case OPC_U8F10CVT:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
@@ -963,6 +1097,18 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_v1(c0) = 0;
       TCON_ty(c0) = MTYPE_I4;
       break;
+    case OPC_I4F10RND:
+      if (TCON_R10(c0) >= 0.0) {
+        TCON_I4(c0) = (INT32)(TCON_R10(c0) + 0.5);
+      } else {
+        TCON_I4(c0) = (INT32)(TCON_R10(c0) - 0.5);
+      }
+      TCON_v1(c0) = 0;
+      TCON_v2(c0) = 0;
+      TCON_v3(c0) = 0;
+      TCON_ty(c0) = MTYPE_I4;
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I4FQRND:
     if (TCON_R16(c0) >= 0.0){
@@ -991,6 +1137,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       TCON_ty(c0) = MTYPE_I8;
       break;
+    case OPC_I8F10RND:
+      if (TCON_R10(c0) >= 0.0) {
+        TCON_R10(c0) = (INT64)(TCON_R10(c0) + 0.5);
+      } else {
+        TCON_R10(c0) = (INT64)(TCON_R10(c0) - 0.5);
+      }
+      c0 = Targ_Conv(MTYPE_I8,c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I8FQRND:
     if (TCON_R16(c0) >= 0.0 ){
@@ -1011,6 +1166,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_I4, c0);
       break;
+    case OPC_I4F10TRUNC:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_I4, c0);
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I4FQTRUNC:
       Is_True(TCON_ty(c0) == MTYPE_FQ, ("Illegal operand to %s", OPCODE_name(op)));
@@ -1024,6 +1183,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
     case OPC_I8F8TRUNC:
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_I8, c0);
+      break;
+    case OPC_I8F10TRUNC:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_I8, c0);
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
@@ -1050,6 +1213,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       c0 = t1;
       break;
+    case OPC_I4F10FLOOR:
+      t1 = Targ_Conv(MTYPE_I4, c0);
+      t2 = Targ_Conv(MTYPE_F10,t1);
+      if (TCON_R10(t2) > TCON_R10(c0)) {
+	 TCON_I4(t1) -= 1;
+      }
+      c0 = t1;
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I4FQFLOOR:
       t1 = Targ_Conv(MTYPE_I4, c0);
@@ -1074,6 +1246,14 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       t2 = Targ_Conv(MTYPE_F8,t1);
       if (TCON_R8(t2) > TCON_R8(c0)) {
 	 TCON_I8(t1) -= 1;
+      }
+      c0 = t1;
+      break;
+    case OPC_I8F10FLOOR:
+      t1 = Targ_Conv(MTYPE_I8, c0);
+      t2 = Targ_Conv(MTYPE_F10, t1);
+      if (TCON_R10(t2) > TCON_R10(c0)) {
+         TCON_I8(t1) -= 1;
       }
       c0 = t1;
       break;
@@ -1105,6 +1285,14 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       c0 = t1;
       break;
+    case OPC_I4F10CEIL:
+      t1 = Targ_Conv(MTYPE_I4, c0);
+      t2 = Targ_Conv(MTYPE_F10, t1);
+      if (TCON_R10(t2) < TCON_R10(c0)) {
+         TCON_I4(t1) += 1;
+      }
+      c0 = t1;
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I4FQCEIL:
       t1 = Targ_Conv(MTYPE_I4, c0);
@@ -1132,6 +1320,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       c0 = t1;
       break;
+    case OPC_I8F10CEIL:
+      t1 = Targ_Conv(MTYPE_I8, c0);
+      t2 = Targ_Conv(MTYPE_F10, t1);
+      if (TCON_R10(t2) < TCON_R10(c0)) {
+         TCON_I8(t1) += 1;
+      }
+      c0 = t1;
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_I8FQCEIL:
       t1 = Targ_Conv(MTYPE_I8, c0);
@@ -1155,6 +1352,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_ty(c0) = MTYPE_U4;
       break;
 
+    case OPC_U4F10RND:
+      TCON_U4(c0) = (UINT32)(TCON_R10(c0) + 0.5);
+      TCON_v1(c0) = 0;
+      TCON_v2(c0) = 0;
+      TCON_v3(c0) = 0;
+      TCON_ty(c0) = MTYPE_U4;
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_U4FQRND:
       TCON_R16(c0) = (UINT32)(TCON_R16(c0) + 0.5);
@@ -1170,6 +1374,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 
     case OPC_U8F4RND:
       TCON_U8(c0) = (UINT64)(TCON_R4(c0) + 0.5);
+      TCON_ty(c0) = MTYPE_U8;
+      break;
+
+    case OPC_U8F10RND:
+      TCON_U8(c0) = (UINT64)(TCON_R10(c0) + 0.5);
+      TCON_v2(c0) = 0;
+      TCON_v3(c0) = 0;
       TCON_ty(c0) = MTYPE_U8;
       break;
 
@@ -1192,6 +1403,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = Targ_Conv(MTYPE_U4, c0);
       break;
 
+    case OPC_U4F10FLOOR:
+    case OPC_U4F10TRUNC:
+      c0 = Targ_Conv(MTYPE_U4, c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_U4FQFLOOR:
     case OPC_U4FQTRUNC:
@@ -1209,6 +1425,12 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_U8F8FLOOR:
     case OPC_U8F8TRUNC:
       Is_True(TCON_ty(c0) == MTYPE_F8, ("Illegal operand to %s", OPCODE_name(op)));
+      c0 = Targ_Conv(MTYPE_U8, c0);
+      break;
+
+    case OPC_U8F10FLOOR:
+    case OPC_U8F10TRUNC:
+      Is_True(TCON_ty(c0) == MTYPE_F10, ("Illegal operand to %s", OPCODE_name(op)));
       c0 = Targ_Conv(MTYPE_U8, c0);
       break;
 
@@ -1234,6 +1456,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       t2 = Targ_Conv(MTYPE_F8,t1);
       if (TCON_R8(t2) < TCON_R8(c0)) {
 	 TCON_U4(t1) += 1;
+      }
+      c0 = t1;
+      break;
+
+    case OPC_U4F10CEIL:
+      t1 = Targ_Conv(MTYPE_U4, c0);
+      t2 = Targ_Conv(MTYPE_F10, t1);
+      if (TCON_R10(t2) < TCON_R10(c0)) {
+         TCON_U4(t1) += 1;
       }
       c0 = t1;
       break;
@@ -1267,6 +1498,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = t1;
       break;
 
+    case OPC_U8F10CEIL:
+      t1 = Targ_Conv(MTYPE_U8, c0);
+      t2 = Targ_Conv(MTYPE_F10, t1);
+      if (TCON_R10(t2) < TCON_R10(c0)) {
+         TCON_U8(t1) += 1;
+      }
+      c0 = t1;
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_U8FQCEIL:
       t1 = Targ_Conv(MTYPE_U8, c0);
@@ -1288,12 +1528,16 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
     case OPC_F4I4CVT:
     case OPC_F8I4CVT:
+    case OPC_F10I4CVT:
     case OPC_F4U4CVT:
     case OPC_F8U4CVT:
+    case OPC_F10U4CVT:
     case OPC_F4I8CVT:
     case OPC_F8I8CVT:
+    case OPC_F10I8CVT:
     case OPC_F4U8CVT:
     case OPC_F8U8CVT:
+    case OPC_F10U8CVT:
       c0 = Targ_Conv(OPCODE_rtype(op),Targ_Conv(OPCODE_desc(op),c0));
       break;
       
@@ -1313,6 +1557,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_I8TAS:
     case OPC_U8TAS:
     case OPC_F8TAS:
+    case OPC_F10TAS:
     case OPC_FQTAS:
       TCON_ty(c0) = OPCODE_rtype(op);
       break;
@@ -1349,7 +1594,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8TAS:
       TCON_ty(c0) = MTYPE_C8;
       break;
-    case OPC_CQTAS:
+    case OPC_C10TAS:
+      TCON_ty(c0) = MTYPE_C10;
+      break;
+     case OPC_CQTAS:
       TCON_ty(c0) = MTYPE_CQ;
       break;
      
@@ -1367,6 +1615,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8ABS:
       if (TCON_R8(c0) < 0) TCON_R8(c0)  = -TCON_R8(c0);
       break;
+    case OPC_F10ABS:
+      if (TCON_R10(c0) < 0) TCON_R10(c0) = -TCON_R10(c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQABS:
     if (TCON_R16(c0) < 0) TCON_R16(c0)  = -TCON_R16(c0);
@@ -1402,6 +1654,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8NEG:
       TCON_R8(c0)  = -TCON_R8(c0);
       break;
+    case OPC_F10NEG:
+      TCON_R10(c0)  = -TCON_R10(c0);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQNEG:
     TCON_R16(c0)  = -TCON_R16(c0);    
@@ -1419,6 +1675,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8NEG:
       TCON_R8(c0)  = -TCON_R8(c0);
       TCON_IR8(c0)  = -TCON_IR8(c0);
+      break;
+    case OPC_C10NEG:
+      TCON_R10(c0)  = -TCON_R10(c0);
+      TCON_IR10(c0)  = -TCON_IR10(c0);
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQNEG:
@@ -1577,6 +1837,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8ADD:
       TCON_R8(c0) += TCON_R8(c1);
       break;
+    case OPC_F10ADD:
+      TCON_R10(c0) += TCON_R10(c1);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQADD:
     TCON_R16(c0) += TCON_R16(c1);
@@ -1596,6 +1860,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8ADD:
       TCON_R8(c0) += TCON_R8(c1);
       TCON_IR8(c0) += TCON_IR8(c1);
+      break;
+    case OPC_C10ADD:
+      TCON_R10(c0) += TCON_R10(c1);
+      TCON_IR10(c0) += TCON_IR10(c1);
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQADD:
@@ -1626,6 +1894,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8SUB:
       TCON_R8(c0) -= TCON_R8(c1);
       break;
+    case OPC_F10SUB:
+      TCON_R10(c0) -= TCON_R10(c1);
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQSUB:
     TCON_R16(c0) -= TCON_R16(c1);
@@ -1645,6 +1917,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8SUB:
       TCON_R8(c0) -= TCON_R8(c1);
       TCON_IR8(c0) -= TCON_IR8(c1);
+      break;
+    case OPC_C10SUB:
+      TCON_R10(c0) -= TCON_R10(c1);
+      TCON_IR10(c0) -= TCON_IR10(c1);
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_CQSUB:
@@ -1667,6 +1943,14 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 	*folded = FALSE;
       }
       break;
+    case OPC_F10SQRT:
+      if (TCON_R10(c0) >= 0) {
+        TCON_R10(c0) = sqrtl(TCON_R10(c0));
+      } else {
+        *folded = FALSE;
+      }
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQSQRT:
     if (TCON_R16(c0) >= 0) {
@@ -1688,6 +1972,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
     case OPC_C4SQRT:
     case OPC_C8SQRT:
+    case OPC_C10SQRT:
     case OPC_CQSQRT:
       c0 = complex_sqrt(c0);
       break;
@@ -1714,6 +1999,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8MPY:
       TCON_R8(c0) *= TCON_R8(c1);
       break;
+    case OPC_F10MPY:
+      TCON_R10(c0) *= TCON_R10(c1);
+      break;
 
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQMPY:
@@ -1737,6 +2025,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(t1) = TCON_R8(c0)*TCON_R8(c1) - TCON_IR8(c0)*TCON_IR8(c1);
       TCON_IR8(c0) = TCON_R8(c0)*TCON_IR8(c1) + TCON_IR8(c0)*TCON_R8(c1);
       TCON_R8(c0) = TCON_R8(t1);
+      break;
+    case OPC_C10MPY:
+      TCON_R10(t1) = TCON_R10(c0)*TCON_R10(c1) - TCON_IR10(c0)*TCON_IR10(c1);
+      TCON_IR10(c0) = TCON_R10(c0)*TCON_IR10(c1) + TCON_IR10(c0)*TCON_R10(c1);
+      TCON_R10(c0) = TCON_R10(t1);
       break;
      
 #ifdef TARG_NEEDS_QUAD_OPS
@@ -1818,6 +2111,13 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       }
       TCON_R8(c0) /= TCON_R8(c1);
       break;
+    case OPC_F10DIV:
+      if (TCON_R10(c1) == 0.0) {
+         /* divide by zero; so don't fold */
+         *folded = FALSE;
+      }
+      TCON_R10(c0) /= TCON_R10(c1);
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQDIV:
     if (TCON_R16(c1) == 0.0) {
@@ -1844,6 +2144,7 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
 #endif
 
     case OPC_C8DIV:
+    case OPC_C10DIV:
     case OPC_CQDIV:
     case OPC_C4DIV:
       c0 = complex_divide(c0,c1);
@@ -1972,7 +2273,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8RECIP:
       c0 = Targ_WhirlOp(OPC_F8DIV,Host_To_Targ_Float(MTYPE_F8,1.0),c0,folded);
       break;
-    case OPC_FQRECIP:
+    case OPC_F10RECIP:
+      c0 = Targ_WhirlOp(OPC_F10DIV,Host_To_Targ_Float(MTYPE_F10,1.0),c0,folded);
+      break;
+     case OPC_FQRECIP:
       c0 = Targ_WhirlOp(OPC_FQDIV,Host_To_Targ_Quad(1.0),c0,folded);
       break;
     case OPC_C4RECIP:
@@ -1980,6 +2284,9 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       break;
     case OPC_C8RECIP:
       c0 = Targ_WhirlOp(OPC_C8DIV,Host_To_Targ_Float(MTYPE_C8,1.0),c0,folded);
+      break;
+    case OPC_C10RECIP:
+      c0 = Targ_WhirlOp(OPC_C10DIV,Host_To_Targ_Float(MTYPE_C10,1.0),c0,folded);
       break;
     case OPC_CQRECIP:
       c0 = Targ_WhirlOp(OPC_CQDIV,Host_To_Targ_Float(MTYPE_CQ,1.0),c0,folded);
@@ -1993,7 +2300,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       c0 = Targ_WhirlOp(OPC_F8SQRT,c0,c0,folded);
       if (*folded) c0 = Targ_WhirlOp(OPC_F8DIV,Host_To_Targ_Float(MTYPE_F8,1.0),c0,folded);
       break;
-    case OPC_FQRSQRT:
+    case OPC_F10RSQRT:
+      c0 = Targ_WhirlOp(OPC_F10SQRT,c0,c0,folded);
+      if (*folded) c0 = Targ_WhirlOp(OPC_F10DIV,Host_To_Targ_Float(MTYPE_F10,1.0),c0,folded);
+      break;
+     case OPC_FQRSQRT:
       c0 = Targ_WhirlOp(OPC_FQSQRT,c0,c0,folded);
       if (*folded) c0 = Targ_WhirlOp(OPC_FQDIV,Host_To_Targ_Quad(1.0),c0,folded);
       break;
@@ -2004,6 +2315,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_C8RSQRT:
       c0 = Targ_WhirlOp(OPC_C8SQRT,c0,c0,folded);
       if (*folded) c0 = Targ_WhirlOp(OPC_C8DIV,Host_To_Targ_Float(MTYPE_C8,1.0),c0,folded);
+      break;
+    case OPC_C10RSQRT:
+      c0 = Targ_WhirlOp(OPC_C10SQRT,c0,c0,folded);
+      if (*folded) c0 = Targ_WhirlOp(OPC_C10DIV,Host_To_Targ_Float(MTYPE_C10,1.0),c0,folded);
       break;
     case OPC_CQRSQRT:
       c0 = Targ_WhirlOp(OPC_CQSQRT,c0,c0,folded);
@@ -2060,6 +2375,15 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(c0) = TCON_R8(c0) < TCON_R8(c1) ? 
 	TCON_R8(c1) : TCON_R8(c0);
       break;
+      break;
+    case OPC_F10MIN:
+      TCON_R10(c0) = TCON_R10(c0) < TCON_R10(c1) ?
+        TCON_R10(c0) : TCON_R10(c1);
+      break;
+    case OPC_F10MAX:
+      TCON_R10(c0) = TCON_R10(c0) < TCON_R10(c1) ?
+        TCON_R10(c1) : TCON_R10(c0);
+      break;
 
 #ifdef TARG_NEEDS_QUAD_OPS
     case OPC_FQMIN:
@@ -2096,6 +2420,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_IR8(c0) = TCON_R8(c1);
       TCON_ty(c0) = MTYPE_C8;
       break;
+    case OPC_C10COMPLEX:
+      TCON_IR10(c0) = TCON_R10(c1);
+      TCON_ty(c0) = MTYPE_C10;
+      break;
     case OPC_CQCOMPLEX:
       TCON_IR16(c0) = TCON_R16(c1);
       TCON_ty(c0) = MTYPE_CQ;
@@ -2108,7 +2436,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
     case OPC_F8REALPART:
       TCON_ty(c0) = MTYPE_F8;
       break;
-    case OPC_FQREALPART:
+    case OPC_F10REALPART:
+      TCON_ty(c0) = MTYPE_F10;
+      break;
+     case OPC_FQREALPART:
       TCON_ty(c0) = MTYPE_FQ;
       break;
 
@@ -2121,7 +2452,11 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       TCON_R8(c0) = TCON_IR8(c0);
       TCON_ty(c0) = MTYPE_F8;
       break;
-    case OPC_FQIMAGPART:
+    case OPC_F10IMAGPART:
+      TCON_R10(c0) = TCON_IR10(c0);
+      TCON_ty(c0) = MTYPE_F10;
+      break;
+     case OPC_FQIMAGPART:
       TCON_R16(c0) = TCON_IR16(c0);
       TCON_ty(c0) = MTYPE_FQ;
       break;
@@ -2266,6 +2601,14 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
 
+    case FROM_TO(MTYPE_F10, MTYPE_C8):
+      TCON_R8(r) = TCON_R10(c);
+      TCON_IR8(r) = 0.0;
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_C8):
+      TCON_R8(r) = TCON_R10(c);
+      TCON_IR8(r) = TCON_IR10(c);
+      break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_CQ, MTYPE_C8):
       TCON_R8(r) = __c_dble_q(R16_To_RQ(TCON_R16(c)), &err);
@@ -2303,6 +2646,7 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
     case FROM_TO(MTYPE_I4, MTYPE_C8):
+    case FROM_TO(MTYPE_I4, MTYPE_V16C8):
     case FROM_TO(MTYPE_I2, MTYPE_C8):
     case FROM_TO(MTYPE_I1, MTYPE_C8):
       TCON_R8(r) = TCON_v0(c);
@@ -2319,12 +2663,30 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_IR8(r) = 0.0;
       break;
 
-#ifdef TARG_NEEDS_QUAD_OPS
+    case FROM_TO(MTYPE_C10, MTYPE_F4):
+    case FROM_TO(MTYPE_F10, MTYPE_F4):
+      Set_TCON_R4(r, TCON_R10(c));
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_C4):
+      TCON_R4(r) = TCON_R10(c);
+      TCON_IR4(r) = TCON_IR10(c);
+      break;
+    case FROM_TO(MTYPE_F10, MTYPE_C4):
+      Set_TCON_R4(r, TCON_R10(c));
+      TCON_IR4(r) = 0.0;
+      break;
+ #ifdef TARG_NEEDS_QUAD_OPS
     case FROM_TO(MTYPE_CQ, MTYPE_C4):
       TCON_R4(r) = TCON_R16(c);
       TCON_IR4(r) = TCON_IR16(c);
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
+#ifdef TARG_X8664
+    case FROM_TO(MTYPE_C8, MTYPE_V16C8):
+      TCON_R8(r) = TCON_R8(c);
+      TCON_IR8(r) = TCON_IR8(c);
+      break;
+#endif
     case FROM_TO(MTYPE_C8, MTYPE_C4):
       TCON_R4(r) = TCON_R8(c);
       TCON_IR4(r) = TCON_IR8(c);
@@ -2492,6 +2854,10 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_I8(r) = (INT64)TCON_R16(c);
       break;
 #endif /* TARG_NEEDS_QUAD_OPS */
+    case FROM_TO(MTYPE_C10, MTYPE_I8):
+    case FROM_TO(MTYPE_F10, MTYPE_I8):
+      TCON_I8(r) = (INT64)TCON_R10(c);
+      break;
     case FROM_TO(MTYPE_C8, MTYPE_I8):
       TCON_I8(r) = (INT64)TCON_R8(c);
       break;
@@ -2597,6 +2963,34 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_U8(r) = (UINT64)TCON_R16(c);
       break;
 #endif
+    case FROM_TO(MTYPE_C10, MTYPE_I1):
+    case FROM_TO(MTYPE_F10, MTYPE_I1):
+      TCON_v0(r) = (INT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_I2):
+    case FROM_TO(MTYPE_F10, MTYPE_I2):
+      TCON_v0(r) = (INT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_I4):
+    case FROM_TO(MTYPE_F10, MTYPE_I4):
+      TCON_v0(r) = (INT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_U1):
+    case FROM_TO(MTYPE_F10, MTYPE_U1):
+      TCON_u0(r) = (UINT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_U2):
+    case FROM_TO(MTYPE_F10, MTYPE_U2):
+      TCON_u0(r) = (UINT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_U4):
+    case FROM_TO(MTYPE_F10, MTYPE_U4):
+      TCON_u0(r) = (UINT32)TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C10, MTYPE_U8):
+    case FROM_TO(MTYPE_F10, MTYPE_U8):
+      TCON_U8(r) = (UINT64)TCON_R10(c);
+      break;
     case FROM_TO(MTYPE_C8, MTYPE_U8):
       TCON_U8(r) = (UINT64)TCON_R8(c);
       break;
@@ -2653,6 +3047,79 @@ Targ_Conv ( TYPE_ID ty_to, TCON c )
       TCON_u0(r) = (UINT32)TCON_R16(c);
       break;
 #endif
+    case FROM_TO(MTYPE_C10, MTYPE_F10):
+      TCON_R10(r) = TCON_R10(c);
+      break;
+    case FROM_TO(MTYPE_C8, MTYPE_F10):
+    case FROM_TO(MTYPE_F8, MTYPE_F10):
+      TCON_R10(r) = TCON_R8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_F10):
+    case FROM_TO(MTYPE_F4, MTYPE_F10):
+      TCON_R10(r) = TCON_R4(c);
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_F10):
+      TCON_R10(r) = TCON_I8(c);
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_F10):
+      TCON_R10(r) = TCON_U8(c);
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_F10):
+    case FROM_TO(MTYPE_I2, MTYPE_F10):
+    case FROM_TO(MTYPE_I1, MTYPE_F10):
+      TCON_R10(r) = TCON_v0(c);
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_F10):
+    case FROM_TO(MTYPE_U2, MTYPE_F10):
+    case FROM_TO(MTYPE_U1, MTYPE_F10):
+      TCON_R10(r) = TCON_u0(c);
+      break;
+
+    case FROM_TO(MTYPE_C8, MTYPE_C10):
+      TCON_R10(r) = TCON_R8(c);
+      TCON_IR10(r) = TCON_IR8(c);
+      break;
+    case FROM_TO(MTYPE_C4, MTYPE_C10):
+      TCON_R10(r) = TCON_R4(c);
+      TCON_IR10(r) = TCON_IR4(c);
+      break;
+    case FROM_TO(MTYPE_F10, MTYPE_C10):
+      TCON_R10(r) = TCON_R10(c);
+      TCON_IR10(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_F8, MTYPE_C10):
+      TCON_R10(r) = TCON_R8(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_F4, MTYPE_C10):
+      TCON_R10(r) = TCON_R4(c);
+      TCON_IR10(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_I8, MTYPE_C10):
+      TCON_R16(r) = TCON_I8(c);
+      TCON_IR16(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_U8, MTYPE_C10):
+      TCON_R10(r) = TCON_U8(c);
+      TCON_IR10(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_I4, MTYPE_C10):
+    case FROM_TO(MTYPE_I2, MTYPE_C10):
+    case FROM_TO(MTYPE_I1, MTYPE_C10):
+      TCON_R10(r) = TCON_v0(c);
+      TCON_IR10(r) = 0.0L;
+      break;
+    case FROM_TO(MTYPE_U4, MTYPE_C10):
+    case FROM_TO(MTYPE_U2, MTYPE_C10):
+    case FROM_TO(MTYPE_U1, MTYPE_C10):
+      TCON_R10(r) = TCON_u0(c);
+      TCON_IR10(r) = 0.0L;
+      break;
+
+    case FROM_TO(MTYPE_C10, MTYPE_F8):
+    case FROM_TO(MTYPE_F10, MTYPE_F8):
+      TCON_R8(r) = TCON_R10(c);
+      break;
     case FROM_TO(MTYPE_F8, MTYPE_U4):
     case FROM_TO(MTYPE_F8, MTYPE_U2):
     case FROM_TO(MTYPE_F8, MTYPE_U1):
@@ -3075,6 +3542,15 @@ Targ_Print ( const char *fmt, TCON c )
 #endif /* !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) */
       break;
 
+    case MTYPE_F10:
+      if (fmt == NULL) fmt = "%#21.20Lg";
+        sprintf(r, fmt, TCON_R10(c));
+#if !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS))
+      if (re = strchr(r, 'e'))
+        *re = 'd';
+#endif /* !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) */
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
    case MTYPE_FQ:
      if (fmt == NULL) fmt = "%#21.20Lg";
@@ -3112,8 +3588,23 @@ Targ_Print ( const char *fmt, TCON c )
       break;
 
     case MTYPE_C8:
+#if defined(TARG_X8664)
+    case MTYPE_V16C8:
+#endif
       if (fmt == NULL) fmt = "%#21.16g, %#21.16g";
       sprintf(r, fmt, TCON_R8(c), TCON_IR8(c));
+#if !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS))
+      if (re = strchr(r, 'e'))
+	*re = 'd';
+      if (re = strrchr(r, 'e'))
+	*re = 'd';
+#endif /* !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)) */
+      break;
+
+    case MTYPE_C10:
+      if (fmt == NULL)
+	fmt = "%#21.20, %#21.20";
+      sprintf(r, fmt, TCON_R10(c), TCON_IR10(c));
 #if !(defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS))
       if (re = strchr(r, 'e'))
 	*re = 'd';
@@ -3274,6 +3765,10 @@ Host_To_Targ_Float ( TYPE_ID ty, double v )
      TCON_R8(c) = v;
      return c;
      
+   case MTYPE_C10:
+   case MTYPE_F10:
+     return Host_To_Targ_Float_10(MTYPE_F10, v);
+
    case MTYPE_CQ:
    case MTYPE_FQ:
      TCON_clear(c);
@@ -3289,6 +3784,36 @@ Host_To_Targ_Float ( TYPE_ID ty, double v )
      return c;
   }
 } /* Host_To_Targ_Float */
+
+TCON
+Host_To_Targ_Float_10 ( TYPE_ID ty, long double v )
+{
+  TCON c;
+
+  switch (ty) {
+   case MTYPE_F10:
+     TCON_clear(c);
+     TCON_ty(c) = ty;
+     TCON_R10(c) = v;
+     return c;
+
+   default:
+     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ_Float_10" );
+     TCON_clear(c);
+     TCON_ty(c) = MTYPE_F4;
+     return c;
+  }
+}
+
+TCON
+Host_To_Targ_Float (long double v )
+{
+  TCON c;
+  TCON_clear(c);
+  TCON_ty(c) = MTYPE_F10;
+  TCON_R10(c) = v;
+  return c;
+}
 
 TCON 
 Create_Simd_Const (TYPE_ID ty, TCON t)
@@ -3596,6 +4121,13 @@ Host_To_Targ_Float_4 ( TYPE_ID ty, float v )
      TCON_R8(c) = v;
      return c;
      
+   case MTYPE_C10:
+   case MTYPE_F10:
+     TCON_clear(c);
+     TCON_ty(c) = ty;
+     TCON_R10(c) = v;
+     return c;
+
    case MTYPE_CQ:
    case MTYPE_FQ:
      TCON_clear(c);
@@ -3666,6 +4198,9 @@ Host_To_Targ_UV( TYPE_ID ty)
      TCON_v0(c)= 0xfff5a5a5;	// 64-bit Signalling NaN
      TCON_v1(c)= 0xfff5a5a5;
      break;
+   case MTYPE_F10:
+   case MTYPE_C10:
+      // TODO
    default:
      ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), "Host_To_Targ_UV" );
      TCON_clear(c);
@@ -3697,9 +4232,13 @@ NaN_Tcon(TYPE_ID ty, TCON c)
 	    TCON_v2(c) == 0xfff5a5a5 && TCON_v3(c) == 0xfff5a5a5 &&
 	    TCON_iv0(c) == 0xfff5a5a5 && TCON_iv1(c) == 0xfff5a5a5 &&
 	    TCON_iv2(c) == 0xfff5a5a5 && TCON_iv3(c) == 0xfff5a5a5;
+   case MTYPE_F10:
+   case MTYPE_C10:
+     // TODO
+     return FALSE;
   }
   return FALSE;
-} /* Host_To_Targ_UV */
+} /* NaN_Tcon */
 
 /* Make complex TCON from two TCONs representing real and imaginary parts. */
 TCON
@@ -3721,6 +4260,11 @@ Make_Complex ( TYPE_ID ctype, TCON real, TCON imag )
      Set_TCON_IR8(c, TCON_R8(imag));
      break;
      
+  case MTYPE_C10:
+     Set_TCON_R10(c, TCON_R10(real));
+     Set_TCON_IR10(c, TCON_R10(imag));
+     break;
+
   case MTYPE_CQ:
      Set_TCON_R16(c, TCON_R16(real));
      Set_TCON_IR16(c, TCON_R16(imag));
@@ -3747,11 +4291,17 @@ Extract_Complex_Real(TCON complex)
      return c;
 
   case MTYPE_C8:
+  case MTYPE_V16C8:
      TCON_ty(c) = MTYPE_F8;
      Set_TCON_R8(c, TCON_R8(complex));
      return c;
      
-  case MTYPE_CQ:
+  case MTYPE_C10:
+     TCON_ty(c) = MTYPE_F10;
+     Set_TCON_R10(c, TCON_R10(complex));
+     return c;
+
+   case MTYPE_CQ:
      TCON_ty(c) = MTYPE_FQ;
      Set_TCON_R16(c, TCON_R16(complex));
      return c;
@@ -3776,15 +4326,21 @@ Extract_Complex_Imag(TCON complex)
      return c;
 
   case MTYPE_C8:
+  case MTYPE_V16C8:
      TCON_ty(c) = MTYPE_F8;
      Set_TCON_R8(c, TCON_IR8(complex));
      return c;
      
+  case MTYPE_C10:
+     TCON_ty(c) = MTYPE_F10;
+     Set_TCON_R10(c, TCON_IR10(complex));
+     return c;
+
   case MTYPE_CQ:
      TCON_ty(c) = MTYPE_FQ;
      Set_TCON_R16(c, TCON_IR16(complex));
      return c;
-     
+  
   default:
      ErrMsg ( EC_Inv_Mtype, Mtype_Name(TCON_ty(complex)), "Extract_Complex_Real" );
      TCON_ty(c) = MTYPE_F4;
@@ -3982,6 +4538,9 @@ Targ_To_Host_Float(TCON fvalue)
     case MTYPE_F8:
       return TCON_R8(fvalue);
 
+    case MTYPE_F10:
+	return (double)TCON_R10(fvalue);
+
     case MTYPE_FQ:
       return Targ_To_Host_Float(Targ_Conv(MTYPE_F8, fvalue));
 
@@ -4002,6 +4561,9 @@ Targ_To_Host_ComplexReal(TCON fvalue)
 
     case MTYPE_C8:
       return TCON_R8(fvalue);
+
+    case MTYPE_C10:
+      return (double)TCON_R10(fvalue);
 
     case MTYPE_CQ:
       return Targ_To_Host_Float(Targ_Conv(MTYPE_CQ, fvalue));
@@ -4024,6 +4586,9 @@ Targ_To_Host_ComplexImag(TCON fvalue)
     case MTYPE_C8:
       return TCON_IR8(fvalue);
 
+    case MTYPE_C10:
+      return (double)TCON_R10(fvalue);
+
     case MTYPE_CQ:
       return Targ_To_Host_Float(Targ_Conv(MTYPE_C8, fvalue));
 
@@ -4045,6 +4610,9 @@ Targ_To_Host_Quad(TCON fvalue)
     case MTYPE_F8:
       return Targ_To_Host_Quad(Targ_Conv(MTYPE_FQ, fvalue));
 
+    case MTYPE_F10:
+      return TCON_R10(fvalue);
+
     case MTYPE_FQ:
       return TCON_R16(fvalue);
 
@@ -4054,6 +4622,12 @@ Targ_To_Host_Quad(TCON fvalue)
   }
 } /* Targ_To_Host_Quad */
    
+INT
+fp_class_e(long double x)
+{
+  return FP_QNAN;
+}
+
 INT
 fp_class_d( double x )
 {
@@ -4129,6 +4703,9 @@ Targ_fp_class(TCON fvalue)
    case MTYPE_F8:
       return fp_class_d(TCON_R8(fvalue));
      
+   case MTYPE_F10:
+      return fp_class_e(TCON_R10(fvalue));
+
 #ifdef TARG_NEEDS_QUAD_OPS
    case MTYPE_FQ:
       return __c_fp_class_q(R16_To_RQ(TCON_R16(fvalue)));
@@ -4171,6 +4748,51 @@ Host_To_Targ_Complex ( TYPE_ID ty, double real, double imag )
      return c;
   }
 } /* Host_To_Targ_Complex */
+
+TCON
+Host_To_Targ_Complex_10 ( TYPE_ID ty, long double real, long double imag )
+{
+  TCON c;
+
+  TCON_clear(c);
+  TCON_ty(c) = ty;
+
+  switch (ty) {
+
+   case MTYPE_C4:
+     TCON_R4(c) = real;
+     TCON_IR4(c) = imag;
+     return c;
+
+   case MTYPE_C8:
+     TCON_R8(c) = real;
+     TCON_IR8(c) = imag;
+     return c;
+
+   case MTYPE_C10:
+     TCON_R10(c) = real;
+     TCON_IR10(c) = imag;
+     return c;
+
+   default:
+     ErrMsg ( EC_Inv_Mtype, Mtype_Name(ty), __func__ );
+     TCON_ty(c) = MTYPE_C4;
+     return c;
+  }
+}
+
+TCON
+Host_To_Targ_Complex (long double real, long double imag )
+{
+  TCON c;
+
+  TCON_clear(c);
+  TCON_ty(c) = MTYPE_C10;
+  TCON_R10(c) = real;
+  TCON_IR10(c) = imag;
+  return c;
+} /* Host_To_Targ_Complex */
+
 
 TCON
 Host_To_Targ_Complex_4 ( TYPE_ID ty, float real, float imag )
@@ -4289,6 +4911,12 @@ static TCON Targ_Ipower(TCON base, UINT64 exp, BOOL neg_exp, BOOL *folded, TYPE_
       div_op = OPC_F8RECIP;
       TCON_R8(r) = 1.0;
       break;
+    case MTYPE_F10:
+      mpy_op = OPC_F10MPY;
+      div_op = OPC_F10RECIP;
+      TCON_R10(r) = 1.0;
+      break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_FQ:
       mpy_op = OPC_FQMPY;
@@ -4305,6 +4933,11 @@ static TCON Targ_Ipower(TCON base, UINT64 exp, BOOL neg_exp, BOOL *folded, TYPE_
       mpy_op = OPC_C8MPY;
       div_op = OPC_C8RECIP;
       TCON_R8(r) = 1.0;
+      break;
+    case MTYPE_C10:
+      mpy_op = OPC_C10MPY;
+      div_op = OPC_C10RECIP;
+      TCON_R10(r) = 1.0;
       break;
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_CQ:
@@ -4891,6 +5524,19 @@ Targ_Is_Integral ( TCON tc, INT64 *iv )
       }
       return FALSE;
 
+    case MTYPE_F10:
+      {
+	long double ld = floorl(TCON_R10(tc));
+	if (ld == TCON_R10(tc)) {
+		INT64 ll = (INT64)ld;
+		if ((long double)ll == ld) {
+			*iv = ll;
+			return TRUE;
+		}
+	}
+	return FALSE;
+      }
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_FQ:
       {
@@ -4912,6 +5558,7 @@ Targ_Is_Integral ( TCON tc, INT64 *iv )
     /* TODO : fix for mongoose */
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
       return FALSE;
 
@@ -4974,6 +5621,15 @@ Coerce_To_Integer(subtree)
         }
         break;
   
+      case MTYPE_F10:
+        TCON_v0(truncated) = TCON_R10(operand);
+        TCON_R10(converted) = TCON_v0(truncated);
+        if (TCON_R10(converted) == TCON_R10(operand)) {
+          TCON_ty(truncated) = MTYPE_I4;
+          coerced_subtree = Make_Const(truncated);
+        }
+        break;
+
 #ifdef TARG_NEEDS_QUAD_OPS
       case MTYPE_FQ:
         TCON_v0(truncated) = TCON_R16(operand);
@@ -5027,6 +5683,11 @@ BOOL Targ_Is_Zero ( TCON t )
        * -0.0 will == 0.0, so add check for sign bit. */
       return (TCON_R8(t) == 0.0
 	&& (TCON_v0(t)|TCON_v1(t)) == 0);
+    case MTYPE_F10:
+      /* make sure is not -0.0 (sign-bit set);
+       * -0.0 will == 0.0, so add check for sign bit. */
+      return (TCON_R10(t) == 0.0 &&
+	(TCON_v0(t)|TCON_v1(t)|TCON_v2(t)|TCON_v3(t)) == 0);
 
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_FQ:
@@ -5042,6 +5703,7 @@ BOOL Targ_Is_Zero ( TCON t )
     /* TODO : fix for mongoose */
     case MTYPE_C4:
     case MTYPE_C8:
+    case MTYPE_C10:
     case MTYPE_CQ:
     case MTYPE_STR:
       return FALSE;
@@ -5084,6 +5746,11 @@ Targ_Is_Power_Of_Two ( TCON t )
       mant = (TCON_v1(t) & 0x000fffff) | TCON_v0(t);
       return mant==0 && exponent != 0 && exponent != 2047;
      
+    case MTYPE_F10:
+      exponent = (TCON_v1(t) & 0x7ff00000) >> 20;
+      mant = (TCON_v1(t) & 0x000fffff) | TCON_v0(t) | TCON_v2(t) | TCON_v3(t);
+      return mant==0 && exponent != 0 && exponent != 2047;
+
 #ifdef TARG_NEEDS_QUAD_OPS
     case MTYPE_FQ:
       /* assumes quads are implemented as
@@ -5204,6 +5871,7 @@ Hash_TCON ( TCON * t, UINT32 modulus )
     case MTYPE_F8:
       hash += TCON_v0(*t) + TCON_v1(*t);
       break;
+    case MTYPE_F10:
     case MTYPE_FQ:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       break;
@@ -5215,6 +5883,7 @@ Hash_TCON ( TCON * t, UINT32 modulus )
       hash += TCON_v0(*t) + TCON_v1(*t);
       hash += TCON_iv0(*t) + TCON_iv1(*t);
       break;
+    case MTYPE_C10:
     case MTYPE_CQ:
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       hash += TCON_iv0(*t) + TCON_iv1(*t) + TCON_iv2(*t) + TCON_iv3(*t);
@@ -5252,6 +5921,9 @@ Hash_TCON ( TCON * t, UINT32 modulus )
       break;
     case MTYPE_V16F4:
     case MTYPE_V16F8:
+#if defined(TARG_X8664)
+    case MTYPE_V16C8:
+#endif
       hash += TCON_v0(*t) + TCON_v1(*t) + TCON_v2(*t) + TCON_v3(*t);
       break;
     case MTYPE_V32I1:

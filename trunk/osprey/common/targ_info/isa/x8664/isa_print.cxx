@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -143,6 +143,8 @@ main()
   Instruction_Print_Group( cmp,
 			   TOP_comisd,
 			   TOP_comiss,
+			   TOP_ucomisd,
+			   TOP_ucomiss,
                            TOP_vcomisd,
                            TOP_vcomiss,
                            TOP_vucomisd,
@@ -155,8 +157,12 @@ main()
 			   TOP_cmp16,
 			   TOP_cmp32,
 			   TOP_cmp64,
+			   TOP_test8,
+			   TOP_test16,
 			   TOP_test32,
 			   TOP_test64,
+			   TOP_testi8,
+			   TOP_testi16,
 			   TOP_testi32,
 			   TOP_testi64,
 			   TOP_fucomi,
@@ -176,6 +182,8 @@ main()
   Operand(1);
   Operand(0);
   Instruction_Print_Group( cmpx,
+			   TOP_testx8,
+			   TOP_testx16,
 			   TOP_testx32,
 			   TOP_testx64,
 			   TOP_cmpx8,
@@ -184,6 +192,8 @@ main()
 			   TOP_cmpx64,
 			   TOP_comixsd,
 			   TOP_comixss,
+			   TOP_ucomixsd,
+			   TOP_ucomixss,
 			   TOP_vcomixsd,
 			   TOP_vcomixss,
 			   TOP_vucomixsd,
@@ -232,6 +242,8 @@ main()
   Operand(3);
   Operand(0);
   Instruction_Print_Group( cmpxx,
+			   TOP_testxx8,
+			   TOP_testxx16,
 			   TOP_testxx32,
 			   TOP_testxx64,
 			   TOP_cmpxx8,
@@ -240,6 +252,8 @@ main()
 			   TOP_cmpxx64,
 			   TOP_comixxsd,
 			   TOP_comixxss,
+			   TOP_ucomixxsd,
+			   TOP_ucomixxss,
 			   TOP_vcomixxsd,
 			   TOP_vcomixxss,
 			   TOP_vucomixxsd,
@@ -290,6 +304,8 @@ main()
   Operand(2);
   Operand(0);
   Instruction_Print_Group( cmpxxx,
+			   TOP_testxxx8,
+			   TOP_testxxx16,
 			   TOP_testxxx32,
 			   TOP_testxxx64,
 			   TOP_cmpxxx8,
@@ -298,6 +314,8 @@ main()
 			   TOP_cmpxxx64,
 			   TOP_comixxxsd,
 			   TOP_comixxxss,
+			   TOP_ucomixxxsd,
+			   TOP_ucomixxxss,
 			   TOP_vcomixxxsd,
 			   TOP_vcomixxxss,
 			   TOP_vucomixxxsd,
@@ -1204,6 +1222,68 @@ main()
 			   TOP_UNDEFINED );
 
   /* dest=op(src1, src2), non-x86-style */
+  ISA_PRINT_TYPE vropspec = ISA_Print_Type_Create("vropspec", "%s %s,%s,%s");
+  Name();
+  Operand(0);
+  Result(0);
+  Result(0);
+  Instruction_Print_Group( vropspec,
+                           TOP_vmovlhps,
+                           TOP_vfsqrtsd,
+                           TOP_vfsqrtss,
+                           TOP_vfrsqrtss,
+                           TOP_vfrcpss,
+			   TOP_UNDEFINED );
+
+  /* dest=op(src1, memop), non-x86-style */
+  ISA_PRINT_TYPE vropspecmem = ISA_Print_Type_Create("vropspecmem", "%s %s%s(%s),%s,%s");
+  Name();
+  Segment();
+  Operand(1);
+  Operand(0);
+  Result(0);
+  Result(0);
+  Instruction_Print_Group( vropspecmem,
+                           TOP_vfsqrtxsd,
+                           TOP_vfsqrtxss,
+                           TOP_vfrsqrtxss,
+                           TOP_vfrcpxss,
+			   TOP_UNDEFINED );
+
+  /* dest=op(src1, memop with scaled index with base), non-x86-style */
+  ISA_PRINT_TYPE vropspecmemindex = ISA_Print_Type_Create("vropspecmemindex", "%s %s%s(%s,%s,%s),%s,%s");
+  Name();
+  Segment();
+  Operand(3);
+  Operand(0);
+  Operand(1);
+  Operand(2);
+  Result(0);
+  Result(0);
+  Instruction_Print_Group( vropspecmemindex,
+                           TOP_vfsqrtxxss,
+                           TOP_vfsqrtxxsd,
+                           TOP_vfrsqrtxxss,
+                           TOP_vfrcpxxss,
+			   TOP_UNDEFINED );
+
+  /* dest=op(src1, memop with scaled index without base), non-x86-style */
+  ISA_PRINT_TYPE vropspecmemindexx = ISA_Print_Type_Create("vropspecmemindexx", "%s %s%s(,%s,%s),%s,%s");
+  Name();
+  Segment();
+  Operand(2);
+  Operand(0);
+  Operand(1);
+  Result(0);
+  Result(0);
+  Instruction_Print_Group( vropspecmemindex,
+                           TOP_vfsqrtxxxsd,
+                           TOP_vfsqrtxxxss,
+                           TOP_vfrsqrtxxxss,
+                           TOP_vfrcpxxxss,
+			   TOP_UNDEFINED );
+
+  /* dest=op(src1, src2), non-x86-style */
   ISA_PRINT_TYPE vropop = ISA_Print_Type_Create("vropop", "%s %s,%s,%s");
   Name();
   Operand(1);
@@ -1230,8 +1310,6 @@ main()
                            TOP_vpshlq,
                            TOP_vpshlw,
                            /* AVX instruction */
-                           TOP_vfsqrtsd,
-                           TOP_vfsqrtss,
                            TOP_vadd128v8,
                            TOP_vadd128v32,
                            TOP_vadd128v64,
@@ -1298,7 +1376,6 @@ main()
                            TOP_vphsubs128v16,
                            TOP_vpmaddwd,
                            TOP_vpmaddubsw128,
-                           TOP_vmovlhps,
                            TOP_vmovhlps,
                            TOP_vmovsd,
                            TOP_vmovss,
@@ -1350,7 +1427,6 @@ main()
                            TOP_vfperm128v32,
                            TOP_vfpermi128v64,
                            TOP_vfpermi128v32,
-                           TOP_vfrsqrtss,
                            TOP_vpsadbw,
                            TOP_vpshuf128v8,
                            TOP_vpshuf128v32,
@@ -1549,7 +1625,6 @@ main()
                            TOP_vorx128v64,
                            TOP_vforx128v64,
                            TOP_vforx128v32,
-                           TOP_vfrsqrtxss,
                            TOP_vpsadbwx,
                            TOP_vpshufx128v8,
                            TOP_vpshufx128v32,
@@ -1564,8 +1639,6 @@ main()
                            TOP_vpsrldx,
                            TOP_vpsrlqx,
                            TOP_vpsrlwx,
-                           TOP_vfsqrtxsd,
-                           TOP_vfsqrtxss,
                            TOP_vsubx128v8,
                            TOP_vsubx128v32,
                            TOP_vsubx128v64,
@@ -1768,7 +1841,6 @@ main()
                            TOP_vfpermxx128v32,
                            TOP_vfpermixx128v64,
                            TOP_vfpermixx128v32,
-                           TOP_vfrsqrtxxss,
                            TOP_vpsadbwxx,
                            TOP_vpshufxx128v8,
                            TOP_vpshufxx128v32,
@@ -1783,8 +1855,6 @@ main()
                            TOP_vpsrldxx,
                            TOP_vpsrlqxx,
                            TOP_vpsrlwxx,
-                           TOP_vfsqrtxxsd,
-                           TOP_vfsqrtxxss,
                            TOP_vsubxx128v8,
                            TOP_vsubxx128v32,
                            TOP_vsubxx128v64,
@@ -1988,7 +2058,6 @@ main()
                            TOP_vfpermxxx128v32,
                            TOP_vfpermixxx128v64,
                            TOP_vfpermixxx128v32,
-                           TOP_vfrsqrtxxxss,
                            TOP_vpsadbwxxx,
                            TOP_vpshufxxx128v8,
                            TOP_vpshufxxx128v32,
@@ -2003,8 +2072,6 @@ main()
                            TOP_vpsrldxxx,
                            TOP_vpsrlqxxx,
                            TOP_vpsrlwxxx,
-                           TOP_vfsqrtxxxsd,
-                           TOP_vfsqrtxxxss,
                            TOP_vsubxxx128v8,
                            TOP_vsubxxx128v32,
                            TOP_vsubxxx128v64,
@@ -2836,6 +2903,8 @@ main()
 			   TOP_ldhps_n32,
 			   TOP_ldlpd_n32,
 			   TOP_ldhpd_n32,
+                           TOP_stups_n32,
+                           TOP_stupd_n32,
 			   TOP_cvtss2si,
 			   TOP_cvtsd2si,
 			   TOP_cvtss2siq,
@@ -3033,7 +3102,6 @@ main()
                            TOP_vpmovzxwd,
                            TOP_vpmovzxwq,
                            TOP_vfrcp128v32,
-                           TOP_vfrcpss,
                            TOP_vfrsqrt128v32,
                            TOP_vfsqrt128v64,
                            TOP_vfsqrt128v32,
@@ -3057,6 +3125,7 @@ main()
                            TOP_vstapd_n32,
                            TOP_vstaps_n32,
                            TOP_vstlpd_n32,
+                           TOP_vstups_n32,
                            TOP_vstupd_n32,
                            TOP_vsthpd_n32,
                            TOP_vsthps_n32,
@@ -3148,7 +3217,6 @@ main()
                            TOP_vpmovzxwdx,
                            TOP_vpmovzxwqx,
                            TOP_vfrcpx128v32,
-                           TOP_vfrcpxss,
                            TOP_vfrsqrtx128v32,
                            TOP_vpsignx128v8,
                            TOP_vpsignx128v32,
@@ -3232,7 +3300,6 @@ main()
                            TOP_vpmovzxwdxx,
                            TOP_vpmovzxwqxx,
                            TOP_vfrcpxx128v32,
-                           TOP_vfrcpxxss,
                            TOP_vfrsqrtxx128v32,
                            TOP_vpsignxx128v8,
                            TOP_vpsignxx128v32,
@@ -3318,7 +3385,6 @@ main()
                            TOP_vpsignxxx128v32,
                            TOP_vpsignxxx128v16,
                            TOP_vfrcpxxx128v32,
-                           TOP_vfrcpxxxss,
                            TOP_vfrsqrtxxx128v32,
                            TOP_vfsqrtxxx128v64,
                            TOP_vfsqrtxxx128v32,
@@ -3354,7 +3420,6 @@ main()
 			   TOP_maskmovdqu,
 			   TOP_maskmovq,
                            /* AVX instructions */
-                           TOP_vstups_n32,
                            TOP_vstsd_n32,
                            TOP_vstss_n32,
 			   TOP_UNDEFINED );
@@ -3649,6 +3714,8 @@ main()
 			   TOP_sthpdx,
 			   TOP_stapsx,
 			   TOP_stapdx,
+                           TOP_stupdx,
+                           TOP_stupsx,
                            /* SSE4.1 instructions */
                            TOP_stntdqx,
                            /* AVX instructions */
@@ -3730,6 +3797,8 @@ main()
 			   TOP_stntpsxx,
 			   TOP_stapsxx,
 			   TOP_stapdxx,
+                           TOP_stupdxx,
+                           TOP_stupsxx,
                            /* SSE4.1 instructions */
                            TOP_stntdqxx,
                            /* AVX instructions */

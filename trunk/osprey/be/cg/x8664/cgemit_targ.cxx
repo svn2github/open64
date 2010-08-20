@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -930,14 +930,14 @@ static void Init_OP_Name()
   OP_Name[TOP_maxxx128v16] = "pmaxsw";
   OP_Name[TOP_maxxxx128v8] = "pmaxub";
   OP_Name[TOP_maxxxx128v16] = "pmaxsw";
-  OP_Name[TOP_min128v8] = "pmaxub";
-  OP_Name[TOP_min128v16] = "pmaxsw";
-  OP_Name[TOP_minx128v8] = "pmaxub";
-  OP_Name[TOP_minx128v16] = "pmaxsw";
-  OP_Name[TOP_minxx128v8] = "pmaxub";
-  OP_Name[TOP_minxx128v16] = "pmaxsw";
-  OP_Name[TOP_minxxx128v8] = "pmaxub";
-  OP_Name[TOP_minxxx128v16] = "pmaxsw";
+  OP_Name[TOP_min128v8] = "pminub";
+  OP_Name[TOP_min128v16] = "pminsw";
+  OP_Name[TOP_minx128v8] = "pminub";
+  OP_Name[TOP_minx128v16] = "pminsw";
+  OP_Name[TOP_minxx128v8] = "pminub";
+  OP_Name[TOP_minxx128v16] = "pminsw";
+  OP_Name[TOP_minxxx128v8] = "pminub";
+  OP_Name[TOP_minxxx128v16] = "pminsw";
   OP_Name[TOP_punpcklbw128] = "punpcklbw",
   OP_Name[TOP_punpcklwd128] = "punpcklwd",
   OP_Name[TOP_punpckldq128] = "punpckldq";
@@ -1297,7 +1297,13 @@ static void Init_OP_Name()
   OP_Name[TOP_vfrczpsxx] = "vfrczps";
   OP_Name[TOP_vfrczpsxxx] = "vfrczps";
   OP_Name[TOP_vfrczsd] = "vfrczsd";
+  OP_Name[TOP_vfrczsdx] = "vfrczsd";
+  OP_Name[TOP_vfrczsdxx] = "vfrczsd";
+  OP_Name[TOP_vfrczsdxxx] = "vfrczsd";
   OP_Name[TOP_vfrczss] = "vfrczss";
+  OP_Name[TOP_vfrczssx] = "vfrczss";
+  OP_Name[TOP_vfrczssxx] = "vfrczss";
+  OP_Name[TOP_vfrczssxxx] = "vfrczss";
   OP_Name[TOP_vpcmov] = "vpcmov";
   OP_Name[TOP_vpcmovx] = "vpcmov";
   OP_Name[TOP_vpcmovxx] = "vpcmov";
@@ -2660,14 +2666,14 @@ static void Init_OP_Name()
   OP_Name[TOP_vsubxss] = "vsubss";
   OP_Name[TOP_vsubxxss] = "vsubss";
   OP_Name[TOP_vsubxxxss] = "vsubss";
-  OP_Name[TOP_vucomisd] = "ucomisd";
-  OP_Name[TOP_vucomixsd] = "ucomisd";
-  OP_Name[TOP_vucomixxsd] = "ucomisd";
-  OP_Name[TOP_vucomixxxsd] = "ucomisd";
-  OP_Name[TOP_vucomiss] = "ucomiss";
-  OP_Name[TOP_vucomixss] = "ucomiss";
-  OP_Name[TOP_vucomixxss] = "ucomiss";
-  OP_Name[TOP_vucomixxxss] = "ucomiss";
+  OP_Name[TOP_vucomisd] = "vucomisd";
+  OP_Name[TOP_vucomixsd] = "vucomisd";
+  OP_Name[TOP_vucomixxsd] = "vucomisd";
+  OP_Name[TOP_vucomixxxsd] = "vucomisd";
+  OP_Name[TOP_vucomiss] = "vucomiss";
+  OP_Name[TOP_vucomixss] = "vucomiss";
+  OP_Name[TOP_vucomixxss] = "vucomiss";
+  OP_Name[TOP_vucomixxxss] = "vucomiss";
   OP_Name[TOP_vunpckh128v64] = "vunpckhpd";
   OP_Name[TOP_vunpckhx128v64] = "vunpckhpd";
   OP_Name[TOP_vunpckhxx128v64] = "vunpckhpd";
@@ -2698,6 +2704,244 @@ static void Init_OP_Name()
   OP_Name[TOP_vxzero32] = "vxorps";
   OP_Name[TOP_vzeroall] = "vzeroall";
 
+#ifdef FMA3
+  // Intel fma TOP to instruction map
+  OP_Name[TOP_xfmaddpd132] = "vfmadd132pd";
+  OP_Name[TOP_xfmaddx132pdx] = "vfmadd132pd";
+  OP_Name[TOP_xfmaddx132pdxx] = "vfmadd132pd";
+  OP_Name[TOP_xfmaddx132pdxxx] = "vfmadd132pd";
+  OP_Name[TOP_xfmaddpd213] = "vfmadd213pd";
+  OP_Name[TOP_xfmaddx213pdx] = "vfmadd213pd";
+  OP_Name[TOP_xfmaddx213pdxx] = "vfmadd213pd";
+  OP_Name[TOP_xfmaddx213pdxxx] = "vfmadd213pd";
+  OP_Name[TOP_xfmaddpd231] = "vfmadd231pd";
+  OP_Name[TOP_xfmaddx231pdx] = "vfmadd231pd";
+  OP_Name[TOP_xfmaddx231pdxx] = "vfmadd231pd";
+  OP_Name[TOP_xfmaddx132ps] = "vfmadd132ps";
+  OP_Name[TOP_xfmaddx132psx] = "vfmadd132ps";
+  OP_Name[TOP_xfmaddx132psxx] = "vfmadd132ps";
+  OP_Name[TOP_xfmaddx132psxxx] = "vfmadd132ps";
+  OP_Name[TOP_xfmaddx213ps] = "vfmadd213ps";
+  OP_Name[TOP_xfmaddx213psx] = "vfmadd213ps";
+  OP_Name[TOP_xfmaddx213psxx] = "vfmadd213ps";
+  OP_Name[TOP_xfmaddx213psxxx] = "vfmadd213ps";
+  OP_Name[TOP_xfmaddx231ps] = "vfmadd231ps";
+  OP_Name[TOP_xfmaddx231psx] = "vfmadd231ps";
+  OP_Name[TOP_xfmaddx231psxx] = "vfmadd231ps";
+  OP_Name[TOP_xfmaddx231psxxx] = "vfmadd231ps";
+  OP_Name[TOP_xfmaddx132sd] = "vfmadd132sd";
+  OP_Name[TOP_xfmaddx132sdx] = "vfmadd132sd";
+  OP_Name[TOP_xfmaddx132sdxx] = "vfmadd132sd";
+  OP_Name[TOP_xfmaddx132sdxxx] = "vfmadd132sd";
+  OP_Name[TOP_xfmaddx213sd] = "vfmadd213sd";
+  OP_Name[TOP_xfmaddx213sdx] = "vfmadd213sd";
+  OP_Name[TOP_xfmaddx213sdxx] = "vfmadd213sd";
+  OP_Name[TOP_xfmaddx213sdxxx] = "vfmadd213sd";
+  OP_Name[TOP_xfmaddx231sd] = "vfmadd231sd";
+  OP_Name[TOP_xfmaddx231sdx] = "vfmadd231sd";
+  OP_Name[TOP_xfmaddx231sdxx] = "vfmadd231sd";
+  OP_Name[TOP_xfmaddx231sdxxx] = "vfmadd231sd";
+  OP_Name[TOP_xfmaddx132ss] = "vfmadd132ss";
+  OP_Name[TOP_xfmaddx132ssx] = "vfmadd132ss";
+  OP_Name[TOP_xfmaddx132ssxx] = "vfmadd132ss";
+  OP_Name[TOP_xfmaddx132ssxxx] = "vfmadd132ss";
+  OP_Name[TOP_xfmaddx213ss] = "vfmadd213ss";
+  OP_Name[TOP_xfmaddx213ssx] = "vfmadd213ss";
+  OP_Name[TOP_xfmaddx213ssxx] = "vfmadd213ss";
+  OP_Name[TOP_xfmaddx213ssxxx] = "vfmadd213ss";
+  OP_Name[TOP_xfmaddx231ss] = "vfmadd231ss";
+  OP_Name[TOP_xfmaddx231ssx] = "vfmadd231ss";
+  OP_Name[TOP_xfmaddx231ssxx] = "vfmadd231ss";
+  OP_Name[TOP_xfmaddx231ssxxx] = "vfmadd231ss";
+  OP_Name[TOP_xfmaddsubx132pd] = "vfmaddsub132pd";
+  OP_Name[TOP_xfmaddsubx132pdx] = "vfmaddsub132pd";
+  OP_Name[TOP_xfmaddsubx132pdxx] = "vfmaddsub132pd";
+  OP_Name[TOP_xfmaddsubx132pdxxx] = "vfmaddsub132pd";
+  OP_Name[TOP_xfmaddsubx213pd] = "vfmaddsub213pd";
+  OP_Name[TOP_xfmaddsubx213pdx] = "vfmaddsub213pd";
+  OP_Name[TOP_xfmaddsubx213pdxx] = "vfmaddsub213pd";
+  OP_Name[TOP_xfmaddsubx213pdxxx] = "vfmaddsub213pd";
+  OP_Name[TOP_xfmaddsubx231ps] = "vfmaddsub231pd";
+  OP_Name[TOP_xfmaddsubx231psx] = "vfmaddsub231pd";
+  OP_Name[TOP_xfmaddsubx231psxx] = "vfmaddsub231pd";
+  OP_Name[TOP_xfmaddsubx231psxxx] = "vfmaddsub231pd";
+  OP_Name[TOP_xfmaddsubx132ps] = "vfmaddsub132ps";
+  OP_Name[TOP_xfmaddsubx132psx] = "vfmaddsub132ps";
+  OP_Name[TOP_xfmaddsubx132psxx] = "vfmaddsub132ps";
+  OP_Name[TOP_xfmaddsubx132psxxx] = "vfmaddsub132ps";
+  OP_Name[TOP_xfmaddsubx213ps] = "vfmaddsub213ps";
+  OP_Name[TOP_xfmaddsubx213psx] = "vfmaddsub213ps";
+  OP_Name[TOP_xfmaddsubx213psxx] = "vfmaddsub213ps";
+  OP_Name[TOP_xfmaddsubx213psxxx] = "vfmaddsub213ps";
+  OP_Name[TOP_xfmaddsubx231ps] = "vfmaddsub231ps";
+  OP_Name[TOP_xfmaddsubx231psx] = "vfmaddsub231ps";
+  OP_Name[TOP_xfmaddsubx231psxx] = "vfmaddsub231ps";
+  OP_Name[TOP_xfmaddsubx231psxxx] = "vfmaddsub231ps";
+  OP_Name[TOP_xfmsubaddx132pd] = "vfmsubadd132pd";
+  OP_Name[TOP_xfmsubaddx132pdx] = "vfmsubadd132pd";
+  OP_Name[TOP_xfmsubaddx132pdxx] = "vfmsubadd132pd";
+  OP_Name[TOP_xfmsubaddx132pdxxx] = "vfmsubadd132pd";
+  OP_Name[TOP_xfmsubaddx213pd] = "vfmsubadd213pd";
+  OP_Name[TOP_xfmsubaddx213pdx] = "vfmsubadd213pd";
+  OP_Name[TOP_xfmsubaddx213pdxx] = "vfmsubadd213pd";
+  OP_Name[TOP_xfmsubaddx213pdxxx] = "vfmsubadd213pd";
+  OP_Name[TOP_xfmsubaddx231pd] = "vfmsubadd231pd";
+  OP_Name[TOP_xfmsubaddx231pdx] = "vfmsubadd231pd";
+  OP_Name[TOP_xfmsubaddx231pdxx] = "vfmsubadd231pd";
+  OP_Name[TOP_xfmsubaddx231pdxxx] = "vfmsubadd231pd";
+  OP_Name[TOP_xfmsubaddx132ps] = "vfmsubadd132ps";
+  OP_Name[TOP_xfmsubaddx132psx] = "vfmsubadd132ps";
+  OP_Name[TOP_xfmsubaddx132psxx] = "vfmsubadd132ps";
+  OP_Name[TOP_xfmsubaddx132psxxx] = "vfmsubadd132ps";
+  OP_Name[TOP_xfmsubaddx213ps] = "vfmsubadd213ps";
+  OP_Name[TOP_xfmsubaddx213psx] = "vfmsubadd213ps";
+  OP_Name[TOP_xfmsubaddx213psxx] = "vfmsubadd213ps";
+  OP_Name[TOP_xfmsubaddx213psxxx] = "vfmsubadd213ps";
+  OP_Name[TOP_xfmsubaddx231ps] = "vfmsubadd231ps";
+  OP_Name[TOP_xfmsubaddx231psx] = "vfmsubadd231ps";
+  OP_Name[TOP_xfmsubaddx231psxx] = "vfmsubadd231ps";
+  OP_Name[TOP_xfmsubaddx231psxxx] = "vfmsubadd231ps";
+  OP_Name[TOP_xfmsubx132pd] = "vfmsub132pd";
+  OP_Name[TOP_xfmsubx132pdx] = "vfmsub132pd";
+  OP_Name[TOP_xfmsubx132pdxx] = "vfmsub132pd";
+  OP_Name[TOP_xfmsubx132pdxxx] = "vfmsub132pd";
+  OP_Name[TOP_xfmsubx213pd] = "vfmsub213pd";
+  OP_Name[TOP_xfmsubx213pdx] = "vfmsub213pd";
+  OP_Name[TOP_xfmsubx213pdxx] = "vfmsub213pd";
+  OP_Name[TOP_xfmsubx213pdxxx] = "vfmsub213pd";
+  OP_Name[TOP_xfmsubx231pd] = "vfmsub231pd";
+  OP_Name[TOP_xfmsubx231pdx] = "vfmsub231pd";
+  OP_Name[TOP_xfmsubx231pdxx] = "vfmsub231pd";
+  OP_Name[TOP_xfmsubx231pdxxx] = "vfmsub231pd";
+  OP_Name[TOP_xfmsubx132ps] = "vfmsub132ps";
+  OP_Name[TOP_xfmsubx132psx] = "vfmsub132ps";
+  OP_Name[TOP_xfmsubx132psxx] = "vfmsub132ps";
+  OP_Name[TOP_xfmsubx132psxxx] = "vfmsub132ps";
+  OP_Name[TOP_xfmsubx213ps] = "vfmsub213ps";
+  OP_Name[TOP_xfmsubx213psx] = "vfmsub213ps";
+  OP_Name[TOP_xfmsubx213psxx] = "vfmsub213ps";
+  OP_Name[TOP_xfmsubx213psxxx] = "vfmsub213ps";
+  OP_Name[TOP_xfmsubx231ps] = "vfmsub231ps";
+  OP_Name[TOP_xfmsubx231psx] = "vfmsub231ps";
+  OP_Name[TOP_xfmsubx231psxx] = "vfmsub231ps";
+  OP_Name[TOP_xfmsubx231psxxx] = "vfmsub231ps";
+  OP_Name[TOP_xfmsubx132sd] = "vfmsub132sd";
+  OP_Name[TOP_xfmsubx132sdx] = "vfmsub132sd";
+  OP_Name[TOP_xfmsubx132sdxx] = "vfmsub132sd";
+  OP_Name[TOP_xfmsubx132sdxxx] = "vfmsub132sd";
+  OP_Name[TOP_xfmsubx213sd] = "vfmsub213sd";
+  OP_Name[TOP_xfmsubx213sdx] = "vfmsub213sd";
+  OP_Name[TOP_xfmsubx213sdxx] = "vfmsub213sd";
+  OP_Name[TOP_xfmsubx213sdxxx] = "vfmsub213sd";
+  OP_Name[TOP_xfmsubx231sd] = "vfmsub231sd";
+  OP_Name[TOP_xfmsubx231sdx] = "vfmsub231sd";
+  OP_Name[TOP_xfmsubx231sdxx] = "vfmsub231sd";
+  OP_Name[TOP_xfmsubx231sdxxx] = "vfmsub231sd";
+  OP_Name[TOP_xfmsubx132ss] = "vfmsub132ss";
+  OP_Name[TOP_xfmsubx132ssx] = "vfmsub132ss";
+  OP_Name[TOP_xfmsubx132ssxx] = "vfmsub132ss";
+  OP_Name[TOP_xfmsubx132ssxxx] = "vfmsub132ss";
+  OP_Name[TOP_xfmsubx213ss] = "vfmsub213ss";
+  OP_Name[TOP_xfmsubx213ssx] = "vfmsub213ss";
+  OP_Name[TOP_xfmsubx213ssxx] = "vfmsub213ss";
+  OP_Name[TOP_xfmsubx213ssxxx] = "vfmsub213ss";
+  OP_Name[TOP_xfmsubx231ss] = "vfmsub231ss";
+  OP_Name[TOP_xfmsubx231ssx] = "vfmsub231ss";
+  OP_Name[TOP_xfmsubx231ssxx] = "vfmsub231ss";
+  OP_Name[TOP_xfmsubx231ssxxx] = "vfmsub231ss";
+  OP_Name[TOP_xfnmaddx132pd] = "vfnmadd132pd";
+  OP_Name[TOP_xfnmaddx132pdx] = "vfnmadd132pd";
+  OP_Name[TOP_xfnmaddx132pdxx] = "vfnmadd132pd";
+  OP_Name[TOP_xfnmaddx132pdxxx] = "vfnmadd132pd";
+  OP_Name[TOP_xfnmaddx213pd] = "vfnmadd213pd";
+  OP_Name[TOP_xfnmaddx213pdx] = "vfnmadd213pd";
+  OP_Name[TOP_xfnmaddx213pdxx] = "vfnmadd213pd";
+  OP_Name[TOP_xfnmaddx213pdxxx] = "vfnmadd213pd";
+  OP_Name[TOP_xfnmaddx231pd] = "vfnmadd231pd";
+  OP_Name[TOP_xfnmaddx231pdx] = "vfnmadd231pd";
+  OP_Name[TOP_xfnmaddx231pdxx] = "vfnmadd231pd";
+  OP_Name[TOP_xfnmaddx231pdxxx] = "vfnmadd231pd";
+  OP_Name[TOP_xfnmaddx132ps] = "vfnmadd132ps";
+  OP_Name[TOP_xfnmaddx132psx] = "vfnmadd132ps";
+  OP_Name[TOP_xfnmaddx132psxx] = "vfnmadd132ps";
+  OP_Name[TOP_xfnmaddx132psxxx] = "vfnmadd132ps";
+  OP_Name[TOP_xfnmaddx213ps] = "vfnmadd213ps";
+  OP_Name[TOP_xfnmaddx213psx] = "vfnmadd213ps";
+  OP_Name[TOP_xfnmaddx213psxx] = "vfnmadd213ps";
+  OP_Name[TOP_xfnmaddx213psxxx] = "vfnmadd213ps";
+  OP_Name[TOP_xfnmaddx231ps] = "vfnmadd231ps";
+  OP_Name[TOP_xfnmaddx231psx] = "vfnmadd231ps";
+  OP_Name[TOP_xfnmaddx231psxx] = "vfnmadd231ps";
+  OP_Name[TOP_xfnmaddx231psxxx] = "vfnmadd231ps";
+  OP_Name[TOP_xfnmaddx132sd] = "vfnmadd132sd";
+  OP_Name[TOP_xfnmaddx132sdx] = "vfnmadd132sd";
+  OP_Name[TOP_xfnmaddx132sdxx] = "vfnmadd132sd";
+  OP_Name[TOP_xfnmaddx132sdxxx] = "vfnmadd132sd";
+  OP_Name[TOP_xfnmaddx213sd] = "vfnmadd213sd";
+  OP_Name[TOP_xfnmaddx213sdx] = "vfnmadd213sd";
+  OP_Name[TOP_xfnmaddx213sdxx] = "vfnmadd213sd";
+  OP_Name[TOP_xfnmaddx213sdxxx] = "vfnmadd213sd";
+  OP_Name[TOP_xfnmaddx231sd] = "vfnmadd231sd";
+  OP_Name[TOP_xfnmaddx231sdx] = "vfnmadd231sd";
+  OP_Name[TOP_xfnmaddx231sdxx] = "vfnmadd231sd";
+  OP_Name[TOP_xfnmaddx231sdxxx] = "vfnmadd231sd";
+  OP_Name[TOP_xfnmaddx132ss] = "vfnmadd132ss";
+  OP_Name[TOP_xfnmaddx132ssx] = "vfnmadd132ss";
+  OP_Name[TOP_xfnmaddx132ssxx] = "vfnmadd132ss";
+  OP_Name[TOP_xfnmaddx132ssxxx] = "vfnmadd132ss";
+  OP_Name[TOP_xfnmaddx213ss] = "vfnmadd213ss";
+  OP_Name[TOP_xfnmaddx213ssx] = "vfnmadd213ss";
+  OP_Name[TOP_xfnmaddx213ssxx] = "vfnmadd213ss";
+  OP_Name[TOP_xfnmaddx213ssxxx] = "vfnmadd213ss";
+  OP_Name[TOP_xfnmaddx231ss] = "vfnmadd231ss";
+  OP_Name[TOP_xfnmaddx231ssx] = "vfnmadd231ss";
+  OP_Name[TOP_xfnmaddx231ssxx] = "vfnmadd231ss";
+  OP_Name[TOP_xfnmaddx231ssxxx] = "vfnmadd231ss";
+  OP_Name[TOP_xfnmsubx132pd] = "vfnmsub132pd";
+  OP_Name[TOP_xfnmsubx132pdx] = "vfnmsub132pd";
+  OP_Name[TOP_xfnmsubx132pdxx] = "vfnmsub132pd";
+  OP_Name[TOP_xfnmsubx132pdxxx] = "vfnmsub132pd";
+  OP_Name[TOP_xfnmsubx213pd] = "vfnmsub213pd";
+  OP_Name[TOP_xfnmsubx213pdx] = "vfnmsub213pd";
+  OP_Name[TOP_xfnmsubx213pdxx] = "vfnmsub213pd";
+  OP_Name[TOP_xfnmsubx213pdxxx] = "vfnmsub213pd";
+  OP_Name[TOP_xfnmsubx231pd] = "vfnmsub231pd";
+  OP_Name[TOP_xfnmsubx231pdx] = "vfnmsub231pd";
+  OP_Name[TOP_xfnmsubx231pdxx] = "vfnmsub231pd";
+  OP_Name[TOP_xfnmsubx231pdxxx] = "vfnmsub231pd";
+  OP_Name[TOP_xfnmsubx132ps] = "vfnmsub132ps";
+  OP_Name[TOP_xfnmsubx132psx] = "vfnmsub132ps";
+  OP_Name[TOP_xfnmsubx132psxx] = "vfnmsub132ps";
+  OP_Name[TOP_xfnmsubx132psxxx] = "vfnmsub132ps";
+  OP_Name[TOP_xfnmsubx213ps] = "vfnmsub213ps";
+  OP_Name[TOP_xfnmsubx213psx] = "vfnmsub213ps";
+  OP_Name[TOP_xfnmsubx213psxx] = "vfnmsub213ps";
+  OP_Name[TOP_xfnmsubx231psxxx] = "vfnmsub231ps";
+  OP_Name[TOP_xfnmsubx132sd] = "vfnmsub132sd";
+  OP_Name[TOP_xfnmsubx132sdx] = "vfnmsub132sd";
+  OP_Name[TOP_xfnmsubx132sdxx] = "vfnmsub132sd";
+  OP_Name[TOP_xfnmsubx132sdxxx] = "vfnmsub132sd";
+  OP_Name[TOP_xfnmsubx213sd] = "vfnmsub213sd";
+  OP_Name[TOP_xfnmsubx213sdx] = "vfnmsub213sd";
+  OP_Name[TOP_xfnmsubx213sdxx] = "vfnmsub213sd";
+  OP_Name[TOP_xfnmsubx213sdxxx] = "vfnmsub213sd";
+  OP_Name[TOP_xfnmsubx231sd] = "vfnmsub231sd";
+  OP_Name[TOP_xfnmsubx231sdx] = "vfnmsub231sd";
+  OP_Name[TOP_xfnmsubx231sdxx] = "vfnmsub231sd";
+  OP_Name[TOP_xfnmsubx231sdxxx] = "vfnmsub231sd";
+  OP_Name[TOP_xfnmsubx132ss] = "vfnmsub132ss";
+  OP_Name[TOP_xfnmsubx132ssx] = "vfnmsub132ss";
+  OP_Name[TOP_xfnmsubx132ssxx] = "vfnmsub132ss";
+  OP_Name[TOP_xfnmsubx132ssxxx] = "vfnmsub132ss";
+  OP_Name[TOP_xfnmsubx213ss] = "vfnmsub213ss";
+  OP_Name[TOP_xfnmsubx213ssx] = "vfnmsub213ss";
+  OP_Name[TOP_xfnmsubx213ssxx] = "vfnmsub213ss";
+  OP_Name[TOP_xfnmsubx231ss] = "vfnmsub231ss";
+  OP_Name[TOP_xfnmsubx231ssx] = "vfnmsub231ss";
+  OP_Name[TOP_xfnmsubx231ssxx] = "vfnmsub231ss";
+  OP_Name[TOP_xfnmsubx231ssxxx] = "vfnmsub231ss";
+  OP_Name[TOP_xfnmsubx213ssxxx] = "vfnmsub213ss";
+#endif
 
   // Start FMA4 additions
   OP_Name[TOP_vfmaddss]  = "vfmaddss";
@@ -3168,6 +3412,14 @@ static void Init_OP_Name()
   OP_Name[TOP_fsubx128v64] = "subpd";
   OP_Name[TOP_fsubxx128v64] = "subpd";
   OP_Name[TOP_fsubxxx128v64] = "subpd";
+  OP_Name[TOP_test8]   = "testb";
+  OP_Name[TOP_testx8]  = "testb";
+  OP_Name[TOP_testxx8]  = "testb";
+  OP_Name[TOP_testxxx8] = "testb";
+  OP_Name[TOP_test16]   = "testw";
+  OP_Name[TOP_testx16]  = "testw";
+  OP_Name[TOP_testxx16]  = "testw";
+  OP_Name[TOP_testxxx16] = "testw";
   OP_Name[TOP_test32]   = "testl";
   OP_Name[TOP_testx32]  = "testl";
   OP_Name[TOP_testxx32]  = "testl";
@@ -3176,6 +3428,8 @@ static void Init_OP_Name()
   OP_Name[TOP_testx64]  = "testq";
   OP_Name[TOP_testxx64] = "testq";
   OP_Name[TOP_testxxx64]= "testq";
+  OP_Name[TOP_testi8]  = "testb";
+  OP_Name[TOP_testi16]  = "testw";
   OP_Name[TOP_testi32]  = "testl";
   OP_Name[TOP_testi64]  = "testq";
   OP_Name[TOP_xor32]   = "xorl";
@@ -3261,7 +3515,13 @@ static void Init_OP_Name()
   OP_Name[TOP_stapd] = "movapd";
   OP_Name[TOP_stapd_n32] = "movapd";
   OP_Name[TOP_stupd] = "movupd";
+  OP_Name[TOP_stupdx] = "movupd";
+  OP_Name[TOP_stupdxx] = "movupd";
+  OP_Name[TOP_stupd_n32] = "movupd";
   OP_Name[TOP_stups] = "movups";
+  OP_Name[TOP_stupsx] = "movups";
+  OP_Name[TOP_stupsxx] = "movups";
+  OP_Name[TOP_stups_n32] = "movups";
   OP_Name[TOP_ldaps] = "movaps";
   OP_Name[TOP_ldaps_n32] = "movaps";
   OP_Name[TOP_ldapd] = "movapd";
@@ -3390,8 +3650,8 @@ static void Init_OP_Name()
       OP_Name[TOP_movsd] = "movaps"; 
     } else if (Is_Target_Orochi()) {
       OP_Name[TOP_movsd] = "movaps";  
-      OP_Name[TOP_vmovsd] = "vmovapd";  
-      OP_Name[TOP_vmovss] = "vmovaps";  
+      OP_Name[TOP_vmovsd] = "vmovsd";  
+      OP_Name[TOP_vmovss] = "vmovss";  
       OP_Name[TOP_vldsd] = "vmovsd";
       OP_Name[TOP_vldsd_n32] = "vmovsd";
       OP_Name[TOP_vstsdx]  = "vmovsd";
@@ -3851,28 +4111,52 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
 
   BOOL is_MAIN__ = !strcmp(Cur_PU_Name, "MAIN__");
 
-  if (IEEE_Arithmetic <= IEEE_ACCURATE &&
-      !is_MAIN__ &&
-      SIMD_IMask &&
-      SIMD_DMask &&
-      SIMD_ZMask &&
-      SIMD_OMask &&
-      SIMD_UMask &&
-      SIMD_PMask &&
-      !DEBUG_Trap_Uv)
+  BOOL and_mask_set = (!SIMD_IMask || !SIMD_DMask || !SIMD_ZMask || 
+		       !SIMD_OMask || !SIMD_UMask || !SIMD_PMask ||
+		       DEBUG_Trap_Uv);
+
+  BOOL or_mask_set  = (SIMD_AMask || SIMD_FMask);
+
+  if (IEEE_Arithmetic <= IEEE_ACCURATE && !and_mask_set && !or_mask_set)
     return;
 
   /* The following sequence of code is used to turn off
-     hardware underflow exception handling.
+     hardware underflow exception handling and/or to turn on
+     flush to zero and denormalized as zero functionality.
    */
 
   const int mask = 32768 ;
-  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f  - Invalid operation
-  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f  - Denormal
-  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f  - Divide by zero
-  const int simd_omask = 0xfbff; // bit 10: f 1011 f f  - Overflow
-  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f  - Underflow
-  const int simd_pmask = 0xefff; // bit 12: 1110 f f f  - Precision
+  const int simd_imask = 0xff7f; // bit 7 : f f 0111 f - Invalid Operation Mask
+  const int simd_dmask = 0xfeff; // bit 8 : f 1110 f f - Denormal Mask
+  const int simd_zmask = 0xfdff; // bit 9 : f 1101 f f - Divide by Zero Mask
+  const int simd_omask = 0xfbff; // bit 10: f 1011 f f - Overflow Mask
+  const int simd_umask = 0xf7ff; // bit 11: f 0111 f f - Underflow Mask
+  const int simd_pmask = 0xefff; // bit 12: 1110 f f f - Precision Mask
+
+  const int simd_amask = 0x0040; // bit 6 : 0 0 0100 0 - Denorm as Zero
+  const int simd_fmask = 0x8000; // bit 15: 1000 0 0 0 - Flush To Zero
+
+  int and_mask = 0xffff;
+  int or_mask = 0x0000;
+
+  if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
+    and_mask = and_mask & simd_imask;
+  if ( !SIMD_DMask )
+    and_mask = and_mask & simd_dmask;
+  if ( !SIMD_ZMask )
+    and_mask = and_mask & simd_zmask;
+  if ( !SIMD_OMask )
+    and_mask = and_mask & simd_omask;
+  if ( !SIMD_UMask )
+    and_mask = and_mask & simd_umask;
+  if ( !SIMD_PMask )
+    and_mask = and_mask & simd_pmask;
+
+  if ( SIMD_AMask )
+    or_mask = or_mask | simd_amask;
+  if ( SIMD_FMask )
+    or_mask = or_mask | simd_fmask;
+
   // bits 16..31 are 0, and must remain 0
 
   if( Is_Target_64bit() ){
@@ -3882,40 +4166,28 @@ void CGEMIT_Setup_Ctrl_Register( FILE* f )
       fprintf( f, "\torq $%d, (%%rsp)\n", mask);
     else if (is_MAIN__)				// bug 8926
       fprintf( f, "\tandq $%d, (%%rsp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_umask );
-    if ( !SIMD_PMask )
-      fprintf( f, "\tandq $%d, (%%rsp)\n", simd_pmask );
+
+    if ( and_mask_set )
+      fprintf( f, "\tandq $%d, (%%rsp)\n", and_mask );
+    if ( or_mask_set )
+      fprintf( f, "\torq $%d, (%%rsp)\n", or_mask );
+
     fprintf( f, "\t%s\n", "ldmxcsr (%rsp)"        );
     fprintf( f, "\t%s\n", "addq    $8,%rsp"       );
 
-  } else {
+  } else if Is_Target_SSE() {
     fprintf( f, "\t%s\n", "addl    $-8,%esp"      );
     fprintf( f, "\t%s\n", "stmxcsr (%esp)"        );
     if (IEEE_Arithmetic > IEEE_ACCURATE)
       fprintf( f, "\torl $%d, (%%esp)\n", mask);
     else if (is_MAIN__)				// bug 8926
       fprintf( f, "\tandl $%d, (%%esp)\n", ~mask);
-    if ( !SIMD_IMask || DEBUG_Trap_Uv)		// trap invalid operands
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_imask );
-    if ( !SIMD_DMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_dmask );
-    if ( !SIMD_ZMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_zmask );
-    if ( !SIMD_OMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_omask );
-    if ( !SIMD_UMask )
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_umask );
-    if ( !SIMD_PMask)
-      fprintf( f, "\tandl $%d, (%%esp)\n", simd_pmask );
+
+    if ( and_mask_set )
+      fprintf( f, "\tandl $%d, (%%esp)\n", and_mask );
+    if ( or_mask_set )
+      fprintf( f, "\torl $%d, (%%esp)\n", or_mask );
+
     fprintf( f, "\t%s\n", "ldmxcsr (%esp)"        );
     fprintf( f, "\t%s\n", "addl    $8,%esp"       );
   }

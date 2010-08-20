@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -319,6 +323,9 @@ IPO_CLONE::Copy_Node (const WN *src_wn)
 //  need copy these sl2 special flag also see bug 154 
     WN_Copy_sl_ext(wn, src_wn); 
 #endif 
+
+    // trace copy wn node here
+    Trace_Wn_Copy(wn, src_wn);
 
     return(wn);
 } // Copy_Node

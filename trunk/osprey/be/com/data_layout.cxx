@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -703,7 +703,7 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 #ifdef KEY
 		  align
 #else
-		  TY_align(ST_type(blk) 
+		  TY_align(ST_type(blk))
 #endif // KEY
 		  );
   }
@@ -2864,7 +2864,7 @@ Shorten_Section ( ST *st, SECTION_IDX sec )
        case MTYPE_U8:
 	 newsec = _SEC_LIT8;
 	 break;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
        case MTYPE_F10:
        case MTYPE_C10:
 #endif
@@ -3416,9 +3416,7 @@ Allocate_Object ( ST *st )
     {
       if (ST_is_constant(st))
         // GNU puts CLASS_CONST data in .rodata.
-        if (Gen_PIC_Shared &&
-            !ST_NO_LINKAGE(st) && 
-            ST_sym_class(st) != CLASS_CONST)
+        if (Gen_PIC_Shared && ST_sym_class(st) != CLASS_CONST)
           sec = _SEC_DATA_REL_RO; // bug 10097
         else
           sec = _SEC_RDATA;

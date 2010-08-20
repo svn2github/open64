@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -34,7 +34,7 @@
 #define stringify(x)	stringify_1(x)
 
 #define ALIGN(x, a)	(((x) + (a) - 1) & ~((a) - 1))
-#define ALIGN_UP(x,a)	(((x) + (a)) & ~((a) - 1))
+#define ALIGN_UP(x,a)	ALIGN(x,a)
 #define ALIGN_DOWN(x,a) ((x) & ~((a) - 1))
 
 #if defined(__powerpc64__) || defined (__powerpc__)
@@ -78,6 +78,7 @@ extern  void *heapbase;
 extern  void *heaptop;
 extern  long  mapsize;
 extern unsigned long newbrk;
+extern void __hugetlbfs_setup_bd_morecore();
 #endif
 
 #define ERROR(format, ...) \

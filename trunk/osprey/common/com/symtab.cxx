@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1311,15 +1311,15 @@ Create_Preg_explicit(TYPE_ID mtype, const char *name,
 	switch (mtype) {
 	case MTYPE_C4:
 	case MTYPE_C8:
-#ifdef TARG_IA64
 	case MTYPE_C10:
-#endif
 	case MTYPE_FQ:
+	case MTYPE_F16:
 		// reserve space for another preg
 		(void) New_PREG_explicit (scope_tab, level, preg_idx2);
                 Set_PREG_name_idx ((*scope_tab[level].preg_tab)[preg_idx2], 0);
 		break;
 	case MTYPE_CQ:
+	case MTYPE_C16:
 		// reserve space for 3 more pregs
 		(void) New_PREG_explicit (scope_tab, level, preg_idx2);
                 Set_PREG_name_idx ((*scope_tab[level].preg_tab)[preg_idx2], 0);
@@ -1354,21 +1354,29 @@ Preg_Increment (TYPE_ID mtype)
 
     case MTYPE_C4:
     case MTYPE_C8:
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_C10:
-#endif
-#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
+#elif !defined(TARG_LOONGSON)
     case MTYPE_FQ:
 #endif
+    case MTYPE_F16:
 	return 2;
 
-    case MTYPE_CQ:
+    case MTYPE_C16:
 	return 4;
+
+    case MTYPE_CQ:
+#if !defined(TARG_X8664) && !defined(TARG_LOONGSON)
+	return 4;
+#else
+        return 2;
+#endif
 
     case MTYPE_I8:
     case MTYPE_U8:
 	if (MTYPE_size_reg(MTYPE_I8) > MTYPE_size_reg(Spill_Int_Mtype))
 	    return 2;
+        break;
     case MTYPE_B:
 	// bool mtype not usually used, but if used, saves space for
 	// complement preg.
@@ -2518,7 +2526,7 @@ Setup_Preg_Pointers ()
     Branch_Preg = MTYPE_To_PREG(MTYPE_A8);
     
 #ifdef TARG_X8664
-    X87_Preg = MTYPE_To_PREG( MTYPE_FQ );
+    X87_Preg = MTYPE_To_PREG( MTYPE_F10 );
 #endif
 } // Setup_Preg_Pointers
 
@@ -2650,8 +2658,6 @@ Create_Special_Global_Symbols ()
 	} else if ( i == Spill_Float_Mtype ) {
 	    Spill_Float_Type = ty_idx;
 	}
-	if ( i == MTYPE_FQ )
-	    Quad_Type = ty_idx;
 
 #if defined(FRONT_END_C) || defined(FRONT_END_CPLUSPLUS)
 #ifndef FRONT_END_MFEF77

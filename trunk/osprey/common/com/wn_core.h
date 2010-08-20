@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -490,6 +490,7 @@ public:
       mUINT32           kid_count   :14; /* gives kid_count for free */
       mINT64            map_id      :30;
       TYPE_ID           desc        : 6;  /* descriptor type */
+      UINT32            wn_id;            /* unique id for the whirl node */
    } common;
 
    union {
@@ -577,8 +578,14 @@ public:
 #pragma reset woff 3201
   ~WN () {}
 
+  static UINT32 the_unique_id;
+
 public:
 
+  void set_unique_id() {
+     the_unique_id++;
+     common.wn_id = the_unique_id;
+  }
   friend inline WN_OFFSET   WN_load_offset (const WN *);
   friend inline WN_OFFSET&  WN_load_offset (WN *);
   friend inline WN_OFFSET   WN_lda_offset (const WN *);
@@ -674,6 +681,7 @@ public:
   friend inline TYPE_ID     WN_desc (const WN *);
   friend inline void        WN_set_desc (WN *, TYPE_ID);
   friend inline INT32       WN_map_id (const WN *);
+  friend inline UINT32      WN_id (const WN *);
 
   friend inline TY_IDX      WN_ty (const WN *, const int);
   friend inline TY_IDX&     WN_ty (WN *, const int);
@@ -728,6 +736,9 @@ public:
 #endif 
 #endif /* WN_NO_ACCESSOR_FUNCTIONS */
 };
+
+extern void Check_Traced_Wn_Node(WN *);
+extern void gdb_stop_here();
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS
 
@@ -810,7 +821,14 @@ inline void	  WN_set_bit_offset_size (WN* wn, UINT ofst, UINT siz) { wn->common.
 inline TYPE_ID    WN_desc (const WN* wn) { return wn->common.desc; }
 inline void       WN_set_desc (WN* wn, TYPE_ID ty) { wn->common.desc = ty; }
 inline INT32      WN_map_id (const WN* wn) { return wn->common.map_id; }
-inline void       WN_set_map_id (WN* wn, INT32 m) { wn->common.map_id = m; }
+inline void       WN_set_map_id (WN* wn, INT32 m) 
+{
+   wn->common.map_id = m; 
+#ifdef Is_True_On
+   Check_Traced_Wn_Node(wn);
+#endif
+}
+inline UINT32      WN_id (const WN *wn) { return wn->common.wn_id; }
 
 inline WN* WN_kid (const WN* wn, int i) { return wn->u3.kids [i]; }
 inline WN*& WN_kid (WN* wn, int i) { return wn->u3.kids [i]; }
@@ -1698,5 +1716,12 @@ inline mINT16 WN_num_actuals(const WN *wn)
 
 /* end prefetch macros */
 
+/* whether to dump the wn address; default to FALSE */
+extern BOOL IR_dump_wn_addr;
+/* whether to dump the unique wn id; default to FALSE */
+extern BOOL IR_dump_wn_id;
+
+extern void Trace_Wn_Copy(const WN *wn, const WN *src_wn);
+void Set_Trace_Wn_id(UINT32 wn_id);
 
 #endif /* wn_core_INCLUDED */

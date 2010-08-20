@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -37,6 +37,7 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <ctype.h>
@@ -176,10 +177,21 @@ Get_Affinity_Map(int **list, int total_cores)
   return cnt;
 }
 
+static void get_ordered_corelist_error_message(const char *file, int line)
+{
+  if (getenv("O64_OMP_VERBOSE") != NULL) {
+    fprintf (stderr, "Get_Ordered_Corelist: error in generating affinity map "
+             "at %s, line %d.\n", file, line);
+    fprintf (stderr, "Get_Ordered_Corelist: generating a default affinity map\n");
+  }
+}
+
 #define SET_DEFAULT {  \
+        get_ordered_corelist_error_message(__FILE__, __LINE__); \
         for (i=0; i<total_cores; i++)\
            list[i] = i; \
         if (fp != NULL) fclose(fp); \
+        free(thread_count); \
         return; }
 
 void
@@ -187,24 +199,84 @@ Get_Ordered_Corelist(int *list, int total_cores)
 {
   FILE * fp;
   char buf[256], *data;
-  int proc_id, proc_done=0;
-  int core_id = -1, socket_id = -1, cores = 0;   
-  int i;
+  int proc_id, proc_done=0, tmp_id, list_id;
+  int core_id = -1, socket_id = -1;
+  int siblings= 0, cores=0;
+  int min_socket_id = INT32_MAX, max_core_id = -1;
+  int i, *thread_count;
 
+  if (total_cores == 1) {
+    // The list is trivial, no need to read /proc/cpuinfo.
+    // Also note that in Linux kernels built with no SMP
+    // support topology information is missing.
+    list[0] = 0;
+    goto done;
+  }
+  // When the HT is turned on, there are more than
+  // one threads on a core. These threads have
+  // the same socket_id and core_id, thus we need to
+  // use the thread_count to distinguish them
+  thread_count = (int*) malloc(sizeof(int) * total_cores);
+  for (i=0; i<total_cores; i++) {
+      list[i] = -1;
+      thread_count[i]=0;
+  }
+  
   // could not find /proc/cpuinfo  
   if ((fp = fopen ("/proc/cpuinfo", "r")) == NULL) SET_DEFAULT;
   while (fgets (buf, 256, fp))
   {
-    if (!strncasecmp (buf, "cpu cores", 9)) {
+    int num;
+
+    if(!strncasecmp (buf, "physical id", 11))
+    {
       strtok (buf, ":");
       data = strtok (NULL, "\n");
-      cores = atoi(data); 
-      break;  
+      num = atoi(data);
+      if (num < min_socket_id)
+        min_socket_id = num;
+    }
+    else if (!strncasecmp (buf, "siblings", 8)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (siblings == 0)
+        siblings = num;
+      if (siblings != num) // assume the siblings are the same
+        SET_DEFAULT;
+    }
+    else if (!strncasecmp (buf, "core id", 7)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (max_core_id < num)
+        max_core_id = num;
+    }
+    else if (!strncasecmp (buf, "cpu cores", 9)) {
+      strtok (buf, ":");
+      data = strtok (NULL, "\n");
+      num = atoi(data);
+      if (cores == 0)
+        cores = num;
+      if (cores != num) // assume the cores are the same
+        SET_DEFAULT;
     }
   }
   
   // illegal cpu cores
-  if (cores == 0 || cores > total_cores) SET_DEFAULT;
+  if (cores <= 0 ||  cores > total_cores ||
+      siblings <= 0 || siblings > total_cores)
+      SET_DEFAULT;
+  if (max_core_id + 1 != cores) {
+    // With later Linux kernels AMD MCM parts (Magny-Cours),
+    // core_id values do not enumerate all of the
+    // cores on a socket, only the cores on a die
+    // are being enumerated;
+    int cores_per_die = max_core_id + 1;
+    if (cores_per_die <= 0 || cores_per_die > cores)
+      SET_DEFAULT;
+    cores = cores_per_die;
+  }
 
   rewind(fp);
   while (fgets (buf, 256, fp))
@@ -223,7 +295,7 @@ Get_Ordered_Corelist(int *list, int total_cores)
          {
            strtok (buf, ":");
            data = strtok (NULL, "\n");
-           socket_id = atoi(data);
+           socket_id = atoi(data) - min_socket_id;
          }
          if(!strncasecmp (buf, "core id", 7)) 
          {
@@ -234,11 +306,36 @@ Get_Ordered_Corelist(int *list, int total_cores)
 
          if((socket_id >= 0) && (core_id >= 0)) 
          {
-           // illegal socket_id or cores_id
-           if (socket_id * cores + core_id >= total_cores)
-             SET_DEFAULT;
+            
+           // bind the omp threads to adjunct cores on a socket
+           // while do not bind adjunct omp threads to the HT threads 
+           // on the same core. For example, a topolgy is
+           // (0-8 2-10 4-12 6-14) (1-9 3-11 5-13 7-15)
+           // 0-8 means proc 0 and proc 8 are two threads on a core
+           // they have the same socket_id and core_id
+           // the following binding order is better and is used
+           // 0 2 4 6 8 10 12 14 1 3 5 7 9 11 13 15
+           // do not mingle the cores on different sockets
 
-           list[socket_id * cores + core_id] = proc_id;
+           tmp_id = socket_id * siblings + core_id;
+           list_id = tmp_id + thread_count[tmp_id] * cores;
+		   
+           if (list_id >= total_cores) SET_DEFAULT;
+
+           if (list[list_id] >= 0) SET_DEFAULT;
+               
+           list[list_id] = proc_id;
+
+           thread_count[tmp_id] = thread_count[tmp_id] +1;
+
+           // thread_count should not be larger 
+           // under the assumption that siblings / cores is the number
+           // of threads on a core in cpuinfo
+           // that means, two procs that have the same physical id and 
+           // core id are considered as illegal config, except when HT 
+           // is enabled and can be shown through "siblings / cores" 
+           if (thread_count[tmp_id] > siblings / cores) SET_DEFAULT;
+           
            socket_id = -1;
            core_id = -1;
            proc_done ++;
@@ -251,6 +348,16 @@ Get_Ordered_Corelist(int *list, int total_cores)
   if (proc_done != total_cores) SET_DEFAULT;
 
   fclose(fp);  
+  free(thread_count);
+
+ done:
+  if (getenv("O64_OMP_VERBOSE") != NULL) {
+    fprintf(stderr, "Get_Ordered_Corelist: affinity map: ");
+    for (i = 0; i < total_cores; i++) {
+      fprintf(stderr, "%s%d", i > 0 ? "," : "", list[i]);
+    }
+    fprintf(stderr, "\n");
+  }
 }
 
 /*

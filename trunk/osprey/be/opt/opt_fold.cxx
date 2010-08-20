@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -144,6 +148,8 @@ static CODEMAP *fold_htable;
 // We need to turn tracing on/off in the simplifier without making it
 // a member of the FOLD class.
 static BOOL     fold_trace;
+
+static CODEREP * CR_CreateFPconst(TCON tc);
 
 void
 Initialize_CR_simp(CODEMAP *htable)
@@ -510,6 +516,13 @@ FOLD::CR_Simplify_Expr(CODEREP *cr)
       found |= check_convert(cr, &k1, 1);
       r = SIMPNODE_SimplifyExp2(op, k0, k1);
       if (r) {
+	 if (SIMPNODE_rtype(r) == MTYPE_F8 && 
+   	   SIMPNODE_rtype(cr) == MTYPE_C8)
+	 {
+	   CODEREP *zero;
+	   zero = CR_CreateFPconst(Host_To_Targ_Float(MTYPE_F8, 0.0)); 
+	   r = CR_Create(OPC_C8PAIR, 2, r, zero, NULL);
+	 }
 	 SIMPNODE_DELETE(cr);
 	 result = r;			// no need for rehash, already done
       } else {

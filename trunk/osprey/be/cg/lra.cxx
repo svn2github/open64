@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -215,6 +215,7 @@ typedef struct live_range {
 #endif
   mINT16 last_use;      /* instruction number for last use in live range. */
   mINT16 exposed_use;   /* instruction number for last exposed use (if any) */
+  mINT16 upward_exposed_use;  
   mUINT8 def_cnt;       /* number of defs in the live range. */
   mUINT8 use_cnt;       /* number of uses in the live range. */
   mUINT8 flags;         /* misc. flags (see definition below) */
@@ -230,6 +231,7 @@ typedef struct live_range {
 #endif
 #define LR_last_use(lr)         ((lr)->last_use)
 #define LR_exposed_use(lr)      ((lr)->exposed_use)
+#define LR_upward_exposed_use(lr)      ((lr)->upward_exposed_use)
 #define LR_def_cnt(lr)          ((lr)->def_cnt)
 #define LR_use_cnt(lr)          ((lr)->use_cnt)
 #define LR_flags(lr)            ((lr)->flags)
@@ -668,6 +670,22 @@ LR_For_TN (TN *tn)
   return lr;
 }
 
+static void Print_Live_Range (LIVE_RANGE *lr);
+
+static BOOL
+LR_conflicts_with_reg_LR(LIVE_RANGE* lr1, LIVE_RANGE* ded_lr)
+{
+  if( ! LR_upward_exposed_use(ded_lr) ) {
+    if( LR_last_use(lr1) < LR_first_def(ded_lr) ) {
+      return FALSE;
+    }
+  } 
+  else if( LR_upward_exposed_use(ded_lr) < LR_first_def(lr1) ) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
 
 /* For global TNs, the LR is for the dedicated TN corresponding to the
  * assigned register. If all references to this register are the same
@@ -751,10 +769,18 @@ Print_BB_For_LRA (BB *bb)
 static void
 Print_Live_Range (LIVE_RANGE *lr)
 {
-  fprintf (TFile, "  %s_LR>TN%d  %3d(%d) to %3d(%d), exposed:%d\n",
+  fprintf (TFile, "  %s_LR>TN%d  %3d(%d) to %3d(%d), exposed:%d, free exposed:%d\n",
+                 TN_is_local_reg(LR_tn(lr)) ? "LOCAL" : "GLOBAL",
+                 TN_number(LR_tn(lr)), LR_first_def(lr), LR_def_cnt(lr),
+                 LR_last_use(lr), LR_use_cnt(lr), LR_exposed_use(lr), LR_upward_exposed_use(lr));
+
+#if 0
+  fprintf (TFile, "  %s_LR>TN%d  %3d(%d) to %3d(%d), exposed:%d, prefered: %s,flags 0x%x\n",
                 TN_is_local_reg(LR_tn(lr)) ? "LOCAL" : "GLOBAL",
                 TN_number(LR_tn(lr)), LR_first_def(lr), LR_def_cnt(lr),
-                LR_last_use(lr), LR_use_cnt(lr), LR_exposed_use(lr));
+                LR_last_use(lr), LR_use_cnt(lr), LR_exposed_use(lr), 
+                REGISTER_name (ISA_REGISTER_CLASS_integer, LR_prefer_reg(lr)), LR_flags(lr));
+#endif
 }
 
 
@@ -784,6 +810,7 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra,
   if (!TN_is_local_reg(tn)) {
     if (LR_def_cnt(clr) == 0) {
       LR_exposed_use(clr) = opnum;
+      LR_upward_exposed_use(clr) = opnum;
     }
     /* Add this use to the live range for this TN. */
     LR_use_cnt(clr)++;
@@ -812,6 +839,9 @@ Mark_Use (TN *tn, OP *op, INT opnum, BB *bb, BOOL in_lra,
 #endif
       }
       LR_exposed_use(clr) = opnum;
+      if (LR_def_cnt(clr) == 0) {
+        LR_upward_exposed_use(clr) = opnum;
+      }
     }
     /* Add this use to the live range for this TN. */
     LR_last_use(clr) = opnum;
@@ -877,6 +907,7 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
       if (!TN_is_local_reg(tn)) {
         if (LR_def_cnt(clr) == 0) {
           LR_exposed_use(clr) = opnum;
+          LR_upward_exposed_use(clr) = opnum;
         }
         /* Add this use to the live range for this TN. */
         LR_use_cnt(clr)++;
@@ -893,6 +924,9 @@ Setup_Live_Ranges (BB *bb, BOOL in_lra, MEM_POOL *pool)
 		     TN_number(tn), TN_To_PREG(tn), BB_id(bb));
 	  }
           LR_exposed_use(clr) = opnum;
+          if (LR_def_cnt(clr) == 0) {
+            LR_upward_exposed_use(clr) = opnum;
+          }
         }
         /* Add this use to the live range for this TN. */
         LR_last_use(clr) = opnum;
@@ -1235,6 +1269,10 @@ Op_has_side_effect(OP *op)
   
   if ( TN_size(tn1) != TN_size(tn2) ) 
      return true;
+
+  if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
+     return true;
+  }
 #endif
 
   return false;
@@ -1444,7 +1482,6 @@ Is_Reg_Available (ISA_REGISTER_CLASS regclass,
     OP *op;
     INT lr_def; 
 
-    //
     // for undefined locals, treat exposed use as first def since we
     // want to free the register immediately after the exposed use.
     //
@@ -1455,6 +1492,7 @@ Is_Reg_Available (ISA_REGISTER_CLASS regclass,
     }
     if (ded_lr == NULL ||
 	lr_def > LR_exposed_use(ded_lr) ||
+        !LR_conflicts_with_reg_LR(lr, ded_lr) ||
 	(lr_def == LR_exposed_use(ded_lr) && 
          (op = OP_VECTOR_element (Insts_Vector, LR_first_def(lr))) &&
 	  !OP_uniq_res(op)))
@@ -2035,10 +2073,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
           //         so change OP_has_sideeffects to implicit_interactions
           if (TN_is_local_reg(result_tn) &&
 	      (unused_tn_def[result_cl] != NULL) &&
-	      !OP_has_implicit_interactions(op)) {
+	      !OP_has_implicit_interactions(op))
 #else
-          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op)) {
+          if (TN_is_local_reg(result_tn) && (unused_tn_def[result_cl] != NULL) && !OP_side_effects(op))
 #endif
+	    {
             result_tn = unused_tn_def[result_cl];
             Set_OP_result(op,resnum,result_tn);
 
@@ -2148,10 +2187,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 	  ok_to_free_result = FALSE;
 	}
 
-	if (ok_to_free_result) {
+	if (ok_to_free_result)
 #else
-      if (ok_to_free_result && opnum == LR_first_def(clr)) {
+      if (ok_to_free_result && opnum == LR_first_def(clr))
 #endif
+	{
 
 /*
  * Remember all the information needed to free registers.
@@ -2173,8 +2213,11 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 
 #ifdef KEY
       // If ASM writes to a callee-saved register, then add the register to
-      // Callee_Saved_Regs_Used.
-      if (!result_failed &&
+      // Callee_Saved_Regs_Used.  This should not be done when "calculating
+      // fat points", since out-of-range allocations can occur when fat
+      // points are "calculated".
+      if (!Calculating_Fat_Points() &&
+	  !result_failed &&
 	  asm_info &&
 	  REGISTER_SET_MemberP(REGISTER_CLASS_callee_saves(result_cl),
 			       result_reg)) {

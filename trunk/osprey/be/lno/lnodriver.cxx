@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -295,7 +295,14 @@ Perform_Loop_Nest_Optimization (PU_Info* current_pu, WN *pu_wn,
       Delete_Du_Manager(du_mgr, MEM_pu_nz_pool_ptr);
       du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
       region_wn =
+	// Calling Proactive_Optimizer, which skips optimizations after proactive
+	// loop transformation results in a perf regression in hmmer.
+#if 1
 	Pre_Optimizer(PREOPT_LNO1_PHASE, region_wn, du_mgr, alias_mgr);
+#else
+	Proactive_Optimizer(PREOPT_LNO1_PHASE, region_wn, du_mgr, alias_mgr);
+#endif
+
       Check_for_IR_Dump(TP_LNOPT3, region_wn, "LNO1 PREOPT");
       RID_level(REGION_get_rid(region_wn)) = RL_LNO1_PREOPT;
       Is_True(REGION_consistency_check(region_wn),(""));

@@ -34,37 +34,95 @@
         .align 16
 .globl __fastcopy_stride64_gh
 __fastcopy_stride64_gh:
-	subq	 $32, %rsp
-	movups %xmm0, (%rsp)
-	movups %xmm1, 16(%rsp)
-
+        xorq       %r9, %r9
+        movq       %rsi, %r8
+        xorq       %rdi, %r8
+        orq        %r8, %r9
+        testq      $15, %r9
+#       are both ptrs aligned together?
+        jne        .fastcopy_stride64_gh_loop_default
+#       now check if they are both 8 byte aligned
+        movq       %rsi, %r9
+        andq       $15, %r9
+        cmpq       $8, %r9
+        jz         .fastcopy_stride64_peeled_prolog
+#       now check if they are 16 byte aligned
+        testq      $15, %rsi
+        je         .fastcopy_stride64_gh_superalign16
+#       else fall through to default case
         .align 4
-.loop_64_gh:
-        movdqu        (%rsi), %xmm0
-        movdqu     16 (%rsi), %xmm1
+.fastcopy_stride64_gh_loop_default:
+        movdqu       (%rsi), %xmm0
+        movdqu     16(%rsi), %xmm1
         movdqu     %xmm0,    (%rdi)
-        movdqu     %xmm1, 16 (%rdi)
-        movdqu     32 (%rsi), %xmm0
-        movdqu     48 (%rsi), %xmm1
-        movdqu     %xmm0, 32 (%rdi)
-        movdqu     %xmm1, 48 (%rdi)
-        lea     64 (%rsi), %rsi
-        lea     64 (%rdi), %rdi
-        dec     %rdx
-        jnz     .loop_64_gh
-
+        movdqu     %xmm1,  16(%rdi)
+        movdqu     32(%rsi), %xmm0
+        movdqu     48(%rsi), %xmm1
+        movdqu     %xmm0,  32(%rdi)
+        movdqu     %xmm1,  48(%rdi)
+        leaq       64(%rsi), %rsi
+        leaq       64(%rdi), %rdi
+        dec        %rdx
+        jnz     .fastcopy_stride64_gh_loop_default
+        jmp     .fastcopy_stride64_gh_check_rem
+.fastcopy_stride64_peeled_prolog:
+#       single iter peel for align case
+        movsd      (%rsi), %xmm0
+        movsd      %xmm0,  (%rdi)
+        leaq       8(%rsi), %rsi
+        leaq       8(%rdi), %rdi
+        dec        %rdx
+        .align 4
+.fastcopy_stride64_gh_superalign8:
+        movdqa       (%rsi), %xmm0
+        movdqa     16(%rsi), %xmm1
+        movdqa     %xmm0,    (%rdi)
+        movdqa     %xmm1,  16(%rdi)
+        movdqa     32(%rsi), %xmm0
+        movdqa     48(%rsi), %xmm1
+        movdqa     %xmm0,  32(%rdi)
+        movdqa     %xmm1,  48(%rdi)
+        leaq       64(%rsi), %rsi
+        leaq       64(%rdi), %rdi
+        dec        %rdx
+        jnz     .fastcopy_stride64_gh_superalign8
+#       fixup epilog for 3 iters
+        movdqa       (%rsi), %xmm0
+        movdqa     16(%rsi), %xmm1
+        movdqa     %xmm0,    (%rdi)
+        movdqa     %xmm1,  16(%rdi)
+        movdqa     32(%rsi), %xmm0
+        movsd      48(%rsi), %xmm1
+        movdqa     %xmm0,  32(%rdi)
+        movsd      %xmm1,  48(%rdi)
+        leaq       56(%rsi), %rsi
+        leaq       56(%rdi), %rdi
+        jmp     .fastcopy_stride64_gh_check_rem
+#       fully aligned case
+        .align 4
+.fastcopy_stride64_gh_superalign16:
+        movdqa       (%rsi), %xmm0
+        movdqa     16(%rsi), %xmm1
+        movdqa     %xmm0,    (%rdi)
+        movdqa     %xmm1,  16(%rdi)
+        movdqa     32(%rsi), %xmm0
+        movdqa     48(%rsi), %xmm1
+        movdqa     %xmm0,  32(%rdi)
+        movdqa     %xmm1,  48(%rdi)
+        leaq       64(%rsi), %rsi
+        leaq       64(%rdi), %rdi
+        dec        %rdx
+        jnz     .fastcopy_stride64_gh_superalign16
+#       check remainder case
+.fastcopy_stride64_gh_check_rem:
         cmp     $0, %rcx
-        jnz	.no_rem_gh
-
+        jnz	.fastcopy_stride64_gh_no_rem_gh
+#       do remainder
         movdqu        (%rsi), %xmm0
         movdqu     16 (%rsi), %xmm1
         movdqu     %xmm0,    (%rdi)
-        movdqu     %xmm1, 16 (%rdi)
-
-.no_rem_gh:
-	movups	(%rsp), %xmm0
-	movups	16(%rsp), %xmm1
-	addq	$32, %rsp
+        movdqu     %xmm1,  16(%rdi)
+.fastcopy_stride64_gh_no_rem_gh:
         ret
         .type __fastcopy_stride64_gh,@function
         .size __fastcopy_stride64_gh,.-__fastcopy_stride64_gh

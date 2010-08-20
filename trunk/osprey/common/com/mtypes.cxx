@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -68,6 +68,8 @@
 #include "config_targ.h"  // for Is_Target_32bit()
 #endif
 
+// for debug
+static MTYPE_t the_last_mtype_ = MTYPE_LAST;
 
 TYPE_DESC Machine_Types[] =
 { { MTYPE_UNKNOWN, 0, 0, 0, 0, 0, 0, 0, 0, 0, "",0,0, MTYPE_UNKNOWN },
@@ -178,9 +180,9 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_U4	  */	MTYPE_U8,
  /* MTYPE_U8	  */	MTYPE_UNKNOWN,
  /* MTYPE_F4	  */	MTYPE_F8,
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
  /* MTYPE_F8	  */	MTYPE_F10,
- /* MTYPE_F10	  */	MTYPE_FQ,
+ /* MTYPE_F10	  */	MTYPE_F16,
 #else
  /* MTYPE_F8	  */	MTYPE_FQ,
  /* MTYPE_F10	  */	MTYPE_UNKNOWN,
@@ -190,7 +192,7 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_FQ	  */	MTYPE_UNKNOWN,	
  /* MTYPE_M	  */	MTYPE_UNKNOWN,	
  /* MTYPE_C4	  */	MTYPE_C8,	
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
  /* MTYPE_C8	  */	MTYPE_C10,	
 #else
  /* MTYPE_C8	  */	MTYPE_CQ,	
@@ -199,9 +201,9 @@ static TYPE_ID Machine_Next_Alignment[] =
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
  /* MTYPE_BS	  */	MTYPE_UNKNOWN,
  /* MTYPE_A4	  */	MTYPE_UNKNOWN,
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
  /* MTYPE_A8	  */	MTYPE_UNKNOWN,
- /* MTYPE_C10	  */	MTYPE_CQ
+ /* MTYPE_C10	  */	MTYPE_C16,
 #else
  /* MTYPE_A8      */    MTYPE_UNKNOWN
 #endif
@@ -221,35 +223,37 @@ static TYPE_ID Machine_Prev_Alignment[] =
  /* MTYPE_U8	  */	MTYPE_U4,
  /* MTYPE_F4	  */	MTYPE_UNKNOWN,
  /* MTYPE_F8	  */	MTYPE_F4,
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
  /* MTYPE_F10	  */	MTYPE_F8,
+ /* MTYPE_F16	  */	MTYPE_F10,
 #else
  /* MTYPE_F10     */    MTYPE_UNKNOWN,
-#endif
  /* MTYPE_F16	  */	MTYPE_UNKNOWN,
+#endif
  /* MTYPE_STR	  */	MTYPE_UNKNOWN,
-#ifdef TARG_IA64
- /* MTYPE_FQ	  */	MTYPE_F10,
+#if defined(TARG_IA64) || defined(TARG_X8664)
+ /* MTYPE_FQ	  */	MTYPE_UNKNOWN,
 #else
  /* MTYPE_FQ	  */	MTYPE_F8,
 #endif
  /* MTYPE_M	  */	MTYPE_UNKNOWN,
  /* MTYPE_C4	  */	MTYPE_UNKNOWN,
  /* MTYPE_C8	  */	MTYPE_C4,
-#ifdef TARG_IA64
- /* MTYPE_CQ	  */	MTYPE_C10,
+#if defined(TARG_IA64) || defined(TARG_X8664)
+ /* MTYPE_CQ	  */	MTYPE_UNKNOWN,
 #else
  /* MTYPE_CQ	  */	MTYPE_C8,
 #endif
  /* MTYPE_V	  */	MTYPE_UNKNOWN,
- /* MTYPE_B	  */	MTYPE_UNKNOWN,
-#ifdef TARG_IA64
+ /* MTYPE_BS	  */	MTYPE_UNKNOWN,
  /* MTYPE_A4	  */	MTYPE_UNKNOWN,
  /* MTYPE_A8	  */	MTYPE_UNKNOWN,
- /* MTYPE_C10	  */	MTYPE_C8
+#if defined(TARG_IA64) || defined(TARG_X8664)
+ /* MTYPE_C10	  */	MTYPE_C8,
+ /* MTYPE_C16	  */	MTYPE_C10
 #else
- /* MTYPE_U4      */    MTYPE_UNKNOWN,
- /* MTYPE_U8      */    MTYPE_UNKNOWN
+ /* MTYPE_C10     */    MTYPE_UNKNOWN,
+ /* MTYPE_C16     */    MTYPE_UNKNOWN
 #endif
 };
 
@@ -354,7 +358,7 @@ TYPE_ID Mtype_TransferSign(TYPE_ID x, TYPE_ID y)
     return Mtype_Promote_to_A4A8(y);
   if (MTYPE_signed(x) ^ MTYPE_signed(y))
   {
-    return MTYPE_complement(y);
+    return (TYPE_ID)MTYPE_complement(y);
   }
   return y;
 }
@@ -397,6 +401,10 @@ TYPE_ID Mtype_TransferSize(TYPE_ID x, TYPE_ID y)
  */
 TYPE_ID Mtype_complex_to_real(TYPE_ID type)
 {
+#ifdef TARG_X8664 
+  if( type == MTYPE_V16C8)
+	return MTYPE_F8;
+#endif
   if (MTYPE_is_complex(type))
   {
     switch(type) {
@@ -404,10 +412,10 @@ TYPE_ID Mtype_complex_to_real(TYPE_ID type)
 	return MTYPE_F4;
     case MTYPE_C8:
 	return MTYPE_F8;
-#ifdef TARG_IA64
     case MTYPE_C10:
 	return MTYPE_F10;
-#endif
+    case MTYPE_C16:
+	return MTYPE_F16;
     case MTYPE_CQ:
 	return MTYPE_FQ;
     }

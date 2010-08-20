@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -151,6 +155,8 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
   }
   if ((from_ty == MTYPE_V16C8 && to_ty == MTYPE_V16F8) ||
       (from_ty == MTYPE_V16F8 && to_ty == MTYPE_V16C8)) return NOT_AT_ALL;
+  if ((from_ty == MTYPE_V16C8 && to_ty == MTYPE_C8) ||
+      (from_ty == MTYPE_C8 && to_ty == MTYPE_V16C8)) return NOT_AT_ALL;
 #endif
   if (!(MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty))) {
     if (from_ty == to_ty) return NOT_AT_ALL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -319,6 +319,9 @@ extern BOOL	INLINE_Static;		/* Inline static fns? */
 extern BOOL	INLINE_Static_Set;	/* explicitly set */
 extern BOOL	INLINE_Aggressive;	/* inline even non-leaf, out-of-loop
 					   calls */ 
+extern BOOL     INLINE_First_Inline_Calls_In_Loops;  /* chooses to inline calls in loops
+                                                      * first, a little more aggressively
+                                                      */
 extern BOOL     INLINE_Enable_DFE;     /* dead function elimination */
 extern BOOL     INLINE_Enable_Auto_Inlining;    /* automatic inline analysis */
 extern BOOL	INLINE_Enable_Restrict_Pointers; /* allow restrict pointers */

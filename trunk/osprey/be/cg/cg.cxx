@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -160,7 +160,7 @@ MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
-
+BOOL is_str_expand = FALSE;
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 INT32 current_PU_handle = 0;
 INT32 rse_budget;
@@ -1697,7 +1697,7 @@ extern void Generate_Return_Address(void);
 #endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
   // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
-  if (Is_Target_Orochi()) {
+  if (Is_Target_Orochi() && CG_branch_fuse && !CG_dispatch_schedule) {
     CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
   }
 #endif
@@ -1945,6 +1945,14 @@ extern void Generate_Return_Address(void);
        SL1_patch();
      }
 #endif 
+
+#ifdef TARG_X8664
+    if (Is_Target_Orochi() == TRUE)
+    {
+      extern void CG_Sched( MEM_POOL*, BOOL );
+      CG_Sched( &MEM_local_pool, Get_Trace( TP_SCHED, 1 ) );
+    }
+#endif
 
     /* Emit the code for the PU. This may involve writing out the code to
      * an object file or to an assembly file or both. Additional tasks

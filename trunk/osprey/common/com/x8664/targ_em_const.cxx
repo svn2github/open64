@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -374,11 +374,33 @@ Targ_Emit_Const (FILE *fl,	    /* File to which to write */
 	break;
 	}
 
+      case MTYPE_F10: {
+        char *p = (char *) & TCON_R16(tc);
+        // Force the size of MTYPE_F10 to 16 for 64bit code and 12 for 32bit code
+	emit_bytes( fl, p, Is_Target_64bit() ? 16 : 12 /* sizeof(TCON_R16(tc)) */ );
+	fprintf(fl, "\t%s long double %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+	--rc;
+	break;
+	}
+
       case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
         // Force the size of MTYPE_FQ to 16 for 64bit code and 12 for 32bit code
 	emit_bytes( fl, p, Is_Target_64bit() ? 16 : 12 /* sizeof(TCON_R16(tc)) */ );
 	fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+	--rc;
+	break;
+	}
+
+      case MTYPE_C10: {
+	INT i;
+        char *p = (char *) & TCON_R16(tc);
+	emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+	fprintf(fl, "\t%s complex long double real part %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+
+        p = (char *) & TCON_IR16(tc);
+	emit_bytes( fl, p, sizeof(TCON_IR16(tc)) );
+	fprintf(fl, "\t%s complex long double imag part %#Lg\n", ASM_CMNT, TCON_IR16(tc) );
 	--rc;
 	break;
 	}
@@ -1133,10 +1155,31 @@ Targ_Emit_EH_Const (FILE *fl,	    /* File to which to write */
 	break;
 	}
 
+      case MTYPE_F10: {
+        char *p = (char *) & TCON_R16(tc);
+	emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+	fprintf(fl, "\t%s long double %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+	--rc;
+	break;
+	}
+
       case MTYPE_FQ: {
         char *p = (char *) & TCON_R16(tc);
 	emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
 	fprintf(fl, "\t%s quad %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+	--rc;
+	break;
+	}
+
+      case MTYPE_C10: {
+	INT i;
+        char *p = (char *) & TCON_R16(tc);
+	emit_bytes( fl, p, sizeof(TCON_R16(tc)) );
+	fprintf(fl, "\t%s complex long double real part %#Lg\n", ASM_CMNT, TCON_R16(tc) );
+
+        p = (char *) & TCON_IR16(tc);
+	emit_bytes( fl, p, sizeof(TCON_IR16(tc)) );
+	fprintf(fl, "\t%s complex long double imag part %#Lg\n", ASM_CMNT, TCON_IR16(tc) );
 	--rc;
 	break;
 	}
@@ -1324,11 +1367,28 @@ Em_Targ_Emit_Const (void *scn,	    /* Section to which to write */
 	}
 	break;
 
+    case MTYPE_F10:
+        for (count = 0; count < rc; count++) {
+            long double value = TCON_R16(tc);
+            Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
+        }
+        break;
+
     case MTYPE_FQ:
 	for (count = 0; count < rc; count++) {
 	    double *pvalue = &(TCON_R8(tc));
 	    Em_Add_Bytes_To_Scn (section, (char *) pvalue, sizeof(double), 1);
 	    Em_Add_Bytes_To_Scn (section, (char *) (pvalue+1), sizeof(double), 1);
+	}
+	break;
+
+    case MTYPE_C10:
+	for (count = 0; count < rc; count++) {
+	    long double value;
+	    value = TCON_R16(tc);
+	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
+	    value = TCON_IR16(tc);
+	    Em_Add_Bytes_To_Scn (section, (char *) &value, sizeof(value), 1);
 	}
 	break;
 

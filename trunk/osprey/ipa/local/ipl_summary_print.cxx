@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -241,7 +245,7 @@ SUMMARY_CALLSITE::Print (FILE* f) const
 	fputs (", intrinsic\n", f);
     } else if (Is_func_ptr ())
 	fprintf (f, ": VALUE[%d]\n", Get_value_index ());
-    else {
+    else if (Ipl_Summary_Symbol) {
 	fputs (": ", f);
 	Ipl_Summary_Symbol[Get_symbol_index()].Print (f);
     }
@@ -302,7 +306,8 @@ SUMMARY_FORMAL::Print ( FILE* fp ) const
 	fputs ("by_reference ", fp);
     if (Is_var_dim_array ())
 	fputs ("var_dim_array ", fp);
-    Ipl_Summary_Symbol[Get_symbol_index()].Print (fp);
+    if (Ipl_Summary_Symbol)
+        Ipl_Summary_Symbol[Get_symbol_index()].Print (fp);
 }
 
 //-----------------------------------------------------------
@@ -362,7 +367,7 @@ void
 SUMMARY_ACTUAL::Print (FILE *f, INT32 id) const
 {
     fprintf (f, "ACTUAL[%d]: ", id);
-    if (Get_symbol_index () != -1)
+    if (Ipl_Summary_Symbol && Get_symbol_index () != -1)
 	Ipl_Summary_Symbol[Get_symbol_index()].Print (f);
 
     if (Is_value_parm())
@@ -569,7 +574,7 @@ SUMMARY_CHI::Print (FILE *f) const
 	break;
     }
 
-    if (_symbol_index != -1)
+    if (Ipl_Summary_Symbol && _symbol_index != -1)
 	Ipl_Summary_Symbol[_symbol_index].Print (f);
     else
 	fputc ('\n', f);
@@ -704,7 +709,8 @@ SUMMARY_STMT::Print (FILE *f) const
 	break;
     case STMT_VAR:
 	fprintf(f, "STMT_VAR \n");
-	Ipl_Summary_Symbol[Get_var_index()].Print (f);
+        if (Ipl_Summary_Symbol)
+	  Ipl_Summary_Symbol[Get_var_index()].Print (f);
 	break;
     case STMT_CALL:
 	fprintf (f, "CALLSITE[%d]\n", Get_call_index ());
@@ -1001,6 +1007,7 @@ SUMMARY_SYMBOL::Trace_array ( INT32 size ) const
 void
 SUMMARY_GLOBAL::Print ( FILE *fp ) const
 {
+  if (Ipl_Summary_Symbol) {
     SUMMARY_SYMBOL *sym = &(Ipl_Summary_Symbol[Get_symbol_index()]);
     
     fprintf ( fp, "GLOBAL %s (refs=%d,  mods=%d)",
@@ -1015,8 +1022,9 @@ SUMMARY_GLOBAL::Print ( FILE *fp ) const
     if ( Is_dkill() )	fprintf ( fp, " DKILL");
     if ( sym->Is_cref() )	fprintf ( fp, " CREF");
     if ( sym->Is_cmod() )	fprintf ( fp, " CMOD");
+  }
 
-    fprintf ( fp, "\n" );
+  fprintf ( fp, "\n" );
 }
 
 //-----------------------------------------------------------

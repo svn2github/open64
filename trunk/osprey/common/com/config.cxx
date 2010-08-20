@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -397,6 +397,8 @@ BOOL SIMD_ZMask = TRUE;
 BOOL SIMD_OMask = TRUE;
 BOOL SIMD_UMask = TRUE;
 BOOL SIMD_PMask = TRUE;
+BOOL SIMD_AMask = FALSE;
+BOOL SIMD_FMask = FALSE;
 /* -msseregparm */
 BOOL Use_Sse_Reg_Parm = FALSE;
 /* -mregparm= */
@@ -491,6 +493,12 @@ static OPTION_DESC Options_TENV[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_pmask",		NULL,
     0, 0, 0,	&SIMD_PMask, NULL,
     "Unmask SIMD precision exception" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_amask",		NULL,
+    0, 0, 0,	&SIMD_AMask, NULL,
+    "Enable SIMD Denormalized as zero behavour" },
+  { OVK_BOOL,	OV_INTERNAL,	FALSE, "simd_fmask",		NULL,
+    0, 0, 0,	&SIMD_FMask, NULL,
+    "Enable SIMD flush to zero behavour" },
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "msseregparm",		NULL,
     0, 0, 0,	&Use_Sse_Reg_Parm, NULL,
     "Use sse register parameters at -m32" },
@@ -1232,6 +1240,14 @@ Configure (void)
       DevWarn_Toggle();
     }
   }
+
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+  
 
 #ifdef KEEP_WHIRLSTATS
   atexit(whirlstats);

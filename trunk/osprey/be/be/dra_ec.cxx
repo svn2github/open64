@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -87,7 +91,7 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8U8LDID,   /* MTYPE_U8 */
   OPC_F4F4LDID,   /* MTYPE_F4 */
   OPC_F8F8LDID,   /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   OPC_F10F10LDID, /* MTYPE_F10 */
 #else
   OPC_UNKNOWN,    /* MTYPE_F10 */
@@ -103,7 +107,7 @@ static OPCODE Ldid_Opcode [MTYPE_LAST + 1] = {
   OPC_UNKNOWN,    /* MTYPE_BS */
   OPC_UNKNOWN,    /* MTYPE_A4 */
   OPC_UNKNOWN,    /* MTYPE_A8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   OPC_C10C10LDID, /* MTYPE_C10 */
 #endif
 };

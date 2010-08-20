@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #
-#  Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -373,6 +373,13 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/elf_1G.xBDT
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf.xBD    ${PHASEPATH}/elf.xBD
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf.xBD      ${PHASEPATH}/32/elf.xBD
+
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf_1G.xBD    ${PHASEPATH}/elf_1G.xBD
+        INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf_1G.xBD      ${PHASEPATH}/32/elf_1G.xBD
+
     fi
 
     # libgcc.a, libstdc++.a and libstdc++.so are deemed as "GNU link" specific archives
@@ -408,6 +415,11 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         # 64bit libraries
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
         INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.so ${PHASEPATH}/libfortran.so
+        # FMODS="IEEE_ARITHMETIC.mod IEEE_EXCEPTIONS.mod IEEE_FEATURES.mod ISO_C_BINDING.mod ISO_FORTRAN_ENV.mod"
+	FMODS="ISO_C_BINDING.mod"
+        for i in $FMODS ; do
+            INSTALL_DATA_SUB ${LIBAREA}/libfortran/$i ${PHASEPATH}/$i
+        done
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so          ${PHASEPATH}/libffio.so
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
@@ -416,9 +428,13 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/libopenmp.so.1
         INSTALL_DATA_SUB ${LIBAREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
+        INSTALL_DATA_SUB ${LIBAREA}/libacml_mv/libacml_mv.so.1 ${PHASEPATH}/libacml_mv.so.1
         # 32bit libraries
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
         INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.so ${PHASEPATH}/32/libfortran.so
+        for i in $FMODS ; do
+            INSTALL_DATA_SUB ${LIB32AREA}/libfortran/$i ${PHASEPATH}/32/$i
+        done
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
         INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.so          ${PHASEPATH}/32/libffio.so
         #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
@@ -427,9 +443,12 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.a      ${PHASEPATH}/32/libopenmp.a
         INSTALL_DATA_SUB ${LIB32AREA}/libopenmp/libopenmp.so.1      ${PHASEPATH}/32/libopenmp.so.1
         INSTALL_DATA_SUB ${LIB32AREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/32/libacml_mv.a
+        INSTALL_DATA_SUB ${LIB32AREA}/libacml_mv/libacml_mv.so.1 ${PHASEPATH}/32/libacml_mv.so.1
 
         (cd ${PHASEPATH}; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+        (cd ${PHASEPATH}; ln -sf libacml_mv.so.1 libacml_mv.so)
         (cd ${PHASEPATH}/32; ln -sf libmv.so.1 libmv.so; ln -sf libopenmp.so.1 libopenmp.so)
+        (cd ${PHASEPATH}/32; ln -sf libacml_mv.so.1 libacml_mv.so)
     fi 
     return 0
 }
@@ -596,6 +615,15 @@ INSTALL_MISC () {
     return 0
 }
 
+# Create the Fortran module files for the OpenMP interface
+INSTALL_MODULES () {
+    if [ ! -e ${ROOT}/include/${VERSION}/OMP_LIB.mod ] ; then
+        (cd ${ROOT}/include/${VERSION}; ${ROOT}/bin/openf90 -c omp_lib.f)
+    fi
+
+    return 0
+}
+
 # cd `dirname $0`
 
 [ ! -d ${BIN_DIR} ] && mkdir -p ${BIN_DIR}
@@ -638,6 +666,7 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 [ "$INSTALL_TYPE" = "ia64-cross" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
+INSTALL_MODULES
 
 exit 0
 

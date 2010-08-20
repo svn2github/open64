@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -88,6 +88,9 @@
 #include "intrn_info.h"
 #endif
 
+#include <set>
+using std::set;
+
 #ifdef KEEP_WHIRLSTATS
 INT32 whirl_num_allocated=0;
 INT32 whirl_bytes_allocated=0;
@@ -100,6 +103,10 @@ void whirlstats()
    fprintf(stderr,"Num deallocated = %d\nbytes deallocated = %d\n",whirl_num_deallocated,whirl_bytes_deallocated);
 }
 #endif
+
+UINT32 WN::the_unique_id = 0;
+BOOL IR_dump_wn_addr = FALSE;
+BOOL IR_dump_wn_id = FALSE;
 
 MEM_POOL WN_mem_pool;
 MEM_POOL *WN_mem_pool_ptr = &WN_mem_pool;
@@ -126,12 +133,13 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_U8 */
   FLOAT_TYPE,    FLOAT_TYPE,    4,  /* MTYPE_F4 */
   FLOAT_TYPE,    FLOAT_TYPE,    8,  /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F10*/
+  FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_F16*/
 #else
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F10*/
-#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_F16*/
+#endif
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_STR*/
   FLOAT_TYPE,    FLOAT_TYPE,   16,  /* MTYPE_FQ  */
   UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_M  */
@@ -143,6 +151,11 @@ static struct winfo {
   UINT_TYPE,     INT_TYPE,      4,  /* MTYPE_A4 */
   UINT_TYPE,     INT_TYPE,      8,  /* MTYPE_A8 */
   COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C10 */
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  COMPLEX_TYPE,  COMPLEX_TYPE, 32,  /* MTYPE_C16 */
+#else
+  UNKNOWN_TYPE,  UNKNOWN_TYPE,  0,  /* MTYPE_C16*/
+#endif
 };
 
 #define WTYPE_base_type(w) WINFO[w].base_type
@@ -518,6 +531,44 @@ void WN_Reset_Num_Delete_Cleanup_Fns(void)
  */
 #define New_Map_Id() ((WN_MAP_ID) (-1))
 
+static WN* trace_wn_node=NULL;
+static mINT64 trace_wn_mapid = -1;
+static UINT32 trace_wn_id = 0;
+void Set_Trace_Wn_Node(WN* n) { trace_wn_node = n; }
+void Set_Trace_Wn_mapid(mINT64 mapid) { trace_wn_mapid = mapid; }
+void gdb_stop_here()
+{
+   return ;
+}
+
+void Check_Traced_Wn_Node(WN *n)
+{
+   if (n && (n == trace_wn_node 
+             || trace_wn_mapid != -1 && WN_map_id(n) == trace_wn_mapid
+             || trace_wn_id != 0 && trace_wn_id == WN_id(n)
+             ) ) {
+      gdb_stop_here();
+   }
+}
+
+static set<UINT32> copied_ids;
+
+void Set_Trace_Wn_id(UINT32 wn_id) 
+{ 
+   trace_wn_id = wn_id; 
+   copied_ids.insert(wn_id);
+}
+
+void Trace_Wn_Copy(const WN *wn, const WN *src_wn)
+{
+   set<UINT32>::iterator itr = copied_ids.find(WN_id(src_wn));
+   if (itr != copied_ids.end()) {
+      // found src_wn's wn_id in copied list
+      copied_ids.insert(WN_id(wn));
+      gdb_stop_here();
+   }
+}
+
 /* ---------------------------------------------------------------------
  * WN *WN_Create(OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
  *
@@ -581,6 +632,7 @@ WN_Create (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc, mINT16 kid_count)
     WN_set_desc(wn, desc);
     WN_set_kid_count(wn, kid_count);
     WN_set_map_id(wn, New_Map_Id());
+    wn->set_unique_id();
 
 #ifdef TARG_SL
     /* SL initialization
@@ -2045,6 +2097,9 @@ WN *WN_CopyNode (const WN* src_wn)
     if (WN_kid_count(src_wn) == 3)
       WN_kid(wn, 2) = WN_kid(src_wn, 2);
 #endif
+
+    // trace copy wn node here
+    Trace_Wn_Copy(wn, src_wn);
     return(wn);
 }
 
@@ -3371,6 +3426,20 @@ WN_has_side_effects (const WN* wn)
   }
 } /* WN_has_side_effects */
 
+// Check whether given WHIRL is an executable statement.
+BOOL
+WN_is_executable(WN * wn)
+{
+  switch (WN_operator(wn)) {
+  case OPR_PRAGMA:
+  case OPR_LABEL:
+    break;
+  default:
+    return TRUE;
+  }
+
+  return FALSE;
+}
 
 WN *
 WN_Rrotate (TYPE_ID desc, WN *src, WN *cnt)
@@ -3389,3 +3458,133 @@ BOOL WN_Intrinsic_OP_Slave (WN *wn) {
     return FALSE;	
 }
 #endif
+
+// Query whether wn represents a bit operation.
+BOOL
+WN_is_bit_op(WN * wn)
+{
+  switch (WN_operator(wn)) {
+  case OPR_BAND:
+  case OPR_BXOR:
+  case OPR_BNOT:
+  case OPR_BIOR:
+  case OPR_BNOR:
+    return TRUE;
+  default:
+    ;
+  }
+  return FALSE;
+}
+
+// Get bit position of the TRUE bit for an integer constant WHIRL if its value is a power of 2.
+// Return -1 if the value is not a power of 2.
+int
+WN_get_bit_from_const(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr == OPR_INTCONST), ("Expect an integer constant"));
+
+  INT64 val = WN_const_val(wn);
+  int count = 0;
+  int bit_pos = 0;
+  int bit_true;
+
+  while (val > 0) {
+    if ((val & 0x1) == 1) {
+      count++;
+      bit_true = bit_pos;
+    }
+      
+    val >>= 1;
+    bit_pos++;
+  }
+
+  if (count == 1)
+    return bit_true;
+
+  return -1;
+}
+
+// Get bit position of the TRUE bit for an integral expression if its value is a power of 2.
+// Return NULL if the value is not a power of 2 or if we can't tell.
+// This routine does not process constants. Use WN_get_bit_from_const for constants.
+WN *
+WN_get_bit_from_expr(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+  FmtAssert((opr != OPR_INTCONST), ("Do not expect an integer constant"));
+
+  if (opr == OPR_CVT) {
+    WN * wn_kid = WN_kid(wn, 0);
+    if (WN_operator(wn_kid) != OPR_INTCONST)
+      return WN_get_bit_from_expr(wn_kid);
+  }
+  else if (opr == OPR_SHL) {
+    WN * wn_tmp = WN_kid(wn, 0);
+
+    if ((WN_operator(wn_tmp) == OPR_INTCONST)
+	&& (WN_const_val(wn_tmp) == 1)) 
+      return WN_kid(wn, 1);
+  }
+
+  return NULL;
+}
+
+// Query whether wn has a value that is a power of 2.
+// Return FALSE if the value is not a power of 2 or if we can't tell.
+BOOL
+WN_is_power_of_2(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (opr == OPR_INTCONST) {
+    if (WN_get_bit_from_const(wn) >= 0)
+      return TRUE;
+  }
+  else if (WN_get_bit_from_expr(wn)) 
+    return TRUE;
+
+  return FALSE;
+}
+
+// Match pattern:
+//  a = a  bit-op  ( 1 << b)
+// where bit-op is a bit operation.
+//
+// If matched, Return the RHS WHIRL tree "a bit-op ( 1 << b)",
+WN *
+WN_get_bit_reduction(WN * wn)
+{
+  OPERATOR opr = WN_operator(wn);
+
+  if (OPERATOR_is_store(opr)) {
+    WN * wn_data = WN_kid(wn, 0);
+    WN * wn_addr = NULL;
+
+    if (!OPERATOR_is_scalar_store(opr))
+      wn_addr = WN_kid(wn, 1);
+
+    if (WN_is_bit_op(wn_data)) {
+      WN * wn_tmp = WN_kid(wn_data, 0);
+      opr = WN_operator(wn_tmp);
+      
+      if (OPERATOR_is_load(opr)) {
+	if (!OPERATOR_is_scalar_load(opr)) {
+	  if (wn_addr && (WN_Simp_Compare_Trees(WN_kid(wn_tmp, 0), wn_addr) == 0)) {
+	    wn_tmp = WN_kid(wn_data, 1);
+	    if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	      return wn_data;
+	  }
+	}
+	else if ((wn_addr == NULL) && (WN_st_idx(wn_tmp) == WN_st_idx(wn))
+		 && WN_offset(wn_tmp) == WN_offset(wn)) {
+	  wn_tmp = WN_kid(wn_data, 1);
+	  if (wn_tmp && WN_is_power_of_2(wn_tmp))
+	    return wn_data;
+	}
+      }
+    }
+  }
+  
+  return NULL;
+}

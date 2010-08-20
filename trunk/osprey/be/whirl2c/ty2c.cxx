@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -118,8 +118,16 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
     {"unsigned long long", "_UINT64"},          /* MTYPE_U8 = 9 */
     {"float",              "_IEEE32"},          /* MTYPE_F4 = 10 */
     {"double",             "_IEEE64"},          /* MTYPE_F8 = 11 */
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    {"long double",        "_IEEE80"},          /* MTYPE_F10 = 12 */
+#else
     {Name_Unknown_Type,    "_IEEE80"},          /* MTYPE_F10 = 12 */
-    {Name_Unknown_Type,    "_IEEE128"},  /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    {"__float128",         "_IEEE128"},         /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#else
+    {Name_Unknown_Type,    "_IEEE128"},         /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#endif
     {Name_Unknown_Type,        ""},             /* MTYPE_STRING = 14 */
     {Name_Unknown_Type,        ""},             /* MTYPE_FQ = 15 */
     {Name_Unknown_Type,        ""},             /* MTYPE_M = 16 */
@@ -130,8 +138,16 @@ static const SCALAR_C_NAME Scalar_C_Names[MTYPE_LAST + 1] =
     {Name_Unknown_Type,        ""},             /* MTYPE_BS = 21 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A4 = 22 */
     {Name_Unknown_Type,        ""},             /* MTYPE_A8 = 23 */
-    {"_Complex long double", "_COMPLEX80"},     /* MTYPE_C10 = 24 */
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    {"_Complex long double", "_COMPLEX80"},       /* MTYPE_C10 = 24 */
+#else
+    {Name_Unknown_Type, "_COMPLEX80"},          /* MTYPE_C10 = 24 */
+#endif
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    {"_Complex __float128",  "_IEEE128"},       /* MTYPE_F16 = 13 = MTYPE_PREDEF */
+#else
     {Name_Unknown_Type,        ""},             /* MTYPE_C16 = 25 */
+#endif
     {Name_Unknown_Type,        ""},             /* MTYPE_I16 = 26 */
     {Name_Unknown_Type,        ""},              /* MTYPE_U16 = 27 */
 #ifdef TARG_X8664

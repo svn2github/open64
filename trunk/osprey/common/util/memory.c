@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -180,18 +184,127 @@ struct mem_block {
    after the final field (after rounding up for alignment) is for user's
    storage
  */
+typedef struct large_block_page_table_entry__{
+  INT32 next_free;  /* 0 it is used,
+			    1 it is tail of the free list.
+                         */
+  MEM_PTR va; 
+} large_block_page_table_entry;
+typedef struct large_block_page_table_l2{
+  large_block_page_table_entry **l2_table;
+  INT32 last_entry;
+  INT32 capacity;
+  INT32 l2_capacity;
+  INT32 free_list;
+}LARGE_BLOCK_PAGE_TABLE_L2;
+static LARGE_BLOCK_PAGE_TABLE_L2 Large_Block_Page_Table = {NULL, 0, 0, 0};
+#define L1_LARGE_BLOCK_PAGE_TABLE_SIZE 4096
+#define L2_LARGE_BLOCK_PAGE_TABLE_SIZE_INIT 128 
+INT32 Add_Large_Block(void *data)
+{
+  large_block_page_table_entry *entry;
+  INT32 index;
+  INT32 l2_index;
+  INT32 l1_index;
+  if (Large_Block_Page_Table.l2_table == NULL)
+  {
+    Large_Block_Page_Table.l2_table = (large_block_page_table_entry**)
+	    malloc(sizeof(large_block_page_table_entry*) * L2_LARGE_BLOCK_PAGE_TABLE_SIZE_INIT);
+    Large_Block_Page_Table.l2_capacity = L2_LARGE_BLOCK_PAGE_TABLE_SIZE_INIT;
+    Large_Block_Page_Table.last_entry = 1;
+    Large_Block_Page_Table.capacity = L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+    Large_Block_Page_Table.free_list = 1;
+    Large_Block_Page_Table.l2_table[0] = (large_block_page_table_entry*)
+	    calloc(sizeof(large_block_page_table_entry), L1_LARGE_BLOCK_PAGE_TABLE_SIZE);
+  }
+ 
+  if (Large_Block_Page_Table.free_list != 1)
+  {
+    index = Large_Block_Page_Table.free_list;
+    l2_index = index / L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+    l1_index = index & (L1_LARGE_BLOCK_PAGE_TABLE_SIZE - 1); 
+    entry = Large_Block_Page_Table.l2_table[l2_index] + l1_index;
+    Large_Block_Page_Table.free_list = entry->next_free;
+  } else {
+    if (Large_Block_Page_Table.last_entry == Large_Block_Page_Table.capacity - 2)
+    {
+      l2_index = Large_Block_Page_Table.last_entry / L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+      l2_index++;
+      if (l2_index == Large_Block_Page_Table.l2_capacity)
+      {
+	Large_Block_Page_Table.l2_capacity += L2_LARGE_BLOCK_PAGE_TABLE_SIZE_INIT;
+	Large_Block_Page_Table.l2_table = (large_block_page_table_entry**)
+          realloc(Large_Block_Page_Table.l2_table, 
+	    sizeof(large_block_page_table_entry*) * Large_Block_Page_Table.l2_capacity);
+      }
+      Large_Block_Page_Table.l2_table[l2_index] = (large_block_page_table_entry*)
+	      calloc(sizeof(large_block_page_table_entry), L1_LARGE_BLOCK_PAGE_TABLE_SIZE);
+      Large_Block_Page_Table.capacity += L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+    } 
+    index = ++Large_Block_Page_Table.last_entry;
+    l2_index = index / L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+    l1_index = index & (L1_LARGE_BLOCK_PAGE_TABLE_SIZE - 1); 
+    entry = Large_Block_Page_Table.l2_table[l2_index] + l1_index;
+  }
+		  
+  entry->va = data;
+  entry->next_free = 0;
+  return index; 
+}
+void Update_Large_Block(void *data, INT32 index)
+{
+  large_block_page_table_entry *entry;
+  INT32 l2_index;
+  INT32 l1_index;
+  FmtAssert(Large_Block_Page_Table.l2_table != NULL && index <= Large_Block_Page_Table.last_entry, ("Large block does not exist in page table\n"));
+  l2_index = index / L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+  l1_index = index & (L1_LARGE_BLOCK_PAGE_TABLE_SIZE - 1); 
+  entry = Large_Block_Page_Table.l2_table[l2_index] + l1_index;
+  if (entry->next_free == 0)
+  {
+    entry->va = data;
+  }else
+  FmtAssert(FALSE, ("Large block does not exist in page table\n"));
+  return;
+}
+BOOL Validate_And_Delete_Large_Block(void *data, INT32 index)
+{
+  large_block_page_table_entry *entry;
+  INT32 l2_index;
+  INT32 l1_index;
+  if (Large_Block_Page_Table.l2_table == NULL)
+    return FALSE;
+  if (index > Large_Block_Page_Table.last_entry)
+    return FALSE;
+  if (index <= 1)
+    return FALSE;
+  l2_index = index / L1_LARGE_BLOCK_PAGE_TABLE_SIZE;
+  l1_index = index & (L1_LARGE_BLOCK_PAGE_TABLE_SIZE - 1);
+  entry = Large_Block_Page_Table.l2_table[l2_index] + l1_index;
+  if (entry->va == data && 
+      entry->next_free == 0)
+  {
+    entry->va = NULL;
+    entry->next_free = Large_Block_Page_Table.free_list;
+    Large_Block_Page_Table.free_list = index;
+    return TRUE;
+  }else
+    return FALSE;
+}
 typedef struct mem_large_block MEM_LARGE_BLOCK;
 struct mem_large_block {
   MEM_LARGE_BLOCK *next;		/* doubly-linked list */
   MEM_LARGE_BLOCK *prev;
-  MEM_POOL_BLOCKS *base;		/* points back to the head of list */
   MEM_PTR ptr;				/* points to the user memory block */
+  MEM_POOL_BLOCKS *base;		/* points back to the head of list */
+  INT32 page_index;  			/* the index in Large_Block_Page_Table */
 };
 
 #define MEM_LARGE_BLOCK_next(x)		((x)->next)
 #define MEM_LARGE_BLOCK_prev(x)		((x)->prev)
 #define MEM_LARGE_BLOCK_base(x)		((x)->base)
 #define MEM_LARGE_BLOCK_ptr(x)		((x)->ptr)
+#define MEM_LARGE_BLOCK_index(x)	((x)->page_index)
 #define MEM_LARGE_BLOCK_OVERHEAD	(PAD_TO_ALIGN(sizeof(MEM_LARGE_BLOCK)))
 
 /* When we free a large block we must also erase fields that identify it
@@ -1078,6 +1191,7 @@ Allocate_Large_Block (MEM_POOL *pool, INT32 size)
     MEM_LARGE_BLOCK_prev(MEM_LARGE_BLOCK_next(block)) = block;
   MEM_POOL_large_block(pool) = block;
 
+  MEM_LARGE_BLOCK_index(block) = Add_Large_Block(MEM_LARGE_BLOCK_ptr(block));
   return MEM_LARGE_BLOCK_ptr(block);
 }
 
@@ -1368,6 +1482,7 @@ MEM_POOL_Realloc_P
 	  ErrMsg (EC_No_Mem, "MEM_POOL_Realloc");
 	MEM_LARGE_BLOCK_ptr(large_block) = (MEM_PTR)
 	  (((char *)large_block) + MEM_LARGE_BLOCK_OVERHEAD);
+	Update_Large_Block(MEM_LARGE_BLOCK_ptr(large_block), MEM_LARGE_BLOCK_index(large_block));
 	if (MEM_POOL_bz(pool)) {
 	  BZERO (((char *) MEM_LARGE_BLOCK_ptr(large_block)) + old_size,
 		 new_size - old_size);
@@ -1554,6 +1669,7 @@ MEM_POOL_Pop_P
   MEM_BLOCK *bp, *next_bp;
   MEM_LARGE_BLOCK *lbp, *next_lbp;
   MEM_POOL_BLOCKS *bsp;
+  BOOL valid;
 
   Is_True (MEM_POOL_magic_num(pool) == MAGIC_NUM,
            ("Pop before Initialize in MEM_POOL %s\n", MEM_POOL_name(pool)));
@@ -1638,6 +1754,8 @@ MEM_POOL_Pop_P
 
   for (lbp = MEM_POOL_BLOCKS_large_block(bsp); lbp; lbp = next_lbp) {
     next_lbp = MEM_LARGE_BLOCK_next(lbp);
+    valid = Validate_And_Delete_Large_Block(MEM_LARGE_BLOCK_ptr(lbp), MEM_LARGE_BLOCK_index(lbp));
+    FmtAssert(valid, ("Large block does not exist in page table\n")); 
     MEM_LARGE_BLOCK_free(lbp);
   }
 
@@ -1770,11 +1888,12 @@ void MEM_POOL_FREE(MEM_POOL *pool, void *data)
 
   large_block = (MEM_LARGE_BLOCK *)
     (((char *) data) - MEM_LARGE_BLOCK_OVERHEAD);
-  if (MEM_LARGE_BLOCK_ptr(large_block) == (MEM_PTR) data) {
+  if (MEM_LARGE_BLOCK_base(large_block) != MEM_POOL_blocks(pool))
+    return;
+  if (Validate_And_Delete_Large_Block(data, MEM_LARGE_BLOCK_index(large_block)))
+  {
     MEM_LARGE_BLOCK *prev;
     MEM_LARGE_BLOCK *next;
-    if (MEM_LARGE_BLOCK_base(large_block) != MEM_POOL_blocks(pool))
-      return;
 
     prev = MEM_LARGE_BLOCK_prev(large_block);
     next = MEM_LARGE_BLOCK_next(large_block);

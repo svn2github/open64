@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -122,9 +126,7 @@ static bool OP_refs_x87( OP* op )
     for( int i = 0; i < RETURN_INFO_count(return_info); i++ ){
       const TYPE_ID type = RETURN_INFO_mtype( return_info, i );
 
-      if( MTYPE_is_quad( type ) ||
-	  ( MTYPE_is_float( type ) &&
-	    Is_Target_32bit() ) ){
+      if( MTYPE_refs_x87( type ) ) {
 	return TRUE;
       }
     }
@@ -758,9 +760,7 @@ static void Repair_Call_BB( BB* bb )
 
   for( int i = 0; i < RETURN_INFO_count(return_info); i++ ){
     const TYPE_ID type = RETURN_INFO_mtype( return_info, i );
-    if( MTYPE_is_quad( type ) ||
-	( MTYPE_is_float( type ) &&
-	  Is_Target_32bit() ) ){
+    if( MTYPE_refs_x87( type ) ) {
       const PREG_NUM retpreg = RETURN_INFO_preg (return_info, i);
       ISA_REGISTER_CLASS cl;
 
@@ -1044,9 +1044,7 @@ static void Convert_Regs( BB* bb )
       for( int i = 0; i < RETURN_INFO_count(return_info); i++ ){
 	const TYPE_ID type = RETURN_INFO_mtype( return_info, i );
 
-	if( MTYPE_is_quad( type ) ||
-	    ( MTYPE_is_float( type ) &&
-	      Is_Target_32bit() ) ){
+        if( MTYPE_refs_x87( type ) ) {
 	  if( !REGISTER_SET_MemberP( stack->live_out, reg ) )
 	    stack->live_out = REGISTER_SET_Union1( stack->live_out, reg );
 	  stack->reg[++stack->top] = reg--;

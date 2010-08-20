@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2009 Advanced Micro Devices, Inc. All Rights Reserved.
+#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc. All Rights Reserved.
 #
 #  This file is part of libacml_mv.
 #
@@ -22,8 +22,14 @@
 
 # What we're building, and where to find it.
 LIBRARY = libacml_mv.a
+dso_version := 1
+DSO = libacml_mv.so.$(dso_version)
 
+ifeq ($(BUILD_TYPE), NONSHARED)
 TARGETS = $(LIBRARY)
+else
+TARGETS = $(LIBRARY) $(DSO)
+endif
 
 # Makefile setup
 include $(COMMONDEFS)
@@ -245,4 +251,8 @@ include $(COMMONRULES)
 $(LIBRARY): $(OBJECTS)
 	$(ar) cru $@ $^
 	$(ranlib) $@
+
+$(DSO): $(OBJECTS:%.o=%.pic.o)
+	$(ld) $(STD_DSO_LOADOPTS) -Wl,-x -o $@ $^ -L.
+	$(ln) -sf $(DSO) $(basename $(DSO))
 

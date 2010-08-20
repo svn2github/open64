@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -107,6 +107,7 @@
 #include "symtab_idx.h"         //for make_TY_IDX()-- in reorder
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
+#include "ir_reader.h"
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 #ifdef KEY
@@ -904,6 +905,10 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
     INT callsite_count = proc_array[i].Get_callsite_count();
     INT callsite_index = proc_array[i].Get_callsite_index();
 	
+    if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+      fprintf(TFile, "\n[Add_Edges_For_Node %s] callsite_count=%d, callsite_index=%d\n",
+                     ST_name(caller_st), callsite_count, callsite_index);
+    }
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
 
 #ifdef KEY
@@ -913,6 +918,14 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	caller->Summary_Proc()->Set_has_side_effect ();
 #endif	       
 
+      if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+        fprintf(TFile, "\t [idx %d] cid=%d state=%#x %s ", callsite_index, 
+                       callsite_array[callsite_index].Get_callsite_id(),
+                       callsite_array[callsite_index].Get_state(),
+                       callsite_array[callsite_index].Is_func_ptr() ? "FPTR" : 
+                        callsite_array[callsite_index].Is_icall_target() ? "ICALL" : 
+                         callsite_array[callsite_index].Is_virtual_function_target() ? "VCALL" : "");
+      }
       // for indirect call sites
       if ( callsite_array[callsite_index].Is_func_ptr() ) {
       	if (!IPA_Call_Graph_Tmp) { // KEY
@@ -934,7 +947,8 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         temp_st_idx = symbol_array[sindex].St_idx ();
         ST* callee_st = &St_Table[temp_st_idx];
 
-        Is_True (!strcmp (ST_name (callee_st), "__dummy_icall_target"),
+        Is_True ((!strcmp (ST_name (callee_st), "__dummy_icall_target") ||
+                 !strcmp (ST_name (callee_st), "__dummy_virtual_function_target")),
              ("Process_procedure: Expected ICALL target function as callee"));
 
         mUINT64 target_addr = callsite_array[callsite_index].Get_targ_runtime_addr();
@@ -957,6 +971,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
             IPA_Call_Graph->Add_New_Edge (&callsite_array[callsite_index],
                                           caller_idx, 
                                           callee->Node_Index());
+        if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+          fprintf(TFile, " => %s", IPA_Node_Name(callee));
+        }
         if (ipa_edge->Has_frequency ())
             Total_call_freq += ipa_edge->Get_frequency ();
         Mark_inline_edge_overrides(ipa_edge);
@@ -973,6 +990,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
         temp_st_idx = symbol_array[sindex].St_idx ();
         ST* callee_st = &St_Table[temp_st_idx];
 
+        if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+          fprintf(TFile, "callee \"%s\" ", ST_name(callee_st));
+        }
 #ifdef TODO
         // if static function, then force same partition
         if (Symbol_array[sindex].Is_local()) {
@@ -1074,6 +1094,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 	        IPA_Call_Graph->Add_New_Edge 
 				    (&callsite_array[callsite_index],
                                      caller_idx_u, callee_idx_u);
+            if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+              fprintf(TFile, " => %s", IPA_Node_Name(callee));
+            }
 	    Nodes_To_Edge * o = new Nodes_To_Edge (caller_idx_u,
 	      					callee_idx_u, edge_u);
 	    q_order.push_back (o);
@@ -1092,6 +1115,10 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
             IPA_Call_Graph->Add_New_Edge (&callsite_array[callsite_index],
                                           caller_idx, 
                                           callee_idx);
+          IPA_NODE * callee = IPA_Call_Graph->Graph()->Node_User (callee_idx);
+          if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+            fprintf(TFile, " => %s", IPA_Node_Name(callee));
+          }
           if (ipa_edge->Has_frequency ()) {
             Total_call_freq += ipa_edge->Get_frequency ();
           }
@@ -1118,6 +1145,9 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
 #endif
         }
       }
+      if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+        fprintf(TFile, "\n");
+      }
     }
 
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
@@ -1130,8 +1160,15 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
       INT cs_index = proc_array[i].Get_callsite_index();
       INT count = 0;
       for (INT j = 0; j < callsite_count; ++j, ++cs_index) {
-        if (!callsite_array[cs_index].Is_icall_target())
-          callsite_array[cs_index].Set_callsite_id (count++);
+        if (!callsite_array[cs_index].Is_icall_target()) {
+           if (callsite_array[cs_index].Get_callsite_id() != count) {
+              if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+                fprintf(TFile, "\ncallsite_array[%d] callsite_id %d is reset to %d!!!\n",
+                    cs_index, callsite_array[cs_index].Get_callsite_id(), count);
+              }
+           }
+           callsite_array[cs_index].Set_callsite_id (count++);
+        }
       }
     }
 #endif
@@ -2553,6 +2590,9 @@ static void IPA_identify_no_return_proc_recursive(IPA_NODE *node)
       IPA_NODE *caller = IPA_Call_Graph->Caller(edge);
       IPA_NODE_CONTEXT context(caller);
       caller->Whirl_Tree(TRUE);
+      if (caller->Has_Pending_Icalls() || 
+          caller->Has_Pending_Virtual_Functions())
+        continue;
       IPA_Call_Graph->Map_Callsites(caller);
       WN *call = edge->Whirl_Node();
       WN_Set_Call_Never_Return(call);
@@ -2841,7 +2881,7 @@ IPA_EDGE::Print ( const FILE* fp,		// File to which to print
   IPA_NODE* callee = cg->Callee(Edge_Index());
 
   fprintf ( (FILE*) fp,
-	    "name = %-20s (ix:%d, f:%02x:%02x, @%p) callsite %x:%d,%x\n",
+	    "name = %-20s (ix:%d, f:%02x:%02x, @%p) callsite %p:%d,%x\n",
 	    invert ? caller->Name() : callee->Name(), 
             Edge_Index(), 
             _flags,
@@ -2976,7 +3016,27 @@ IPA_CALL_GRAPH::Map_Callsites (IPA_NODE* caller)
     for (succ_iter.First(); !succ_iter.Is_Empty(); succ_iter.Next()) {
 	IPA_EDGE *edge = succ_iter.Current_Edge();
 	if (edge) {
-	    edge->Set_Whirl_Node (callsite_map[edge->Callsite_Id()]);
+            WN *wn = callsite_map[edge->Callsite_Id()];
+	    edge->Set_Whirl_Node (wn);
+            FmtAssert(edge->Callsite_Id() < caller->Total_Succ(), ("edge callsite_id %d is greater than callsite_map length %d", edge->Callsite_Id() , caller->Total_Succ()));
+            if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+              BOOL old_print_mapinfo = IR_dump_map_info;
+              IR_dump_map_info = 1; 
+              INT32 map_id = edge->Summary_Callsite()->Get_map_id();
+              fprintf(TFile, "\n[edge %d, map_id %d] ", edge->Edge_Index(),
+                             map_id);
+              edge->Print(TFile, this, FALSE);
+              if (!wn) {
+                 fprintf(TFile, " Set_Whirl_Node(0)!!!\n");
+              } 
+              else {
+                if (map_id != WN_map_id(wn))
+                  fprintf(TFile, " !!! callsite map_id %d is not the same as wn map_id %d !!! ",
+                          map_id, WN_map_id(wn));
+                fdump_wn(TFile, wn);
+              }
+              IR_dump_map_info = old_print_mapinfo;
+            }
 	}
     }
 }
@@ -3548,10 +3608,23 @@ IPA_CALL_GRAPH::Print (FILE* fp)
 {
   Print(fp, PREORDER);
 }
+
+extern "C" void 
+print_ipa_cg(IPA_CALL_GRAPH *cg)
+{
+   cg->Print(stdout, PREORDER);
+}
+
+extern "C" void 
+print_ipa_cg_v(IPA_CALL_GRAPH *cg)
+{
+   cg->Print_vobose(stdout, PREORDER, FALSE);
+}
+
 void 
 IPA_CALL_GRAPH::Print_vobose (FILE* fp)
 {
-  Print_vobose(fp, PREORDER);
+  Print_vobose(fp, PREORDER, FALSE);
 }
 UINT32
 EFFECTIVE_WEIGHT (const IPA_NODE* node)  {
@@ -3567,7 +3640,7 @@ EFFECTIVE_WEIGHT (const IPA_NODE* node)  {
 }
 
 void 
-IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order)
+IPA_CALL_GRAPH::Print_vobose (FILE* fp, TRAVERSAL_ORDER order, BOOL do_callsite_map)
 {
   char YN;
   float hotness=-1.0;
@@ -3627,6 +3700,7 @@ fprintf(fp, "Reason35: Trying to do pure-call-optimization for this callsite\n")
 fprintf(fp, "Reason36: not inlining C++ with exceptions into non-C++\n");
 fprintf(fp, "Reason37: formal parameter is a loop index\n");
 fprintf(fp, "Reason38: not inlining nested functions\n");
+fprintf(fp, "Reason39: not inlining non-tiny noreturn functions\n");
 #endif
 fprintf(fp, SBar);
   
@@ -3635,11 +3709,13 @@ fprintf(fp, SBar);
     IPA_NODE* node = cg_iter.Current();
     if (node) {
 	  IPA_NODE_CONTEXT context (node);
+          if (do_callsite_map) {
 #ifdef KEY
-	  Map_Callsites (node);
+	    Map_Callsites (node);
 #else
-	  IPA_Call_Graph->Map_Callsites (node);
+	    IPA_Call_Graph->Map_Callsites (node);
 #endif
+          }
 
 	  float caller_freq=-1.0;
 	  float cycle = -1.0;
@@ -3672,11 +3748,11 @@ fprintf(fp, SBar);
               IPA_EDGE* tmp_edge = IPA_Call_Graph->Edge (*first) ; 
 #endif
               IPA_EDGE_INDEX idx = tmp_edge->Array_Index ();
-              INT32 callsite_linenum;
+              INT32 callsite_linenum = 0;
               WN* call_wn = tmp_edge->Whirl_Node();
               USRCPOS callsite_srcpos;
 
-              if (call_wn == NULL) {
+              if (!do_callsite_map || call_wn == NULL) {
                   callsite_linenum = 0;	
               }else{
                   USRCPOS_srcpos(callsite_srcpos) = WN_Get_Linenum (call_wn);
@@ -3766,13 +3842,14 @@ fprintf(fp, SBar);
 #endif
 
 
-           fprintf(fp, "%c %-6.1f %-6.1f %s-->%-20s(l=%-5d eid=%-5d ef=%-10.1f cf=%-10.1f ew=%-5d den=%-5.1f Cc=%-12.1f)[?%s]\n", 
+           fprintf(fp, "%c %-6.1f %-6.1f %s-->%-20s(l=%-5d cid=%-5d eid=%-5d ef=%-10.1f cf=%-10.1f ew=%-5d den=%-5.1f Cc=%-12.1f)[?%s]\n", 
 						  YN, 
 						  hotness,
 						  hotness2,
 						  IPA_Node_Name(node),
 						  IPA_Node_Name(callee),
                                                   callsite_linenum,
+						  tmp_edge->Callsite_Id(), 
 						  tmp_edge->Edge_Index(), 
 						  edge_freq,//(tmp_edge->Get_frequency())._value, 
 						  callee_freq, //(callee->Get_frequency())._value,   
@@ -3847,10 +3924,11 @@ IPA_CALL_GRAPH::Print (FILE* fp, TRAVERSAL_ORDER order)
 //pengzhao
 //          fprintf(fp, "\t%s\n", IPA_Node_Name(callee));
 #ifdef KEY
-	    fprintf(fp, "    %s(%f)->%s(ef= %.1f,cf=%.1f)\n",
+	    fprintf(fp, "    %s(%f)->%s(cid=%-5d ef=%.1f, cf=%.1f)\n",
 		    IPA_Node_Name(node),
 		    (node->Get_frequency()).Value(),
 		    IPA_Node_Name(callee),
+		    succ_iter.Current_Edge()->Callsite_Id(),
 		    (succ_iter.Current_Edge()->Get_frequency()).Value(),
 		    (callee->Get_frequency()).Value());
 #else
