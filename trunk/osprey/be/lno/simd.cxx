@@ -4848,6 +4848,23 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
             rloop_needed = FALSE;
         }
       }
+
+      INT64 add_value = -1;
+      if(MTYPE_is_unsigned(WN_desc(loop_end))) {
+        // loop end is unsigned comparison.
+        // i <= start + (((end - start + 1) / vect) * vect) -1
+        // suppose start is 0, end is 2, vect is 4, original loop is
+        // for( i = 0; i < 2; i++)
+        // after this transformation 
+        // for(i = 0, i <= -1 i++), if comparion is unsigned then
+        // this loop is incorrect.
+        // the fix is change loop end to 
+        // i < start + (((end - start + 1) / vect) * vect)
+        // 
+        // start <= end guard should already insterted in STD_Canonicalize_Upper_Bound
+        add_value = 0;
+      }
+      
       WN_kid1(loop_end) =            //old loop end 
         LWN_CreateExp2(add_opc,
           LWN_CreateExp2(add_opc,
@@ -4860,8 +4877,14 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
                   WN_CreateIntconst(intconst_opc, 1)),
                 WN_CreateIntconst(intconst_opc, vect)),
               WN_CreateIntconst(intconst_opc, vect)),
-            WN_CreateIntconst(intconst_opc, -1)),
+            WN_CreateIntconst(intconst_opc, add_value)),
           WN_kid0(loop_start_tmp));
+      
+      if(MTYPE_is_unsigned(WN_desc(loop_end))) {
+        OPCODE lt_cmp_opc = OPCODE_make_op(OPR_LT,
+                                        WN_rtype(loop_end), WN_desc(loop_end));
+        WN_set_opcode(loop_end,lt_cmp_opc);
+      }
 
       // Adjust loop lower bound for serial remainder loop (if any)
       WN *start = WN_start(remainderloop);
@@ -4936,6 +4959,11 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
             rloop_needed = FALSE;
         }
       }
+
+      INT64 add_value = -1;
+      if(MTYPE_is_unsigned(WN_desc(loop_end))) {
+        add_value = 0;
+      }
       WN_kid1(loop_end) =
         LWN_CreateExp2(add_opc,
           LWN_CreateExp2(add_opc,
@@ -4948,8 +4976,14 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
                   WN_CreateIntconst(intconst_opc, 1)),
                 WN_CreateIntconst(intconst_opc, vect)),
               WN_CreateIntconst(intconst_opc, vect)),
-            WN_CreateIntconst(intconst_opc, -1)),
+            WN_CreateIntconst(intconst_opc, add_value)),
           WN_kid0(loop_start_tmp));
+      if(MTYPE_is_unsigned(WN_desc(loop_end))) {
+        OPCODE lt_cmp_opc = OPCODE_make_op(OPR_LT,
+                                        WN_rtype(loop_end), WN_desc(loop_end));
+        WN_set_opcode(loop_end,lt_cmp_opc);
+      }
+      
       // Adjust loop lower bound for serial remainder loop (if any)
       WN *start = WN_start(remainderloop);
       WN_kid0(start) =
