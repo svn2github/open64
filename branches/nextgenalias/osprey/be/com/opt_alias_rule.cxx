@@ -163,6 +163,10 @@ ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
 
   BOOL aliased;
   INT32 count = _alias_analyzer->aliasQueryCount();
+  if (count == 0 && Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG)) {
+    extern char *Current_PU_Name();
+    fprintf(TFile, "pu_name %s\n", Current_PU_Name());
+  }
   if (count < Alias_Query_Limit ) {
     aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
     if (aliased)

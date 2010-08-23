@@ -40,8 +40,12 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree, true);
     else
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree);
-    if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG))
+    if (Get_Trace(TP_ALIAS,NYSTROM_CG_POST_FLAG)){
       fdump_tree(stderr, tree);
+      fprintf(stderr, "Printing final ConstraintGraph\n");
+      ((NystromAliasAnalyzer*)_alias_analyzer)->constraintGraph()->print(stderr);
+    }
+ 
     return _alias_analyzer;
   }
   else
