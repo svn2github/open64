@@ -449,37 +449,6 @@ static INTRN_ATTR_EXTEND *Get_intrinsic_op_Eattr (INTRINSIC id) {
   return NULL;
 }
 
-static void WN_Set_Deref_If_Needed(WN *wn) {
-  INTRINSIC intrn=WN_intrinsic(wn);
-  if (intrinsic_need_deref(intrn)) {
-    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
-
-    switch (p->pos) {
-      case P0:
-        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
-      case P1:
-        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
-      case P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
-      case P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
-      case P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
-      case P0_P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
-      case P1_P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
-      case P2_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      case P3_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      default:
-        Is_True(0, ("intrinsic has no extended attribution"));
-    }
-  }
-        return;
-}
-
 static int intrinsic_op_extend_kid (int index) {
    return intrn_eattr[index].extend_kid;
 }
@@ -603,6 +572,47 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
    }
 }
 #endif
+
+static void WN_Set_Deref_If_Needed(WN *wn) {
+  INTRINSIC intrn=WN_intrinsic(wn);
+
+#if defined(TARG_SL)
+  if (intrinsic_need_deref(intrn)) {
+    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
+
+    switch (p->pos) {
+      case P0:
+        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
+      case P1:
+        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
+      case P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
+      case P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
+      case P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
+      case P0_P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
+      case P1_P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
+      case P2_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      case P3_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      default:
+        Is_True(0, ("intrinsic has no extended attribution"));
+    }
+  }
+#elif defined(TARG_X8664)
+  if (intrn == INTRN_LOADLPD || intrn == INTRN_LOADHPD ||
+      intrn == INTRN_LOADLPS || intrn == INTRN_LOADHPS ||
+      intrn == INTRN_LOADUPS || intrn == INTRN_LOADUPS256 ||
+      intrn == INTRN_LOADUPD || intrn == INTRN_LOADUPD256 ||
+      intrn == INTRN_LOADDQU || intrn == INTRN_LOADDQU256) {
+    WN_Set_Parm_Dereference(WN_kid(wn,0));
+  }
+#endif
+}
 
 // KEY bug 11288: support for anonymous unions:
 // ---------------------------------------------
@@ -9315,9 +9325,8 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
-#if defined(TARG_SL)
             WN_Set_Deref_If_Needed(wn);
-#endif
+
 #ifdef KEY
 	    if (cvt_to != MTYPE_UNKNOWN) // bug 8251
               wn = WN_Cvt (ret_mtype, cvt_to, wn);

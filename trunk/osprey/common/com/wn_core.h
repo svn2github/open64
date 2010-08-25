@@ -1502,12 +1502,9 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_PARM_NOT_EXPOSED_USE   0x40  /* there is no exposed use */
 #define WN_PARM_IS_KILLED   0x80        /* the parameter is killed, for
 					   pass by reference */
-
-#if defined(TARG_SL)
-#define WN_PARM_DEREFERENCE  0x100
-#define WN_Parm_Dereference(x)         (WN_parm_flag(x) & WN_PARM_DEREFERENCE)
-#define WN_Set_Parm_Dereference(x)   (WN_parm_flag(x) |= WN_PARM_DEREFERENCE)
-#endif // TARG_SL
+#define WN_PARM_DEREFERENCE         0x100 /* parm is deferenced in callee */
+#define WN_Parm_Dereference(x)          (WN_parm_flag(x) & WN_PARM_DEREFERENCE)
+#define WN_Set_Parm_Dereference(x)      (WN_parm_flag(x) |= WN_PARM_DEREFERENCE)
 
 #define WN_Parm_By_Reference(x)		(WN_parm_flag(x) & WN_PARM_BY_REFERENCE)
 #define WN_Set_Parm_By_Reference(x)	(WN_parm_flag(x) |= WN_PARM_BY_REFERENCE)
