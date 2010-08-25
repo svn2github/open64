@@ -212,9 +212,13 @@ IPO_CLONE::Fix_ST (WN* cloned_wn, WN* wn)
 
   cloned_st = _sym->Get_Cloned_ST (st);
 
-  if ((cloned_st != NULL) && (ST_level(cloned_st) == GLOBAL_SYMTAB))
+  if ((cloned_st != NULL) && (ST_level(cloned_st) == GLOBAL_SYMTAB)) {
 						// Promoted as global
+      if (Alias_Nystrom_Analyzer) {
+        ConstraintGraph::updatePromoteStIdxMap(WN_st_idx(wn) , ST_st_idx(cloned_st));
+      }
       WN_st_idx(wn) = ST_st_idx(cloned_st);	// So fix up the orig tree also
+  }
   else 
       cloned_st = _sym->Get_ST(st);
 

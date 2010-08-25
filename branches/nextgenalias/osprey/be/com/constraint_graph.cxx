@@ -27,6 +27,7 @@ CallSiteMap ConstraintGraph::csIdToCallSiteMap(1024);
 const PointsTo ConstraintGraphNode::emptyPointsToSet;
 const CGEdgeSet ConstraintGraphNode::emptyCGEdgeSet;
 hash_map<ST_IDX, ST_IDX> ConstraintGraph::origToCloneStIdxMap;
+hash_map<ST_IDX, ST_IDX> ConstraintGraph::promoteStIdxMap;
 EdgeDelta *ConstraintGraph::_workList = NULL;
 NodeWorkList ConstraintGraph::_solverModList;
 
@@ -3919,6 +3920,12 @@ ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(WN *orig_wn,
   if (id != 0)
     IPA_WN_MAP32_Set(ipoClone->Get_Cloned_maptab(),
                      WN_MAP_ALIAS_CGNODE, clone_wn, id);
+}
+
+void
+ConstraintGraph::updatePromoteStIdxMap(ST_IDX local_st_idx,  ST_IDX global_st_idx)
+{
+  promoteStIdxMap[local_st_idx] = global_st_idx;
 }
 
 void

@@ -1258,6 +1258,10 @@ public:
   static void updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
                                         ST_IDX clone_st_idx);
 
+  static void updatePromoteStIdxMap(ST_IDX local_st_idx,  ST_IDX global_st_idx);
+
+  static void promoteLocals(IPA_NODE *callee);
+
   static void addEdgesToWorkList(ConstraintGraphNode *node);
 
   static EdgeDelta *workList(void) { return _workList; }
@@ -1543,6 +1547,10 @@ private:
   // processing in the solver.  Used to reduce outgoing edge walks
   // during the solver.
   static NodeWorkList _solverModList;
+
+  // Maintain mapping from local to its promoted global during IPA.
+  // like local static.
+  static hash_map<ST_IDX, ST_IDX> promoteStIdxMap;
 
   static ConstraintGraphEdge *_addEdge(ConstraintGraphNode *src,
                                        ConstraintGraphNode *dest,

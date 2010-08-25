@@ -4459,6 +4459,7 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
     // Clone Constraint Graph nodes and StInfos into caller
     if (Alias_Nystrom_Analyzer) {
+      ConstraintGraph::promoteLocals(Callee_node());
       ConstraintGraph::cloneConstraintGraphMaps(Caller_node(), Callee_node());
     }
 #endif

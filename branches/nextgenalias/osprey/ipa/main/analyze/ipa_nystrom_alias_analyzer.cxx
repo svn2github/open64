@@ -2191,6 +2191,59 @@ ConstraintGraph::cloneConstraintGraphMaps(IPA_NODE *caller, IPA_NODE *callee)
 }
 
 void
+ConstraintGraph::promoteLocals(IPA_NODE *callee) {
+
+  ConstraintGraph *calleeCG = 
+            IPA_NystromAliasAnalyzer::aliasAnalyzer()->cg(callee->Node_Index());
+
+  ConstraintGraph *globalCG = ConstraintGraph::globalCG();
+
+  if (Get_Trace(TP_ALIAS, NYSTROM_CG_BE_MAP_FLAG))
+    fprintf(stderr, "promote local to globals in %s\n", calleeCG->name());
+
+  for (hash_map<ST_IDX, ST_IDX>::iterator iter = promoteStIdxMap.begin(); 
+       iter != promoteStIdxMap.end(); iter++)
+  {
+
+    ST_IDX orig_st_idx  = iter->first;
+    ST_IDX globl_st_idx = iter->second;
+
+    // assert orig must be local static.
+    fprintf(stderr, "orig_st_idx: %d globl_st_idx: %d\n",   orig_st_idx, globl_st_idx);
+
+        // Clone the StInfo and all its CGNodes
+    CG_ST_IDX orig_cg_st_idx = 
+              ConstraintGraph::adjustCGstIdx(callee, orig_st_idx);
+    StInfo *origStInfo = calleeCG->stInfo(orig_cg_st_idx);
+    // FmtAssert(origStInfo != NULL , ("Expecting original StInfo in callee"));
+    // If we haven't seen this symbol before, we may not have an StInfo
+    // in the callee
+    if (origStInfo == NULL)
+      continue;
+
+    // origStInfo->print(stderr, TRUE);
+    StInfo *globalStInfo = globalCG->stInfo(globl_st_idx);
+    // if StInfo does not exist, add
+    Is_True(globalStInfo == NULL, ("global must havs not added\n"));
+    // Map the StInfo
+    globalCG->mapStInfo(origStInfo, orig_cg_st_idx, globl_st_idx);
+    ConstraintGraphNode *orig_node = origStInfo->firstOffset();
+    // extract nodes from local cg to global.
+    while (orig_node) {
+      calleeCG->_cgNodeToIdMap.erase(orig_node);
+      orig_node->cg_st_idx(globl_st_idx);
+      orig_node->cg(globalCG);
+      globalCG->_cgNodeToIdMap[orig_node] = orig_node->id();
+      orig_node = orig_node->nextOffset(); 
+    }
+    // delete stinfo in callee
+    calleeCG->stInfoMap().erase(orig_cg_st_idx);
+  } 
+  promoteStIdxMap.clear();
+}
+
+
+void
 dbgPrintCGStIdx(CG_ST_IDX cg_st_idx)
 {
   fprintf(stderr, "<file:%d pu:%d st_idx:%d>",
