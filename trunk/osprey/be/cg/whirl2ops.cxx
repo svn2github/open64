@@ -3784,6 +3784,24 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
       *kidno = 2;
       return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid2 (expr))), 4);
 
+
+    case INTRN_PSLLDQ:
+    case INTRN_PSRLDQ:
+#ifdef Is_True_On
+      {
+        const char * intrn_name = INTRN_c_name (id);
+        Is_True (WN_kid_count (expr) == 2,
+                 ("Handle_Imm_Op: Invalid # of kids of %s intrn", intrn_name));
+        Is_True (WN_operator (WN_kid0 (WN_kid1 (expr))) == OPR_INTCONST,
+           ("Handle_Imm_Op: Arg 2 of %s intrn must be immediate constant",
+            intrn_name));
+        Is_True (WN_const_val (WN_kid0 (WN_kid1 (expr))) %8 == 0,
+            ("offset is bit size must be byte based\n"));
+      }
+#endif
+      *kidno = 1;
+      return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid1 (expr)))/8, 4);
+
     case INTRN_PSLLWI:
     case INTRN_PSLLDI:
     case INTRN_PSLLQI:
@@ -3792,8 +3810,6 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSRLQI:
     case INTRN_PSRAWI:
     case INTRN_PSRADI:
-    case INTRN_PSLLDQ:
-    case INTRN_PSRLDQ:
     case INTRN_PSLLWI128:
     case INTRN_PSLLDI128:
     case INTRN_PSLLQI128:
