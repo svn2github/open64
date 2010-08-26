@@ -1,4 +1,5 @@
 /*
+  Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -228,10 +229,6 @@ static void FS_Substitute(WN* wn_orig,
       continue;
     if (FS_Is_Inside_If(use, LWN_Get_Parent(wn_orig)))
       continue; 
-
-    // Bug 539: Don't perform FS for nodes directly under ASM_INPUT
-    if (WN_operator(LWN_Get_Parent(use)) == OPR_ASM_INPUT)
-      continue;
 
     sub_count++; 
     INT position = loop_ls->In(use); 
@@ -591,6 +588,11 @@ static BOOL FS_Worthwhile(WN* wn_orig,
     }
     if (!Wn_Is_Inside(use, wn_loop))
        return FALSE; 
+
+    // Avoid FS for nodes directly under ASM_INPUT in order to preserve type.
+    if (WN_operator(LWN_Get_Parent(use)) == OPR_ASM_INPUT)
+      return FALSE;
+
     WN* use_loop = Enclosing_Loop(use); 
     if (use_loop != def_loop) {
       all_uses_in_same_def_loop = FALSE;
