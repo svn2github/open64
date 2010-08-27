@@ -941,9 +941,9 @@ static void Init_OP_Name()
   OP_Name[TOP_punpcklbw128] = "punpcklbw",
   OP_Name[TOP_punpcklwd128] = "punpcklwd",
   OP_Name[TOP_punpckldq128] = "punpckldq";
-  OP_Name[TOP_punpckhbw128] = "punpcklbw",
-  OP_Name[TOP_punpckhwd128] = "punpcklwd",
-  OP_Name[TOP_punpckhdq128] = "punpckldq";
+  OP_Name[TOP_punpckhbw128] = "punpckhbw",
+  OP_Name[TOP_punpckhwd128] = "punpckhwd",
+  OP_Name[TOP_punpckhdq128] = "punpckhdq";
   OP_Name[TOP_packsswb128] = "packsswb",
   OP_Name[TOP_packssdw128] = "packssdw",
   OP_Name[TOP_packuswb128] = "packuswb";
