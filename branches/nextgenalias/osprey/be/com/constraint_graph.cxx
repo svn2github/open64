@@ -13,6 +13,7 @@
 #include "opt_points_to.h"
 #include "pu_info.h"
 #include "clone.h"
+#include "sections.h"
 
 MEM_POOL *ConstraintGraph::edgeMemPool = NULL;
 UINT32 ConstraintGraph::maxTypeSize = 0;
@@ -4122,6 +4123,141 @@ ConstraintGraphNode::collapseTypeIncompatibleNodes()
         c->nextCollapsedSt(ptdNode->id());
       }
     }
+  }
+}
+
+sec_blk_elements* 
+ConstraintGraph::Get_BLK_Map_Set(ST_IDX st_idx, BOOL create)
+{
+    Section_Blk_MAP::const_iterator blk_iter = _section_blk_st_map.find(st_idx);
+    if(blk_iter!= _section_blk_st_map.end()) {
+       return  blk_iter->second;
+    }
+    else if(create){
+      //fprintf(stderr, "mapping STs in block st %s\n", ST_name(st_idx));
+      sec_blk_elements* blk_elems = CXX_NEW(sec_blk_elements, _memPool);
+      _section_blk_st_map[st_idx] = blk_elems;
+      return blk_elems;
+    }
+    return NULL;
+ 
+}
+
+void 
+ConstraintGraph::print_section_map(FILE* f, sec_blk_elements* blk_elems)
+{
+  sec_blk_elements::iterator it1;
+  for ( it1=blk_elems->begin() ; it1 != blk_elems->end(); it1++ ) {
+    fprintf(f, "%d, %d\n", it1->st_idx, it1->ofst_in_blk);
+  }
+}
+
+/*
+ * find the st in base_st, whose [start, end] conver the offset
+ * return this st and offset in st.
+ *
+ * 1. get base_st's mapped elments set. 
+ * 2. find upper bound of offset in set.
+ *    if uppoer bound is begin means all nodes offset are small than input offset
+ *    backward iterator to get the offset is less than or equal input offset. 
+ * 3. check if ST's [start, end] contains input offset.
+ */
+ST*
+ConstraintGraph::Get_blk_Section_ST(ST* base_st, INT64 offset, INT64& new_offset)
+{
+  sec_blk_elements *blk_elems = Get_BLK_Map_Set(ST_st_idx(base_st));
+  new_offset = 0;
+  if(blk_elems == NULL)
+    return NULL;
+  Is_True(blk_elems->size() !=0 , ("set can't be empty\n"));
+
+  sec_blk_elements::iterator it1;
+  sec_blk_elem elem = {offset, 0};
+  // check upper bound, if all element's offset is less than offset.
+  // return NULL
+  it1 = blk_elems->upper_bound (elem);
+  if(it1 == blk_elems->begin()) {
+    return NULL;
+  }
+  else {
+     it1--;
+  }
+
+  ST* st = ST_ptr(it1->st_idx);
+  INT64 start = it1->ofst_in_blk;
+  INT64 end = it1->ofst_in_blk + ST_size(st) - 1;
+  if(start <= offset && offset <= end) {
+    new_offset = offset - start;
+    return st;
+  }
+  return NULL;
+}
+
+
+/*
+ *  After IPA, after processing symtab.I all static symbols are grouped into three
+ *  category and allocated into three section block.
+ *  .bss_app
+ * .rodata_app
+ * .data_app
+ * These base st has no cg node
+ *
+ *  When genAliasTag use <blk_st, offset_in_blk, size> to get the cg node, 
+ *  need map <blk_st, offset_in_blk> back to <orig_st, offset_in_orig_st>
+ *
+ *  In this function
+ *  1. create a std::set contains <st_idx, offset_in_block>, record offset_in_block is for 
+ *      fast search in set.
+ *  2. create a hashmap<base_st_idx, set_of_st_in_blk>
+ */
+void 
+ConstraintGraph::map_blk_Section_STs()
+{
+  ST *base_st, *st;
+  INT64 base_offset;
+  Section_Blk_MAP::const_iterator blk_iter;
+  for (CGStInfoMapIterator iter = _cgStInfoMap.begin(); 
+         iter != _cgStInfoMap.end(); iter++) {
+    CG_ST_IDX cg_st_idx = iter->first;
+    ST_IDX st_idx = SYM_ST_IDX(cg_st_idx);
+
+    // skip local symbols
+    if (ST_IDX_level(st_idx) != GLOBAL_SYMTAB)
+      continue;
+
+    // check if its base is block section .bss .data .rodata st
+    st = ST_ptr(st_idx);
+    Expand_ST_into_base_and_ofst(st, 0, &base_st, &base_offset);
+    if(base_st == st)
+      continue;
+
+    // if not section block
+    if ( ST_class(base_st) != CLASS_BLOCK  ) 
+      continue;
+
+    // only handle .bss .data .rodata now.
+    if(strncmp(ST_name(base_st), ".rodata_", strlen(".rodata_")) ||
+       strncmp(ST_name(base_st), ".data_", strlen(".data_")) ||
+       strncmp(ST_name(base_st), ".bss_", strlen(".bss_"))){
+    }
+    else {
+     continue;
+    }
+
+    // check if current section block st has cg node.
+    StInfo *base_stInfo = stInfo(CG_ST_st_idx(base_st));
+    if(base_stInfo != NULL && base_stInfo->firstOffset())
+      continue;
+
+    // check if sec has mapped with st_set, if not exist create one set.
+    ST_IDX base_st_idx = ST_st_idx(base_st);
+    sec_blk_elements* blk_elems = Get_BLK_Map_Set(base_st_idx, TRUE);
+    Is_True(blk_elems, ("can't get the section block st's corresponding st set\n"));
+
+    sec_blk_elem elem;
+    elem.ofst_in_blk = base_offset;
+    elem.st_idx = st_idx;
+    blk_elems->insert(elem);
   }
 }
 

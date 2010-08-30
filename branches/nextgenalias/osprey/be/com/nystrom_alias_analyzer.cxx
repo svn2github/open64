@@ -49,6 +49,9 @@ NystromAliasAnalyzer::NystromAliasAnalyzer(ALIAS_CONTEXT &ac, WN* entryWN,
 
   // _constraintGraph->mapAliasedSyms();
 
+  if(backend)
+    _constraintGraph->map_blk_Section_STs();
+
   // Set flag to dump the WN to CGNodeId map during Write_PU_Info
   Write_ALIAS_CGNODE_Map = TRUE;
 }
@@ -185,8 +188,16 @@ NystromAliasAnalyzer::genAliasTag(ST *st, INT64 offset, INT64 size, bool direct)
   // is being model by the constraint graph for this symbol.
   ConstraintGraph *cg = _constraintGraph;
   StInfo *stInfo = cg->stInfo(CG_ST_st_idx(st));
-  if (!stInfo)
+  if (!stInfo) {
+    if(isPostIPA() && ST_class(st) == CLASS_BLOCK) {
+      INT64 new_offset;
+      ST* new_st = cg->Get_blk_Section_ST(st, offset, new_offset);
+      if(new_st != NULL) {
+        return genAliasTag(new_st, new_offset, size, direct);
+      }
+    }
     return aliasTag;
+  }
   if (!stInfo->checkFlags(CG_ST_FLAGS_PREG))
   {
     offset = stInfo->alignOffset(stInfo->ty_idx(), offset);

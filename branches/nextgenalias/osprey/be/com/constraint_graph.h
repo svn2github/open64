@@ -5,6 +5,7 @@
 #include <iostream>
 #include <ext/hash_map>
 #include <ext/hash_set>
+#include <set>
 #include "wn.h"
 #include "wn_map.h"
 #include "symtab.h"
@@ -117,6 +118,22 @@ typedef UINT32 CGNodeId;
 typedef UINT64 CG_ST_IDX;
 typedef UINT32 CallSiteId;
 typedef SparseBitSet<CGNodeId> PointsTo;
+
+// pair <offset, st_idx> represent an ST in section block st.
+typedef struct
+{
+  INT64 ofst_in_blk;
+  ST_IDX st_idx;
+} sec_blk_elem;
+
+struct sec_blk_elem_comp {
+  bool operator() (const sec_blk_elem& lhs, const sec_blk_elem& rhs) const
+  {return lhs.ofst_in_blk <rhs.ofst_in_blk;}
+};
+
+typedef std::set<sec_blk_elem, sec_blk_elem_comp> sec_blk_elements;
+
+typedef hash_map<ST_IDX, sec_blk_elements*> Section_Blk_MAP;
 
 enum PtsType {
   Pts,
@@ -1501,6 +1518,11 @@ public:
 
   ConstraintGraphNode *aliasedSym(ConstraintGraphNode *n);
 
+  void map_blk_Section_STs();
+  sec_blk_elements* Get_BLK_Map_Set(ST_IDX st_idx, BOOL create=FALSE);
+  ST* Get_blk_Section_ST(ST* base_st, INT64 offset, INT64& new_offset);
+  void print_section_map(FILE* f, sec_blk_elements* blk_elems);
+
 private:
 
   // Max size of all types
@@ -1656,6 +1678,9 @@ private:
   CGStInfoMap _newLocalStInfos;
 
   hash_map<CGNodeId, CGNodeId> _aliasedSyms;
+
+  // map from st to (offset, st_idx) set.
+  Section_Blk_MAP _section_blk_st_map;
 
   MEM_POOL *_memPool;
 };

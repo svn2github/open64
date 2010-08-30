@@ -2236,7 +2236,8 @@ ConstraintGraph::promoteLocals(IPA_NODE *callee) {
       globalCG->_cgNodeToIdMap[orig_node] = orig_node->id();
       orig_node = orig_node->nextOffset(); 
     }
-    // delete stinfo in callee
+    // update stinfo be global. delete stinfo in callee
+    origStInfo->addFlags(CG_ST_FLAGS_GLOBAL);
     calleeCG->stInfoMap().erase(orig_cg_st_idx);
   } 
   promoteStIdxMap.clear();
