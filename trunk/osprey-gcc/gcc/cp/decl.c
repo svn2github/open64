@@ -1661,6 +1661,12 @@ duplicate_decls (tree newdecl, tree olddecl)
       TREE_READONLY (olddecl) = TREE_READONLY (newdecl);
       TREE_THIS_VOLATILE (olddecl) = TREE_THIS_VOLATILE (newdecl);
       TREE_SIDE_EFFECTS (olddecl) = TREE_SIDE_EFFECTS (newdecl);
+#ifdef OPEN64_SPIN
+      if (flag_spin_file) {
+          TREE_TO_TRANSLATED_GS(olddecl) = TREE_TO_TRANSLATED_GS(newdecl);
+          FULLY_TRANSLATED_TO_GS(olddecl) = FULLY_TRANSLATED_TO_GS(newdecl);
+      }
+#endif
     }
 
   /* Merge the storage class information.  */
@@ -1764,7 +1770,12 @@ duplicate_decls (tree newdecl, tree olddecl)
       if (! types_match)
 	{
 	  SET_DECL_LANGUAGE (olddecl, DECL_LANGUAGE (newdecl));
-	  COPY_DECL_ASSEMBLER_NAME (newdecl, olddecl);
+#ifdef OPEN64_SPIN
+	  if (flag_spin_file)
+	      SET_DECL_ASSEMBLER_NAME (olddecl, DECL_ASSEMBLER_NAME(newdecl));
+	  else 
+#endif
+	      COPY_DECL_ASSEMBLER_NAME (newdecl, olddecl);
 	  COPY_DECL_RTL (newdecl, olddecl);
 	}
       if (! types_match || new_defines_function)
@@ -1805,7 +1816,12 @@ duplicate_decls (tree newdecl, tree olddecl)
   TREE_ADDRESSABLE (newdecl) = TREE_ADDRESSABLE (olddecl);
   TREE_ASM_WRITTEN (newdecl) = TREE_ASM_WRITTEN (olddecl);
   DECL_COMMON (newdecl) = DECL_COMMON (olddecl);
-  COPY_DECL_ASSEMBLER_NAME (olddecl, newdecl);
+#ifdef OPEN64_SPIN
+  if (flag_spin_file)
+      SET_DECL_ASSEMBLER_NAME (newdecl, DECL_ASSEMBLER_NAME(olddecl));
+  else
+#endif
+      COPY_DECL_ASSEMBLER_NAME (olddecl, newdecl);
 
   /* Warn about conflicting visibility specifications.  */
   if (DECL_VISIBILITY_SPECIFIED (olddecl) 
