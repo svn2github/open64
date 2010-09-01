@@ -3968,7 +3968,7 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       *iopc = INTRN_VEC_EXT_V2SI;
       break;
     case GSBI_IX86_BUILTIN_VEC_EXT_V4HI:
-      //add intrinsic for _mm_extract_pi16
+      // add intrinsic for _mm_extract_pi16
       if (WN_operator(arg1) != OPR_INTCONST)
       Fail_FmtAssertion ("selector must be an integer constant in the range 0..3");
      switch (WN_const_val(arg1)){
@@ -9316,9 +9316,9 @@ WGEN_Expand_Expr (gs_t exp,
 	    for (i = 0, list = gs_tree_operand (exp, 1);
 		 list;
 		 i++, list = gs_tree_chain (list)) {
-	      //if intrinsic equals _mm_extract_pi16, 
-	      //the second param is fixed to const 0,1,2,3, so 
-	      //there is no need to generate the second arg node.
+	      // if intrinsic equals _mm_extract_pi16, 
+	      // the second param is fixed to const 0,1,2,3, so 
+	      // there is no need to generate the second arg node.
 	      if (i ==1 && (iopc == INTRN_PEXTRW0 ||
 			    iopc == INTRN_PEXTRW1 ||
 		            iopc == INTRN_PEXTRW2 ||
