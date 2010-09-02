@@ -3970,26 +3970,25 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_VEC_EXT_V4HI:
       // add intrinsic for _mm_extract_pi16
       if (WN_operator(arg1) != OPR_INTCONST)
-      Fail_FmtAssertion ("selector must be an integer constant in the range 0..3");
-     switch (WN_const_val(arg1)){
-     case 0:
-       *iopc = INTRN_PEXTRW0;
-       break;
-     case 1:
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3");
+      switch (WN_const_val(arg1)){
+      case 0:
+        *iopc = INTRN_PEXTRW0;
+        break;
+      case 1:
         *iopc = INTRN_PEXTRW1;
-	break;
-     case 2:
-	*iopc = INTRN_PEXTRW2;
-	break;
-     case 3:
-       *iopc = INTRN_PEXTRW3;
-       break;
-     default:
-       Fail_FmtAssertion ("selector must be an integer constant in the range 0..3" );
-       }
-     break;
- 
-   case GSBI_IX86_BUILTIN_VEC_EXT_V2DI:
+        break;
+      case 2:
+        *iopc = INTRN_PEXTRW2;
+        break;
+      case 3:
+        *iopc = INTRN_PEXTRW3;
+        break;
+      default:
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3" );
+      }
+      break;
+    case GSBI_IX86_BUILTIN_VEC_EXT_V2DI:
       *iopc = INTRN_VEC_EXT_V2SI;
       break;
     case GSBI_IX86_BUILTIN_VEC_EXT_V2DF:
@@ -9319,13 +9318,15 @@ WGEN_Expand_Expr (gs_t exp,
 	      // if intrinsic equals _mm_extract_pi16, 
 	      // the second param is fixed to const 0,1,2,3, so 
 	      // there is no need to generate the second arg node.
-	      if (i ==1 && (iopc == INTRN_PEXTRW0 ||
-			    iopc == INTRN_PEXTRW1 ||
-		            iopc == INTRN_PEXTRW2 ||
-		            iopc == INTRN_PEXTRW3)) {
-		num_args = 1;
-		break;
-	      }  
+#ifdef TARG_X8664
+              if (i ==1 && (iopc == INTRN_PEXTRW0 ||
+                            iopc == INTRN_PEXTRW1 ||
+                            iopc == INTRN_PEXTRW2 ||
+                            iopc == INTRN_PEXTRW3)) {
+                num_args = 1;
+                break;
+	      }
+#endif
               arg_wn = WGEN_Expand_Expr (gs_tree_value (list));
 	      
 #ifdef KEY // bug 11286
