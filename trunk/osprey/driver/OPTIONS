@@ -1470,6 +1470,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not warn about suspicious declarations of main"
 -Wmissing-braces	;	Cc	f	self
 	"Warn about possibly missing braces around initialisers"
+-Wextra                 ;       Cc      f       self
+        "Enable some extra warning flags that are not enabled by -Wall"
+-Wno-extra              ;       Cc      f       self
+        "Disable extra warning flags that are enabled by -Wextra"
 -Wno-missing-braces	;	Cc	f	self
 	"Do not warn about possibly missing braces around initialisers"
 -Wmissing-declarations	;		Cc	f	self
@@ -1944,6 +1948,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"File tells Fortran compiler how to transform ids into linker symbols"
 -undef	;		Cc,as,CPP	CPP	self
 	""
+-Wmissing-include-dirs   ;   Cc,as,CPP    CPP    self
+        "Warn if a user-supplied include directory does not exist"
 %%% Code Generation Options
 -fcall-saved-%s	;		Cc	NONE	""
 	""
