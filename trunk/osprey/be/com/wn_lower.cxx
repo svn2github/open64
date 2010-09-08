@@ -384,7 +384,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_U8,       /* MTYPE_U8 */
   MTYPE_F4,       /* MTYPE_F4 */
   MTYPE_F8,       /* MTYPE_F8 */
-#if defined(TARG_I64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664)
   MTYPE_F10,      /* MTYPE_F10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_F10 */
@@ -401,7 +401,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
  ,MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
-#if defined(TARG_I64) || defined(TARG_X8664)
+#if defined(TARG_IA64) || defined(TARG_X8664)
   MTYPE_C10,	  /* MTYPE_C10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_C10 */
@@ -2096,7 +2096,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       */
       TYPE_ID   ctype = WN_rtype(tree);
 
+#ifdef TARG_X8664 
       if (!MTYPE_is_complex(ctype) && !(ctype == MTYPE_V16C8))
+#else
+      if (!MTYPE_is_complex(ctype))
+#endif
       {
 	*realpart = tree;
 	*imagpart = NULL;
@@ -2183,7 +2187,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
       {
 	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
 	else
 	{
@@ -2193,7 +2201,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       }
       {
 	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
 	else
 	{
@@ -2230,7 +2242,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
       {
 	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
 	else
 	{
@@ -2240,7 +2256,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       }
       {
 	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
 	else
 	{
@@ -2279,7 +2299,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
       {
 	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
 	else
 	{
@@ -2289,7 +2313,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       }
       {
 	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
 	else
 	{
@@ -2604,7 +2632,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
       {
 	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
 	else
 	{
@@ -2614,7 +2646,11 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       }
       {
 	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
 	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
           lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
 	else
 	{
@@ -2850,6 +2886,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 	  WN_Delete(tree);
 	}
         break;
+#ifdef TARG_X8664 
       case INTRN_V16C8MPY_ADDSUB:
 	{
 	  lower_complex_expr(block, WN_CreateExp2(OPR_MPY, MTYPE_V16C8, MTYPE_V, 
@@ -2857,6 +2894,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 			  realpart, imagpart);
 	}
         break;	
+#endif
 
 	//*****************************************************************
 	//
@@ -5903,6 +5941,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       tree = lower_emulation(block, tree, actions, intrinsic_lowered);
       tree = WN_Simplify_Rebuild_Expr_Tree(tree, alias_manager);
       
+#ifdef TARG_X8664 
       if (Action(LOWER_COMPLEX))
       {
 	      OPCODE opcode = WN_opcode(tree);    
@@ -5911,6 +5950,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       if (OPCODE_desc(opcode) == MTYPE_C8)
         WN_set_desc(tree, MTYPE_V16C8);
       }
+#endif
       
       kids_lowered = TRUE;
     }
@@ -6352,8 +6392,8 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	if (WN_rtype(WN_kid0(tree)) == MTYPE_C8)
           WN_set_rtype(WN_kid0(tree), MTYPE_V16C8);
       }
-    }
 #endif
+    }
     break;
   case OPR_COMPLEX:
     if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
@@ -6361,8 +6401,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
       ST *st;
       TYPE_ID type = WN_rtype(tree); 
       TYPE_ID ftype = Mtype_complex_to_real(type);
+#ifdef TARG_X8664 
       if ( type == MTYPE_C8)
         type = MTYPE_V16C8;
+#endif
       PREG_NUM r, i;
       st = New_ST(CURRENT_SYMTAB);
       ST_Init (st,
@@ -6383,7 +6425,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
   case OPR_EQ:
     if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
-			    || MTYPE_V16C8 == WN_desc(tree)))
+#ifdef TARG_X8664 
+			    || MTYPE_V16C8 == WN_desc(tree)
+#endif
+	  ))
     {
       /*
        *  x == y
@@ -6404,7 +6449,10 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   case OPR_NE:
     if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
-			    || MTYPE_V16C8 == WN_desc(tree)))
+#ifdef TARG_X8664 
+			    || MTYPE_V16C8 == WN_desc(tree)
+#endif
+	  ))
     {
       /*
        *  x != y
@@ -7051,7 +7099,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   return tree;
 }
-
 
 /* ====================================================================
  *
@@ -8176,6 +8223,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	   imagexp_copy = WN_LdidPreg(realTY, imagexpN);
 	}
 
+#ifdef TARG_X8664
 	if (ST_class(WN_st(tree)) == CLASS_PREG && WN_desc(tree)== MTYPE_C8
 	   && Is_Target_SSE3() && Vcast_Complex &&
 	   !(ST_sclass(WN_st(tree)) == SCLASS_REG && 
@@ -8198,7 +8246,9 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	  wn = WN_Stid(type, offset, WN_st(tree), ty, 
 		  WN_LdidPreg(type, zN));
 	  return wn;  
-	} else {
+	} else 
+#endif
+	{
 	wn = WN_Stid(realTY,
 		     offset, 
 		     coerceST(WN_st(tree), realTY),
@@ -10419,7 +10469,7 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   else
 #endif
   {
-//#if defined(TARG_X8664)
+#if defined(TARG_X8664)
 //    if (Is_Target_SSE3() && Vcast_Complex)
 //    {
       if (WN_rtype(wn) == MTYPE_V16C8)
@@ -10427,7 +10477,7 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
       if (WN_desc(wn) == MTYPE_V16C8)
         WN_set_desc(wn, MTYPE_C8);
 //    }
-//#endif
+#endif
     lower_complex_expr(block, wn, actions, realpart, imagpart);
   }
 }
@@ -10610,11 +10660,13 @@ static WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
   call = lower_intrinsic_call(block, call, actions);
   WN_INSERT_BlockLast(block, call);
 
+#ifdef TARG_X8664
   if (complex_mtyp == MTYPE_C8 && Is_Target_SSE3() && Vcast_Complex)
   {
     complex_mtyp = MTYPE_V16C8;
     complex_ty = MTYPE_To_TY(complex_mtyp);
   }
+#endif
   WN *ldid = WN_Ldid(complex_mtyp, 0, return_sincos, complex_ty);
   return lower_expr(block, ldid, actions);
 }

@@ -845,6 +845,7 @@ static WN *checkForZero(WN *block, TYPE_ID type, PREG_NUM xN, WN *if_else, WN *v
 
     Is_True(MTYPE_is_float(type), ("unexpected type"));
 
+#ifdef TARG_X8664
     if (type != MTYPE_V16C8)
       cond =  WN_EQ(type, 
 		  WN_LdidPreg(type, xN),
@@ -857,7 +858,12 @@ static WN *checkForZero(WN *block, TYPE_ID type, PREG_NUM xN, WN *if_else, WN *v
         WN_EQ(MTYPE_F8, WN_Unary(OPR_SECONDPART, MTYPE_F8, 
           WN_LdidPreg(type, xN)), WN_Zerocon(MTYPE_F8))); 
     }
+#else
+    cond =  WN_EQ(type, 
+ 		  WN_LdidPreg(type, xN),
+ 		  WN_Zerocon(type));
 
+#endif
     IF = WN_CreateIf(cond, if_then, if_else);
     WN_INSERT_BlockLast(block, IF);
   }
@@ -2653,8 +2659,10 @@ static WN *em_complex_abs(WN *block, WN *z)
 static WN *em_complex_sqrt_preg(WN *block, TYPE_ID type, PREG_NUM zN_in) 
 {
   PREG_NUM	ziN, zN, absN, t1N, t2N, t3N;
+#ifdef TARG_X8664 
   if (type == MTYPE_V16C8)
     type = MTYPE_C8;
+#endif
 
   TYPE_ID	rtype = Mtype_complex_to_real(type);
 

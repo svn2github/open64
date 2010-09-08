@@ -350,7 +350,11 @@ fi
 if test "${BUILD_TARGET}" = "SL"; then
 LIBLIST="include libelf"
 else
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  if test "${BUILD_TARGET}" = "IA64"; then
+     LIBLIST="include libelf libopenmp libfortran libmv libu"
+  else
+     LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  fi
 fi
 
 AC_CONFIG_FILES([

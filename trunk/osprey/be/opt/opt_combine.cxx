@@ -344,6 +344,7 @@ Combine_Operations( WN *old_wn, WN **new_wn )
   return FALSE;
 }
 
+#ifdef TARG_X8664
 static TYPE_ID unify_recip_mpy_div_rtype(TYPE_ID dividend, TYPE_ID divisor)
 {
   if (dividend == MTYPE_V16C8 || divisor == MTYPE_V16C8)
@@ -351,6 +352,7 @@ static TYPE_ID unify_recip_mpy_div_rtype(TYPE_ID dividend, TYPE_ID divisor)
   else
      return dividend;
 }
+#endif
 // ====================================================================
 // handle the MPY operator
 // ====================================================================
@@ -377,10 +379,15 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
     // Transform:  MPY       into  DIV
     //            a  RECIP         a b
     //                 b
+#ifdef TARG_X8664
     TYPE_ID rtype = unify_recip_mpy_div_rtype(OPCODE_rtype(kid0_opc), 
 		                      OPCODE_rtype(kid1_opc));
     const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
 			rtype, OPCODE_desc(kid1_opc) );
+#else
+    const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
+			OPCODE_rtype(kid1_opc),OPCODE_desc(kid1_opc) );
+#endif
     WN *div = WN_CreateExp2(div_opc, WN_kid0(old_wn), WN_kid0(kid1));
     *new_wn = div;
     return TRUE;
@@ -390,10 +397,16 @@ Uncombine_mpy_operator( WN *old_wn, WN **new_wn, OPCODE old_wn_opc )
     // Transform:  MPY       into  DIV
     //            RECIP b          b a
     //              a   
+#ifdef TARG_X8664
     TYPE_ID rtype = unify_recip_mpy_div_rtype(OPCODE_rtype(kid0_opc), 
 		                      OPCODE_rtype(kid1_opc));
     const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
 			rtype,OPCODE_desc(kid0_opc) );
+#else
+    const OPCODE div_opc = OPCODE_make_op(OPR_DIV,
+			OPCODE_rtype(kid0_opc),OPCODE_desc(kid0_opc) );
+    
+#endif
     WN *div = WN_CreateExp2(div_opc, WN_kid1(old_wn), WN_kid0(kid0));
     *new_wn = div;
     return TRUE;

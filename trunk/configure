@@ -1638,7 +1638,11 @@ fi
 if test "${BUILD_TARGET}" = "SL"; then
 LIBLIST="include libelf"
 else
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  if test "${BUILD_TARGET}" = "IA64"; then
+     LIBLIST="include libelf libopenmp libfortran libmv libu"
+  else
+     LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  fi
 fi
 
                                                                                 ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile osprey/targdir_lib/libelf/Makefile osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libfortran/Makefile osprey/targdir_lib/libhugetlbfs/Makefile osprey/targdir_lib/libmv/Makefile osprey/targdir_lib/libu/Makefile"
