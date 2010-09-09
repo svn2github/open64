@@ -9901,9 +9901,12 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				ty_idx, Make_Pointer_Type(ty_idx), wn);
 	  }
-	  else if (mtype == MTYPE_C4) {
+	  else if (MTYPE_is_complex(mtype)) {
+        Is_True((mtype == MTYPE_C4 || mtype == MTYPE_C8 || mtype == MTYPE_C10 ||
+            mtype == MTYPE_C16 || mtype == MTYPE_CQ),
+            ("WGEN_Expand_Expr: unexpected complex type"));
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
-	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_C4, MTYPE_C4, 0, ty_idx,
+	    wn = WN_CreateIload(OPR_ILOAD, mtype, mtype, 0, ty_idx,
 				Make_Pointer_Type(ty_idx), wn);
 	  }
 	  else {
