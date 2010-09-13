@@ -437,6 +437,8 @@ ConstraintGraphNode::updatePointsToFromDiff()
   FmtAssert(!checkFlags(CG_NODE_FLAGS_MERGED),
             ("Node %d should not be merged at the beginning of update.\n",id()));
 
+  findRep()->checkIsPtrAligned();
+
   bool ptsChange = false;
   for ( PointsToIterator pti(this,PtsDiff); pti != 0; ++pti ) {
     PointsTo &diff = *pti;
@@ -1060,6 +1062,10 @@ ConstraintGraphSolve::updateOffsets(const ConstraintGraphNode *dst,
   if (dst->offset() == -1) {
     ConstraintGraphNode *cur = dst->nextOffset();
     while (cur != NULL) {
+      if ((cur->offset() % Pointer_Size) != 0) {
+        cur = cur->nextOffset();
+        continue;
+      }
       bool change = false;
       change |= cur->unionDiffPointsTo(pts, dstQual);
       // Mark outgoing edges as to be updated....
