@@ -1818,7 +1818,8 @@ duplicate_decls (tree newdecl, tree olddecl)
   DECL_COMMON (newdecl) = DECL_COMMON (olddecl);
 #ifdef OPEN64_SPIN
   if (flag_spin_file)
-      SET_DECL_ASSEMBLER_NAME (newdecl, DECL_ASSEMBLER_NAME(olddecl));
+      SET_DECL_ASSEMBLER_NAME (newdecl, 
+              DECL_ASSEMBLER_NAME_SET_P(olddecl) ? DECL_ASSEMBLER_NAME(olddecl) : NULL);
   else
 #endif
       COPY_DECL_ASSEMBLER_NAME (olddecl, newdecl);
