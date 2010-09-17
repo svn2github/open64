@@ -39,7 +39,7 @@ NODEPTARGETS=<version.h> <clean>
 
 INSTALL = install
 
-LDFLAGS += --no-undefined-version -Wl,--version-script=$(BUILD_BASE)/version.lds
+LDFLAGS += -Wl,--no-undefined-version -Wl,--version-script=$(BUILD_BASE)/version.lds
 CFLAGS ?= -O2 -g -DOPEN64_MOD -DM_PAGE
 CFLAGS += -Wall -fPIC
 CPPFLAGS += -D__LIBHUGETLBFS__ -I.
@@ -155,7 +155,7 @@ default: ldscripts
 	make $(VERSION)
 	make libs
 
-.PHONY:	tests libs ldscripts
+.PHONY:	tests libs ldscripts always
 
 ldscripts: elf.xBD elf_1G.xBD
 
@@ -170,11 +170,17 @@ elf_1G.xBD: $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG)_1G.xBDT
 libs:	$(foreach file,$(INSTALL_OBJ_LIBS),$(OBJDIRS:%=%/$(file)))
 
 # <Version handling> MOD
-$(VERSION): $(BUILD_BASE)/version
+$(VERSION): version always
 	@$(VECHO) VERSION
-	cp $(BUILD_BASE)/version version
 	$(BUILD_BASE)/localversion version $(SOURCE)
 # </Version handling>
+
+version: $(BUILD_BASE)/version
+	@cp $(BUILD_BASE)/version version
+
+# Avoid implicit rule for source version file.
+$(BUILD_BASE)/version:
+	;
 
 snapshot: $(VERSION)
 

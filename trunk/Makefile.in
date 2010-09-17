@@ -163,8 +163,10 @@ export SKIP_DEP_BUILD=1
 # Use all to build compiler (build) and libraries (lib)
 # If BUILD_MULTILIB is YES, build a second library as well.
 ALL_TARGETS = build lib
+CLEAN_LIB = clean-lib
 ifeq ($(BUILD_MULTILIB), YES)
 ALL_TARGETS += lib2
+CLEAN_LIB += clean-lib2
 endif
 
 all: $(ALL_TARGETS)
@@ -352,27 +354,19 @@ library2 lib2 clean-library2 clean-lib2 : LOCAL_LIB_ARGS = $(LIB2_ARGS)
 library lib library2 lib2 : build
 
 library lib clean-library clean-lib library2 lib2 clean-library2 clean-lib2:
-	+@for d in $(LOCAL_LIB_BUILD_DIR); do \
-	    echo $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
-	    $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
-	    retval=$$?; \
-	    if [ $$retval != 0 ]; then \
-		if grep -q k <<<'$(MAKEFLAGS)'; then \
-		    exit=$$retval; \
-		else \
-		    exit $$retval; \
-		fi; \
-	    fi; \
-	done; \
-	exit $$exit
+	@echo "$(MAKE) -C $(LOCAL_LIB_BUILD_DIR) $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS)"; \
+	$(MAKE) -C $(LOCAL_LIB_BUILD_DIR) $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS)
 
 clobber: clean 
 	rm -rf $(CROSSDIR) $(BOOTDIR)
-clean: clean-lib
+
+clean: $(CLEAN_LIB)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
+ifeq ($(BUILD_GNU3), YES)
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
