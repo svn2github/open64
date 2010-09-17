@@ -10013,7 +10013,7 @@ reference_to_unused (tree * tp, int * walk_subtrees,
   be conservative.  */
   else if (!cgraph_global_info_ready
 	   && (TREE_CODE (*tp) == VAR_DECL || TREE_CODE (*tp) == FUNCTION_DECL))
-    //gcc_unreachable ();
+    /*gcc_unreachable ();*/
     return *tp;
   else if (DECL_P (*tp) && TREE_CODE (*tp) == VAR_DECL)
     {

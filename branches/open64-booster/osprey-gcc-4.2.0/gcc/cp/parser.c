@@ -13081,7 +13081,7 @@ cp_parser_class_specifier (cp_parser* parser)
   bool saved_in_function_body;
   tree old_scope = NULL_TREE;
   tree scope = NULL_TREE;
-  tree bases;
+  tree bases = NULL_TREE;
 
   push_deferring_access_checks (dk_no_deferred);
 

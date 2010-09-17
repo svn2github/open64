@@ -702,15 +702,16 @@ I-D_LANGUAGE_FORTRAN	;		FTN	CPP	self
 	"Produce debugging information for use by GDB"
 -ggdb3	toggle(&glevel,3);		ALL	CMP	"-g3"
 	"Produce debugging information for use by GDB"
-#ifdef KEY
+#ifdef BUILD_GNU3
 -gnu3	toggle(&gnu_major_version,3);toggle(&gnu_minor_version,3);	Cc	NONE	""
 	"Use GCC 3.3 C/C++ front-end."
 -gnu4	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
 	"Use GCC 4.2 C/C++ front-end."
--gnu40	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,0);	Cc	NONE	""
-	"Use GCC 4.0 C/C++ front-end."
 -gnu42	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
 	"Use GCC 4.2 C/C++ front-end."
+#else
+-gnu42	toggle(&gnu_major_version,4);toggle(&gnu_minor_version,2);	Cc	NONE	""
+	""
 #endif
 -gstabs		warn_ignored(option_name);	ALL	NONE	""
 	""
@@ -1469,6 +1470,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not warn about suspicious declarations of main"
 -Wmissing-braces	;	Cc	f	self
 	"Warn about possibly missing braces around initialisers"
+-Wextra                 ;       Cc      f       self
+        "Enable some extra warning flags that are not enabled by -Wall"
+-Wno-extra              ;       Cc      f       self
+        "Disable extra warning flags that are enabled by -Wextra"
 -Wno-missing-braces	;	Cc	f	self
 	"Do not warn about possibly missing braces around initialisers"
 -Wmissing-declarations	;		Cc	f	self
@@ -1943,6 +1948,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"File tells Fortran compiler how to transform ids into linker symbols"
 -undef	;		Cc,as,CPP	CPP	self
 	""
+-Wmissing-include-dirs   ;   Cc,as,CPP    CPP    self
+        "Warn if a user-supplied include directory does not exist"
 %%% Code Generation Options
 -fcall-saved-%s	;		Cc	NONE	""
 	""

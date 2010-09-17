@@ -1276,13 +1276,13 @@ void SSA::Value_number(CODEMAP *htable, OPT_STAB *opt_stab, BB_NODE *bb,
     stmt = bb->Add_stmtnode(wn, mem_pool);
 
 #ifdef TARG_SL //fork_joint
-    if(WN_is_compgoto_para(wn)) 
-       stmt->Set_fork_stmt_flags(TRUE);
-    else if(WN_is_compgoto_for_minor(wn)) 
-	stmt -> Set_minor_fork_stmt_flags(TRUE);
+    stmt->Set_fork_stmt_flags(WN_is_compgoto_para(wn));
+    stmt->Set_minor_fork_stmt_flags(WN_is_compgoto_for_minor(wn));
     // mark istore for vbuf automatic expansion 
     if (WN_operator(wn) == OPR_ISTORE && WN_is_internal_mem_ofst(wn))
-      stmt->Set_SL2_internal_mem_ofst(TRUE); 
+      stmt->Set_SL2_internal_mem_ofst(TRUE);
+    else
+      stmt->Set_SL2_internal_mem_ofst(FALSE); 
 #endif 
 
     stmt->Enter_rhs(htable, opt_stab, copyprop, exc);

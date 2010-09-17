@@ -132,8 +132,8 @@ TYPE_DESC Machine_Types[] =
   { MTYPE_M8I2, 64,64,64,8, 8,8,	0, 1, 0, "M8I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I2 },
   { MTYPE_M8I4, 64,64,64,8, 8,8,	0, 1, 0, "M8I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_MVECTOR,8, MTYPE_M8I4 },
   { MTYPE_M8F4, 64,64,64,8, 8,8,	0, 1, 0, "M8F4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_MVECTOR,8, MTYPE_M8F4 },
-  { MTYPE_V32C4, 256,256,256,32, 32,32,        0, 1, 0, "V32C4",MTYPE_CLASS_COMPLEX_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C4 },
-  { MTYPE_V32C8, 256,256,256,32, 32,32,        0, 1, 0, "V32C8",MTYPE_CLASS_COMPLEX_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C8 },
+  { MTYPE_V32C4, 256,256,256,32, 32,32,        0, 1, 0, "V32C4",MTYPE_CLASS_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C4 },
+  { MTYPE_V32C8, 256,256,256,32, 32,32,        0, 1, 0, "V32C8",MTYPE_CLASS_FLOAT|MTYPE_CLASS_AVECTOR,32, MTYPE_V32C8 },
   { MTYPE_V32I1, 256,256,256,32, 32,32,        0, 1, 0, "V32I1",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I1 },
   { MTYPE_V32I2, 256,256,256,32, 32,32,        0, 1, 0, "V32I2",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I2 },
   { MTYPE_V32I4, 256,256,256,32, 32,32,        0, 1, 0, "V32I4",MTYPE_CLASS_INTEGER|MTYPE_CLASS_AVECTOR,32, MTYPE_V32I4 },
@@ -482,7 +482,6 @@ TYPE_ID Mtype_prev_alignment(TYPE_ID type)
   return Machine_Prev_Alignment[type];
 }
 
-#if defined(TARG_X8664)
 /* ====================================================================
  *
  * TYPE_ID Mtype_vector_elemtype(TYPE_ID)
@@ -494,6 +493,7 @@ TYPE_ID Mtype_prev_alignment(TYPE_ID type)
 TYPE_ID  Mtype_vector_elemtype(TYPE_ID type)
 {
   switch (type) {
+#if defined(TARG_X8664)
     case MTYPE_V32F8:
     case MTYPE_V16F8:
       return MTYPE_F8;
@@ -526,9 +526,9 @@ TYPE_ID  Mtype_vector_elemtype(TYPE_ID type)
     case MTYPE_V8I1:
     case MTYPE_M8I1:
       return MTYPE_I1;
+#endif
 
     default:
       return type;
   }
 }
-#endif

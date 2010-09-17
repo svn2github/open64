@@ -14,7 +14,8 @@ do
         shift 1
 done
 
-export CC="$GCC_CONFIGURE_COMPILER $GCC_CONFIGURE_CFLAGS"
+export CC="$GCC_CONFIGURE_COMPILER"
+export CFLAGS="$GCC_CONFIGURE_CFLAGS"
 
 if [ "`uname -m | sed -e s/i.86/i386/`" = "i386" ]
 then

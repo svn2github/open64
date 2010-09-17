@@ -57,7 +57,7 @@ extern char *Ofast;		/* defined in config_opt.cxx */
 
 /* Architecture specific definitions */
 BOOL ARCH_generate_nor = FALSE; // Generate the NOR opcode
-BOOL ARCH_mask_shift_counts = FALSE; // shift counts are masked by the hardware (vs. truncated)
+BOOL ARCH_mask_shift_counts = TRUE; // shift counts are masked by the hardware (vs. truncated)
 
 /* Target selection */
 TARGET_ABI Target_ABI = ABI_UNDEF;

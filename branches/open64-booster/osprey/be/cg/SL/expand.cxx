@@ -3243,6 +3243,7 @@ extern void Exp_2inst_MC_Zero (
   }
 
   Check_TN_Equal(&dest_tn, &cond_tn, ops);
+  Check_TN_Equal(&dest_tn, &true_tn, ops);
 
   TYPE_ID type = (MTYPE_bit_size(true_type) > MTYPE_bit_size(false_type) ? true_type : false_type);
 

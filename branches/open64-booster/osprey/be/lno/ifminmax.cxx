@@ -376,7 +376,7 @@ static void IFMM_From_Select(WN* wn_tree)
 #if defined (TARG_SL) && defined (EMULATE_FLOAT_POINT)
   /* Don't generate F8/F4 MIN/MAX */
   if (MTYPE_is_float(WN_rtype(wn_expr_left)) || MTYPE_is_float(WN_rtype(wn_expr_right)))
-    return FALSE;
+    return;
 #endif
 
 

@@ -317,9 +317,7 @@ extern TYPE_ID  Mtype_comparison( TYPE_ID );
 extern TYPE_ID  Mtype_next_alignment( TYPE_ID);
 extern TYPE_ID  Mtype_prev_alignment( TYPE_ID);
 
-#if defined (TARG_X8664)
 extern TYPE_ID  Mtype_vector_elemtype( TYPE_ID);
-#endif
 
 #ifdef __cplusplus
 }

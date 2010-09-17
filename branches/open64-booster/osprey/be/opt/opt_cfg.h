@@ -377,6 +377,10 @@ private:
   void         Lower_while_do(WN *wn, END_BLOCK *ends_bb );
   INT	       Is_simple_expr(WN *wn);
   void         Lower_if_stmt(WN *wn, END_BLOCK *ends_bb );
+  WN          *if_convert(WN *wn);
+  BOOL         wn_is_assign(WN *wn);
+  BOOL         wn_is_assign_return(WN *wn);
+  BOOL         wn_is_return_convert(WN *wn);
   // add various high-level construct statements to CFG so they can
   // later be raised back up (mostly preopt phase)
   void         Add_one_io_stmt(WN *wn, END_BLOCK *ends_bb);
@@ -754,8 +758,10 @@ public:
   // for the phase of removing useless store loop
   BB_NODE * ULSE_insert_bb_and_merge(STMTREP*, BB_NODE*, BB_NODE*);
   BOOL         If_convertible_cond(WN* wn);
-  BOOL         If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
-  BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
+  BOOL         If_conv_criteria_met(WN* wn);
+  BOOL         Cand_is_select(WN *wn);
+  BOOL         Cand_is_return_inside_select(WN *wn);
+  BOOL         Screen_cand(WN* wn);
 #if defined(TARG_SL)
   BOOL         Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn);
 #endif

@@ -562,19 +562,14 @@ set_library_paths(string_list_t *args)
       asprintf(&our_path, "%s/lib/",root_prefix);
 #endif
 	} else {
-		asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
+	  asprintf(&our_path, "%s/" LIBPATH "/64", global_toolroot);
+	  add_string(args, concat_strings("-L", our_path));
+	  asprintf(&our_path, "%s/" LIBPATH, global_toolroot);
 	}
 	
 	add_string(args, concat_strings("-L", our_path));
 
 	free(our_path);
-#ifdef TARG_IA64
-	our_path = get_phase_dir(P_library);
-        add_string (args, concat_strings("-L", our_path));
-
-        our_path= get_phase_dir(P_alt_library);
-        add_string (args, concat_strings("-L", our_path));
-#endif
 }
 
 /*
@@ -2131,7 +2126,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
-            if (option_was_seen(O_shared)) {
+            if (option_was_seen(O_shared) || option_was_seen(O_pie) ||
+                option_was_seen(O_fpie) || option_was_seen(O_fPIE)) {
                 add_library(args, "open64rt_shared");
             } else {
                 add_library(args, "open64rt");
@@ -3032,8 +3028,6 @@ init_frontend_phase_names (int gnu_major_version, int gnu_minor_version)
   // Select the appropriate GNU 4 front-end.
   if ((gnu_major_version == 4) && !run_build) {
     switch (gnu_minor_version) {
-      case 0:	// Default is 4.0.
-        break;
       case 2:
 	set_phase_name(P_spin_cc1, "cc142");
 	set_phase_name(P_spin_cc1plus, "cc1plus42");

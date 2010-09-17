@@ -64,7 +64,10 @@ LIB2_BUILD_DIR      = osprey/targdir_lib2
 
 TOP_SRCDIR          = @abs_top_srcdir@
 TOP_BUILDDIR        = @abs_top_builddir@
+BUILD_VENDOR        = @BUILD_VENDOR@
+BUILD_TARGET        = @BUILD_TARGET@
 BUILD_MULTILIB      = @BUILD_MULTILIB@
+BUILD_GNU3          = @BUILD_GNU3@
 
 ifeq ($(MACHINE_TYPE), ia64)
 # ia64
@@ -117,8 +120,10 @@ GNU3_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/gccfe/gfec \
                 $(NATIVE_BUILD_DIR)/g++fe/gfecc
 
+ifneq ($(MACHINE_TYPE), SL)
 FORT_FE_COMPONENTS = \
                 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95
+endif
 
 FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/include \
@@ -134,9 +139,12 @@ FIRST_COMPONENTS = \
 		$(NATIVE_BUILD_DIR)/arith
 
 NATIVE_COMPONENTS = $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ)  \
-                    $(GNU3_FE_COMPONENTS) $(GNU4_FE_COMPONENTS) \
-                    $(FORT_FE_COMPONENTS) \
-		    $(FIRST_COMPONENTS) 
+                    $(GNU4_FE_COMPONENTS) $(FORT_FE_COMPONENTS) \
+                    $(FIRST_COMPONENTS) 
+
+ifeq ($(BUILD_GNU3), YES)
+NATIVE_COMPONENTS += $(GNU3_FE_COMPONENTS)
+endif
 
 CROSS_COMPONENTS =  $(BASIC_COMPONENTS) $(TARGET_EXTRA_OBJ) \
                     $(FORT_FE_COMPONENTS)
@@ -155,8 +163,10 @@ export SKIP_DEP_BUILD=1
 # Use all to build compiler (build) and libraries (lib)
 # If BUILD_MULTILIB is YES, build a second library as well.
 ALL_TARGETS = build lib
+CLEAN_LIB = clean-lib
 ifeq ($(BUILD_MULTILIB), YES)
 ALL_TARGETS += lib2
+CLEAN_LIB += clean-lib2
 endif
 
 all: $(ALL_TARGETS)
@@ -257,19 +267,9 @@ $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil
 $(NATIVE_BUILD_DIR)/crayf90/sgi/mfef95 mfef95: libcomutil libcif arith
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90
 
-# some GNU components need different opt flags in debug/nodebug build
-ifeq ($(BUILD_OPTIMIZE), DEBUG)
-    GNU_CFLAGS = '-O0 -g -DIs_True_On'
-else
-    GNU_CFLAGS = '-O2'
-endif
-
-.PHONY: libspin phony_targets first
+.PHONY: phony_targets first
 $(NATIVE_BUILD_DIR_LD)/ld/ld-new ld-new:
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD)
-
-$(NATIVE_BUILD_DIR)/libspin/libgspin.a libspin:
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin
 
 $(NATIVE_BUILD_DIR)/libspin_4_2_0/libgspin42.a libspin42:
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0
@@ -286,7 +286,6 @@ build:
 	$(MAKE) first
 	$(MAKE) phony_targets 
 
-first:libspin
 phony_targets: $(PHONY_TARGET)
 cross: NATIVE_BUILD_DIR = osprey/targia32_ia64_nodebug
 cross: NATIVE_BUILD_DIR_LD = osprey/targcygnus_ia32_ia64
@@ -296,6 +295,12 @@ cross: $(CROSS_PHONY_TARGET)
 
 backend: $(BASIC_PHONY_TARGET)
 
+ifeq ($(BUILD_TARGET), SL)
+install:
+	export TOOLROOT=@prefix@; \
+	export TOP_SRCDIR=$(TOP_SRCDIR); \
+		$(TOP_SRCDIR)/INSTALL.cross.sl @abs_top_builddir@
+else
 install:
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
 	    install-common
@@ -312,6 +317,7 @@ install:
 	export TOOLROOT=@prefix@; \
 	export TOP_SRCDIR=$(TOP_SRCDIR); \
 		$(TOP_SRCDIR)/install_compiler.sh $(MACHINE_TYPE)
+endif
 install-cross:
 	export TOOLROOT=@prefix@; $(TOP_SRCDIR)/install_compiler.sh ia64-cross
 	$(MAKE) -C $(GNUFE_BUILD_DIR)/gcc \
@@ -329,6 +335,9 @@ install-cross:
 	export TOOLROOT=@prefix@; $(TOP_SRCDIR)/install_compiler.sh ia64-cross
 
 LIB_ARGS = BUILD_TARGET=$(LIB_BUILD_TARGET) BUILD_COMPILER=SELF BUILD_AREA=$(LIB_BUILD_AREA) MACHINE_TYPE=$(LIB_MACHINE_TYPE) BUILD_ABI=$(LIB_BUILD_ABI) BUILD_ARCH=$(LIB_BUILD_ARCH) BUILD_HOST=$(LIB_BUILD_HOST)
+ifeq ($(LIB_BUILD_TARGET),IA64)
+LIB_ARGS += BUILD_TYPE=NONSHARED
+endif
 LIB2_ARGS = BUILD_TARGET=$(LIB2_BUILD_TARGET) BUILD_COMPILER=SELF BUILD_AREA=$(LIB2_BUILD_AREA) MACHINE_TYPE=$(LIB2_MACHINE_TYPE) BUILD_ABI=$(LIB2_BUILD_ABI) BUILD_ARCH=$(LIB2_BUILD_ARCH) BUILD_HOST=$(LIB2_BUILD_HOST)
 
 .PHONY: library lib clean-library clean-lib
@@ -345,27 +354,19 @@ library2 lib2 clean-library2 clean-lib2 : LOCAL_LIB_ARGS = $(LIB2_ARGS)
 library lib library2 lib2 : build
 
 library lib clean-library clean-lib library2 lib2 clean-library2 clean-lib2:
-	+@for d in $(LOCAL_LIB_BUILD_DIR); do \
-	    echo $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
-	    $(MAKE) -C $$d $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS); \
-	    retval=$$?; \
-	    if [ $$retval != 0 ]; then \
-		if grep -q k <<<'$(MAKEFLAGS)'; then \
-		    exit=$$retval; \
-		else \
-		    exit $$retval; \
-		fi; \
-	    fi; \
-	done; \
-	exit $$exit
+	@echo "$(MAKE) -C $(LOCAL_LIB_BUILD_DIR) $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS)"; \
+	$(MAKE) -C $(LOCAL_LIB_BUILD_DIR) $(LOCAL_LIB_ACTION) $(LOCAL_LIB_ARGS)
 
 clobber: clean 
 	rm -rf $(CROSSDIR) $(BOOTDIR)
-clean: clean-lib
+
+clean: $(CLEAN_LIB)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/driver clobber 
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wgen clobber 
+ifeq ($(BUILD_GNU3), YES)
+	$(MAKE) -C $(NATIVE_BUILD_DIR)/gccfe clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/g++fe clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/be clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/cg clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/wopt clobber 
@@ -378,10 +379,11 @@ clean: clean-lib
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libkapi clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/targ_info clobber 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/ir_tools clobber 
+ifneq ($(MACHINE_TYPE), SL) 
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/crayf90 clobber
+endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/arith clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/include clobber
-	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin clobber
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/libspin_4_2_0 clobber
 ifeq ($(MACHINE_TYPE), ia64)
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_ict clobber
@@ -390,7 +392,7 @@ endif
 	$(MAKE) -C $(NATIVE_BUILD_DIR_LD) clean
 	$(MAKE) -C $(GNUFE_BUILD_DIR) clean
 	@for i in libcif libcmplrs libcomutil libcsup libdwarf libelf libelfutil \
-		libiberty libunwindP libspin; do  \
+		libiberty libunwindP; do  \
 		$(MAKE) -C "$(NATIVE_BUILD_DIR)/$${i}" clobber; \
 	done
 

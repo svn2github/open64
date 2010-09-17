@@ -5331,6 +5331,7 @@ Get_Zdl_Loop_Tail(BB * prolog)
   BB *body = BB_next(prolog);
   BB *tail = BB_Other_Predecessor(body, prolog);
   FmtAssert(tail!=NULL, ("Get_Zdl_Loop_Tail::cannot find zdl tail"));
+  return tail;
 }
 #endif
 

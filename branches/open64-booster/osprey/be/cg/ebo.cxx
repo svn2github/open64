@@ -182,9 +182,11 @@ static void Init_Remove_Dead_LRA_Stores(BS **bs, MEM_POOL *pool);
 static void Mark_LRA_Spill_Reference(OP *op, BS **bs, MEM_POOL *pool);
 static BOOL Delete_Dead_LRA_Spill(OP *op, BS **bs);
 #endif
+#ifdef TARG_X8664
 void EBO_swap_subtract_operands();
 void EBO_Eliminate_movaps();
 BOOL Is_Copy_Instruction(OP *op);
+#endif
 /* ===================================================================== */
 /* Global Data:								 */
 /* ===================================================================== */
@@ -277,8 +279,10 @@ typedef union {
   }s;
 } EBO_REG_ENTRY;
 
+#ifdef TARG_X8664
 extern void expand_strcmp_bb(BB * call_bb);
 void Expand_strcmp(BB *bb);
+#endif
 #define EBO_REG_ENTRY_ptr(re)			(re.ptr)
 #define EBO_REG_ENTRY_def_count(re)		(re.s.def_count)
 #define EBO_REG_ENTRY_reg_assigned(re)		(re.s.reg_assigned)
@@ -3814,12 +3818,14 @@ EBO_Process ( BB *first_bb )
     CFLOW_Optimize(CFLOW_BRANCH | CFLOW_UNREACHABLE, "CFLOW (from ebo)");
 #endif
   }
+#ifdef TARG_X8664
   if (EBO_in_pre || EBO_in_peep)
     EBO_swap_subtract_operands();
   /* Check for movaps with same source and destination registers and eliminate
      them */
   if(EBO_in_peep)
     EBO_Eliminate_movaps();
+#endif
 
   EBO_Finish();
 
@@ -4181,6 +4187,7 @@ EBO_Adjust_Pred_Branch_Target (BB *bb)
   }
 }
 
+#ifdef TARG_X8664
 // TO DO:  replace the bb walks in the following 4 functions by using the more
 // efficient CG_DEP_Compute_Graph.
 
@@ -4635,7 +4642,6 @@ BOOL Is_Copy_Instruction(OP *op)
   }
   return FALSE;
 }
-#ifdef TARG_X8664
 void Expand_strcmp(BB *bb)
 {
   if(EBO_in_pre && (Is_Target_Orochi() || Is_Target_Barcelona())

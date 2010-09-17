@@ -19,6 +19,7 @@ Sun Chan           		sun.chan(AT)gmail.com
 Fred Chow			frdchow(AT)gmail.com
 Suneel Jain			suneel.jain(AT)gmail.com
 Roy Ju				roy.ju(AT)amd.com
+Chandrasekhar Murthy		murthy(AT)sgi.com
 
 Local/Domain Gatekeepers:
 -------------------------
@@ -26,11 +27,13 @@ C/C++ front ends 	Gautam Chakrabarti 	gchakrabarti(AT)nvidia.com
 IPA/inlining		Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Wenguang Chen		cwg(AT)tsinghua.edu.cn
+wgen, WOPT, CG		Jian-Xin Lai		jianxin.lai(AT)hp.com
 IPA/inlining		Michael Lai		michael.lai(AT)amd.com
 Cuda/NVISA		Mike Murphy		mmurphy(AT)nvidia.com  	
 Driver, build system	Mike Murphy		mmurphy(AT)nvidia.com  	
 Common infrastructure  	Mike Murphy		mmurphy(AT)nvidia.com  	
 CG infrastructure  	Mike Murphy		mmurphy(AT)nvidia.com  	
+IPA, WOPT 		Tianwei Sheng		tianwei.sheng(AT)gmail.com
 WOPT, LNO		Mei Ye			mei.ye(AT)amd.com
 
 
@@ -39,6 +42,7 @@ Maintainers (in alphabetical order by last name - please keep it this way)
 Xiaomi An			annyur(AT)gmail.com
 Bin Bao				bin.bao(AT)gmail.com
 Christopher Bergström		codestr0m(AT)osunix.org
+Zhen Cao			caozhen08(AT)gmail.com
 Gautam Chakrabarti		gchakrabarti(AT)nvidia.com
 Dehao Chen			danielcdh(AT)yahoo.com.cn
 Rui Chen			rui.chen(AT)hp.com
@@ -52,6 +56,7 @@ Yuan Dong			dongyuan(AT)tsinghua.edu.cn
 Deepak Eachempati		dreachem(AT)gmail.com
 Steve Ellcey			sje(AT)cup.hp.com
 Ge Gan				george.gan(AT)gmail.com
+Doug Gilmore			doug.gilmore(AT)amd.com
 Rick Hank	                rick.hank(AT)hp.com
 Matthew Hausknecht		mhauskn(AT)emory.edu
 Jiangzhou He			hejiangzhou(AT)gmail.com
@@ -71,9 +76,12 @@ Lin Ma				lin.ma(AT)simplnano.com
 Mike Murphy			mmurphy(AT)nvidia.com
 Jürgen Ributzka			ributzka(AT)gmail.com
 Akella V.S. Sastry              akella.sastry(AT)hp.com
+Robert Scollard			robert.scollard(AT)amd.com
 Ruifen Shen			ruifen.shen(AT)simplnano.com
 Tianwei Sheng			tianwei.sheng(AT)gmail.com
+Hui Shi                         kalin.shi@gmail.com
 Yao Shi				shiyao(AT)gmail.com
+Jaewook Shin			jaewookshin701(AT)gmail.com
 Sunil Shrestha			sunil(AT)udel.edu
 Wei Tang			tangwei.ict(AT)gmail.com
 Lingyun Tuo			tony.tuo(AT)simplnano.com
@@ -93,4 +101,5 @@ Min Zhao			min.zhao(AT)hp.com
 Feng Zhou			fengzhouzh(AT)gmail.com
 Hucheng Zhou			zhou.hucheng(AT)gmail.com
 Xing Zhou			zhouxing05(AT)gmail.com
+Qing Zhu                        zqing1986@gmail.com
 Wenwen Xu			xuwenwen(AT)ict.ac.cn

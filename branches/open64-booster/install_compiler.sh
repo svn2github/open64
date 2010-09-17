@@ -206,12 +206,13 @@ INSTALL_GCC () {
 
     # Make links to gcc runtime libraries
     cd ${ROOT}
+    mkdir $PHASEPATH/64
     if [ "$TARG_HOST" = "x8664" ]
     then
 	for i in open64-gcc-4.2.0/lib64/lib*.so*; do
 	    if [ -e "$i" ]
 	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+		(cd $PHASEPATH/64; ln -sf ../../../../../$i `basename $i`)
 	    fi
 	done
 	for i in open64-gcc-4.2.0/lib/lib*.so*; do
@@ -225,7 +226,7 @@ INSTALL_GCC () {
 	for i in open64-gcc-4.2.0/lib/lib*.so*; do
 	    if [ -e "$i" ]
 	    then
-		(cd $PHASEPATH; ln -sf ../../../../$i `basename $i`)
+		(cd $PHASEPATH/64; ln -sf ../../../../../$i `basename $i`)
 	    fi
 	done
     fi
@@ -238,9 +239,12 @@ INSTALL_GCC () {
 # Install front-end components
 INSTALL_FE () {
 
-    # GNU3 based FE
-    INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
-    INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+    # optional GNU 3.3 based FE
+    if [ -f ${AREA}/gccfe/gfec ] ; then 
+      INSTALL_EXEC_SUB ${AREA}/gccfe/gfec  ${PHASEPATH}/gfec
+      INSTALL_EXEC_SUB ${AREA}/g++fe/gfecc ${PHASEPATH}/gfecc
+    fi
+
     # GNU 4.2.0 based FE
     INSTALL_EXEC_SUB ${AREA}/wgen/wgen42 ${PHASEPATH}/wgen42
     LIBEXEC=libexec/gcc/${PHASE_DIR_PREFIX}-redhat-linux/4.2.0
@@ -297,8 +301,8 @@ INSTALL_WHIRL_STUFF () {
     (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
-    INSTALL_EXEC_SUB  ${AREA}/libspin/gspin      ${BIN_DIR}/gspin
     INSTALL_EXEC_SUB  ${AREA}/libspin_4_2_0/gspin42 ${BIN_DIR}/gspin42
+    (cd ${BIN_DIR}; ln -sf gspin42 gspin)
 
     return 0
 }

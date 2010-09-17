@@ -233,6 +233,15 @@ typedef union optval {
   void  *p;
 } OPTVAL;
 
+typedef union optvaltypes {
+  BOOL   b;
+  UINT32 ui32;
+  INT32  i32;
+  UINT64 ui64;
+  INT64  i64;
+  void  *p;
+} OPTVALTYPES;
+
 typedef struct odesc_aux {
   INT16 flags;		/* Various status flags */
   BOOL	*specified;	/* The option has been specified (user's) */
@@ -306,7 +315,102 @@ typedef struct ogroup_aux {
 #define OGA_internal(o)		(OGA_flags(o) & OGF_INTERNAL)
 #define Set_OGA_internal(o)	(OGA_flags(o) |= OGF_INTERNAL)
 #define Reset_OGA_internal(o)	(OGA_flags(o) &= ~OGF_INTERNAL)
+
+/* ====================================================================
+ * OVK_Scalar_Kind
+ * return TRUE if OPTION_KIND is a scalar.
+ * ====================================================================*/
+static BOOL
+OVK_Scalar_Kind(OPTION_KIND o)
+{
+  return (o == OVK_NONE || o == OVK_BOOL || o == OVK_INT32
+          || o == OVK_UINT32 || o == OVK_INT64 || o == OVK_UINT64);
+}
+
+/* ====================================================================
+ * OVK_Pointer_Kind
+ * return TRUE if OPTION_KIND is a pointer.
+ * ====================================================================*/
+static BOOL
+OVK_Pointer_Kind(OPTION_KIND o)
+{
+  return (o == OVK_SELF || o == OVK_NAME || o == OVK_LIST);
+}
+
+/* ====================================================================
+ * Get_OVK_Size
+ * return size of the different OPTION_KIND's.
+ * ====================================================================*/
+static INT
+Get_OVK_Size(OPTION_KIND o)
+{
+  switch (o) {
+    case OVK_NONE:
+    case OVK_BOOL:
+      return sizeof(BOOL);
+    case OVK_INT32:
+      return sizeof(INT32);
+    case OVK_UINT32:
+      return sizeof(UINT32);
+    case OVK_INT64:
+      return sizeof(INT64);
+    case OVK_UINT64:
+      return sizeof(UINT64);
+    case OVK_NAME:
+    case OVK_SELF:
+      return sizeof(char *);
+    case OVK_LIST:
+      return sizeof(OPTION_LIST *);
+    default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
+      return 0;
+  }
+}
+
+/* ====================================================================
+ * Get_OVK_UINT64_Val
+ * return UINT64 value for pointer to OVK variable of type o.
+ * ====================================================================*/
+static UINT64
+Get_OVK_UINT64_Val(void *p, OPTION_KIND o)
+{
+  char b[1024];
+  OPTVALTYPES v;
 
+  if (Get_OVK_Size(o) > 0)
+    strncpy((void *) &v, p, Get_OVK_Size(o));
+
+  switch (o) {
+    case OVK_NONE:
+    case OVK_BOOL:
+      return (UINT64) v.b;
+    case OVK_INT32:
+      return (UINT64) v.i32;
+    case OVK_UINT32:
+      return (UINT64) v.ui32;
+    case OVK_INT64:
+      return (UINT64) v.i64;
+    case OVK_UINT64:
+      return v.ui64;
+    default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
+      return 0;
+  }
+}
+
+/* ====================================================================
+ * Get_OVK_Pointer_Val
+ * return pointer value for pointer to OVK variable of type o.
+ * ====================================================================*/
+static void *
+Get_OVK_Pointer_Val(void *p, OPTION_KIND o)
+{
+  OPTVALTYPES v;
+  if (OVK_Pointer_Kind(o)) {
+    strncpy((void *) &v, p, Get_OVK_Size(o));
+    return (void *) v.p;
+  }
+  else
+    return NULL;
+}
 
 /* ====================================================================
  * Copy_option
@@ -317,66 +421,19 @@ static INT
 Copy_option(OPTION_DESC *odesc, char *container, BOOL save)
 {
   void *var = ODESC_variable(odesc);
+  INT size = Get_OVK_Size(ODESC_kind(odesc));
+
   Is_True(ODESC_can_change_by_pragma(odesc),
 	  ("Copy_option, trying to copy option that cannot change"));
 
-  if (save) {
-    switch (ODESC_kind(odesc)) {
-      case OVK_NONE:
-      case OVK_BOOL:
-        *((BOOL *)container) = *((BOOL *)var);
-	return sizeof(BOOL);
-      case OVK_INT32:
-	*((INT32 *)container) = *((INT32 *)var);
-	return sizeof(INT32);
-      case OVK_UINT32:
-	*((UINT32 *)container) = *((UINT32 *)var);
-	return sizeof(UINT32);
-      case OVK_INT64:
-	*((INT64 *)container) = *((INT64 *)var);
-	return sizeof(INT64);
-      case OVK_UINT64:
-	*((UINT64 *)container) = *((UINT64 *)var);
-	return sizeof(UINT64);
-      case OVK_NAME:
-      case OVK_SELF:
-	*((char **)container) = *((char **)var);
-	return sizeof(char *);
-      case OVK_LIST:
-	*((OPTION_LIST **)container) = *((OPTION_LIST **)var);
-	return sizeof(OPTION_LIST *);
-      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
-	return 0;
-    }
-  } else { /* restore */
-    switch (ODESC_kind(odesc)) {
-      case OVK_NONE:
-      case OVK_BOOL:
-        *((BOOL *)var) = *((BOOL *)container);
-	return sizeof(BOOL);
-      case OVK_INT32:
-	*((INT32 *)var) = *((INT32 *)container);
-	return sizeof(INT32);
-      case OVK_UINT32:
-	*((UINT32 *)var) = *((UINT32 *)container);
-	return sizeof(UINT32);
-      case OVK_INT64:
-	*((INT64 *)var) = *((INT64 *)container);
-	return sizeof(INT64);
-      case OVK_UINT64:
-	*((UINT64 *)var) = *((UINT64 *)container);
-	return sizeof(UINT64);
-      case OVK_NAME:
-      case OVK_SELF:
-	*((char **)var) = *((char **)container);
-	return sizeof(char *);
-      case OVK_LIST:
-	*((OPTION_LIST **)var) = *((OPTION_LIST **)container);
-	return sizeof(OPTION_LIST *);
-      default: /* INVALID, OBSOLETE, REPLACED, UNIMPLEMENTED */
-	return 0;
-    }
+  if (size > 0) {
+    if (save)
+      strncpy(container, var, size);
+    else /* restore */
+      strncpy(var, container, size);
   }
+
+  return size;
 }
 
 
@@ -399,33 +456,10 @@ Duplicate_Value ( OPTION_DESC *odesc, OPTVAL *container )
 {
   void *var = ODESC_variable(odesc);
 
-  switch ( ODESC_kind(odesc) ) {
-    case OVK_NONE:
-    case OVK_BOOL:
-      container->i = *((BOOL *)var);
-      break;
-    case OVK_INT32:
-      container->i = *((INT32 *)var);
-      break;
-    case OVK_UINT32:
-      container->i = *((UINT32 *)var);
-      break;
-    case OVK_INT64:
-      container->i = *((INT64 *)var);
-      break;
-    case OVK_UINT64:
-      container->i = *((UINT64 *)var);
-      break;
-    case OVK_NAME:
-    case OVK_SELF:
-      container->p = *((char **)var);
-      break;
-    case OVK_LIST:
-      container->p = *((OPTION_LIST **)var);
-      break;
-    default:
-      break;
-  }
+  if (OVK_Scalar_Kind(ODESC_kind(odesc)))
+    container->i = Get_OVK_UINT64_Val(var, ODESC_kind(odesc));
+  else if (OVK_Pointer_Kind(ODESC_kind(odesc)))
+    container->p = Get_OVK_Pointer_Val(var, ODESC_kind(odesc));
 }
 
 
@@ -613,6 +647,7 @@ Update_Scalar_Value ( OPTION_DESC *odesc, UINT64 val )
 {
   void *var = ODESC_variable(odesc);
   ODESC_AUX *aux = ODESC_aux(odesc);
+  OPTVALTYPES v;
 
   if ( val != ODA_last_i(aux) ) {
     Set_ODA_mod(aux);
@@ -623,23 +658,25 @@ Update_Scalar_Value ( OPTION_DESC *odesc, UINT64 val )
   switch ( ODESC_kind(odesc) ) {
     case OVK_NONE:
     case OVK_BOOL:
-      *((BOOL *)var) = (BOOL)val;
+      v.b = (BOOL)val;
       break;
     case OVK_INT32:
-      *((INT32 *)var) = (INT32)val;
+      v.i32 = (INT32)val;
       break;
     case OVK_UINT32:
-      *((UINT32 *)var) = (UINT32)val;
+      v.ui32 = (UINT32)val;
       break;
     case OVK_INT64:
-      *((INT64 *)var) = (UINT64)val;
+      v.i64 = (UINT64)val;
       break;
     case OVK_UINT64:
-      *((UINT64 *)var) = (UINT64)val;
+      v.ui64 = (UINT64)val;
       break;
     default:
       break;
   }
+  if (Get_OVK_Size(ODESC_kind(odesc)) > 0) 
+    strncpy(var, (void *) &v, Get_OVK_Size(ODESC_kind(odesc)));
 }
 
 /* ====================================================================
@@ -964,33 +1001,12 @@ Modified_Option ( OPTION_DESC *odesc )
   ODESC_AUX *aux = ODESC_aux(odesc);
   UINT64 cur;
 
-  switch ( ODESC_kind(odesc) ) {
-    case OVK_NONE:
-    case OVK_BOOL:
-      cur = (UINT64)*((BOOL*)var);
-      break;
-    case OVK_INT32:
-      cur = (UINT64)*((INT32*)var);
-      break;
-    case OVK_UINT32:
-      cur = (UINT64)*((UINT32*)var);
-      break;
-    case OVK_INT64:
-      cur = (UINT64)*((INT64*)var);
-      break;
-    case OVK_UINT64:
-      cur = (UINT64)*((UINT64*)var);
-      break;
-    case OVK_NAME:
-    case OVK_SELF:
-    case OVK_LIST:
-      return ( *((void**)var) != ODA_last_p(aux) );
-    default:
-      break;
-  }
-
-  /* For the scalar cases, still need to check: */
-  return ( cur != ODA_last_i(aux) );
+  if (OVK_Scalar_Kind(ODESC_kind(odesc)))
+    return (Get_OVK_UINT64_Val(var, ODESC_kind(odesc)) != ODA_last_i(aux));
+  else if (OVK_Pointer_Kind(ODESC_kind(odesc)))
+    return (Get_OVK_Pointer_Val(var, ODESC_kind(odesc)) != ODA_last_p(aux));
+  else
+    return FALSE;
 }
 
 /* ====================================================================

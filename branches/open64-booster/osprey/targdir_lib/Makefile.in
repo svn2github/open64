@@ -1,15 +1,17 @@
 
-default clean clobber:
-	+@for d in @LIBLIST@; do \
-	    echo "MAKE   $@ in $(PWD)/$$d"; \
-	    $(MAKE) $(if $V,,--no-print-directory) -C $$d $@; \
-	    retval=$$?; \
-	    if [ $$retval != 0 ]; then \
-		if grep -q k <<<'$(MAKEFLAGS)'; then \
-		    exit=$$retval; \
-		else \
-		    exit $$retval; \
-		fi; \
-	    fi; \
-	done; \
-	exit $$exit
+SUBDIRS = @LIBLIST@
+
+default: ACTION = default
+
+clean: ACTION = clean
+
+clobber: ACTION = clobber
+
+default clean clobber: $(SUBDIRS)
+
+$(SUBDIRS):
+	@echo "MAKE   $(ACTION) in $(PWD)/$@"; \
+	$(MAKE) $(if $V,,--no-print-directory) -C $@ $(ACTION)
+
+.PHONY: default clean clobber @LIBLIST@
+

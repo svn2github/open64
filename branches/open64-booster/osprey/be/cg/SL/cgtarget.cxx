@@ -1612,64 +1612,55 @@ INT CGTARG_Copy_Operand(OP *op)
   {
   case TOP_addi:
   case TOP_addiu:
-  case TOP_daddi:
-  case TOP_daddiu:
+  case TOP_ori:
+  case TOP_xori:
   case TOP_sll:
   case TOP_srl:
   case TOP_sra:
-  case TOP_dsll:
-  case TOP_dsrl:
-  case TOP_dsra:
-    if (TN_has_value(OP_opnd(op,1)) && TN_value(OP_opnd(op,1)) == 0)
-      return 0;
-    break;
-
+    {
+      TN *src1 = OP_opnd(op, 1);
+      if (TN_is_constant(src1) && TN_has_value(src1)) {
+        INT64 val = TN_value(src1);
+        if (val == 0) return 0;
+      }
+      break;
+    }
   case TOP_andi:
     {
       TN *src1 = OP_opnd( op, 1 );
-      if (TN_is_constant(src1)) {
-	INT64 val;
-	if (TN_has_value(src1))
-	  val = TN_value(src1);
-	else FmtAssert(FALSE,("unexpected constant in CGTARG_Copy_Operand"));
-	if (val == -1)
-	  return 0;
+      if (TN_is_constant(src1) && TN_has_value(src1)) {
+        INT64 val = TN_value(src1);
+        if (val == -1) return 0;
       }
       break;
     }
-
-  case TOP_ori:
-  case TOP_xori:
-    {
-      TN *src1 = OP_opnd( op, 1 );
-      if (TN_is_constant(src1)) {
-	INT64 val;
-	if (TN_has_value(src1))
-	  val = TN_value(src1);
-	else FmtAssert(FALSE,("unexpected constant in CGTARG_Copy_Operand"));
-	if (val == 0)
-	  return 0;
-      }
-      break;
-    }
-
   case TOP_or:
   case TOP_xor:
+  case TOP_add:
   case TOP_addu:
-  case TOP_daddu:
-    if (OP_opnd( op, 1) == Zero_TN)
-      return 0;
-    else if (OP_opnd( op, 0) == Zero_TN)
-      return 1;
-    break;
-
+    {
+      if (OP_opnd( op, 1) == Zero_TN)
+        return 0;
+      else if (OP_opnd( op, 0) == Zero_TN)
+        return 1;
+      break;
+    }
+  case TOP_sub:
+  case TOP_subu:
+  case TOP_sllv:
+  case TOP_srlv:
+  case TOP_srav:
+    {
+      if (OP_opnd( op, 1) == Zero_TN)
+        return 0;
+      break;
+    }
   }
 
   if (OP_copy(op)) {
-    if (opr == TOP_add || opr == TOP_dadd ||
-        opr == TOP_addu || opr == TOP_daddu ||
-        opr == TOP_or || 
-        opr == TOP_mov_s || opr== TOP_mov_d)
+    if (opr == TOP_add   ||  opr == TOP_addu ||
+        opr == TOP_sub   ||  opr == TOP_subu ||
+        opr == TOP_or    ||  opr == TOP_xor)
       return 0;
   }
 

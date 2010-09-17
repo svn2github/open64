@@ -66,7 +66,6 @@ Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
 #include "dwarf2.h"
 
 extern tree cplus_expand_constant (tree);
-extern void mangle_decl (const tree decl);
 #endif
 
 /* Each tree code class has an associated string representation.
@@ -7822,26 +7821,26 @@ enum language language = C;
 #define CPR() (language == CPP)
 #define CR()  (language == C)
 
-// C++ Dummy Variables Section Begins.
-tree global_namespace; // CP_DECL_CONTEXT () references this variable in cp/name-lookup.c
+/* C++ Dummy Variables Section Begins. */
+tree global_namespace; /* CP_DECL_CONTEXT () references this variable in cp/name-lookup.c */
 int (*p_uses_template_parms) (tree);
 tree (*p_most_general_template) (tree);
 int (*p_copy_fn_p) (tree);
 int (*p_is_empty_class) (tree);
 tree (*p_namespace_binding) (tree, tree);
-// tree p_complete_ctor_identifier;
+/* tree p_complete_ctor_identifier; */
 tree cp_global_trees[CPTI_MAX];
 tree (*p_get_tinfo_decl) (tree);
-// C++ Dummy Variables Section Ends.
+/* C++ Dummy Variables Section Ends. */
 
-// GSPIN stuff follows:
+/* GSPIN stuff follows: */
 
 static inline gs_code_t
 gcc2gs (int code)
 {
  switch (code) {
  
- // GCC Specific tree codes: return ;
+ /* GCC Specific tree codes: return ; */
 
    case ABS_EXPR: return GS_ABS_EXPR;
    case ADDR_EXPR: return GS_ADDR_EXPR;
@@ -9708,9 +9707,9 @@ gcc_omp_clause_schedule_kind2gs_ocsk (enum omp_clause_schedule_kind k)
 
 unsigned int gspin_label_count = 0;
 
-// C++: Are we processing the final global namespace?
+/* C++: Are we processing the final global namespace? */
 int processing_global_namespace = 0;
-// Function prototypes
+/* Function prototypes */
 gs_t gs_x (tree node);
 gs_t gs_x_func_decl (tree node);
 void gspin_gxx_emits_decl (tree t);
@@ -9735,12 +9734,12 @@ static gs_t program   = (gs_t) NULL,
 	    weak_decls_dot = (gs_t) NULL,
 	    gs_program_flags = (gs_t) NULL;
 
-// dot to insert new declaration tree
+/* dot to insert new declaration tree */
 static gs_t program_decls_dot = (gs_t) NULL;
 
 void gspin_write (void) 
 {
-  // Bug 10172: If errors have occurred, do not write out the .spin output file.
+  /* Bug 10172: If errors have occurred, do not write out the .spin output file. */
   if (!errorcount)
     gs_write ((gs_string_t) spin_file_name);
 }
@@ -9785,7 +9784,7 @@ void gs_set_program_flag_value (unsigned int flag, bool value)
     _gs_bv_reset (program_flags, flag);
 }
 
-// Initialize the gspin dot universe.
+/* Initialize the gspin dot universe. */
 void
 gspin_init(void)
 {
@@ -9796,7 +9795,7 @@ gspin_init(void)
   GS_ASSERT(program == NULL,
 	    ("gspin_init: dot universe already initialized"));
 
-  // First find out and flag the kind of translation run.
+  /* First find out and flag the kind of translation run. */
   if (strcmp ("GNU C++", lang_hooks.name) == 0) {
     language = CPP;
   }
@@ -9828,7 +9827,7 @@ gspin_init(void)
 
   program = __gs (GS_PROGRAM);
 
-  // cc1 command line args
+  /* cc1 command line args */
   arg_list  = __gs (EMPTY);
   for (i = gs_argc - 1; i >= 0; i--) {
     arg = __gs (IB_STRING);
@@ -9837,31 +9836,31 @@ gspin_init(void)
   }
   gs_set_operand(program, GS_CC1_COMMAND_LINE_ARGS, arg_list);
 
-  // global trees list will be initialized by gspin_init_global_trees_list
+  /* global trees list will be initialized by gspin_init_global_trees_list */
 
-  // integer types list will be initialized by gspin_init_global_trees_list
+  /* integer types list will be initialized by gspin_init_global_trees_list */
 
-  // program declarations
+  /* program declarations */
   decl_list = __gs (EMPTY);
   gs_set_operand(program, GS_PROGRAM_DECLARATIONS, decl_list);
   program_decls_dot = decl_list;
 
-  // gxx-emitted decls
+  /* gxx-emitted decls */
   gxx_emitted_decls = __gs (EMPTY);
   gs_set_operand(program, GS_GXX_EMITTED_DECLS, gxx_emitted_decls);
   gxx_emitted_decls_dot = gxx_emitted_decls;
 
-  // gxx-emitted asms
+  /* gxx-emitted asms */
   gxx_emitted_asms = __gs (EMPTY);
   gs_set_operand(program, GS_GXX_EMITTED_ASMS, gxx_emitted_asms);
   gxx_emitted_asms_dot = gxx_emitted_asms;
 
-  // program flags
+  /* program flags */
   gs_program_flags = __gs(IB_BIT_VECTOR);
   gs_set_operand(program, GS_PROGRAM_FLAGS, gs_program_flags);
   _gs_bv(gs_program_flags, GS_FLAG_ERRNO_MATH, flag_errno_math);
 
-  // weak decls
+  /* weak decls */
   weak_decls = __gs (EMPTY);
   gs_set_operand(program, GS_WEAK_DECLS, weak_decls);
   weak_decls_dot = weak_decls;
@@ -9870,7 +9869,7 @@ gspin_init(void)
     fprintf (stderr, "gspin_write registration with atexit (3) failed.\n");
 }
 
-// Add the global trees containing common types.
+/* Add the global trees containing common types. */
 void
 gspin_init_global_trees_list(void)
 {
@@ -9878,14 +9877,18 @@ gspin_init_global_trees_list(void)
 
   global_trees_list = __gs (EMPTY);
   for (i = TI_MAX - 1; i >= TI_ERROR_MARK; i--) {
-    GS_ASSERT((global_trees[i] != NULL) ||
-              (
 #ifdef TARG_X8664
-               !TARGET_64BIT &&
-#endif
+    GS_ASSERT((global_trees[i] != NULL) ||
+              (!TARGET_64BIT &&
                (i == TI_VA_LIST_GPR_COUNTER_FIELD ||
                 i == TI_VA_LIST_FPR_COUNTER_FIELD)),
               ("gspin_init_global_trees_list: global_tree not initialized"));
+#else
+    GS_ASSERT((global_trees[i] != NULL) ||
+              ((i == TI_VA_LIST_GPR_COUNTER_FIELD ||
+                i == TI_VA_LIST_FPR_COUNTER_FIELD)),
+              ("gspin_init_global_trees_list: global_tree not initialized"));
+#endif
     global_trees_list = gs_cons (gs_x (global_trees [i]), global_trees_list);
   }
   gs_set_operand(program, GS_GLOBAL_TREES_LIST, global_trees_list);
@@ -9897,13 +9900,13 @@ gspin_init_global_trees_list(void)
   gs_set_operand(program, GS_INTEGER_TYPES_LIST, integer_types_list);
 }
 
-// Add tree T to the program's decls list.
+/* Add tree T to the program's decls list. */
 void
 gspin (tree t) 
 {
   gs_t decl, decl_list;
 
-  // C++ should call gs_x_func_decl to translate FUNCTION_DECL.
+  /* C++ should call gs_x_func_decl to translate FUNCTION_DECL. */
   if (CPR()) {
     GS_ASSERT(t == NULL ||
 	      TREE_CODE(t) != FUNCTION_DECL,
@@ -9925,19 +9928,19 @@ gspin (tree t)
   program_decls_dot = decl_list;
 }
 
-// Set to 1 by the name-mangling code if the decl cannot be reliably mangled.
-// This happens when some of the info needed for mangling is missing.
+/* Set to 1 by the name-mangling code if the decl cannot be reliably mangled.
+ * This happens when some of the info needed for mangling is missing. */
 int cannot_mangle_name;
 
-// Tell gs_x_1 whether or not to fully translate FUNCTION_DECL.
+/* Tell gs_x_1 whether or not to fully translate FUNCTION_DECL. */
 static int translate_func_decl = 0;
 
-// The sequence number identifies the tree nodes that are being translated in
-// the current pass.  Prevents infinite recursion when tree nodes point to each
-// other.
+/* The sequence number identifies the tree nodes that are being translated in
+ * the current pass.  Prevents infinite recursion when tree nodes point to each
+ * other. */
 static HOST_WIDE_INT sequence_num = 0;
 
-// SEQ_NUM is the sequence number for this translation pass.
+/* SEQ_NUM is the sequence number for this translation pass. */
 static gs_t
 gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 {
@@ -9946,16 +9949,15 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   enum tree_code tcode;
   int i;
   int translate_this_func_decl = translate_func_decl;
-
-  // Don't translate FUNCTION_DECLs fully when recursing.
-  translate_func_decl = 0;
-  
   gs_t flags, code_class;
 
+  /* Don't translate FUNCTION_DECLs fully when recursing. */
+  translate_func_decl = 0;
+  
   if (t == (tree) NULL)
     return (gs_t) NULL;
  
-  // Do not process the ERROR_MARK code any further.
+  /* Do not process the ERROR_MARK code any further. */
   if (TREE_CODE (t) == ERROR_MARK)
     return __gs (GS_ERROR_MARK);
 
@@ -9963,44 +9965,44 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
   if ((gs_t) GS_NODE (t) != (gs_t) NULL) {
 
-    // A caller was in the process of translating this tree node.  Don't
-    // translate it again here, in order to prevent infinite recursion.
+    /* A caller was in the process of translating this tree node.  Don't
+     * translate it again here, in order to prevent infinite recursion. */
     if (GS_SEQUENCE_NUM(t) == seq_num) {
       GS_ASSERT(GS_NODE(t) != NULL, ("gs_x_1: GS_NODE null"));
       return (gs_t) GS_NODE(t);
     }
 
-    // Handle FUNCTION_DECL with extreme care.  It is possible that GCC has not
-    // finished generating the function body (DECL_SAVED_TREE).  This happens,
-    // for example, when we are called to translate the FUNCTION_DECL from a
-    // CALL_EXPR, or when we are chasing down a TREE_CHAIN containing the
-    // FUNCTION_DECL.  The solution is to translate the FUNCTION_DECL in two
-    // steps:
-    //   1)  Body not yet generated by GCC:
-    //	     Partially construct the gs node for the FUNCTION_DECL so that the
-    //	     node ID can be returned to the caller.  The partially-constructed
-    //	     node has minimal info to keep gspin from breaking.
-    //   2)  Body fully generated by GCC:
-    //	     Finish constructing the rest of the gs node.  This step should be
-    //	     performed *once* from a single GCC call point.  Once the node is
-    //	     fully translated, don't translate it again because GCC may later
-    //	     delete info from the FUNCTION_DECL, such as the DECL_SAVED_TREE.
+    /* Handle FUNCTION_DECL with extreme care.  It is possible that GCC has not
+     * finished generating the function body (DECL_SAVED_TREE).  This happens,
+     * for example, when we are called to translate the FUNCTION_DECL from a
+     * CALL_EXPR, or when we are chasing down a TREE_CHAIN containing the
+     * FUNCTION_DECL.  The solution is to translate the FUNCTION_DECL in two
+     * steps:
+     *   1)  Body not yet generated by GCC:
+     *	     Partially construct the gs node for the FUNCTION_DECL so that the
+     *	     node ID can be returned to the caller.  The partially-constructed
+     *	     node has minimal info to keep gspin from breaking.
+     *   2)  Body fully generated by GCC:
+     *	     Finish constructing the rest of the gs node.  This step should be
+     *	     performed *once* from a single GCC call point.  Once the node is
+     *	     fully translated, don't translate it again because GCC may later
+     *	     delete info from the FUNCTION_DECL, such as the DECL_SAVED_TREE. */
 
     if (TREE_CODE(t) == FUNCTION_DECL) {
-      // bug 11311: For C++, it is not always possible to determine if a
-      // function will need a body or not. So previously we may have fully
-      // translated a function without its body. If we have
-      // "translate_this_func_decl" set, it means this is the proper time
-      // to expand this function, and it may now have a function body --
-      // whatever is the state of the function_decl, we want to get it now.
+      /* bug 11311: For C++, it is not always possible to determine if a
+       * function will need a body or not. So previously we may have fully
+       * translated a function without its body. If we have
+       * "translate_this_func_decl" set, it means this is the proper time
+       * to expand this function, and it may now have a function body --
+       * whatever is the state of the function_decl, we want to get it now. */
       if (CPR() && translate_this_func_decl)
         goto REVISIT;
       else if (CR()) {
-        // Don't re-translate the function if it was fully translated before.
+        /* Don't re-translate the function if it was fully translated before. */
         if (FULLY_TRANSLATED_TO_GS(t)) {
-          // This could be an inline function that we have already output
-          // but for which we now see a non-inline definition.  In this case,
-          // we want to translate again to override the previous definition.
+          /* This could be an inline function that we have already output
+           * but for which we now see a non-inline definition.  In this case,
+           * we want to translate again to override the previous definition. */
           if (TRANSLATED_TO_GS_AS_INLINE(t)
               && ! DECL_INLINE (t) && translate_this_func_decl)
             TRANSLATED_TO_GS_AS_INLINE(t) = 0;
@@ -10008,7 +10010,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             return GS_NODE(t);
 	}
 
-        // Node is partially-translated.
+        /* Node is partially-translated. */
         if (translate_this_func_decl)
           goto REVISIT;
       }
@@ -10026,15 +10028,15 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     if (tcode == VAR_DECL) {
       gs_t gs_flags = gs_operand((gs_t)GS_NODE(t), GS_FLAGS);
       if (gs_bv(gs_flags, GS_DECL_EXTERNAL) && !DECL_EXTERNAL(t))
-	goto REVISIT;		// bug 10324
+	goto REVISIT;		/* bug 10324 */
       if (!gs_bv(gs_flags, GS_TREE_STATIC) && TREE_STATIC(t))
-	goto REVISIT;		// bug 10324
+	goto REVISIT;		/* bug 10324 */
     }
 
     if (TREE_CODE_CLASS(tcode) == tcc_type &&
 	(tcode == BOOLEAN_TYPE ||
 	 tcode == COMPLEX_TYPE || tcode == INTEGER_TYPE ||
-	 tcode == REAL_TYPE)) { // bug 10352
+	 tcode == REAL_TYPE)) { /* bug 10352 */
       flags = gs_operand((gs_t)GS_NODE(t), GS_FLAGS);
       goto REVISIT2;
     }
@@ -10065,11 +10067,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     return (gs_t) GS_NODE (t);
   }
 
-  // Create the node that will represent this tree node. 
-  // Open64, we use long to represent the pointer
+  /* Create the node that will represent this tree node. 
+   * Open64, we use long to represent the pointer */
   TREE_TO_TRANSLATED_GS (t) = (unsigned long)__gs(gcc2gs (TREE_CODE (t)));
 
-  // Argument 0 is the name of the class:
+  /* Argument 0 is the name of the class: */
   class = TREE_CODE_CLASS (TREE_CODE (t));
   code_class = __gs (GS_TCC);
   _gs_b (code_class, gcc_class2gs_class (class));
@@ -10078,69 +10080,69 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   flags = __gs (IB_BIT_VECTOR);
   gs_set_operand((gs_t) GS_NODE (t), GS_FLAGS, flags);
 
-  // Always translate the type because, if it is a FUNCTION_DECL, the front-end
-  // may need the type info even if the rest of the FUNCTION_DECL is never
-  // translated.  (This occurs for a C++ function that is called but does not
-  // appear in the source.  Bug 11123.)
+  /* Always translate the type because, if it is a FUNCTION_DECL, the front-end
+   * may need the type info even if the rest of the FUNCTION_DECL is never
+   * translated.  (This occurs for a C++ function that is called but does not
+   * appear in the source.  Bug 11123.) */
   gs_set_operand((gs_t)GS_NODE(t), GS_TREE_TYPE, gs_x_1(TREE_TYPE(t), seq_num));
 
-  // For the same reason, translate the assembler name.  Create the assembler
-  // name now if it doesn't exist.  Example is __comp_ctor in bug 11123.
+  /* For the same reason, translate the assembler name.  Create the assembler
+   * name now if it doesn't exist.  Example is __comp_ctor in bug 11123. */
   if (CPR() &&
       TREE_CODE(t) == FUNCTION_DECL) {
     if (!DECL_ASSEMBLER_NAME_SET_P(t)) {
       cannot_mangle_name = 0;
       lang_hooks.mangle_decl(t);
       if (cannot_mangle_name) {
-	// The decl cannot be reliably mangled.  Delete the possibly wrong
-	// result.
+	/* The decl cannot be reliably mangled.  Delete the possibly wrong
+	 * result. */
 	SET_DECL_ASSEMBLER_NAME(t, NULL);
       }
     }
     gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
 		   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
 #ifdef FE_GNU_4_2_0
-    // Bug 5737: For C++ (triggered by C++ OpenMP bug), also traverse the
-    // chain node. Otherwise, if TYPE_METHODS initially has a function
-    // without a function body (like a maybe_in_charge_constructor), its
-    // TREE_CHAIN would be empty, thus causing other methods to go missing.
+    /* Bug 5737: For C++ (triggered by C++ OpenMP bug), also traverse the
+     * chain node. Otherwise, if TYPE_METHODS initially has a function
+     * without a function body (like a maybe_in_charge_constructor), its
+     * TREE_CHAIN would be empty, thus causing other methods to go missing. */
     gs_set_operand((gs_t) GS_NODE(t), GS_TREE_CHAIN,
 	           gs_x_1(TREE_CHAIN(t), seq_num));
 #endif
     _gs_bv(flags, GS_DECL_ASSEMBLER_NAME_SET_P, DECL_ASSEMBLER_NAME_SET_P(t));
-    // Bug 11224: Also update some flags. Even if the decl is not defined
-    // in this translation unit, it needs to have the proper flags so that
-    // its scope is correctly set. Updating all possible flags here is
-    // difficult. If we don't see this definition, wgen seems to require
-    // two flags.
+    /* Bug 11224: Also update some flags. Even if the decl is not defined
+     * in this translation unit, it needs to have the proper flags so that
+     * its scope is correctly set. Updating all possible flags here is
+     * difficult. If we don't see this definition, wgen seems to require
+     * two flags. */
     _gs_bv (flags, GS_TREE_PUBLIC, TREE_PUBLIC (t));
     _gs_bv (flags, GS_DECL_WEAK, DECL_WEAK (t));
   }
 
 
-  // See if the FUNCTION_DECL should be fully or partially translated.  For
-  // bodyless functions such as printf, always translate them fully.  For C++,
-  // a bodyless function will always have a null DECL_SAVED_TREE, even for the
-  // first time we see them here.  (For functions with bodies, DECL_SAVED_TREE
-  // will be non-null up until we are called to translate them, then GCC may
-  // change the DECL_SAVED_TREE to null.)
-  //
-  // For C, a null DECL_SAVED_TREE may mean that the function body has not been
-  // generated by GCC, since we translate C functions one at a time as soon as
-  // each function is finished.
+  /* See if the FUNCTION_DECL should be fully or partially translated.  For
+   * bodyless functions such as printf, always translate them fully.  For C++,
+   * a bodyless function will always have a null DECL_SAVED_TREE, even for the
+   * first time we see them here.  (For functions with bodies, DECL_SAVED_TREE
+   * will be non-null up until we are called to translate them, then GCC may
+   * change the DECL_SAVED_TREE to null.)
+   *
+   * For C, a null DECL_SAVED_TREE may mean that the function body has not been
+   * generated by GCC, since we translate C functions one at a time as soon as
+   * each function is finished. */
 
   if (TREE_CODE(t) == FUNCTION_DECL &&
       !translate_this_func_decl) {
-    if (CR()) {				// C
+    if (CR()) {				/* C */
       if (!DECL_BUILT_IN(t))
 	return GS_NODE(t);
-    } else {				// C++
-      if ( // not a bodyless function
+    } else {				/* C++ */
+      if ( /* not a bodyless function */
 	  DECL_SAVED_TREE(t) ||
 	  (DECL_LANG_SPECIFIC(t) &&
-	   // some form of template, whose body GCC will generate later, or
+	   /* some form of template, whose body GCC will generate later, or */
 	   (DECL_USE_TEMPLATE(t)||
-	   // a thunk function which will be expanded later
+	   /* a thunk function which will be expanded later */
 	    DECL_THUNK_P(t)))) {
 	return GS_NODE(t);
       }
@@ -10149,21 +10151,21 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
   REVISIT:
 
-  // Update sequence number before calling gs_x_1.
+  /* Update sequence number before calling gs_x_1. */
   GS_SEQUENCE_NUM(t) = seq_num;
 
   GS_ASSERT(!(TREE_CODE(t) == FUNCTION_DECL &&
 	      FULLY_TRANSLATED_TO_GS(t)) || translate_this_func_decl,
 	    ("gs_x_1: cannot re-translate a fully translated FUNCTION_DECL"));
   if (!CR() || TREE_CODE(t) != FUNCTION_DECL || 
-      !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) { // bug 14254
+      !DECL_BUILT_IN(t) || DECL_SAVED_TREE(t)) { /* bug 14254 */
     FULLY_TRANSLATED_TO_GS(t) = 1;
     if (TREE_CODE(t) == FUNCTION_DECL && DECL_INLINE (t))
       TRANSLATED_TO_GS_AS_INLINE(t) = 1;
     }
 
-  // Add common tree fields: TREE_TYPE, TREE_CHAIN, common flags.  Note that
-  // some flags are defined/valid only for certain conditions.
+  /* Add common tree fields: TREE_TYPE, TREE_CHAIN, common flags.  Note that
+   * some flags are defined/valid only for certain conditions. */
 
   gs_set_operand((gs_t) GS_NODE(t), GS_TREE_TYPE, gs_x_1(TREE_TYPE(t), seq_num));
   gs_set_operand((gs_t) GS_NODE(t), GS_TREE_CHAIN, gs_x_1(TREE_CHAIN(t), seq_num));
@@ -10173,7 +10175,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
   REVISIT2:
 
-  // Update sequence number before calling gs_x_1.
+  /* Update sequence number before calling gs_x_1. */
   GS_SEQUENCE_NUM(t) = seq_num;
 
   if (!TYPE_P (t))
@@ -10195,12 +10197,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
   _gs_bv (flags, GS_TREE_ASM_WRITTEN, TREE_ASM_WRITTEN (t));
   _gs_bv (flags, GS_TREE_USED, TREE_USED (t));
 
-  // TYPE_P (t) ? " align-ok" : " nothrow"
+  /* TYPE_P (t) ? " align-ok" : " nothrow" */
   _gs_bv (flags, GS_TREE_NOTHROW, TREE_NOTHROW (t));
 
-  // Don't need to set GS_ASM_VOLATILE_P because it shares the same bit field
-  // as GS_TREE_PUBLIC, and GCC's ASM_VOLATILE_P accesses the same flag as
-  // TREE_PUBLIC.
+  /* Don't need to set GS_ASM_VOLATILE_P because it shares the same bit field
+   * as GS_TREE_PUBLIC, and GCC's ASM_VOLATILE_P accesses the same flag as
+   * TREE_PUBLIC. */
   GS_ASSERT(TREE_PUBLIC(t) == ASM_VOLATILE_P(t),
 	    ("gs_x_1: TREE_PUBLIC differs from ASM_VOLATILE"));
 
@@ -10220,16 +10222,16 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
   _gs_bv (flags, GS_TREE_NOT_EMITTED_BY_GXX, TREE_NOT_EMITTED_BY_GXX(t));
 
-  // "enum dwarf_access_attribute" is either 1, 2, or 3.  Use 2 flags to encode
-  // it.
+  /* "enum dwarf_access_attribute" is either 1, 2, or 3.  Use 2 flags to encode
+   * it. */
   switch (DWARF_ACCESS(t)) {
-    case DW_ACCESS_public:	// 1
+    case DW_ACCESS_public:	/* 1 */
       _gs_bv(flags, GS_DWARF_ACCESS_FLAG_0, 1);
       break;
-    case DW_ACCESS_protected:	// 2
+    case DW_ACCESS_protected:	/* 2 */
       _gs_bv(flags, GS_DWARF_ACCESS_FLAG_1, 1);
       break;
-    case DW_ACCESS_private:	// 3
+    case DW_ACCESS_private:	/* 3 */
       _gs_bv(flags, GS_DWARF_ACCESS_FLAG_0, 1);
       _gs_bv(flags, GS_DWARF_ACCESS_FLAG_1, 1);
       break;
@@ -10341,8 +10343,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
 	  if (DECL_REGISTER(t) && 
 	      (DECL_HARD_REGISTER(t) || DECL_ASSEMBLER_NAME_SET_P(t))) {
-	    char *reg_name = IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(t));
-	    int reg_number = decode_reg_name(reg_name+1);
+	    const char *reg_name = IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(t));
+	    int reg_number = decode_reg_name(&reg_name[1]);
 	    gs_t asmreg = __gs(IB_INT);
 	    _gs_n(asmreg, reg_number);
 	    gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASMREG, asmreg);
@@ -10377,18 +10379,18 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       _gs_bv (flags, GS_DECL_LANG_FLAG_6, DECL_LANG_FLAG_6 (t));
       _gs_bv (flags, GS_DECL_LANG_FLAG_7, DECL_LANG_FLAG_7 (t));
 
-      // DECL_NAME
+      /* DECL_NAME */
       gs_set_operand((gs_t)GS_NODE(t), GS_DECL_NAME, gs_x_1(DECL_NAME(t), seq_num));
 
       if (gs_operand((gs_t)GS_NODE (t), GS_DECL_UID) == NULL)
       {
-        // DECL_UID
+        /* DECL_UID */
         gs_t decl_uid = __gs (IB_INT); 
         _gs_n (decl_uid, DECL_UID (t));
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_UID, decl_uid);
       }
 
-      // MODE
+      /* MODE */
       mode = DECL_MODE (t);
       if (gs_operand ((gs_t) GS_NODE (t), GS_DECL_MODE) == NULL)
       {
@@ -10399,7 +10401,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_MODE, mode_node);
       }
 
-      // file
+      /* file */
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_FILE) == NULL)
       {
         gs_t file = __gs (IB_STRING);
@@ -10408,7 +10410,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_FILE, file);
       }
 
-      // line
+      /* line */
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_SOURCE_LINE) == NULL)
       {
         gs_t line = __gs (IB_INT);
@@ -10416,8 +10418,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_SOURCE_LINE, line);
       }
 
-      // DECL_SIZE
-      // DECL_SIZE_UNIT
+      /* DECL_SIZE */
+      /* DECL_SIZE_UNIT */
       gs_set_operand((gs_t) GS_NODE(t), GS_DECL_SIZE,
 		 gs_x_1(DECL_SIZE(t), seq_num));
       gs_set_operand((gs_t) GS_NODE(t), GS_DECL_SIZE_UNIT,
@@ -10445,21 +10447,21 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         }
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_BUILT_IN_CLASS, decl_built_in_class);
         gs_set_operand ((gs_t) GS_NODE (t), GS_DECL_FUNCTION_CODE, decl_function_code);
-        // printf ("BUILT_IN_COMPLEX_MUL_MIN: %d\n", BUILT_IN_COMPLEX_MUL_MIN);
-        // printf ("BUILT_IN_COMPLEX_MUL_MAX: %d\n", BUILT_IN_COMPLEX_MUL_MAX);
-        // printf ("BUILT_IN_COMPLEX_DIV_MIN: %d\n", BUILT_IN_COMPLEX_DIV_MIN);
-        // printf ("BUILT_IN_COMPLEX_DIV_MAX: %d\n", BUILT_IN_COMPLEX_DIV_MAX);
-        // printf ("END_BUILTINS: %d\n", END_BUILTINS);
+        /* printf ("BUILT_IN_COMPLEX_MUL_MIN: %d\n", BUILT_IN_COMPLEX_MUL_MIN); */
+        /* printf ("BUILT_IN_COMPLEX_MUL_MAX: %d\n", BUILT_IN_COMPLEX_MUL_MAX); */
+        /* printf ("BUILT_IN_COMPLEX_DIV_MIN: %d\n", BUILT_IN_COMPLEX_DIV_MIN); */
+        /* printf ("BUILT_IN_COMPLEX_DIV_MAX: %d\n", BUILT_IN_COMPLEX_DIV_MAX); */
+        /* printf ("END_BUILTINS: %d\n", END_BUILTINS); */
       }
 
       if (DECL_POINTER_ALIAS_SET_KNOWN_P (t))
         _gs_bv (flags, GS_DECL_POINTER_ALIAS_SET, DECL_POINTER_ALIAS_SET (t));
 
-      // DECL_CONTEXT
-      // DECL_ATTRIBUTES
-      // DECL_ABSTRACT_ORIGIN
-      // DECL_RESULT_FLD
-      // DECL_INITIAL
+      /* DECL_CONTEXT */
+      /* DECL_ATTRIBUTES */
+      /* DECL_ABSTRACT_ORIGIN */
+      /* DECL_RESULT_FLD */
+      /* DECL_INITIAL */
       gs_set_operand((gs_t) GS_NODE(t), GS_DECL_CONTEXT,
 		 gs_x_1 (DECL_CONTEXT(t), seq_num));
       gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ATTRIBUTES,
@@ -10467,14 +10469,14 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ABSTRACT_ORIGIN,
 		 gs_x_1 (DECL_ABSTRACT_ORIGIN(t), seq_num));
 
-      // Don't care about the DECL_INITIAL In a TYPE_DECL.  (For C++, the
-      // DECL_INITIAL is used as DECL_FRIENDLIST.)  Bug 11281.
+      /* Don't care about the DECL_INITIAL In a TYPE_DECL.  (For C++, the
+       * DECL_INITIAL is used as DECL_FRIENDLIST.)  Bug 11281. */
       if (TREE_CODE (t) != TYPE_DECL) {
 	gs_set_operand((gs_t) GS_NODE(t), GS_DECL_INITIAL,
 		       gs_x_1 (DECL_INITIAL(t), seq_num));
       }
 
-      // if (DECL_RTL_SET_P (t))
+      /* if (DECL_RTL_SET_P (t)) */
 
       if (gs_operand((gs_t) GS_NODE(t), GS_DECL_ALIGN_UNIT) == NULL)
       {
@@ -10493,12 +10495,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
             && (TREE_STATIC (t)
                 || DECL_EXTERNAL (t)
                 || TREE_PUBLIC (t)
-		|| DECL_REGISTER(t) && DECL_HARD_REGISTER(t)))) {
+		|| (DECL_REGISTER(t) && DECL_HARD_REGISTER(t))))) {
         gs_set_operand((gs_t) GS_NODE(t), GS_DECL_ASSEMBLER_NAME,
 		   gs_x_1(DECL_ASSEMBLER_NAME(t), seq_num));
       }
 
-      // C++
+      /* C++ */
       {
         gs_t cp_decl_flags;
 	if (gs_operand((gs_t) GS_NODE(t), GS_CP_DECL_FLAGS) == NULL) {
@@ -10517,7 +10519,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         if (TREE_PUBLIC (t))
           _gs_bv (cp_decl_flags, GS_DECL_ONE_ONLY, DECL_ONE_ONLY (t));
 
-        if (CPR()) {	// C++
+        if (CPR()) {	/* C++ */
 	  switch (TREE_CODE(t)) {
 	    case FUNCTION_DECL:
 	      _gs_bv(cp_decl_flags, GS_DECL_GLOBAL_CTOR_P,
@@ -10563,7 +10565,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	      break;
 
 	    case NAMESPACE_DECL:
-	      if (NAMESPACE_LEVEL(t)) {	// bug 10855
+	      if (NAMESPACE_LEVEL(t)) {	/* bug 10855 */
 		gs_set_operand((gs_t) GS_NODE(t), GS_CP_NAMESPACE_DECLS,
 			       gs_x_1(NAMESPACE_LEVEL(t)->names, seq_num));
 	      }
@@ -10630,7 +10632,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         }
       }
 
-      // DECL_FLAG2
+      /* DECL_FLAG2 */
       gs_set_operand((gs_t) GS_NODE (t), GS_DECL_FLAG2, __gs (IB_BIT_VECTOR));
       gs_set_decl_tls_model((gs_t) GS_NODE (t), DECL_TLS_MODEL(t));
       GS_ASSERT(gs_decl_tls_model((gs_t) GS_NODE (t) ) == DECL_TLS_MODEL(t),
@@ -10671,7 +10673,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	case UNION_TYPE:
 	  if (TYPE_TRANSPARENT_UNION(t))
 	    _gs_bv(flags, GS_TYPE_TRANSPARENT_UNION, TYPE_TRANSPARENT_UNION(t));
-	  // fall through
+	  /* fall through */
 
 	case RECORD_TYPE:
 	  if (TREE_CODE(t) == RECORD_TYPE) {
@@ -10679,11 +10681,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		       seq_num));
 	  }
 	  if (CPR()) {
-	      // Currently, wgen uses the following flag only for these types.
-	      // It is ok not to set it for C.
+	      /* Currently, wgen uses the following flag only for these types.
+	       * It is ok not to set it for C. */
 	      _gs_bv(flags, GS_AGGREGATE_VALUE_P, aggregate_value_p (t, NULL));
 	  }
-	  // fall through
+	  /* fall through */
 
 	case QUAL_UNION_TYPE:
 	  gs_set_operand((gs_t) GS_NODE(t), GS_TYPE_FIELDS, gs_x_1(TYPE_FIELDS(t),
@@ -10701,7 +10703,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	  if (TYPE_RETURNS_STACK_DEPRESSED(t))
 	    _gs_bv(flags, GS_TYPE_RETURNS_STACK_DEPRESSED,
 		   TYPE_RETURNS_STACK_DEPRESSED(t));
-	  // fall through
+	  /* fall through */
 
 	case METHOD_TYPE:
 	  if (TYPE_METHOD_BASETYPE(t)) {
@@ -10749,7 +10751,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		     seq_num));
       }
 
-      // mode
+      /* mode */
       mode = TYPE_MODE (t);
       if (gs_operand((gs_t) GS_NODE(t), GS_TYPE_MODE) == NULL)
       {
@@ -10760,19 +10762,19 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_set_operand ((gs_t) GS_NODE (t), GS_TYPE_MODE, mode_node);
       }
 
-      // TYPE_SIZE
-      // TYPE_SIZE_UNIT
-      // TYPE_USER_ALIGN
-      // printf ("TYPE_SIZE: %p\n", TYPE_SIZE (t));
+      /* TYPE_SIZE */
+      /* TYPE_SIZE_UNIT */
+      /* TYPE_USER_ALIGN */
+      /* printf ("TYPE_SIZE: %p\n", TYPE_SIZE (t)); */
       gs_set_operand((gs_t) GS_NODE(t), GS_TYPE_SIZE,
 		 gs_x_1(TYPE_SIZE(t), seq_num));
       gs_set_operand((gs_t) GS_NODE(t), GS_TYPE_SIZE_UNIT,
 		 gs_x_1(TYPE_SIZE_UNIT(t), seq_num));
-      // TODO: Freeup this slot.
-      // gs_set_operand ((gs_t) GS_NODE (t), GS_TYPE_USER_ALIGN, gs_x (TYPE_USER_ALIGN (t)));
+      /* TODO: Freeup this slot. */
+      /* gs_set_operand ((gs_t) GS_NODE (t), GS_TYPE_USER_ALIGN, gs_x (TYPE_USER_ALIGN (t))); */
       gs_set_operand((gs_t) GS_NODE(t), GS_TYPE_USER_ALIGN, gs_x_1(NULL, seq_num));
 
-      // align
+      /* align */
       if (gs_operand((gs_t) GS_NODE(t), GS_TYPE_ALIGN) == NULL) {
         gs_t align_node;
         align_node = __gs (IB_INT);
@@ -10780,7 +10782,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         gs_set_operand ((gs_t) GS_NODE (t), GS_TYPE_ALIGN, align_node);
       }
 
-      // alias_set_node
+      /* alias_set_node */
       if (gs_operand((gs_t) GS_NODE (t), GS_TYPE_ALIAS_SET) == NULL) {
 	gs_t alias_set_node;
 	alias_set_node = __gs (IB_INT);
@@ -10800,7 +10802,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
       _gs_bv (flags, GS_TYPE_LANG_SPECIFIC, TYPE_LANG_SPECIFIC(t));
       _gs_bv (flags, GS_POINTER_TYPE_P, POINTER_TYPE_P(t));
 
-      // TYPE_PRECISION, TYPE_MIN_VALUE, TYPE_MAX_VALUE
+      /* TYPE_PRECISION, TYPE_MIN_VALUE, TYPE_MAX_VALUE */
       {
 	if (gs_operand((gs_t) GS_NODE(t), GS_TYPE_PRECISION) == NULL) {
 	  gs_t type_precision;
@@ -10814,7 +10816,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		   gs_x_1(TYPE_MAX_VALUE(t), seq_num));
       }
 
-      // C++
+      /* C++ */
       {
         gs_t cp_type_flags;
 	if (gs_operand((gs_t) GS_NODE(t), GS_CP_TYPE_FLAGS) == NULL) {
@@ -10855,7 +10857,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    case RECORD_TYPE:
 	      _gs_bv(cp_type_flags, GS_TYPE_USES_TEMPLATE_PARMS,
 		     (*p_uses_template_parms)(t));
-	      // fall through
+	      /* fall through */
 
 	    case UNION_TYPE:
 	      _gs_bv(cp_type_flags, GS_IS_EMPTY_CLASS, (*p_is_empty_class)(t));
@@ -10940,7 +10942,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    break;
 	}
 
-        // length = TREE_CODE_LENGTH (TREE_CODE ())
+        /* length = TREE_CODE_LENGTH (TREE_CODE ()) */
         length = __gs (IB_INT);
         _gs_n (length, TREE_CODE_LENGTH (TREE_CODE (t)));
         gs_set_operand ((gs_t) GS_NODE (t), GS_ARITY, length);
@@ -10962,35 +10964,35 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
           _gs_bv (flags, GS_EXPR_HAS_LOCATION, EXPR_HAS_LOCATION (t));
         }
 
-	// ATOMIC has already been processed above.
+	/* ATOMIC has already been processed above. */
 	if (TREE_CODE(t) != OMP_ATOMIC)
-          // max value returnable by TREE_CODE_LENGTH () seems to be 4.
+          /* max value returnable by TREE_CODE_LENGTH () seems to be 4. */
           for (i = 0; i < TREE_CODE_LENGTH (TREE_CODE (t)); i++) {
             gs_set_operand((gs_t) GS_NODE(t), GS_TREE_OPERAND_ZERO + i,
 		       gs_x_1(TREE_OPERAND(t, i), seq_num));
 	  }
 
-        // C++
+        /* C++ */
         {
           gs_t cp_expr_flags;
           cp_expr_flags = __gs (IB_BIT_VECTOR);
           gs_set_operand ((gs_t) GS_NODE (t), GS_CP_EXPR_FLAGS, cp_expr_flags);
 
-          if (TREE_CODE (t) == CLEANUP_STMT && CPR ()) // Will be NULL if this is a C run.
+          if (TREE_CODE (t) == CLEANUP_STMT && CPR ()) /* Will be NULL if this is a C run. */
             gs_set_operand((gs_t) GS_NODE(t), GS_CLEANUP_EXPR,
 		       gs_x_1(CLEANUP_EXPR(t), seq_num));
 
           if (CPR())
           {
-            // We can have this kid for classes also, but that is not
-            // currently required.
+            /* We can have this kid for classes also, but that is not
+             * currently required. */
             if (TREE_CODE(t) == HANDLER)
             {
               tree htype = HANDLER_TYPE (t);
-              // Note: NULL htype for catch-all clause
+              /* Note: NULL htype for catch-all clause */
               if (htype && !CLASS_TYPE_P (htype))
               {
-                // Make sure htype has been translated.
+                /* Make sure htype has been translated. */
                 gs_x_1(htype, seq_num);
                 gs_set_operand ((gs_t) GS_NODE (htype),
                             GS_TYPEINFO_DECL,
@@ -11005,7 +11007,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
                 tree htype = TREE_VALUE (spec);
                 if (htype && !CLASS_TYPE_P (htype))
                 {
-                  // Make sure htype has been translated.
+                  /* Make sure htype has been translated. */
                   gs_x_1(htype, seq_num);
                   gs_set_operand ((gs_t) GS_NODE (htype),
                               GS_TYPEINFO_DECL,
@@ -11041,12 +11043,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
 	  case INTEGER_CST:
             {
-              // low, high
+              /* low, high */
               gs_t low, high; 
 
               _gs_bv (flags, GS_TREE_CONSTANT_OVERFLOW, TREE_CONSTANT_OVERFLOW (t));
   
-              // printf ("TREE_INT_CST_HIGH (t): %lld, TREE_INT_CST_LOW (t): %llu\n", TREE_INT_CST_HIGH (t), TREE_INT_CST_LOW (t));
+              /* printf ("TREE_INT_CST_HIGH (t): %lld, TREE_INT_CST_LOW (t): %llu\n", TREE_INT_CST_HIGH (t), TREE_INT_CST_LOW (t)); */
 
               low  = __gs (IB_UNSIGNED_LONG_LONG); 
               high = __gs (IB_LONG_LONG);
@@ -11057,18 +11059,19 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_INT_CST_LOW, low);
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_INT_CST_HIGH, high);
 
-              // printf ("tree_int_cst_high (t): %lld, tree_int_cst_low (t): %llu\n", gs_ll (high), gs_ull (low));
+              /* printf ("tree_int_cst_high (t): %lld, tree_int_cst_low (t): %llu\n", gs_ll (high), gs_ull (low)); */
             }
   	    break;
   
           case PTRMEM_CST:
 	    {
-	      // The usual way to expand PTRMEM_CST is to call
-	      // cplus_expand_constant, so do it now while we have access to
-	      // cplus_expand_constant.
+	      /* The usual way to expand PTRMEM_CST is to call
+	       * cplus_expand_constant, so do it now while we have access to
+	       * cplus_expand_constant. */
+	      tree t2;
 	      GS_ASSERT(lang_hooks.cplus_expand_constant,
 			("gs_x_1: lang hook NULL for cplus_expand_constant"));
-	      tree t2 = lang_hooks.cplus_expand_constant(t);
+	      t2 = lang_hooks.cplus_expand_constant(t);
 	      gs_set_operand((gs_t) GS_NODE(t), GS_EXPANDED_PTRMEM_CST,
 			 gs_x_1(t2, seq_num));
 	    }
@@ -11104,16 +11107,16 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
 	  case VECTOR_CST:
 	    {
-              // Does this work?
-              // TREE_VECTOR_CST_ELTS
+              /* Does this work? */
+              /* TREE_VECTOR_CST_ELTS */
 	      gs_set_operand((gs_t) GS_NODE(t), GS_TREE_VECTOR_CST_ELTS,
 			 gs_x_1(TREE_VECTOR_CST_ELTS(t), seq_num));
 	    }
 	    break;
 
 	  case COMPLEX_CST:
-            // TREE_REALPART
-            // TREE_IMAGPART
+            /* TREE_REALPART */
+            /* TREE_IMAGPART */
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_REALPART,
 		       gs_x_1(TREE_REALPART(t), seq_num));
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_IMAGPART,
@@ -11121,12 +11124,12 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    break;
 
 	  case STRING_CST:
-            // string_constant
+            /* string_constant */
 	    {
               gs_t string_pointer, string_length;
 
               string_pointer = __gs (IB_STRING);
-              // bug 11180: TREE_STRING_LENGTH does not include '\0'.
+              /* bug 11180: TREE_STRING_LENGTH does not include '\0'. */
               _gs_s (string_pointer, (gs_string_t) TREE_STRING_POINTER (t),
 		     1 + TREE_STRING_LENGTH (t));
               gs_set_operand ((gs_t) GS_NODE (t), GS_TREE_STRING_POINTER, string_pointer);
@@ -11139,7 +11142,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
 	  case IDENTIFIER_NODE:
 
-          // gs_tree_symbol_referenced uses the GS_TREE_STATIC flag
+          /* gs_tree_symbol_referenced uses the GS_TREE_STATIC flag */
           _gs_bv (flags, GS_TREE_STATIC, TREE_SYMBOL_REFERENCED(t));
 
 #define BUILTIN_PREFIXED(builtin)                           \
@@ -11148,7 +11151,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
     goto ATTACH_ID_PTR;                                     \
   }
 
-            // name
+            /* name */
             {
                gs_t name;
                name = __gs (IB_STRING);
@@ -11677,8 +11680,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
                  else if BUILTIN_PREFIXED ("_exit")
                  else if BUILTIN_PREFIXED ("_Exit")
 
-                 // Else, it's a builtin-type or something that we do not care converting
-                 // like the other builtin's.
+                 /* Else, it's a builtin-type or something that we do not care converting
+                  * like the other builtin's. */
 
                  else goto SET_ID_PTR;
 
@@ -11694,11 +11697,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    break;
 
 	  case TREE_LIST:
-            // TREE_PURPOSE
-            // TREE_VALUE
+            /* TREE_PURPOSE */
+            /* TREE_VALUE */
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_PURPOSE,
 		       gs_x_1(TREE_PURPOSE(t), seq_num));
-	    // bug 8346
+	    /* bug 8346 */
 	    if (TREE_VALUE(t))
 	      STRIP_USELESS_TYPE_CONVERSION(TREE_VALUE(t));
 	    gs_set_operand((gs_t) GS_NODE(t), GS_TREE_VALUE,
@@ -11707,8 +11710,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 
 	  case TREE_VEC:
             {
-              // TREE_VEC_LENGTH
-              // TREE_VEC_ELT
+              /* TREE_VEC_LENGTH */
+              /* TREE_VEC_ELT */
               int i, len;
               gs_t tree_vec_elt_list;
               {
@@ -11727,11 +11730,11 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    break;
 
 	  case BLOCK:
-            // BLOCK_VARS
-            // BLOCK_SUPERCONTEXT
-            // BLOCK_SUBBLOCKS
-            // BLOCK_CHAIN
-            // BLOCK_ABSTRACT_ORIGIN
+            /* BLOCK_VARS */
+            /* BLOCK_SUPERCONTEXT */
+            /* BLOCK_SUBBLOCKS */
+            /* BLOCK_CHAIN */
+            /* BLOCK_ABSTRACT_ORIGIN */
 	    gs_set_operand((gs_t) GS_NODE(t), GS_BLOCK_VARS,
 		       gs_x_1(BLOCK_VARS(t), seq_num));
 	    gs_set_operand((gs_t) GS_NODE(t), GS_BLOCK_SUPERCONTEXT,
@@ -11765,8 +11768,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 		       gs_x_1(BINFO_VPTR_FIELD(t), seq_num));
             _gs_bv(flags, GS_BINFO_VIRTUAL_P, BINFO_VIRTUAL_P(t));
 
-	    // Traverse the vector of base infos.  Put the base infos on a
-	    // gspin list.
+	    /* Traverse the vector of base infos.  Put the base infos on a
+	     * gspin list. */
 	    {
 	      gs_t list = __gs(EMPTY);
 	      unsigned int i;
@@ -11814,9 +11817,9 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	    break;
 
           case OVERLOAD:
-	  // OVERLOAD not yet used by wgen. OVL_FUNCTION and OVL_CURRENT
-	  // returns tree_overload*, so we should check if the following
-	  // disabled code are correct.
+	  /* OVERLOAD not yet used by wgen. OVL_FUNCTION and OVL_CURRENT
+	   * returns tree_overload*, so we should check if the following
+	   * disabled code are correct. */
 #if 0
             gs_set_operand((gs_t) GS_NODE(t), GS_OVL_FUNCTION,
 		       gs_x_1(OVL_FUNCTION(t), seq_num));
@@ -11845,8 +11848,8 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
               }
               constructor_elts_index = __gs (EMPTY);
               constructor_elts_value = __gs (EMPTY);
-              // Traverse in reverse order to preserve the order of
-              // initializations, because gs_cons reverses it again.
+              /* Traverse in reverse order to preserve the order of
+               * initializations, because gs_cons reverses it again. */
               FOR_EACH_CONSTRUCTOR_ELT_R (CONSTRUCTOR_ELTS(t), idx, field, value)
               {
                 constructor_elts_index = gs_cons(gs_x_1(field, seq_num),
@@ -11868,7 +11871,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
                      gcc_omp_clause_code2gs_occ(OMP_CLAUSE_CODE(t)));
               gs_set_operand((gs_t) GS_NODE(t), GS_OMP_CLAUSE_CODE,
                              clause_code);
-              // OMP_CLAUSE_DECL, OMP_CLAUSE_NUM_THREADS_EXPR, OMP_CLAUSE_IF_EXPR
+              /* OMP_CLAUSE_DECL, OMP_CLAUSE_NUM_THREADS_EXPR, OMP_CLAUSE_IF_EXPR */
 
               switch (OMP_CLAUSE_CODE(t))
               {
@@ -11879,7 +11882,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
                   gs_set_operand((gs_t) GS_NODE(t),
                                  GS_OMP_CLAUSE_REDUCTION_CODE,
                                  reduction_code);
-                  // fall through
+                  /* fall through */
                 }
                 case OMP_CLAUSE_COPYIN:
                 case OMP_CLAUSE_PRIVATE:
@@ -11951,7 +11954,7 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 gs_t
 gs_x_func_decl (tree t)
 {
-  translate_func_decl = 1;	// Translate FUNCTION_DECLs.
+  translate_func_decl = 1;	/* Translate FUNCTION_DECLs. */
   sequence_num++;
   return gs_x_1(t, sequence_num);
 }
@@ -11959,25 +11962,25 @@ gs_x_func_decl (tree t)
 gs_t
 gs_x (tree t)
 {
-  translate_func_decl = 0;	// Don't translate FUNCTION_DECLs.
+  translate_func_decl = 0;	/* Don't translate FUNCTION_DECLs. */
   sequence_num++;
   return gs_x_1(t, sequence_num);
 }
 
-// Like translate_func_decl, except for C++ thunk functions. Thunk
-// functions are fully translated only when this variable is set.
+/* Like translate_func_decl, except for C++ thunk functions. Thunk
+ * functions are fully translated only when this variable is set. */
 static bool translate_thunk_decl = false;
 
-// Add T to list of decls emitted by g++.
+/* Add T to list of decls emitted by g++. */
 void
 gspin_gxx_emits_decl (tree t)
 {
   gs_t decl, decl_list;
 
   if (translate_thunk_decl) {
-    // Fully translate this thunk function. This is the only place other
-    // than tree_rest_of_compilation() where we fully process a function
-    // in C++.
+    /* Fully translate this thunk function. This is the only place other
+     * than tree_rest_of_compilation() where we fully process a function
+     * in C++. */
     translate_thunk_decl = false;
     decl = gs_x_func_decl(t);
   }
@@ -11995,7 +11998,7 @@ gspin_gxx_emits_decl (tree t)
   gxx_emitted_decls_dot = decl_list;
 }
 
-// Called only from use_thunk() for C++.
+/* Called only from use_thunk() for C++. */
 void
 gspin_gxx_emits_thunk_decl (tree t)
 {
@@ -12003,7 +12006,7 @@ gspin_gxx_emits_thunk_decl (tree t)
   gspin_gxx_emits_decl(t);
 }
 
-// Add T to list of asms emitted by g++.
+/* Add T to list of asms emitted by g++. */
 void
 gspin_gxx_emits_asm (char *str)
 {
@@ -12048,7 +12051,7 @@ gspin_add_weak (tree decl, gs_t decl_node)
   weak_decls_dot = list;
 }
 
-// Dump a STATEMENT_LIST for debugging.
+/* Dump a STATEMENT_LIST for debugging. */
 void
 dump_statement_list (tree t)
 {

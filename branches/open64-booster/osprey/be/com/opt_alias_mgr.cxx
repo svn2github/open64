@@ -1130,13 +1130,8 @@ ALIAS_RESULT Aliased_with_region(const ALIAS_MANAGER *am, const WN *wn, const WN
     // Test aliasing with call-by-ref parameters
     for (INT32 i = 0; i < WN_kid_count(region_or_call); i++) {
       WN *wn = WN_kid(region_or_call,i);  
-#if defined(TARG_SL)
       if (WN_operator(wn) == OPR_PARM && 
 	  (WN_Parm_By_Reference(wn)||WN_Parm_Dereference(wn))) {
-#else
-      if (WN_operator(wn) == OPR_PARM && 
-	  WN_Parm_By_Reference(wn)) {
-#endif
 	// check aliasing
 	IDTYPE id2 = am->Id(wn);
 	if (id2 == 0) return POSSIBLY_ALIASED;  // assume aliased 
@@ -1193,11 +1188,7 @@ ALIAS_RESULT Aliased_with_intr_op(const ALIAS_MANAGER *am, const WN *intr_op, co
   // go through call-by-ref all parameters
   for (INT32 i = 0; i < WN_kid_count(intr_op); i++) {
     WN *wn = WN_kid(intr_op,i);  
-#if defined(TARG_SL)
     if (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) {
-#else
-    if (WN_Parm_By_Reference(wn)) {
-#endif
       // check aliasing
       IDTYPE id2 = am->Id(wn);
       if (id2 == 0) return POSSIBLY_ALIASED;  // assume aliased 
@@ -1343,11 +1334,7 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	ST_sclass(WN_st(wn1)) == SCLASS_REG) {
       id = am->Preg_id();
       am->Set_id(wn1, id);
-#if defined(TARG_SL)
     } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1) && !WN_Parm_Dereference(wn1)) {
-#else
-    } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1)) {
-#endif
       // It has no alias info.
       am->Set_id(wn2, 0);    // cancel the original alias info in wn2
       return;
@@ -1394,11 +1381,7 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	ST_sclass(WN_st(wn1)) == SCLASS_REG) {
       id = am->Preg_id();
       am->Set_id(wn1, id);
-#if defined(TARG_SL)
     } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1) && !WN_Parm_Dereference(wn1)) {
-#else
-    } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1)) {
-#endif
       // It has no alias info.
       am->Set_id(wn2, 0);    // cancel the original alias info in wn2
       return;

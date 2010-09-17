@@ -50,9 +50,6 @@ LCDEFS += -D__MIPS_AND_IA64_ELF_H -DTARG_IA64
 LC++DEFS +=  $(LCDEFS)
 endif
 
-LCDEFS += $(STD_COMPILE_OPTS)
-LC++DEFS += $(STD_COMPILE_OPTS)
-
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------
@@ -273,6 +270,7 @@ LDIRT = ii_files be.so ipl.so
 VPATH    =  $(SRC_DIRS)
 
 LCOPTS = $(STD_COMPILE_OPTS) $(STD_C_OPTS)
+LC++OPTS = $(STD_COMPILE_OPTS) $(STD_C++_OPTS)
 
 HOSTDEFS += -D_NEW_SYMTAB -D_MERGE_SUMMARY_ST_IDX_=1 -DBACK_END -fpic
 

@@ -832,7 +832,7 @@ INTERNAL_CFLAGS = -DIN_GCC @CROSS@
 
 # This is the variable actually used when we compile. If you change this,
 # you probably want to update BUILD_CFLAGS in configure.ac
-ALL_CFLAGS = -DKEY -DFE_GNU_4_2_0 $(X_CFLAGS) $(T_CFLAGS) \
+ALL_CFLAGS = -DKEY -DOPEN64_SPIN -DFE_GNU_4_2_0 $(X_CFLAGS) $(T_CFLAGS) \
   $(CFLAGS) $(INTERNAL_CFLAGS) $(COVERAGE_FLAGS) $(WARN_CFLAGS) $(XCFLAGS) @DEFS@
 
 uname-s := $(shell uname -s)
@@ -1290,7 +1290,12 @@ config.status: $(srcdir)/configure $(srcdir)/config.gcc
 
 #all.internal: start.encap rest.encap doc
 # For Open64 compiler, omit doc
+# For MIPS/SL compiler, omit rest.encap
+ifneq (, $(filter mips%, $(target)))
+all.internal: start.encap
+else
 all.internal: start.encap rest.encap
+endif
 
 # This is what to compile if making a cross-compiler.
 all.cross: native gcc-cross$(exeext) cpp$(exeext) specs \

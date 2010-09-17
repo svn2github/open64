@@ -1464,21 +1464,21 @@ decl_needed_p (tree decl)
 }
 
 #ifdef KEY
-// Just like decl_needed_p but with TREE_SYMBOL_REFERENCED commented out.
-//
-// emit_tinfo_decl uses decl_maybe_needed_p instead of decl_needed_p.  We make
-// the less strict test because it seems only typeinfos should come to
-// emit_tinfo_decl for emission.  For some typeinfos, gcc sets
-// TREE_SYMBOL_REFERENCED in its exception handling code, which we do not use.
-// Hence this flag does not get set, and hence the typeinfo does not get
-// initialized, giving link-time errors.
-//
-// In some cases, though, this may result in emission of tinfos even if they
-// are REALLY not used/referenced.
-//
-// Ideally, we could have initialized these typeinfos in our front-end when
-// they are used/referenced.  But that would require invoking several gcc
-// functions, and then changing the already created ST entries.
+/* Just like decl_needed_p but with TREE_SYMBOL_REFERENCED commented out.
+ *
+ * emit_tinfo_decl uses decl_maybe_needed_p instead of decl_needed_p.  We make
+ * the less strict test because it seems only typeinfos should come to
+ * emit_tinfo_decl for emission.  For some typeinfos, gcc sets
+ * TREE_SYMBOL_REFERENCED in its exception handling code, which we do not use.
+ * Hence this flag does not get set, and hence the typeinfo does not get
+ * initialized, giving link-time errors.
+ *
+ * In some cases, though, this may result in emission of tinfos even if they
+ * are REALLY not used/referenced.
+ *
+ * Ideally, we could have initialized these typeinfos in our front-end when
+ * they are used/referenced.  But that would require invoking several gcc
+ * functions, and then changing the already created ST entries. */
 bool
 decl_maybe_needed_p (tree decl)
 {
@@ -3321,8 +3321,8 @@ cp_finish_file (void)
 		TREE_ASM_WRITTEN (decl) = 1;
 	      reconsider = true;
 #ifdef KEY
-              // This function is emitted by g++.  Catches functions that are
-              // deferred by g++, such as those marked "inline".
+              /* This function is emitted by g++.  Catches functions that are
+               * deferred by g++, such as those marked "inline". */
               if (flag_spin_file)
                 gspin_gxx_emits_decl (decl);
 #endif
@@ -3426,7 +3426,7 @@ cp_finish_file (void)
   finish_repo ();
 
 #ifdef KEY
-  // Now that we are done with the file, process the global namespace.
+  /* Now that we are done with the file, process the global namespace. */
   if (flag_spin_file)
   {
     static int spun_global_namespace = 0;
@@ -3434,7 +3434,7 @@ cp_finish_file (void)
     {
       processing_global_namespace = 1;
       gspin (global_namespace);
-      // should already be reset in gspin
+      /* should already be reset in gspin */
       processing_global_namespace = 0;
       spun_global_namespace = 1;
     }

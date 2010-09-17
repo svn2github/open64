@@ -4486,6 +4486,9 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
 	ST* cp = Callee_node ()->Func_ST ();
         ST_IDX stidx = ST_st_idx(cp);
 
+#if !defined(TARG_SL)
+        // for TARG_SL, the following code will generate an assertion in cgdwarf.cxx
+        // so, currently, we still disable the following code.
         if(Caller_file_dst() == Callee_file_dst())
         {
           dst1 = DST_mk_inlined_subroutine(stidx,
@@ -4494,6 +4497,7 @@ IPO_INLINE::Post_Process_Caller (IPO_INLINE_AUX& aux)
           DST_RESET_assoc_fe (DST_INFO_flag(DST_INFO_IDX_TO_PTR(dst1)));
           DST_append_child (Caller_dst(), dst1);       
         }
+#endif
 
         // pragma node that mark the begin and end of the inlined block
 	WN* pragma_node_begin =

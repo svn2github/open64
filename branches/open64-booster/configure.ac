@@ -62,9 +62,13 @@ BUILD_COMPILER=GNU)
 case "$BUILD_COMPILER" in
   GNU|gnu|gcc)
     BUILD_COMPILER=GNU
+    GCC_CONFIGURE_COMPILER=gcc
+    CYGNUS_CONFIGURE_COMPILER=gcc
     ;;
   OSP|osp|opencc|open64)
     BUILD_COMPILER=OSP
+    GCC_CONFIGURE_COMPILER=opencc
+    CYGNUS_CONFIGURE_COMPILER=opencc
     ;;
   *)
     AC_MSG_ERROR(["BUILD_COMPILER=$BUILD_COMPILER is not supported"])
@@ -79,9 +83,11 @@ BUILD_OPTIMIZE=DEFAULT)
 case "$BUILD_OPTIMIZE" in
   DEFAULT|default)
     BUILD_OPTIMIZE=DEFAULT
+    GCC_CONFIGURE_CFLAGS="-O2"
     ;;
   DEBUG|debug)
     BUILD_OPTIMIZE=DEBUG
+    GCC_CONFIGURE_CFLAGS="-O0 -g -DIs_True_On"
     ;;
   *)
     AC_MSG_ERROR(["BUILD_OPTIMIZE=$BUILD_OPTIMIZE is not supported"])
@@ -94,6 +100,9 @@ BUILD_MULTILIB=NO
 
 # BUILD_BOTH is (only) used in osprey/Makefile.gsetup.in for setting -fPIC.
 BUILD_BOTH=
+
+# Set BUILD_GNU3 to "YES" to build the GCC 3.3 C/C++ front-end.
+BUILD_GNU3=NO
 
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
@@ -145,7 +154,7 @@ case "$host" in
 esac
 
 CYGNUS_CONFIGURE_CFLAGS=
-GCC_CONFIGURE_CFLAGS=
+BUILD_VENDOR=
 
 # Set variables based on the target machine that the compiler will generate
 # code for.
@@ -163,8 +172,8 @@ case "$target" in
 		LIB2_BUILD_ARCH=X8664
 		CYGNUS_CONFIGURE_TARG=x86_64-open64-linux
 		GCC_CONFIGURE_TARG=x86_64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m64 -DTARG_X8664"
-		BUILD_MULTILIB=YES
+		GCC_CONFIGURE_COMPILER+=" -m64"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
 		;;
 	i*86*-*-linux*)
 		MACHINE_TYPE=i386
@@ -179,23 +188,41 @@ case "$target" in
 		LIB2_BUILD_ARCH=X8664
 		CYGNUS_CONFIGURE_TARG=x86_64-open64-linux
 		GCC_CONFIGURE_TARG=x86_64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_X8664"
+		GCC_CONFIGURE_COMPILER+=" -m32"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_X8664"
 		CYGNUS_CONFIGURE_CFLAGS="-m32"
-		BUILD_MULTILIB=YES
 		;;
 	ia64*-*-linux*)
 		MACHINE_TYPE=ia64
 		BUILD_TARGET=IA64
 		CYGNUS_CONFIGURE_TARG=ia64-linux-gnu
 		GCC_CONFIGURE_TARG=ia64-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-DTARG_IA64"
+		GCC_CONFIGURE_CFLAGS+=" -DTARG_IA64"
 		TARG_INFO_NAME=ipfec_targ_info
+		;;
+	sl*-*-linux*)
+		MACHINE_TYPE=SL
+		BUILD_TARGET=SL
+		BUILD_ABI=N32BIT
+		BUILD_ARCH=MIPS4
+		BUILD_VENDOR=SL
+		CYGNUS_CONFIGURE_HOST=i686-gnu-linux
+		GCC_CONFIGURE_HOST=mips-redhat-linux
+		CYGNUS_CONFIGURE_TARG=mipsel-elf-linux
+		GCC_CONFIGURE_TARG=mips-redhat-linux
+		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_SL"
+		CYGNUS_CONFIGURE_CFLAGS="-m32"
+		BUILD_MULTILIB=NO
 		;;
 	*)
 		AC_MSG_ERROR(["open64 is not supported on $target"])
 		;;
 esac
 
+UNAME_MACHINE=`uname -m`
+if test "$UNAME_MACHINE" = "x86_64"; then
+   BUILD_MULTILIB=YES
+fi
 # Set default values for LIB_* and LIB2_* variables that were not set above.
 if test "$LIB_MACHINE_TYPE" = ""; then
   LIB_MACHINE_TYPE=$MACHINE_TYPE
@@ -229,14 +256,6 @@ if test "$LIB2_BUILD_HOST" = ""; then
   LIB2_BUILD_HOST=$BUILD_HOST
 fi
 
-if test "$BUILD_COMPILER" = "GNU"; then
-  GCC_CONFIGURE_COMPILER=gcc
-  CYGNUS_CONFIGURE_COMPILER=gcc
-else
-  GCC_CONFIGURE_COMPILER=opencc
-  CYGNUS_CONFIGURE_COMPILER=opencc
-fi
-
 # Export these variables so they can be used in the 'subconfigures run in
 # osprey/cygnus and osprey-gcc-4.2.0.
 export CYGNUS_CONFIGURE_COMPILER
@@ -254,6 +273,7 @@ AC_SUBST([BUILD_ABI])
 AC_SUBST([BUILD_ARCH])
 AC_SUBST([BUILD_HOST])
 AC_SUBST([BUILD_TARGET])
+AC_SUBST([BUILD_VENDOR])
 AC_SUBST([BUILD_OPTIMIZE])
 AC_SUBST([BUILD_COMPILER])
 AC_SUBST([BUILD_BOTH])
@@ -270,6 +290,7 @@ AC_SUBST([LIB2_BUILD_HOST])
 AC_SUBST([BUILD_MULTILIB])
 AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
+AC_SUBST([BUILD_GNU3])
 AC_SUBST([GCC_CONFIGURE_TARG])
 AC_SUBST([GCC_DIR])
 
@@ -309,11 +330,16 @@ AC_CONFIG_FILES([
   osprey/targdir/crayf90/fe90/Makefile
   osprey/targdir/crayf90/libf90sgi/Makefile
   osprey/targdir/crayf90/sgi/Makefile
-  osprey/targdir/gccfe/Makefile
-  osprey/targdir/gccfe/gnu/Makefile
-  osprey/targdir/g++fe/Makefile
-  osprey/targdir/g++fe/gnu/Makefile
 ])
+
+if test $BUILD_GNU3 = "YES"; then
+  AC_CONFIG_FILES([
+    osprey/targdir/gccfe/Makefile
+    osprey/targdir/gccfe/gnu/Makefile
+    osprey/targdir/g++fe/Makefile
+    osprey/targdir/g++fe/gnu/Makefile
+  ])
+fi
 
 # The directories created under targdir_lib (and targdir_lib2) also
 # need to be listed in LIBLIST.  This list is used in targdir_lib/Makefile.in
@@ -321,7 +347,15 @@ AC_CONFIG_FILES([
 # under targdir_lib you need to add it to AC_CONFIG_FILES and add it to
 # LIBLIST.
 
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+if test "${BUILD_TARGET}" = "SL"; then
+LIBLIST="include libelf"
+else
+  if test "${BUILD_TARGET}" = "IA64"; then
+     LIBLIST="include libelf libopenmp libfortran libmv libu"
+  else
+     LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  fi
+fi
 
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
@@ -334,7 +368,7 @@ AC_CONFIG_FILES([
   osprey/targdir_lib/libu/Makefile
 ])
 
-if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
   LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
@@ -354,7 +388,7 @@ if test $BUILD_MULTILIB = "YES"; then
     osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
     osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
   ])
-  if test $BUILD_TARGET = "X8664" || $BUILD_TARGET = "IA32"; then
+  if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
     AC_CONFIG_FILES([
       osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in
       osprey/targdir_lib2/libinstr2/Makefile:osprey/targdir_lib/libinstr2/Makefile.in

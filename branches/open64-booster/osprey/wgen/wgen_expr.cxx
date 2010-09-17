@@ -449,37 +449,6 @@ static INTRN_ATTR_EXTEND *Get_intrinsic_op_Eattr (INTRINSIC id) {
   return NULL;
 }
 
-static void WN_Set_Deref_If_Needed(WN *wn) {
-  INTRINSIC intrn=WN_intrinsic(wn);
-  if (intrinsic_need_deref(intrn)) {
-    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
-
-    switch (p->pos) {
-      case P0:
-        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
-      case P1:
-        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
-      case P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
-      case P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
-      case P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
-      case P0_P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
-      case P1_P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
-      case P2_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      case P3_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      default:
-        Is_True(0, ("intrinsic has no extended attribution"));
-    }
-  }
-        return;
-}
-
 static int intrinsic_op_extend_kid (int index) {
    return intrn_eattr[index].extend_kid;
 }
@@ -603,6 +572,47 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
    }
 }
 #endif
+
+static void WN_Set_Deref_If_Needed(WN *wn) {
+  INTRINSIC intrn=WN_intrinsic(wn);
+
+#if defined(TARG_SL)
+  if (intrinsic_need_deref(intrn)) {
+    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
+
+    switch (p->pos) {
+      case P0:
+        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
+      case P1:
+        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
+      case P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
+      case P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
+      case P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
+      case P0_P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
+      case P1_P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
+      case P2_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      case P3_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      default:
+        Is_True(0, ("intrinsic has no extended attribution"));
+    }
+  }
+#elif defined(TARG_X8664)
+  if (intrn == INTRN_LOADLPD || intrn == INTRN_LOADHPD ||
+      intrn == INTRN_LOADLPS || intrn == INTRN_LOADHPS ||
+      intrn == INTRN_LOADUPS || intrn == INTRN_LOADUPS256 ||
+      intrn == INTRN_LOADUPD || intrn == INTRN_LOADUPD256 ||
+      intrn == INTRN_LOADDQU || intrn == INTRN_LOADDQU256) {
+    WN_Set_Parm_Dereference(WN_kid(wn,0));
+  }
+#endif
+}
 
 // KEY bug 11288: support for anonymous unions:
 // ---------------------------------------------
@@ -3957,6 +3967,27 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
     case GSBI_IX86_BUILTIN_VEC_EXT_V4SI:
       *iopc = INTRN_VEC_EXT_V2SI;
       break;
+    case GSBI_IX86_BUILTIN_VEC_EXT_V4HI:
+      // add intrinsic for _mm_extract_pi16
+      if (WN_operator(arg1) != OPR_INTCONST)
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3");
+      switch (WN_const_val(arg1)){
+      case 0:
+        *iopc = INTRN_PEXTRW0;
+        break;
+      case 1:
+        *iopc = INTRN_PEXTRW1;
+        break;
+      case 2:
+        *iopc = INTRN_PEXTRW2;
+        break;
+      case 3:
+        *iopc = INTRN_PEXTRW3;
+        break;
+      default:
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3" );
+      }
+      break;
     case GSBI_IX86_BUILTIN_VEC_EXT_V2DI:
       *iopc = INTRN_VEC_EXT_V2SI;
       break;
@@ -6405,9 +6436,15 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 
 	  if (MTYPE_size_min(mtyp) < MTYPE_size_min(WN_rtype(wn))) {
-	    if (MTYPE_size_min(mtyp) != 32)
-	      wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V,
-			         MTYPE_size_min(mtyp), wn);
+	    if (MTYPE_size_min(mtyp) != 32) { 
+	      INT cvt_bit = gs_type_type_precision(gs_tree_type(exp));
+	      if (cvt_bit == 0 || cvt_bit == 8 || cvt_bit == 16 || cvt_bit == 32) { 
+	        wn = WN_CreateCvtl(OPR_CVTL, Widen_Mtype(mtyp), MTYPE_V, cvt_bit, wn);
+	      } else {
+	        wn = WN_CreateExp1(OPR_EXTRACT_BITS, Widen_Mtype(mtyp), MTYPE_V, wn);
+	        WN_set_bit_offset_size(wn, 0, cvt_bit);
+	      }     
+	    }
 	    else wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	  }
 	  else {
@@ -9278,7 +9315,20 @@ WGEN_Expand_Expr (gs_t exp,
 	    for (i = 0, list = gs_tree_operand (exp, 1);
 		 list;
 		 i++, list = gs_tree_chain (list)) {
-              arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+	      // if intrinsic equals _mm_extract_pi16, 
+	      // the second param is fixed to const 0,1,2,3, so 
+	      // there is no need to generate the second arg node.
+#ifdef TARG_X8664
+              if (i ==1 && (iopc == INTRN_PEXTRW0 ||
+                            iopc == INTRN_PEXTRW1 ||
+                            iopc == INTRN_PEXTRW2 ||
+                            iopc == INTRN_PEXTRW3)) {
+                num_args = 1;
+                break;
+	      }
+#endif
+              arg_wn = WGEN_Expand_Expr (gs_tree_value (list));
+	      
 #ifdef KEY // bug 11286
 	      if (i == 1 && TARGET_64BIT &&
 		  (gs_decl_function_code(func) == GSBI_BUILT_IN_POWI ||
@@ -9309,9 +9359,8 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
-#if defined(TARG_SL)
             WN_Set_Deref_If_Needed(wn);
-#endif
+
 #ifdef KEY
 	    if (cvt_to != MTYPE_UNKNOWN) // bug 8251
               wn = WN_Cvt (ret_mtype, cvt_to, wn);
@@ -9852,9 +9901,12 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				ty_idx, Make_Pointer_Type(ty_idx), wn);
 	  }
-	  else if (mtype == MTYPE_C4) {
+	  else if (MTYPE_is_complex(mtype)) {
+        Is_True((mtype == MTYPE_C4 || mtype == MTYPE_C8 || mtype == MTYPE_C10 ||
+            mtype == MTYPE_C16 || mtype == MTYPE_CQ),
+            ("WGEN_Expand_Expr: unexpected complex type"));
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
-	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_C4, MTYPE_C4, 0, ty_idx,
+	    wn = WN_CreateIload(OPR_ILOAD, mtype, mtype, 0, ty_idx,
 				Make_Pointer_Type(ty_idx), wn);
 	  }
 	  else {

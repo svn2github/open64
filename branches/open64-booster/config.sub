@@ -983,6 +983,10 @@ case $basic_machine in
 	sh64)
 		basic_machine=sh64-unknown
 		;;
+	sl)
+		basic_machine=sl-unknown
+		os=-linux
+		;;
 	sparclite-wrs | simso-wrs)
 		basic_machine=sparclite-wrs
 		os=-vxworks

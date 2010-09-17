@@ -553,17 +553,17 @@ public:
 #define WN_Set_div_in_actual(x, y) (((x)->div_in_actual) = (y)) 
 
 #define WN_vbuf_ofst_adjusted(x) ((x)->sl_ext.vbuf_ofst_adjusted)
-#define WN_Set_vbuf_ofst_adjusted(x) ((x)->sl_ext.vbuf_ofst_adjusted = TRUE)
+#define WN_Set_vbuf_ofst_adjusted(x, y) ((x)->sl_ext.vbuf_ofst_adjusted = y)
 
 
 #define WN_is_internal_mem_ofst(x) ((x)->sl_ext.is_internal_mem_ofst)
-#define WN_Set_is_internal_mem_ofst(x) ((x)->sl_ext.is_internal_mem_ofst = TRUE)
+#define WN_Set_is_internal_mem_ofst(x, y) ((x)->sl_ext.is_internal_mem_ofst = y)
 
 #define WN_is_compgoto_para(x) ((x) ->sl_ext.compgoto_para)
-#define WN_Set_is_compgoto_para(x) ((x) ->sl_ext.compgoto_para = TRUE)
+#define WN_Set_is_compgoto_para(x, y) ((x) ->sl_ext.compgoto_para = y)
 
 #define WN_is_compgoto_for_minor(x) ((x) ->sl_ext.compgoto_for_minor)
-#define WN_Set_is_compgoto_for_minor(x)  ((x) ->sl_ext.compgoto_for_minor = TRUE)
+#define WN_Set_is_compgoto_for_minor(x, y)  ((x) ->sl_ext.compgoto_for_minor = y)
 #endif // TARG_SL
 
 #ifndef WN_NO_ACCESSOR_FUNCTIONS
@@ -1502,12 +1502,9 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 #define WN_PARM_NOT_EXPOSED_USE   0x40  /* there is no exposed use */
 #define WN_PARM_IS_KILLED   0x80        /* the parameter is killed, for
 					   pass by reference */
-
-#if defined(TARG_SL)
-#define WN_PARM_DEREFERENCE  0x100
-#define WN_Parm_Dereference(x)         (WN_parm_flag(x) & WN_PARM_DEREFERENCE)
-#define WN_Set_Parm_Dereference(x)   (WN_parm_flag(x) |= WN_PARM_DEREFERENCE)
-#endif // TARG_SL
+#define WN_PARM_DEREFERENCE         0x100 /* parm is deferenced in callee */
+#define WN_Parm_Dereference(x)          (WN_parm_flag(x) & WN_PARM_DEREFERENCE)
+#define WN_Set_Parm_Dereference(x)      (WN_parm_flag(x) |= WN_PARM_DEREFERENCE)
 
 #define WN_Parm_By_Reference(x)		(WN_parm_flag(x) & WN_PARM_BY_REFERENCE)
 #define WN_Set_Parm_By_Reference(x)	(WN_parm_flag(x) |= WN_PARM_BY_REFERENCE)

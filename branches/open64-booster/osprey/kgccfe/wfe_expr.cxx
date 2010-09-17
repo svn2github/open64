@@ -1273,7 +1273,7 @@ WN_Adjust_Vbuf_Ofst(WN* wn, ST* st){
     if(!WN_vbuf_ofst_adjusted(wn)) {
       WN_lda_offset(wn) = (((WN_lda_offset(wn) / 16) * 16) << shft_num ) \
 	+ (WN_lda_offset(wn) % 16);
-      WN_Set_vbuf_ofst_adjusted(wn);
+      WN_Set_vbuf_ofst_adjusted(wn, TRUE);
     }
     return;
   }
@@ -1281,7 +1281,7 @@ WN_Adjust_Vbuf_Ofst(WN* wn, ST* st){
     if(WN_vbuf_ofst_adjusted(wn)) return;
     else {
       WN_const_val(wn) <<= shft_num;
-      WN_Set_vbuf_ofst_adjusted(wn);
+      WN_Set_vbuf_ofst_adjusted(wn, TRUE);
     }
     return;
   }
@@ -1477,13 +1477,13 @@ Mark_LDA_Vbuf_Offset(WN* tree, INTRINSIC iopc) {
 
   if(WN_operator(tree) == OPR_LDA) {
     if(ST_in_vbuf(WN_st(tree)) && iopc == INTRN_VBUF_OFFSET) {
-      WN_Set_is_internal_mem_ofst(tree);
+      WN_Set_is_internal_mem_ofst(tree, TRUE);
       Set_ST_is_vbuf_ofst(WN_st(tree));
       if(ST_in_v1buf(WN_st(tree))) 
         has_v1buf_lda = TRUE;
     }		  
     else if(ST_in_sbuf(WN_st(tree)) && iopc == INTRN_SBUF_OFFSET) {
-      WN_Set_is_internal_mem_ofst(tree);
+      WN_Set_is_internal_mem_ofst(tree, TRUE);
       Set_ST_is_sbuf_ofst(WN_st(tree));
     }		  
   }
@@ -2208,7 +2208,7 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
       // set corresponding flag for automatic expand v1buf ld/st
       // in whirl2ops.cxx 
       if(Mark_LDA_Vbuf_Offset(addr_wn,  INTRN_VBUF_OFFSET)) 
-        WN_Set_is_internal_mem_ofst(wn);
+        WN_Set_is_internal_mem_ofst(wn, TRUE);
 
       if (need_append) {
         WN *iload;
@@ -4997,9 +4997,9 @@ WFE_Expand_Expr (tree exp,
              if(ST_in_v2buf(vbuf_sym) || ST_in_v4buf(vbuf_sym)) {
                if(WN_operator(WN_kid1(wn)) == OPR_MPY) {
                  WN* tmp = WN_Intconst(MTYPE_U4,  ST_in_v2buf(vbuf_sym) ? 2 : 4); 
-                 WN_Set_vbuf_ofst_adjusted(tmp);
+                 WN_Set_vbuf_ofst_adjusted(tmp, TRUE);
                  WN* new_wn = WN_Binary(OPR_MPY, MTYPE_I4, WN_kid1(wn), tmp);
-                 WN_Set_vbuf_ofst_adjusted(new_wn);
+                 WN_Set_vbuf_ofst_adjusted(new_wn, TRUE);
                  WN_kid1(wn) = new_wn;
                }
              }
@@ -5423,7 +5423,7 @@ WFE_Expand_Expr (tree exp,
         // set corresponding flag for automatic expand v1buf ld/st
         // in whirl2ops.cxx 
         if(Mark_LDA_Vbuf_Offset(wn, INTRN_VBUF_OFFSET)) 
-          WN_Set_is_internal_mem_ofst(wn);
+          WN_Set_is_internal_mem_ofst(wn, TRUE);
 
         // following code used to handle assignment from one vbuf array value to 
         // another vbuf array value;

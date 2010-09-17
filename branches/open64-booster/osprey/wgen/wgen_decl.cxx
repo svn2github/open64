@@ -2351,13 +2351,14 @@ AGGINIT::WGEN_Add_Aggregate_Init_Vector (gs_t init_list)
 
   init = gs_tree_vector_cst_elts (init_list);
 
-  gs_t size = gs_type_size (gs_tree_type (gs_tree_value (init)));
-  Is_True (gs_tree_code (size) == GS_INTEGER_CST,
-           ("WGEN_Add_Aggregate_Init_Vector: Vector of variable-sized units?"));
-
-  UINT esize = gs_get_integer_value(size) / BITSPERBYTE;
+  // find the element size from vector mtype
+  TY_IDX vector_type = Get_TY(gs_tree_type(init_list));
+  Is_True (MTYPE_is_vector(TY_mtype(vector_type)), 
+            ("WGEN_Add_Aggregate_Init_Vector: invalid vector type"));
+  TYPE_ID elem_mtype = Mtype_vector_elemtype(TY_mtype(vector_type));
+  UINT esize = MTYPE_byte_size(elem_mtype);
   UINT nunits = vec_size / esize;
-  gs_code_t code = gs_tree_code (gs_tree_value (init));
+  gs_code_t code = MTYPE_is_integral(elem_mtype) ? GS_INTEGER_CST : GS_REAL_CST;
 
   for (i = 0;
        init;

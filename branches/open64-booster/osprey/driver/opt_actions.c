@@ -1740,7 +1740,11 @@ print_file_path (char *fname, int exe)
   /* not found, so ask gcc */
   int m32 = check_for_saved_option("-m32");
   char *argv[4];
-  argv[0] = "gcc";
+  phases_t lang = (invoked_lang == L_CC) ?  P_gcpp_plus :  P_gcpp;
+  if (external_gcc == TRUE)
+    argv[0] = get_phase_name(lang);
+  else
+    argv[0] = get_full_phase_name (lang);
   argv[1] = m32 ? "-m32" : "-m64";
   asprintf(&argv[2], "-print-%s-name=%s", exe ? "prog" : "file", fname);
   argv[3] = NULL;
@@ -1754,7 +1758,11 @@ void
 print_multi_lib ()
 {
   char *argv[3];
-  argv[0] = "gcc";
+  phases_t lang = (invoked_lang == L_CC) ? P_gcpp_plus :  P_gcpp;
+  if (external_gcc == TRUE)
+    argv[0] = get_phase_name(lang);
+  else
+    argv[0] = get_full_phase_name (lang);
   asprintf(&argv[1], "-print-multi-lib");
   argv[2] = NULL;
   /* MINGW doesn't support execvp, everyone supports execlp */

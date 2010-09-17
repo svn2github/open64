@@ -274,7 +274,9 @@ inline BOOL SIMP_Check (TYPE_ID rtype, simpnode x)
         (rtype == MTYPE_F10 && tcon_type == MTYPE_C10) ||
 #endif
         (rtype == MTYPE_F8 && tcon_type == MTYPE_C8) ||
+#ifdef TARG_X8664
         (rtype == MTYPE_F8 && tcon_type == MTYPE_V16C8) ||
+#endif
 	(rtype == MTYPE_F4 && tcon_type == MTYPE_C4))
       return TRUE;
 
@@ -411,7 +413,12 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
 
 	return c;
       }
-      else if (rtype == MTYPE_F8 && (tcon_type == MTYPE_C8 || tcon_type == MTYPE_V16C8))
+      else if (rtype == MTYPE_F8 && (tcon_type == MTYPE_C8
+#ifdef TARG_X8664
+				     || tcon_type == MTYPE_V16C8))
+#else
+	))
+#endif
       {
         TCON c;
         if (SIMPNODE_load_offset (x) == 0)
@@ -463,7 +470,12 @@ inline TCON SIMP_Flt_ConstVal(simpnode x)
 
       return c;
     }
-    else if (rtype == MTYPE_F8 && (tcon_type == MTYPE_C8 || tcon_type == MTYPE_V16C8))
+    else if (rtype == MTYPE_F8 && (tcon_type == MTYPE_C8
+#ifdef TARG_X8664
+				   || tcon_type == MTYPE_V16C8))
+#else
+      ))
+#endif
     {
       TCON c;
       if (ofst == 0)

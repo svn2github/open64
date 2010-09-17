@@ -2611,12 +2611,14 @@ CG_Init (void)
 			" conflicts with -CG:local_sched_alg\n");
       }
     }
+#ifdef TARG_X8664
     if (Is_Target_Orochi()) {
       // TODO: add CG_dispatch_schedule set to TRUE once
       //       we have binutils support
       if (CG_loop32 == FALSE)
         CG_loop32 = TRUE; 
     }
+#endif //TARG_X8664
 #endif // KEY
 } /* CG_Init */
 

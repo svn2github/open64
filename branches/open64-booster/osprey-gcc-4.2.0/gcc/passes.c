@@ -140,10 +140,10 @@ rest_of_decl_compilation (tree decl,
 	alias = get_identifier (TREE_STRING_POINTER (alias));
 	assemble_alias (decl, alias);
 #ifdef KEY
-	// Put aliases into the list of decls emitted by g++ so that we can
-	// iterate through the list when expanding aliases to WHIRL.  An alias
-	// can be expanded only if its target, which can be another alias, is
-	// expanded.  Bug 4393.
+	/* Put aliases into the list of decls emitted by g++ so that we can
+	 * iterate through the list when expanding aliases to WHIRL.  An alias
+	 * can be expanded only if its target, which can be another alias, is
+	 * expanded.  Bug 4393. */
 	if (flag_spin_file)
 	  gspin_gxx_emits_decl(decl);
 #endif

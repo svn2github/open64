@@ -81,11 +81,13 @@ CFILES += \
     ieee_exponent_i2.c \
     ieee_exponent_n.c \
     ieee_exponent_r.c \
-    ieee_int.c 
-CFILES += \
-    ieee_module_support.c \
+    ieee_int.c \
     ieee_next_after.c \
     iso_c_binding_support.c
+ifneq ($(BUILD_TARGET), IA64)
+CFILES += \
+    ieee_module_support.c 
+endif
 CFILES += \
     ilen.c \
     itoi.c \
