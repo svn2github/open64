@@ -99,6 +99,8 @@ extern void WGEN_expand_start_do_loop (WN *, WN *, WN *, WN *);
 
 extern void WGEN_expand_end_do_loop (void);
 
+extern void WGEN_register_local_variable(ST * st);
+
 extern BOOL Trace_Omp;
 #endif
 
