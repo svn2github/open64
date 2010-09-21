@@ -2269,10 +2269,10 @@ Atomic_Using_Swap(WN *atomic, WN *store, WN *operation, WN *parent,
   WN *c_s;
   if (swap_type == MTYPE_I4) {
     c_s=WN_Create_Intrinsic(OPC_U4INTRINSIC_CALL,
-		    INTRN_COMPARE_AND_SWAP_I4,3,kids);
+		    INTRN_BOOL_COMPARE_AND_SWAP_I4,3,kids);
   } else {
     c_s=WN_Create_Intrinsic(OPC_U8INTRINSIC_CALL,
-		    INTRN_COMPARE_AND_SWAP_I8,3,kids);
+		    INTRN_BOOL_COMPARE_AND_SWAP_I8,3,kids);
   }
   WN_Set_Call_Parm_Mod(c_s);
   WN_Set_Call_Parm_Ref(c_s);
@@ -2441,8 +2441,8 @@ Get_ATOMIC_Update_LDA(WN *wn)
   case INTRN_FETCH_AND_OR_I8:
   case INTRN_FETCH_AND_XOR_I8:
       // from Atomic_Using_Swap()
-  case INTRN_COMPARE_AND_SWAP_I4:
-  case INTRN_COMPARE_AND_SWAP_I8:
+  case INTRN_BOOL_COMPARE_AND_SWAP_I4:
+  case INTRN_BOOL_COMPARE_AND_SWAP_I8:
     break;
   default:
     return NULL;

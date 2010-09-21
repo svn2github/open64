@@ -8436,11 +8436,12 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
   //    end if
   if (VHO_Enable_Simple_If_Conv && 
       !Action(LOWER_RETURN_VAL) /* Lower after LNO */ &&
-      //bug 13853: these three lowers happen before lno, so should
+      //bug 13853: these four lowers happen before lno, so should
       //           not transform select back to if
       !Action(LOWER_FAST_EXP)                         &&
       !Action(LOWER_TREEHEIGHT)                       &&
       !Action(LOWER_INLINE_INTRINSIC)                 &&
+      !Action(LOWER_SPLIT_SYM_ADDRS)                  &&
       OPCODE_is_store(WN_opcode(tree)) &&
       WN_operator(WN_kid0(tree)) == OPR_SELECT &&
       !MTYPE_is_vector(WN_desc(tree)) && MTYPE_is_float(WN_desc(tree))) {

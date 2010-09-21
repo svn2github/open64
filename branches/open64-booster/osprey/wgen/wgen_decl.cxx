@@ -95,6 +95,7 @@ extern "C" {
 #include "wgen_dst.h" // DST_enter_member_function
 #include "dwarf_DST_dump.h"
 #include "targ_sim.h" // PUSH_RETURN_ADDRESS_ON_STACK
+#include "wgen_omp_directives.h"
 
 #ifdef KEY
 #include <ext/hash_map>
@@ -3328,6 +3329,9 @@ AGGINIT::Traverse_Aggregate_Struct (
     }
 
     gs_t element_value = gs_constructor_elts_value(init_list, idx);
+    if (gs_tree_code(element_value) == GS_NOP_EXPR)
+        element_value = gs_tree_operand(element_value, 0);
+
     fld_ty = FLD_type(fld);
     if (gs_tree_code(element_value) == GS_CONSTRUCTOR) {
       // recursively process nested ARRAYs and STRUCTs
