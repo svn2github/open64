@@ -708,7 +708,6 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
     Init_Deferred_Function_Stack();
   }
 */
-  ST      *var_st;
   switch (gs_tree_code(decl)) { 
 
     case GS_CONST_DECL:
@@ -887,9 +886,7 @@ void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 
       expanded_decl(decl) = TRUE;
 #endif
-      var_st = Get_ST(decl);
-      if (!gs_tree_static(decl) && !gs_decl_external(decl))
-        WGEN_register_local_variable(var_st);
+      (void) Get_ST(decl);
       if (gs_decl_initial(decl) && !gs_decl_external(decl)) {
 	gs_t init = gs_decl_initial(decl);
 	gs_code_t code = gs_tree_code(init);

@@ -87,8 +87,6 @@ std::stack<WN *> lastlocal_node_stack;
 // vector for storing DO-loop side-effects, to be emitted before the loop.
 std::vector<WN *> doloop_side_effects;
 
-static std::stack<WN *> omp_construct_stack;
-
 BOOL Trace_Omp = FALSE;
 
 // Put in per-file OpenMP specific initializations here.
@@ -842,7 +840,6 @@ void WGEN_expand_start_parallel (gs_t stmt)
   /* create a region on current block */
        
   WN * region = WGEN_region(REGION_KIND_MP);
-  omp_construct_stack.push(region);
 
   WN *wn;
 
@@ -895,7 +892,6 @@ void WGEN_expand_end_parallel ()
       WGEN_maybe_do_eh_cleanups ();
     }
 
-    omp_construct_stack.pop();
     WGEN_Stmt_Pop (wgen_stmk_scope);
     WGEN_CS_pop (wgen_omp_parallel);
 };
@@ -1259,7 +1255,6 @@ void WGEN_expand_start_parallel_for (gs_t stmt)
   /* create a region on current block */
 
   WN * region = WGEN_region(REGION_KIND_MP);
-  omp_construct_stack.push(region);
 
   WN *wn;
 
@@ -1303,7 +1298,6 @@ void WGEN_expand_end_parallel_for ()
 {
   WN *wn = WGEN_Stmt_Top ();
   //WGEN_check_parallel_for (wn);
-  omp_construct_stack.pop();
   WGEN_Stmt_Pop (wgen_stmk_scope);
   WGEN_CS_pop(wgen_omp_parallel_for);
 }
@@ -1318,7 +1312,6 @@ void WGEN_expand_start_parallel_sections (gs_t stmt)
   /* create a region on current block */
 
   WN * region = WGEN_region(REGION_KIND_MP);
-  omp_construct_stack.push(region);
 
   WN *wn;
 
@@ -1364,7 +1357,6 @@ void WGEN_expand_end_parallel_sections ()
 {
      WN *wn = WGEN_Stmt_Top ();
 //     WGEN_check_parallel_sections (wn);
-     omp_construct_stack.pop();
      WGEN_Stmt_Pop (wgen_stmk_scope);
 
      WGEN_CS_pop(wgen_omp_parallel_sections);
@@ -1827,13 +1819,3 @@ void WGEN_expand_end_do_loop (void)
   WGEN_Stmt_Pop (wgen_stmk_for_cond);
 }
 
-void WGEN_register_local_variable(ST * st)
-{
-  if (omp_construct_stack.empty())
-    return;
-  WN * last_region = omp_construct_stack.top();
-  WN * pragmas = WN_region_pragmas(last_region);
-  WN * private_pragma = WN_CreatePragma(WN_PRAGMA_LOCAL, st, 0, 0);
-  WN_set_pragma_omp(private_pragma);
-  WN_INSERT_BlockLast(pragmas, private_pragma);
-}

@@ -197,10 +197,11 @@ __ompc_critical(int gtid, volatile ompc_lock_t **lck)
     __ompc_lock_spinlock(&_ompc_thread_lock);
     if ((ompc_lock_t*)*lck == NULL){
       // put the shared data aligned with cache line
-      *lck = aligned_malloc(sizeof(ompc_lock_t), CACHE_LINE_SIZE);
-      Is_True(*lck!=NULL, 
+      volatile ompc_lock_t* new_lock = aligned_malloc(sizeof(ompc_lock_t), CACHE_LINE_SIZE);
+      Is_True(new_lock!=NULL, 
 	      ("Cannot allocate lock memory for critical"));
-      __ompc_init_lock (*lck);
+      __ompc_init_lock (new_lock);
+      *lck = new_lock;
     }
     __ompc_unlock_spinlock(&_ompc_thread_lock);
   }
