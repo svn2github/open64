@@ -206,7 +206,7 @@ INSTALL_GCC () {
 
     # Make links to gcc runtime libraries
     cd ${ROOT}
-    mkdir $PHASEPATH/64
+    test -d $PHASEPATH/64 || mkdir $PHASEPATH/64
     if [ "$TARG_HOST" = "x8664" ]
     then
 	for i in open64-gcc-4.2.0/lib64/lib*.so*; do
@@ -365,19 +365,19 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
         (cd ${PHASEPATH}; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
         (cd ${PHASEPATH}/32; ln -sf libhugetlbfs_open64.so.1 libhugetlbfs_open64.so)
 
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/elf.xB
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xB      ${PHASEPATH}/64/elf.xB
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xB        ${PHASEPATH}/32/elf.xB
 
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/elf.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64.xBDT    ${PHASEPATH}/64/elf.xBDT
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386.xBDT      ${PHASEPATH}/32/elf.xBDT
 
-        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/elf_1G.xBDT
+        INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_x86_64_1G.xBDT    ${PHASEPATH}/64/elf_1G.xBDT
         INSTALL_DATA_SUB ${HUGETLB}/ldscripts/elf_i386_1G.xBDT      ${PHASEPATH}/32/elf_1G.xBDT
 
-        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf.xBD    ${PHASEPATH}/elf.xBD
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf.xBD    ${PHASEPATH}/64/elf.xBD
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf.xBD      ${PHASEPATH}/32/elf.xBD
 
-        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf_1G.xBD    ${PHASEPATH}/elf_1G.xBD
+        INSTALL_DATA_SUB ${LIBAREA}/libhugetlbfs/elf_1G.xBD    ${PHASEPATH}/64/elf_1G.xBD
         INSTALL_DATA_SUB ${LIB32AREA}/libhugetlbfs/elf_1G.xBD      ${PHASEPATH}/32/elf_1G.xBD
 
     fi
