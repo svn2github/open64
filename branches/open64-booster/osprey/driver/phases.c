@@ -3130,7 +3130,7 @@ run_ld (void)
         if (abi == ABI_N32) {
           asprintf(&our_path, "%s" LIBPATH "/32", root_prefix);
         } else {
-          asprintf(&our_path, "%s" LIBPATH, root_prefix);
+          asprintf(&our_path, "%s" LIBPATH "/64", root_prefix);
         }
 
         add_string(args, concat_strings("-L", our_path));
