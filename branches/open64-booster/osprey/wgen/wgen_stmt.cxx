@@ -2133,13 +2133,16 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
       	if (*li != *ci) break;
       if (ci!=Current_scope_nest.rend())
       {
+	int scope_cleanup_i_save = scope_cleanup_i;
       	i = scope_cleanup_i;
         Is_True(i != -1, ("WGEN_Expand_Goto: scope_cleanup_stack empty"));
         while ((i >= 0) && (scope_cleanup_stack [i].stmt != *ci))
         {
+	   scope_cleanup_i --;
            Maybe_Emit_Cleanup (i, FALSE);
     	   --i;
         }
+        scope_cleanup_i = scope_cleanup_i_save;
         if (i == -1)
         {
 #ifdef FE_GNU_4_2_0
@@ -2291,8 +2294,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
     int i = scope_cleanup_i;
+    int scope_cleanup_i_save = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
+      scope_cleanup_i--;
       Maybe_Emit_Cleanup (i, FALSE);
 #else
       if (gs_tree_code(scope_cleanup_stack [i].stmt) == GS_CLEANUP_STMT)
@@ -2301,6 +2306,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
+    scope_cleanup_i = scope_cleanup_i_save;
     if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
@@ -2398,8 +2404,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
     int i = scope_cleanup_i;
+    int scope_cleanup_i_save = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
+      scope_cleanup_i--;
       Maybe_Emit_Cleanup (i, FALSE);
 #else
       if (gs_tree_code(scope_cleanup_stack [i].stmt) == GS_CLEANUP_STMT)
@@ -2408,6 +2416,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
+    scope_cleanup_i = scope_cleanup_i_save;
     if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));

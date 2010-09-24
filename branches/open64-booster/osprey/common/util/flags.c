@@ -377,7 +377,7 @@ Get_OVK_UINT64_Val(void *p, OPTION_KIND o)
   OPTVALTYPES v;
 
   if (Get_OVK_Size(o) > 0)
-    strncpy((void *) &v, p, Get_OVK_Size(o));
+    memmove(&v, p, Get_OVK_Size(o));
 
   switch (o) {
     case OVK_NONE:
@@ -405,7 +405,7 @@ Get_OVK_Pointer_Val(void *p, OPTION_KIND o)
 {
   OPTVALTYPES v;
   if (OVK_Pointer_Kind(o)) {
-    strncpy((void *) &v, p, Get_OVK_Size(o));
+    memmove(&v, p, Get_OVK_Size(o));
     return (void *) v.p;
   }
   else
@@ -428,9 +428,9 @@ Copy_option(OPTION_DESC *odesc, char *container, BOOL save)
 
   if (size > 0) {
     if (save)
-      strncpy(container, var, size);
+      memmove(container, var, size);
     else /* restore */
-      strncpy(var, container, size);
+      memmove(var, container, size);
   }
 
   return size;
@@ -676,7 +676,7 @@ Update_Scalar_Value ( OPTION_DESC *odesc, UINT64 val )
       break;
   }
   if (Get_OVK_Size(ODESC_kind(odesc)) > 0) 
-    strncpy(var, (void *) &v, Get_OVK_Size(ODESC_kind(odesc)));
+    memmove(var, &v, Get_OVK_Size(ODESC_kind(odesc)));
 }
 
 /* ====================================================================
