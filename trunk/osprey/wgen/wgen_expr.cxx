@@ -8153,6 +8153,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifndef TARG_MIPS  // MIPS needs quad emulation for sqrt operation
               case GSBI_BUILT_IN_SQRTL:
 #endif
+	       	if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 		if (! gs_flag_errno_math(program)) {
 		  arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 		  wn = WN_CreateExp1 (OPR_SQRT, ret_mtype, MTYPE_V, arg_wn);
