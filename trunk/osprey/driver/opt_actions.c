@@ -1999,59 +1999,54 @@ get_auto_cpu_name ()
   // If /proc/cpuinfo doesn't have a supported model name, try to derive one
   // from the family and model numbers.  If that fails, fall back to a default.
   // Bug 5785.
-  if (cpu_name == NULL ||
-      // need to differentiate Core-based Xeon's
-      !strcmp(cpu_name, "xeon")) {
-    char *abi_name;
-    if (intel == TRUE) {
-      switch (cpu_family) {
-	case 4:			// most 80486s
-	case 5:			// Intel P5, P54C, P55C, P24T
-	    return "i386";
+  // need to differentiate Core-based Xeon's
+  if (intel == TRUE && (cpu_name == NULL || !strcmp(cpu_name, "xeon"))) {
+    switch (cpu_family) {
+      case 4:			// most 80486s
+      case 5:			// Intel P5, P54C, P55C, P24T
+        return "i386";
 
-	case 6:			// P6, Core, ...
-	  if (model == 7 ||	// Harpertown	bug 14685
-	      model == 23 ||	// Wolfdale
-	      model == 26)	// Nehalem
-	    return "wolfdale";
+      case 6:			// P6, Core, ...
+        if (model == 7 ||	// Harpertown	bug 14685
+            model == 23 ||	// Wolfdale
+            model == 26)	// Nehalem
+          return "wolfdale";
 
-	  if (model >= 15)
-	    return "core";
+        if (model >= 15)
+          return "core";
 
-	  // Treat the rest of the P6 family as generic x86 since we don't
-	  // optimize for them.
-	  return "i386";
+        // Treat the rest of the P6 family as generic x86 since we don't
+        // optimize for them.
+        return "i386";
 
-	case 15:		// P4
-	  cpu_name = "xeon";
-	  cpu_name_64bit = "em64t";
-	  break;
-      }
-
-    } else if (amd == TRUE) {
-      switch (cpu_family) {
-	case 4:			// 5x86
-	case 5:			// K5, K6
-	case 6:			// K7
-	  return "athlon";
-	case 15:		// Opteron, Athlon64
-	  return "opteron";
-        case 16: 
-	  return "barcelona";   // Barcelona
-        case 21:
-	  return "orochi";      // Orochi
-      }
+      case 15:		// P4
+        cpu_name = "xeon";
+        cpu_name_64bit = "em64t";
+        break;
     }
 
-    if (cpu_name == NULL) {
-      return get_default_cpu_name("cannot deduce a supported CPU name"
-				  " from /proc/cpuinfo");
+  } else if (amd == TRUE) {
+    switch (cpu_family) {
+      case 4:                   // 5x86
+      case 5:                   // K5, K6
+      case 6:                   // K7
+        return "athlon";
+      case 15:
+        return "opteron";       // Family 0fh (K8)
+      case 16:
+        return "barcelona";     // Family 10h
+      case 17:
+      case 18:
+      case 20:
+        return "opteron";       // Generic tuning for Family 11h, 12h, 14h
+      case 21:
+        return "bdver1";        // Family 15h
     }
   }
 
   if (cpu_name == NULL) {
-    error("cpu_name NULL");
-    return NULL;
+      return get_default_cpu_name("cannot deduce a supported CPU name"
+                                  " from /proc/cpuinfo");
   }
 
   // If cpuinfo doesn't say if CPU is 32 or 64-bit, ask the OS.
