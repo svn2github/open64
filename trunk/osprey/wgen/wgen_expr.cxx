@@ -9810,7 +9810,8 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
         // bug 11238: pass on the target
         wn = WGEN_Expand_Expr (gs_tree_operand (exp, 1), need_result,
-                               0, 0, 0, 0, FALSE, FALSE, target_wn);
+                               nop_ty_idx, component_ty_idx, component_offset,
+                               field_id, is_bit_field, is_aggr_init_via_ctor, target_wn); 
 #else
         wn = WGEN_Expand_Expr (gs_tree_operand (exp, 1), need_result);
 #endif
