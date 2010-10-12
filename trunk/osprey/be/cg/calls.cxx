@@ -623,6 +623,12 @@ Generate_Entry (BB *bb, BOOL gra_run )
     ENTRYINFO_sp_adj(ent_info) = OPS_last(&ops);
 #endif //ABI_PROPERTY_stack_ptr
 
+#ifdef TARG_X8664
+    if (PU_has_builtin_apply_args) {
+        Setup_Builtin_Apply_Args(&ops);
+    }
+#endif
+
 #ifdef TARG_SL
     // insert break after sp adjust
     if (DEBUG_Stack_Check & STACK_ENTRY_CHECK) {

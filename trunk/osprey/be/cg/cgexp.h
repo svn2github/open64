@@ -351,6 +351,10 @@ extern void Expand_Cmov (TOP top, TN *result, TN *src, TN *rflags, OPS *ops,
 			 TN *result2 = NULL, TN *src2 = NULL);
 #endif
 
+#ifdef TARG_X8664
+extern void Setup_Builtin_Apply_Args(OPS *ops);
+#endif
+
 /* Predicate manipulation routines.
  *
  * Most if not all of these routines take two result TNs. The second

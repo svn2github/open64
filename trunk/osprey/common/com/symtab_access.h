@@ -1113,6 +1113,13 @@ Set_PU_nothrow (PU& pu)			{ pu.flags |= PU_NOTHROW; }
 inline void
 Clear_PU_nothrow (PU& pu)		{ pu.flags &= ~PU_NOTHROW; }
 
+inline BOOL
+PU_has_apply_args (const PU& pu)        { return (pu.flags & PU_HAS_APPLY_ARGS) != 0;}
+inline void
+Set_PU_has_apply_args (PU& pu)          { pu.flags |= PU_HAS_APPLY_ARGS; }
+inline void
+Clear_PU_has_apply_args (PU& pu)        { pu.flags &= ~PU_HAS_APPLY_ARGS; }
+
 inline UINT64
 PU_src_lang (const PU& pu)		{ return pu.src_lang; }
 

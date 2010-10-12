@@ -8714,6 +8714,7 @@ WGEN_Expand_Expr (gs_t exp,
 		ErrMsg(EC_Unimplemented_Feature, "__builtin_apply_args",
 		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
+                Set_PU_has_apply_args(Get_Current_PU());
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_APPLY_ARGS;
 		break;	
@@ -8788,16 +8789,21 @@ WGEN_Expand_Expr (gs_t exp,
 		  WGEN_Stmt_Append (alloca_kid1, Get_Srcpos());
 
 		  // The src is actually in 0(kid1)
-		  kid1 = 
-		    WN_CreateIload (OPR_ILOAD, MTYPE_I4, MTYPE_I4, 0,
-				    MTYPE_To_TY(MTYPE_I4), 
-				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
-				    kid1, 0);
+                  if (Is_Target_32bit())
+                      kid1 = WN_CreateIload (OPR_ILOAD, MTYPE_I4, MTYPE_I4, 0,
+                              MTYPE_To_TY(MTYPE_I4), 
+                              Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+                              kid1, 0);
+                  else
+                      kid1 = WN_CreateIload (OPR_ILOAD, MTYPE_I8, MTYPE_I8, 0,
+                              MTYPE_To_TY(MTYPE_I8), 
+                              Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+                              kid1, 0);
 		  load_wn = 
 		    WN_CreateMload (0, 
 				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
 				    kid1, kid2);
-		  sp_addr = WN_LdidPreg(MTYPE_U4, 29); // $sp
+		  sp_addr = WN_LdidPreg(Is_Target_32bit() ? MTYPE_U4 : MTYPE_U8, Stack_Pointer_Preg_Offset); // $sp
 		  WGEN_Stmt_Append(WN_CreateMstore (0, 
 			      Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
 						   load_wn,
@@ -8810,33 +8816,69 @@ WGEN_Expand_Expr (gs_t exp,
 		  call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V, 1);
 		  WN_kid(call_wn, 0) = 
 		    WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
+#if defined(TARG_X8664)
+                  // We assume the function will return floating point to avoid
+                  // Repair_Call_BB manually insert a "fldz" OP later.
+                  WN_set_ty (call_wn, Make_Function_Type(MTYPE_To_TY(MTYPE_F10)));
+#else
 		  WN_set_ty (call_wn, TY_pointed(Get_TY(
 			    gs_tree_type (gs_tree_value(gs_tree_operand (exp, 1))))));
+#endif
 		  WGEN_Stmt_Append (call_wn, Get_Srcpos());		
 
 		  TY_IDX tyi;
 		  TY& ty = New_TY(tyi);
-		  TY_Init(ty, 16, KIND_STRUCT, MTYPE_M,
+		  TY_Init(ty, 48, KIND_STRUCT, MTYPE_M,
 			  Save_Str("__apply"));
 		  Set_TY_align(tyi, 8);
 		  ST *tmpst = New_ST(CURRENT_SYMTAB);
 		  ST_Init(tmpst, TY_name_idx(ty),
 			  CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, tyi);
 		  Set_ST_is_temp_var(tmpst);
+
 		  WN *load, *store;
-		  load = WN_LdidPreg(MTYPE_I8, 2); // $v0
-		  store = WN_Stid(MTYPE_I8, 
-				  (WN_OFFSET)0, tmpst, Spill_Int_Type, load);
+                  WN_OFFSET offset = 0;
+
+#if defined(TARG_X8664)
+                  // We need to save %rax and %rdx both on x8664, however use MTYPE_M as
+                  // the return type fails because of a check in lower_return_mstid function.
+                  if (Is_Target_64bit()) {
+                      TY_IDX int_return_tyi;
+                      TY& int_return_ty = New_TY(int_return_tyi);
+                      TY_Init(int_return_ty, 16, KIND_STRUCT, MTYPE_M, STR_IDX_ZERO);
+                      Set_TY_align(int_return_tyi, 8);
+
+                      load = WN_Ldid(MTYPE_M, -1, Return_Val_Preg, int_return_tyi);
+                      store = WN_Stid(MTYPE_M, 
+                              offset, tmpst, int_return_tyi, load);
+                      offset += int_return_ty.size;
+                  } else {
+#endif
+                  load = WN_Ldid(MTYPE_I8, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_I8));
+                  store = WN_Stid(MTYPE_I8, 
+                          offset, tmpst, Spill_Int_Type, load);
+                  offset += 8;
+#if defined(TARG_X8664)
+                  }
+#endif
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
 #if !defined(TARG_SL)
 		  // SL do not have float-point register
-		  load = WN_LdidPreg(MTYPE_F8, 32); //$f0
-		  store = WN_Stid(MTYPE_F8, 
-				  (WN_OFFSET)8, tmpst, Spill_Int_Type, load);
+		  load = WN_Ldid(MTYPE_F10, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_F10)); 
+		  store = WN_Stid(MTYPE_F10, 
+				  offset, tmpst, Spill_Int_Type, load);
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
+                  offset += 16;
 #endif
-		  wn = WN_Lda (Pointer_Mtype, 0, tmpst, 
-			       Make_Pointer_Type (ST_type(tmpst), FALSE));
+#if defined(TARG_X8664)
+                  // xmm0
+		  load = WN_Ldid(MTYPE_V16F8, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_V16F8)); 
+		  store = WN_Stid(MTYPE_V16F8, 
+				  offset, tmpst, Spill_Int_Type, load);
+		  WGEN_Stmt_Append (store, Get_Srcpos());		
+                  offset += 16;
+#endif
+		  wn = WN_Lda (Pointer_Mtype, 0, tmpst);
 
 		  // Dealloca/Restore SP
 		  WN *dealloca_wn = WN_CreateDealloca (2);
@@ -8858,6 +8900,28 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_RETURN;
+
+                call_wn = WN_Create (OPR_INTRINSIC_CALL, ret_mtype, MTYPE_V, 
+                        num_args);
+                WN_intrinsic (call_wn) = iopc;
+                WN_Set_Linenum (call_wn, Get_Srcpos());
+                WN_Set_Call_Default_Flags (call_wn);
+                i = 0;
+                for (list = gs_tree_operand (exp, 1);
+                        list;
+                        list = gs_tree_chain (list)) {
+                    arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+                    arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+                    arg_mtype  = TY_mtype(arg_ty_idx);
+                    arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), 
+                            arg_wn,
+                            arg_ty_idx, WN_PARM_BY_VALUE);
+                    WN_kid (call_wn, i++) = arg_wn;
+                }
+                WGEN_Stmt_Append (call_wn, Get_Srcpos());
+                WGEN_Stmt_Append (WN_CreateReturn(), Get_Srcpos());
+
+                whirl_generated = TRUE;
 		break;	
 
                 // Implement built-in versions of the ISO C99 floating point

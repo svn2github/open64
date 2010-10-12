@@ -100,6 +100,7 @@
 #include "targ_const_private.h"
 #include "config_opt.h" /* For Force_IEEE_Comparisons */
 #include "intrn_info.h" // for INTRN_rt_name
+#include "cg.h"
 #ifdef KEY
 #include "ebo.h"
 #endif
@@ -145,6 +146,9 @@ static TN *Exp_Test_and_Set     (TN *addr, TN *opnd1, TYPE_ID mtype, OPS *ops);
 static TN *Exp_Lock_Release     (TN *addr, TYPE_ID mtype, OPS *ops);
 static TN *Exp_Compare_and_Swap (TN *addr, TN *opnd1, TN *opnd2, TYPE_ID mtype, OPS *ops); 
 static TN *Exp_Bool_Compare_and_Swap (TN *addr, TN *opnd1, TN *opnd2, TYPE_ID mtype, OPS *ops); 
+static TN *Exp_Builtin_Apply_Args (OPS *ops);
+static TN *Exp_Builtin_Apply    (TN *addr, TN *args, TN *argsize, OPS *ops);
+static TN *Exp_Builtin_Return   (TN *result, OPS *ops);
 
 static void Store_To_Temp_Stack(TYPE_ID desc, TN *src, const char *sym_name, TN **mem_base_tn,
 		    TN **mem_ofst_tn, OPS *ops);
@@ -6615,9 +6619,9 @@ Generate_Temp_Apply_Arg ( )
 {
   TY_IDX tyi;
   TY& ty = New_TY(tyi);
-  TY_Init(ty, 144, KIND_STRUCT, MTYPE_M,
+  TY_Init(ty, Is_Target_32bit() ? 144 : 192, KIND_STRUCT, MTYPE_M,
           Save_Str("__apply_arg"));
-  Set_TY_align(tyi, 8);
+  Set_TY_align(tyi, 16);
   tmp_apply_arg = New_ST(CURRENT_SYMTAB);
   ST_Init(tmp_apply_arg, TY_name_idx(ty),
           CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, tyi);
@@ -9465,11 +9469,197 @@ Exp_Intrinsic_Call (INTRINSIC id, TN *op0, TN *op1, TN *op2,
   case INTRN_BOOL_COMPARE_AND_SWAP_I8:
     result = Exp_Bool_Compare_and_Swap(op0, op1, op2, MTYPE_I8, ops);
     break;
+  case INTRN_APPLY_ARGS:
+    result = Exp_Builtin_Apply_Args(ops);
+    break;
+  case INTRN_APPLY:
+    result = Exp_Builtin_Apply(op0, op1, op2, ops);
+    break;
+  case INTRN_RETURN:
+    result = Exp_Builtin_Return(op0, ops);
+    break;
 
   default:  
     FmtAssert(FALSE, ("Exp_Intrinsic_Call: unimplemented"));
   }
   return result;
+}
+
+
+/* __builtin_apply_args should be insert into the beginning of the function, 
+ * not where it defined. */
+void
+Setup_Builtin_Apply_Args(OPS *ops) {
+    FmtAssert(PU_has_builtin_apply_args,
+            ("Exp_Apply_Args: __builtin_apply_args is not available in current PU"));
+
+    TYPE_ID type = Is_Target_32bit() ? MTYPE_U4 : MTYPE_U8;
+    INT size = Is_Target_32bit() ? 4 : 8;
+
+    // Store register parameters into the new structure
+    INT ofst = size;
+    if (Is_Target_32bit()) { // 32 bits
+        REGISTER int_regs[] = {RAX, RDX, RCX};
+        for (int i = 0; i < sizeof(int_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, int_regs[i], size);
+            Exp_Store(type, tn, tmp_apply_arg, ofst, ops, 0);
+            ofst += size;
+        }
+        if (Is_Target_SSE()) {
+            REGISTER sse_regs[] = {XMM0, XMM1, XMM2};
+            for (int i = 0; i < sizeof(sse_regs) / sizeof(REGISTER); i++) {
+                TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float, sse_regs[i] - Float_Preg_Min_Offset + 1, 16);
+                Build_OP(TOP_stups, tn, FP_TN, Gen_Symbol_TN(tmp_apply_arg, ofst, 0), ops);
+                ofst += 16;
+            }
+        }
+        if (Is_Target_MMX()) {
+            REGISTER mmx_regs[] = {MM0, MM1, MM2};
+            for (int i = 0; i < sizeof(mmx_regs) / sizeof(REGISTER); i++) {
+                TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_mmx, mmx_regs[i] - MMX_Preg_Min_Offset + 1, 8);
+                Build_OP(TOP_store64_fm, tn, FP_TN, Gen_Symbol_TN(tmp_apply_arg, ofst, 0), ops);
+                ofst += 8;
+            }
+        }
+    } else { // 64 bits
+        REGISTER int_regs[] = {RAX, RDX, RCX, RSI, RDI, R8, R9};
+        for (int i = 0; i < sizeof(int_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, int_regs[i], size);
+            Exp_Store(type, tn, tmp_apply_arg, ofst, ops, 0);
+            ofst += size;
+        }
+        REGISTER sse_regs[] = {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7 };
+        for (int i = 0; i < sizeof(sse_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float, sse_regs[i] - Float_Preg_Min_Offset + 1, 16);
+            Build_OP(TOP_stdqu, tn, FP_TN, Gen_Symbol_TN(tmp_apply_arg, ofst, 0), ops);
+            ofst += 16;
+        }
+    }
+
+    // Store function parameters into the new structure
+    TN* function_args = Gen_Register_TN(ISA_REGISTER_CLASS_integer, size);
+    Exp_Lda(type, function_args, FP_Sym, Is_Target_32bit() ? 8 : 16, OPR_STID, ops);
+    Exp_Store(type, function_args, tmp_apply_arg, 0, ops, 0);
+}
+
+TN*
+Exp_Builtin_Apply_Args(OPS *ops)
+{
+    // User may call __builtin_apply_args several times in one function
+    if (!PU_has_builtin_apply_args) {
+        // Generate_Entry will expand __builtin_apply_args later if this flag is set
+        PU_has_builtin_apply_args = TRUE;
+
+        Generate_Temp_Apply_Arg();
+    }
+
+    // Return the pointer to the new structure
+    TN *return_tn = Build_TN_Of_Mtype(Is_Target_32bit() ? MTYPE_U4 : MTYPE_U8);
+    Exp_OP2(Is_Target_32bit() ? OPC_I4ADD : OPC_I8ADD,
+            return_tn, FP_TN, Gen_Symbol_TN(tmp_apply_arg, 0, 0), ops);
+    return return_tn;
+}
+
+TN*
+Exp_Builtin_Apply(TN *addr, TN *args, TN *argsize, OPS *ops)
+{
+    PU_has_builtin_apply = TRUE;
+
+    INT size = Is_Target_32bit() ? 4 : 8;
+
+    // All OPs generated here must set volatile flag, otherwise 
+    // EBO_Remove_Unused_Ops may remove them later
+
+    // Restore register parameters
+    TN *apply_arg = Gen_Register_TN(ISA_REGISTER_CLASS_integer, size);
+    Build_OP(Is_Target_32bit() ? TOP_ld32 : TOP_ld64, apply_arg, args, Gen_Literal_TN(0, size), ops);
+    INT ofst = size;
+    if (Is_Target_32bit()) { // 32 bits
+        REGISTER int_regs[] = {RAX, RDX, RCX};
+        for (int i = 0; i < sizeof(int_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, int_regs[i], size);
+            OP *op = Mk_OP(TOP_ld32, tn, args, Gen_Literal_TN(ofst, 4));
+            Set_OP_volatile(op);
+            OPS_Append_Op(ops, op);
+            ofst += size;
+        }
+        if (Is_Target_SSE()) {
+            REGISTER sse_regs[] = {XMM0, XMM1, XMM2};
+            for (int i = 0; i < sizeof(sse_regs) / sizeof(REGISTER); i++) {
+                TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float, sse_regs[i] - Float_Preg_Min_Offset + 1, 16);
+                OP *op = Mk_OP(TOP_ldups, tn, args, Gen_Literal_TN(ofst, 4));
+                Set_OP_volatile(op);
+                OPS_Append_Op(ops, op);
+                ofst += 16;
+            }
+        }
+        if (Is_Target_MMX()) {
+            REGISTER mmx_regs[] = {MM0, MM1, MM2};
+            for (int i = 0; i < sizeof(mmx_regs) / sizeof(REGISTER); i++) {
+                TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_mmx, mmx_regs[i] - MMX_Preg_Min_Offset + 1, 8);
+                OP *op = Mk_OP(TOP_ld64_2m, tn, args, Gen_Literal_TN(ofst, 4));
+                Set_OP_volatile(op);
+                OPS_Append_Op(ops, op);
+                ofst += 8;
+            }
+            // Need to emit emms when mixing MMX and x87 FPU instructions
+            Build_OP(TOP_emms, ops);
+        }
+    } else { // 64 bits
+        REGISTER int_regs[] = {RAX, RDX, RCX, RSI, RDI, R8, R9};
+        for (int i = 0; i < sizeof(int_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, int_regs[i], size);
+            OP *op = Mk_OP(TOP_ld64, tn, args, Gen_Literal_TN(ofst, 4));
+            Set_OP_volatile(op);
+            OPS_Append_Op(ops, op);
+            ofst += size;
+        }
+        REGISTER sse_regs[] = {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7 };
+        for (int i = 0; i < sizeof(sse_regs) / sizeof(REGISTER); i++) {
+            TN *tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float, sse_regs[i] - Float_Preg_Min_Offset + 1, 16);
+            OP *op = Mk_OP(TOP_lddqu, tn, args, Gen_Literal_TN(ofst, 4));
+            Set_OP_volatile(op);
+            OPS_Append_Op(ops, op);
+            ofst += 16;
+        }
+        // with variable arguments, %rax contains the number of vector registers used
+        OP *op = Mk_OP(TOP_ldc64, Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RAX, size),
+                Gen_Literal_TN(sizeof(sse_regs) / sizeof(REGISTER), 8));
+        Set_OP_volatile(op);
+        OPS_Append_Op(ops, op);
+    }
+    return NULL;
+}
+
+TN*
+Exp_Builtin_Return(TN *result, OPS *ops)
+{
+    TN *ded_tn;
+    INT ofst = 0;
+    TOP integer_top, float_top;
+    INT size;
+    if (Is_Target_32bit()) {
+        integer_top = TOP_ld32;
+        float_top = TOP_ldups;
+        size = 4;
+    } else {
+        integer_top = TOP_ld64;
+        float_top = TOP_lddqu;
+        size = 8;
+    }
+    ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RAX, size);
+    Build_OP(integer_top, ded_tn, result, Gen_Literal_TN(ofst, 4), ops);
+    ofst += size;
+    ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, RDX, size);
+    Build_OP(integer_top, ded_tn, result, Gen_Literal_TN(ofst, 4), ops);
+    ofst += size;
+    ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_x87, ST0 - X87_Preg_Min_Offset + 1, 8);
+    Build_OP(TOP_fldt, ded_tn, result, Gen_Literal_TN(ofst, 4), ops);
+    ofst += 16;
+    ded_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_float, XMM0 - Float_Preg_Min_Offset + 1, 16);
+    Build_OP(float_top, ded_tn, result, Gen_Literal_TN(ofst, 4), ops);
+    ofst += 16;
+    return NULL;
 }
 
 /* Expansion of INTRN_SAVEXMMS into TOP_savexmms pseudo instruction */

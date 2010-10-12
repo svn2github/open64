@@ -3701,6 +3701,7 @@ fprintf(fp, "Reason36: not inlining C++ with exceptions into non-C++\n");
 fprintf(fp, "Reason37: formal parameter is a loop index\n");
 fprintf(fp, "Reason38: not inlining nested functions\n");
 fprintf(fp, "Reason39: not inlining non-tiny noreturn functions\n");
+fprintf(fp, "Reason40: not inlining __builtin_apply_args functions\n");
 #endif
 fprintf(fp, SBar);
   

@@ -750,6 +750,7 @@ public:
 #define PU_HAS_GOTO_OUTER_BLOCK	0x0001000000000000LL // has GOTO_OUTER_BLOCK stmt
 #define PU_IS_CDECL             0x0002000000000000LL // __attribute__((cdecl)) semantic
 #define PU_NOTHROW              0x0004000000000000LL // doesn't throw, e.g. decl as "void foo() throw()".
+#define PU_HAS_APPLY_ARGS       0x0008000000000000LL // __builtin_apply_args
 
 enum PU_SRC_LANG_FLAGS
 {
