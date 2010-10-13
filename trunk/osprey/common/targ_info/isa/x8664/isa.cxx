@@ -71,7 +71,7 @@
 #include <stddef.h>
 #include "isa_gen.h"
 
-main ()
+int main ()
 {
   ISA_Create( "x8664",
 
@@ -3501,4 +3501,5 @@ main ()
 
 	      /* END */
 	      NULL);
+  return 0;
 }

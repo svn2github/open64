@@ -247,4 +247,8 @@ void ISA_Create (const char *isa_name, ...)
 		"}\n");
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

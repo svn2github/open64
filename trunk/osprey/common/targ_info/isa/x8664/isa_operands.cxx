@@ -69,7 +69,7 @@
 #include "topcode.h"
 #include "isa_operands_gen.h"
 
-main()
+int main()
 {
   ISA_Operands_Begin("x8664");
 
