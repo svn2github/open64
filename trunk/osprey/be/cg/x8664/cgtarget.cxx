@@ -105,6 +105,7 @@
 #include "calls.h"
 #include "cg_loop.h"
 #include "config_lno.h"  // for LNO_Prefetch_Ahead
+#include "erbe.h"
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -3111,6 +3112,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
                            const WN* load,
                            TN* pref_tn,
                            ISA_REGISTER_SUBCLASS* subclass, 
+                           const WN* asm_wn,
 			   TYPE_ID type)
 {
   // skip constraint modifiers:
@@ -3185,17 +3187,21 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       // immediate could have been put in preg by wopt
       load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
     }
-    FmtAssert(load && (WN_operator(load) == OPR_INTCONST ||
+    if (!(load && (WN_operator(load) == OPR_INTCONST ||
                        (WN_operator(load) == OPR_LDA &&
-                        ST_sym_class(WN_st(load)) == CLASS_CONST)),
-              ("Cannot find immediate operand for ASM"));
+                        ST_sym_class(WN_st(load)) == CLASS_CONST)))) {
+      ErrMsgSrcpos(EC_Invalid_Asm_Constrain, WN_Get_Linenum(asm_wn),
+                    ": Cannot find immediate operand for ASM");
+    }
     if (WN_operator(load) == OPR_INTCONST)
     {
       ret_tn = Gen_Literal_TN(WN_const_val(load), 
                               MTYPE_bit_size(WN_rtype(load))/8);
       // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
-       ("The value of immediate operand supplied is not within expected range."));
+      if (!CONST_OK_FOR_LETTER(WN_const_val(load), *constraint)) {
+        ErrMsgSrcpos(EC_Invalid_Asm_Constrain, WN_Get_Linenum(asm_wn),
+                ": The value of immediate operand supplied is not within expected range.");
+      }
     }
     else
     {
