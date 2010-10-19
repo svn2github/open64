@@ -1787,6 +1787,13 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
             reason = "not inlining non-tiny noreturn functions";
             ed->Set_reason_id (39);
     }
+#ifdef KEY
+    else if (PU_has_apply_args(callee->Get_PU())) {
+            result = FALSE;
+            reason = "not inlining __builtin_apply_args functions";
+            ed->Set_reason_id(40);
+    }
+#endif
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
 	if ((callee->Summary_Proc()->Get_lang() == LANG_F77) || 
@@ -2555,6 +2562,8 @@ char *reason(IPA_EDGE *edge)
             return "not inlining nested functions";
   case 39:
             return "not inlining non-tiny noreturn functions";
+  case 40:
+            return "not inlining __builtin_apply_args functions";
   default:
     return "unknown reason";
   } 

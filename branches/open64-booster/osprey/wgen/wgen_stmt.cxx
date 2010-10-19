@@ -2332,9 +2332,8 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
     // object is created by a TARGET_EXPR, have the TARGET_EXPR write directly
     // to the memory return area.
     if (TY_return_in_mem(ret_ty_idx)) {
-      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M || 
-        !TARGET_64BIT && MTYPE_is_complex(TY_mtype(ret_ty_idx)) && TY_mtype (ret_ty_idx) != MTYPE_C4, 
-	         ("WGEN_Expand_Return: return_in_mem type is not MTYPE_M or complex type"));
+      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
+	         ("WGEN_Expand_Return: return_in_mem type is not MTYPE_M"));
       // Skip the NOP_EXPRs, if any, before the TARGET_EXPR.  Bug 3448.
       gs_t t = retval;
       while (gs_tree_code(t) == GS_NOP_EXPR) {
@@ -2508,9 +2507,8 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       // Copy the return value into the return area.  Based on code in
       // lower_return_val().
 
-      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M || 
-      !TARGET_64BIT && MTYPE_is_complex(TY_mtype(ret_ty_idx)) && TY_mtype (ret_ty_idx) != MTYPE_C4,
-		 ("WGEN_Expand_Return: return_in_mem type is not MTYPE_M or complex type"));
+      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M, 
+		 ("WGEN_Expand_Return: return_in_mem type is not MTYPE_M"));
 
       WN *first_formal = WN_formal(Current_Entry_WN(), 0);
       TY_IDX tidx = ST_type(WN_st(first_formal));

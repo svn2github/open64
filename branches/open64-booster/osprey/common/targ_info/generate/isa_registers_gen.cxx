@@ -771,4 +771,8 @@ void ISA_Registers_End(void)
 		 "}\n");
 
   Emit_Footer(hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

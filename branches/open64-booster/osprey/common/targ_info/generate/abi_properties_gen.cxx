@@ -51,7 +51,6 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/abi_properties_gen.cxx,v $
 
-#include <strings.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -207,7 +206,7 @@ void Begin_ABI(const char *name)
 
   result->name = name;
 #if ISA_REGISTER_MAX < NUM_REGISTERS_LIMIT
-  BZERO(result->reg_names, sizeof(result->reg_names));
+  memset(result->reg_names, 0, sizeof(result->reg_names));
 #endif
 
   current_abi = result;
@@ -268,10 +267,10 @@ void Reg_Property_Range(ABI_PROPERTY prop, ISA_REGISTER_CLASS rc, INT minreg, IN
 //  See interface description.
 /////////////////////////////////////
 {
-  int reg_num;
   bool used = false;
 
 #if ISA_REGISTER_MAX < NUM_REGISTERS_LIMIT
+  int reg_num;
   for (reg_num = minreg; reg_num <= maxreg; ++reg_num) {
     current_abi->reg_flags[rc][reg_num].push_back(prop);
     used = true;
@@ -654,4 +653,8 @@ void ABI_Properties_End(void)
   }
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

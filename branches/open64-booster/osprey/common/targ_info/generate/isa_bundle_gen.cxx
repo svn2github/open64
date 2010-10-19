@@ -55,7 +55,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <strings.h>
+#include <string.h>
 #include <list>
 #include <vector>
 #include "topcode.h"
@@ -357,7 +357,7 @@ static void Emit_Bundle_Scheduling(FILE *hfile, FILE *cfile, FILE *efile)
 								  ++iei) {
   }
 
-  char *int_suffix;
+  const char *int_suffix;
   // select the ISA_EXEC_unit_prop based on the number of exec info types.
   if (index <= 8) {
     info_index_type = "mUINT8";
@@ -461,9 +461,11 @@ static void Emit_Bundle_Scheduling(FILE *hfile, FILE *cfile, FILE *efile)
   }
   fprintf (cfile, "  {\n    \"template_MAX\", \"\", -1,\n    { -1 /* ??????? */");
   for (i = 1; i < max_slots; ++i) fprintf (cfile, ", -1 /* ??????? */");
-  fprintf (cfile, ",},\n    { FALSE");
+  fprintf (cfile, " },\n    { FALSE");
   for (i = 1; i < max_slots; ++i) fprintf (cfile, ", FALSE");
-  fprintf (cfile, ",},\n    -1, 0x0, 0x%0*x\n  }\n};\n", slot_mask_digits, 0);
+  fprintf (cfile, " },\n    { 0");
+  for (i = 1; i < max_slots; ++i) fprintf (cfile, ", 0");
+  fprintf (cfile, " },\n    -1, 0x0, 0x%0*x\n  }\n};\n", slot_mask_digits, 0);
 
   fprintf(hfile,"\n#define ISA_MAX_BUNDLES %d\n",num_bundles);
 
@@ -627,7 +629,7 @@ void ISA_Bundle_Pack_Create (ISA_BUNDLE_PACK_ENDIAN endian)
   }
 
   bundle_pack_info = new(BUNDLE_PACK_INFO);
-  BZERO(bundle_pack_info, sizeof(*bundle_pack_info));
+  memset(bundle_pack_info, 0, sizeof(*bundle_pack_info));
   bundle_pack_info->endian = endian;
 }
 

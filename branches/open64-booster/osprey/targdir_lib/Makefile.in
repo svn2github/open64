@@ -14,6 +14,11 @@ ifneq (,$(findstring libacml_mv,$(SUBDIRS)))
 libmv : libacml_mv
 endif
 
+# If building libopen64rt, build it before all other libraries.
+ifneq (,$(findstring libopen64rt,$(SUBDIRS)))
+$(filter-out libopen64rt,$(SUBDIRS)) : libopen64rt
+endif
+
 $(SUBDIRS):
 	@echo "MAKE   $(ACTION) in $(PWD)/$@"; \
 	$(MAKE) $(if $V,,--no-print-directory) -C $@ $(ACTION)

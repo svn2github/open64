@@ -54,7 +54,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
-#include <strings.h>
+#include <string.h>
 #include <alloca.h>
 #include <list>
 #include <vector>
@@ -182,7 +182,7 @@ void Machine_To_Pseudo(TOP pseudo, TOP machine)
 {
   cur_pseudo = new PSEUDO_OP_INFO;
   pseudos.push_back(cur_pseudo);
-  BZERO(cur_pseudo, sizeof(PSEUDO_OP_INFO));
+  memset(cur_pseudo, 0, sizeof(PSEUDO_OP_INFO));
   cur_pseudo->from_opc = machine;
   cur_pseudo->to_opc = pseudo;
   cur_pseudo->dir = MACHINE_TO_PSEUDO;
@@ -198,7 +198,7 @@ void Pseudo_To_Machine(TOP machine, TOP pseudo)
 {
   cur_pseudo = new PSEUDO_OP_INFO;
   pseudos.push_back(cur_pseudo);
-  BZERO(cur_pseudo, sizeof(PSEUDO_OP_INFO));
+  memset(cur_pseudo, 0, sizeof(PSEUDO_OP_INFO));
   cur_pseudo->from_opc = pseudo;
   cur_pseudo->to_opc = machine;
   cur_pseudo->dir = PSEUDO_TO_MACHINE;

@@ -5268,11 +5268,13 @@ WGEN_Handle_Named_Return_Value (gs_t fn)
   // table in order to generate DWARF for it.  Bug 4900.
   Get_ST(named_ret_obj);
 
-  // The return type should be returned in memory.
   TY_IDX ret_ty_idx = Get_TY(gs_tree_type(gs_tree_type(fn)));
-  FmtAssert(TY_return_in_mem(ret_ty_idx),
-	    ("WGEN_Handle_Named_Return_Value: nrv type not in mem"));
 
+  // It is possible that g++ does nvr for complex type.
+  // We won't do anything in such case, since lowering phase will handle it
+  // according to ABI.
+  if (!TY_return_in_mem(ret_ty_idx)) return;
+  
   // Get the ST for the fake first parm.
   WN *first_formal = WN_formal(Current_Entry_WN(), 0);
 

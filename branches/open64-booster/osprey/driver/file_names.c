@@ -156,7 +156,7 @@ get_object_file (char *src)
 	    !option_was_seen(O_c) &&
 	    keep_flag != TRUE) {
 	  char *p;
-	  src = strdupa(src);
+	  src = strcpy(alloca(strlen(src)+1), src);
 	  for (p = src; *p != '\0'; p++) {
 	    if (*p == '/')
 	      *p = '%';

@@ -215,7 +215,7 @@
 	""
 -I%D		;		ALL	CPP	"-I%D -include=%D"
 	"add following directory to the include search path list"
--iquote%D	;		ALL	CPP	"-iquote=%D"
+-iquote%D	;		ALL	CPP	"-iquote %D"
 	"add following directory to the include search path list"
 -x%-		set_explicit_lang(option_name,optargs);		ALL	NONE	""
 	"Specify explicit language for input files"

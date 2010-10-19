@@ -44,7 +44,7 @@ static const char rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/common/
 
 #include <stdio.h>
 #include <assert.h>
-#include <strings.h>
+#include <string.h>
 
 #include "topcode.h"
 #include "targ_isa_operands.h"
@@ -84,8 +84,8 @@ INT TI_ASM_Pack_Inst(
   INT64 bopnd[ISA_OPERAND_max_operands];
   INT64 bresult[ISA_OPERAND_max_results];
 
-  BCOPY(opnd, bopnd, sizeof(bopnd));
-  BCOPY(result, bresult, sizeof(bresult));
+  memmove(bopnd, opnd, sizeof(bopnd));
+  memmove(bresult, result, sizeof(bresult));
 
   topcode = ISA_PSEUDO_Translate(topcode, 
 				 bresult, 
@@ -594,8 +594,8 @@ TOP TI_ASM_Unpack_Inst(
 
   /* Unpack the raw operands and results.
    */
-  BZERO(result, sizeof(*result) * ISA_OPERAND_max_results);
-  BZERO(opnd, sizeof(*opnd) * ISA_OPERAND_max_operands);
+  memset(result, 0, sizeof(*result) * ISA_OPERAND_max_results);
+  memset(opnd, 0, sizeof(*opnd) * ISA_OPERAND_max_operands);
   pinfo = ISA_PACK_Info(topcode);
   words = ISA_PACK_Inst_Words(topcode);
   for (j = 0; j < words; ++j) {

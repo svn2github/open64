@@ -180,7 +180,7 @@ static const char * const interface[] = {
 const char* Print_Name(int print_index)
 /////////////////////////////////////
 {
-  static char *comp_name[MAX_LISTING_OPERANDS];
+  static const char *comp_name[MAX_LISTING_OPERANDS];
   static bool initialized;
 
   if (!initialized) {
@@ -188,20 +188,20 @@ const char* Print_Name(int print_index)
     for (i = 0; i < MAX_LISTING_OPERANDS; ++i) {
       char buf[80];
       if (i == END) {
-	comp_name[i] = "ISA_PRINT_COMP_end";
+	comp_name[i] = strdup("ISA_PRINT_COMP_end");
       } else if (i == NAME) {
-	comp_name[i] = "ISA_PRINT_COMP_name";
+	comp_name[i] = strdup("ISA_PRINT_COMP_name");
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
       } else if (i == SEGMENT) {
-	comp_name[i] = "ISA_PRINT_COMP_segment";
+	comp_name[i] = strdup("ISA_PRINT_COMP_segment");
 #endif
       } else if (i == OPND) {
-	comp_name[i] = "ISA_PRINT_COMP_opnd";
+	comp_name[i] = strdup("ISA_PRINT_COMP_opnd");
       } else if (i > OPND && i < (OPND + MAX_OPNDS)) {
 	sprintf(buf, "ISA_PRINT_COMP_opnd+%d", i - OPND);
 	comp_name[i] = strdup(buf);
       } else if (i == RESULT) {
-	comp_name[i] = "ISA_PRINT_COMP_result";
+	comp_name[i] = strdup("ISA_PRINT_COMP_result");
       } else {
 	assert(i > RESULT && i < (RESULT + MAX_RESULTS));
 	sprintf(buf, "ISA_PRINT_COMP_result+%d", i - RESULT);
@@ -358,7 +358,7 @@ void ISA_Print_End(void)
   const char comma = ',';
   const char space = ' ';
   const char * const isa_print_type_format = "\t/* %s[%d] */";
-  const char * const isa_print_format_format = "  { %-14s ";
+  const char * const isa_print_format_format = "  { %s {\n";
   const char * const isa_print_args_format = " %s%c";
   int top;
   bool err;
@@ -430,7 +430,7 @@ void ISA_Print_End(void)
 
   fprintf (cfile, isa_print_format_format, "\"\",");
   fprintf (cfile, isa_print_args_format, Print_Name(END), space);
-  fprintf (cfile, "},");
+  fprintf (cfile, "} },");
   fprintf (cfile, isa_print_type_format, "print_NULL", 0);
   fprintf (cfile, "\n");
   for ( isi = all_prints.begin(); isi != all_prints.end(); ++isi ) {
@@ -445,7 +445,7 @@ void ISA_Print_End(void)
 	    fprintf (cfile, "\n%19s", "");
 	}
 	fprintf (cfile, isa_print_args_format, Print_Name(END), space);
-	fprintf (cfile, "},");
+	fprintf (cfile, "} },");
 	fprintf (cfile, isa_print_type_format, 
 			curr_type->type->name,
 			curr_type->args);

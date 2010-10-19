@@ -224,10 +224,10 @@
 typedef class RES* RESOURCE;
 typedef class ISLOT* ISSUE_SLOT;
 
-extern void Machine( char* name, ISA_SUBSET isa, int argc, char** argv );
-extern RESOURCE RESOURCE_Create( char* name, int count );
-extern ISSUE_SLOT ISSUE_SLOT_Create( char* name, int skew, int count );
-extern void Instruction_Group( char* name, ... );
+extern void Machine( const char* name, ISA_SUBSET isa, int argc, char** argv );
+extern RESOURCE RESOURCE_Create( const char* name, int count );
+extern ISSUE_SLOT ISSUE_SLOT_Create( const char* name, int skew, int count );
+extern void Instruction_Group( const char* name, ... );
 extern void Any_Operand_Access_Time( int time );
 extern void Operand_Access_Time( int operand_index, int time );
 extern void Any_Result_Available_Time( int time );
@@ -235,12 +235,10 @@ extern void Result_Available_Time( int result_index, int time );
 extern void Store_Available_Time( int time );
 extern void Load_Access_Time( int time );
 extern void Last_Issue_Cycle( int time );
-#if defined(TARG_SL)
-extern void Alternative_Resource_Requirement(RESOURCE resource, int time); 
-#endif
+extern void Alternative_Resource_Requirement( RESOURCE resource, int time );
 extern void Resource_Requirement( RESOURCE resource, int time );
 extern void Valid_Issue_Slot( ISSUE_SLOT slot );
 extern void Write_Write_Interlock();
-extern void Machine_Done( char* filename );
+extern void Machine_Done( const char* filename );
 
 #endif

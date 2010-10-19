@@ -11567,11 +11567,21 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (TY_is_varargs(call_ty) ||
 	(! TY_has_prototype(call_ty) && 
 	 (callee_st == NULL || ST_sclass(callee_st) != SCLASS_TEXT))) {
-      WN *sse_cnt_wn = WN_Intconst(MTYPE_I4, MIN(8, sse_args));
-      WN *sse_cnt_stid = WN_StidIntoPreg(MTYPE_I4, RAX, Int32_Preg, sse_cnt_wn);
-	
-      WN_Set_Linenum(sse_cnt_stid, srcpos);
-      WN_INSERT_BlockLast(callblock, sse_cnt_stid);
+
+      // check whether the previous WN is an INTRINSIC_CALL to APPLY or not
+      BOOL skip = FALSE;
+      WN *previous_wn = WN_prev(tree);
+      if (previous_wn != NULL && WN_operator_is(previous_wn, OPR_INTRINSIC_CALL) &&
+              WN_intrinsic(previous_wn) == INTRN_APPLY) 
+          skip = TRUE;
+
+      if (!skip) {
+          WN *sse_cnt_wn = WN_Intconst(MTYPE_I4, MIN(8, sse_args));
+          WN *sse_cnt_stid = WN_StidIntoPreg(MTYPE_I4, RAX, Int32_Preg, sse_cnt_wn);
+
+          WN_Set_Linenum(sse_cnt_stid, srcpos);
+          WN_INSERT_BlockLast(callblock, sse_cnt_stid);
+      }
     }
   }
 #endif

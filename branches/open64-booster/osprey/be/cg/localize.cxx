@@ -77,6 +77,7 @@
 #include "cg_internal.h"
 #include "targ_sim.h"
 #include "whirl2ops.h"
+#include "cg.h"
 #if defined(TARG_PPC32)
 #include <queue>
 #include <set>
@@ -462,6 +463,11 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		else if (def && is_func_arg && !BB_call(current_bb)) {
 			Localize_Global_Param_Reg (current_bb, tn);
 		} 
+#ifdef TARG_X8664
+                else if (def && is_func_retval && PU_has_builtin_apply) {
+                        ;       // okay
+                }
+#endif
 		else if (def && is_func_retval && !BB_exit(current_bb)) {
 			Localize_Global_Return_Reg_Def (current_bb, tn);
 		}
@@ -479,6 +485,9 @@ Check_If_Dedicated_TN_Is_Global (TN *tn, BB *current_bb, BOOL def)
 		else if (!def && regnum == RDX &&
 			 BB_entry(current_bb) && BB_handler(current_bb))
 		  ;   // okay because RAX and RDX will be saved at the entry of a handler
+                else if (!def && regnum == RDX &&
+                        PU_has_builtin_apply_args && BB_entry(current_bb))
+                    ;  // okay because RDX will be saved at the function entry
                 else if (!def && Is_Target_32bit() && BB_like_entry(current_bb) &&
                           ( (regnum==RAX && TY_register_parm( Get_Current_PU_TY() ) > 0 ) ||
                             (regnum==RDX && TY_register_parm( Get_Current_PU_TY() ) > 1 ) ||

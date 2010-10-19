@@ -263,7 +263,7 @@ void ISA_Subset_End(void)
     ISA_SUBSET subset = *isi;
 
     fprintf(cfile,"  { /* %s */\n", subset->name);
-    for ( int i = 0; i < bit_vector_sizeof; ++i ) {
+    for ( unsigned int i = 0; i < bit_vector_sizeof; ++i ) {
       int members = subset->members[i];
       fprintf(cfile,"    0%03o, /* ",members);
       for (int j = 0; j < 8; ++j) {
@@ -294,4 +294,8 @@ void ISA_Subset_End(void)
 	  "}\n");
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

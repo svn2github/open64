@@ -388,7 +388,7 @@ AC_CONFIG_FILES([
 ])
 
 if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
-  LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
+  LIBLIST="libopen64rt libacml_mv $LIBLIST libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
     osprey/targdir_lib/libinstr2/Makefile

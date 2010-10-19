@@ -606,10 +606,6 @@ Create_TY_For_Tree (gs_t type_tree, TY_IDX idx)
 		default:  FmtAssert(FALSE, ("Get_TY unexpected size"));
 		}
 		idx = MTYPE_To_TY (mtype);	// use predefined type
-        // gcc FE will set the complex type with size larger than 12 to be
-        // return_in_memory in m32 mode (e.g., gcc/config/i386/i386.c) 
-        if (!TARGET_64BIT && tsize > 12)
-            Set_TY_return_in_mem(idx);
 		break;
 	case GS_POINTER_TYPE:
 		if (gs_type_ptrmem_p(type_tree)) {

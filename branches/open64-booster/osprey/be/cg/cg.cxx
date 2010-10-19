@@ -193,6 +193,8 @@ BOOL PU_has_local_dynamic_tls;
 TN*  Local_Dynamic_TLS_Base;
 BOOL PU_References_GOT;  // for -m32 -fpic
 BOOL PU_has_avx128;      // cause emit of vzeroupper 
+BOOL PU_has_builtin_apply_args; // __builtin_apply_args
+BOOL PU_has_builtin_apply; // __builtin_apply
 #endif
 
 BOOL edge_done = FALSE;
@@ -276,6 +278,9 @@ CG_PU_Initialize (WN *wn_pu)
   Local_Dynamic_TLS_Base = NULL;
 
   PU_References_GOT = FALSE;
+
+  PU_has_builtin_apply_args = FALSE;
+  PU_has_builtin_apply = FALSE;
 
   if (CG_localize_x87_tns && Is_Target_SSE2()) {
     fprintf(stderr,
