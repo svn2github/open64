@@ -445,6 +445,8 @@ private:
   void         LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* );
   void         LMV_clone_frequency (LMV_CFG_ADAPTOR*);
 
+  //bottom test loop check
+  BOOL bottom_test_loop(WN* while_do);
 
   // From here on, all are public access functions
 public:

@@ -99,6 +99,7 @@ static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.30 $";
 #include "opt_ssa.h"
 #include "opt_tail.h"
 #include "w2op.h"
+#include "wn_tree_util.h"
 
 CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
      : _bb_vec(pool),
@@ -2815,6 +2816,93 @@ CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
 //   it's added to.
 // ====================================================================
 
+
+
+BOOL CFG::bottom_test_loop(WN* scf_loop){
+  
+  Is_True(scf_loop != NULL,("NULL passed to bottom_test_loop\n"));
+
+  const OPCODE   opc = WN_opcode(scf_loop);
+  const OPERATOR opr = OPCODE_operator(opc);
+  
+  Is_True(opr == OPR_WHILE_DO || opr == OPR_DO_LOOP,
+          ("%s not supported, only handle OPR_WHILE_DO or OPR_DO_LOOP\n",OPCODE_name(opc)));
+
+  WN *do_loopinfo = NULL;
+  WN *do_tripcount = NULL;
+
+  // for const tripcount(>0) do_loop , we always do bottom_test_loop
+  if ( (opr == OPR_DO_LOOP) && 
+       (do_loopinfo = WN_do_loop_info(scf_loop)) &&
+       (do_tripcount = WN_loop_trip(do_loopinfo)) &&
+       (WN_operator(do_tripcount) == OPR_INTCONST) &&
+       (WN_const_val(do_tripcount) > 0)) {
+    if (Trace()) {
+      fprintf(TFile,"bottom_test_loop:\n");
+      fdump_tree_no_st(TFile,scf_loop);
+    }
+    return TRUE;
+  }
+
+
+  WN* loop_condition = (opr == OPR_WHILE_DO) ? WN_while_test(scf_loop) : WN_end(scf_loop);
+  WN* loop_body = (opr == OPR_WHILE_DO) ? WN_while_body(scf_loop) : WN_do_body(scf_loop) ;
+
+  const OPCODE cond_op = WN_opcode(loop_condition);
+  const OPCODE body_op = WN_opcode(loop_body);
+  const OPERATOR opr_body = OPCODE_operator(body_op);
+
+  Is_True(OPCODE_is_expression(cond_op), 
+	  ("Bad condition opcode %s\n", 
+	   OPCODE_name(cond_op)));
+  Is_True(opr_body == OPR_BLOCK, 
+	  ("Bad Body block opcode %s\n",
+	   OPCODE_name(body_op)));
+
+  WN_TREE_CONTAINER<PRE_ORDER>  wcpre(loop_condition);
+  WN_TREE_CONTAINER<PRE_ORDER> ::iterator wipre;
+  WN_count wc;
+  INT32 stmt_count=0;
+
+  for (wipre = wcpre.begin(); wipre != wcpre.end(); ++wipre)
+    wc(wipre.Wn());
+  if (wc.num_nodes >= WOPT_Bottom_Test_Loop_Cond_Limit) {
+    for ( WN *stmt = WN_first(loop_body); stmt != NULL; stmt = WN_next(stmt) ) {
+      const OPCODE op_in_body = WN_opcode(stmt);
+      if( ! OPCODE_is_stmt(op_in_body) ) {
+	if (Trace()) {
+	  fprintf(TFile,"bottom_test_loop:\n");
+	  fdump_tree_no_st(TFile,scf_loop);
+	}
+	return TRUE;
+      }
+      if ( ! OPCODE_has_label(op_in_body)) {
+	stmt_count++;
+	if (stmt_count >= WOPT_Bottom_Test_Loop_Body_Limit) {
+	  if (Trace()) {
+	    fprintf(TFile,"bottom_test_loop:\n");
+	    fdump_tree_no_st(TFile,scf_loop);
+	  }
+	  return TRUE;
+	}
+      }
+    }
+    if (Trace()) {
+	  fprintf(TFile,"non bottom_test_loop:\n");
+	  fdump_tree_no_st(TFile,scf_loop);
+    }
+    return FALSE;
+  }
+  else {
+    if (Trace()) {
+      fprintf(TFile,"bottom_test_loop:\n");
+      fdump_tree_no_st(TFile,scf_loop);
+    }
+    return TRUE;
+  }
+}
+
+
 void
 CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 {
@@ -2930,8 +3018,19 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 
   case OPR_DO_LOOP:
     Create_empty_preheader (wn);
-    if (Lower_fully())
-      Lower_do_loop( wn, ends_bb );
+    if (Lower_fully()) {
+      if ( OPT_Space && WOPT_Bottom_Test_Loop_Check ) {
+        if ( ! bottom_test_loop(wn) ) {
+          Add_one_do_loop_stmt( wn, ends_bb );
+        }
+        else {
+          Lower_do_loop( wn, ends_bb );
+        }
+      }
+      else {
+        Lower_do_loop( wn, ends_bb );
+      }
+    }
     else
       Add_one_do_loop_stmt( wn, ends_bb );
     break;
@@ -2939,7 +3038,17 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
   case OPR_WHILE_DO:
     Create_empty_preheader (wn);
     if (Lower_fully()) {
-      Lower_while_do( wn, ends_bb );
+      if (OPT_Space && WOPT_Bottom_Test_Loop_Check) {
+        if ( ! bottom_test_loop(wn)) {
+	   Add_one_while_do_stmt(wn, ends_bb);
+	}
+	else {
+	  Lower_while_do( wn, ends_bb );
+	}
+      }
+      else {
+	Lower_while_do( wn, ends_bb );
+      }
     }
     else {
       Add_one_while_do_stmt( wn, ends_bb );
@@ -5327,7 +5436,11 @@ Fix_SCF_for_mainopt(CFG *cfg)
     BB_LOOP *loop = bb->Loop();
     if (loop != NULL && loop->Header() == bb) {
       if (loop->End() != NULL) {
-	loop->Start()->Set_loop(loop);
+	if(loop->Start())
+	  loop->Start()->Set_loop(loop);
+	else {
+	  Is_True(loop->Is_flag_set(LOOP_PRE_WHILE),("wrong non bottom test loop lowering\n"));
+	}
 	loop->End()->Set_loop(loop);
 	loop->Body()->Set_loop(loop);
 	if (loop->Step())
@@ -5454,12 +5567,15 @@ verify_loops(CFG *cfg)
         loop->Loopback()->Kind() == BB_REGIONEXIT,
 		("found inconsistent BB_LOOP -- loopback is not BB_GOTO"));
       } else {
-	Is_True(loop->Start()->Loop() == loop &&
+	Is_True((loop->Start() == NULL || loop->Start()->Loop() == loop) &&
 		loop->End()->Loop() == loop &&
 		loop->Body()->Loop() == loop &&
 		(loop->Step() == NULL || loop->Step()->Loop() == loop),
 		// loop->Merge()->Loop() == loop,
 		("found inconsistent BB_LOOP and CFG."));
+	if (loop->Start() == NULL) {
+          Is_True(loop->Is_flag_set(LOOP_PRE_WHILE),("wrong non bottom test loop lowering!\n"));
+        }
       }
     }
     // verify innermost loop
