@@ -7140,6 +7140,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
 	  WN *if_stmt    = WN_CreateIf (wn0, then_block, else_block);
+          WN *comma_value  = NULL;
 #ifdef KEY
 	  SRCPOS if_stmt_srcpos = Get_Srcpos();
          // Bug 11937: Generate guard variables where necessary. (See
@@ -7158,6 +7159,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
           if (wn1 && !typed_ite) {
+            comma_value = wn1;
             wn1 = WN_CreateEval (wn1);
             WGEN_Stmt_Append (wn1, Get_Srcpos());
           }
@@ -7177,6 +7179,7 @@ WGEN_Expand_Expr (gs_t exp,
    	      wn2 = WGEN_Expand_Expr (gs_tree_operand(exp, 2), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
             gs_t guard_var2 = WGEN_Guard_Var_Pop();
             if (wn2 && !typed_ite) {
+              comma_value = wn2;
               wn2 = WN_CreateEval (wn2);
               WGEN_Stmt_Append (wn2, Get_Srcpos());
             }
@@ -7186,8 +7189,18 @@ WGEN_Expand_Expr (gs_t exp,
               WGEN_add_guard_var(guard_var2, else_block, FALSE);
             }
           }
-          // Generate IF statement.
-          WGEN_Stmt_Append (if_stmt, if_stmt_srcpos);
+
+          if (target_wn == NULL && TY_mtype(ty_idx) != MTYPE_V &&
+                  (TY_mtype(ty_idx1) == MTYPE_V || (TY_mtype(ty_idx2) == MTYPE_V))) {
+              WN* block = WN_CreateBlock();
+              WN_INSERT_BlockLast(block, if_stmt);
+              wn  = WN_CreateComma(OPR_COMMA,
+                      TY_mtype(ty_idx1) == MTYPE_V ? TY_mtype(ty_idx2) : TY_mtype(ty_idx1),
+                      MTYPE_V, block, comma_value);
+          } else {
+              // Generate IF statement.
+              WGEN_Stmt_Append (if_stmt, if_stmt_srcpos);
+          }
 #else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 	  WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
