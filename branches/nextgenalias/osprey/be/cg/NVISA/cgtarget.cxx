@@ -1796,7 +1796,8 @@ extern TN*
 CGTARG_TN_For_Asm_Operand (const char* constraint, 
                            const WN* load,
                            TN* pref_tn,
-                           ISA_REGISTER_SUBCLASS* subclass, 
+                           ISA_REGISTER_SUBCLASS* subclass,
+                           const WN* asm_wn, 
 			   TYPE_ID type)
 {
   // skip constraint modifiers:

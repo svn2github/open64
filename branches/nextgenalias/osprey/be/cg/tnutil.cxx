@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -210,11 +210,6 @@ int trace_tn_number_ = -1;
 void set_trace_tn(int n) { trace_tn_number_ = n; }
 
 void reset_trace_tn() { trace_tn_number_ = -1; }
-
-void gdb_stop_here()
-{
-   return ;
-}
 
 #endif
 

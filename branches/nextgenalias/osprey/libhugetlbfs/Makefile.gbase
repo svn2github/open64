@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of version 2.1 of the GNU Lesser General Public License 
@@ -33,16 +33,16 @@ LDSCRIPT_TYPES = B BDT
 LDSCRIPT_DIST_ELF = elf32ppclinux elf64ppc elf_i386 elf_x86_64
 INSTALL_OBJSCRIPT = ld.hugetlbfs
 VERSION=version.h
-SOURCE = $(shell find $(BUILD_BASE) -maxdepth 1 ! -name version.h -a -name '*.[h]')
+SOURCE = $(shell find $(BUILD_BASE) -maxdepth 1 -name '*.[h]')
 SOURCE += $(BUILD_BASE)/*.c $(BUILD_BASE)/*.lds $(BUILD_BASE)/Makefile
 NODEPTARGETS=<version.h> <clean>
 
 INSTALL = install
 
-LDFLAGS += --no-undefined-version -Wl,--version-script=$(BUILD_BASE)/version.lds
+LDFLAGS += -Wl,--no-undefined-version -Wl,--version-script=$(BUILD_BASE)/version.lds
 CFLAGS ?= -O2 -g -DOPEN64_MOD -DM_PAGE
 CFLAGS += -Wall -fPIC
-CPPFLAGS += -D__LIBHUGETLBFS__
+CPPFLAGS += -D__LIBHUGETLBFS__ -I.
 
 ARCH = $(shell uname -m | sed -e s/i.86/i386/)
 
@@ -151,20 +151,36 @@ export LIBDIR32
 export LIBDIR64
 
 # MOD
-default: 
+default: ldscripts
 	make $(VERSION)
 	make libs
 
-.PHONY:	tests libs
+.PHONY:	tests libs ldscripts always
+
+ldscripts: elf.xBD elf_1G.xBD
+
+elf.xBD: $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG).xBDT
+	sed '/htext.*0x00100005/s/0x00100005/0x01100005/' < $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG).xBDT > elf.xBD
+
+elf_1G.xBD: $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG)_1G.xBDT
+	sed '/htext.*0x00100005/s/0x00100005/0x01100005/' < $(BUILD_BASE)/ldscripts/elf_$(BUILD_HOST_TAG)_1G.xBDT > elf_1G.xBD
+
+
 
 libs:	$(foreach file,$(INSTALL_OBJ_LIBS),$(OBJDIRS:%=%/$(file)))
 
 # <Version handling> MOD
-$(VERSION): always
+$(VERSION): version always
 	@$(VECHO) VERSION
-	$(BUILD_BASE)/localversion $(BUILD_BASE)/version $(SOURCE)
-always:
+	$(BUILD_BASE)/localversion version $(SOURCE)
 # </Version handling>
+
+version: $(BUILD_BASE)/version
+	@cp $(BUILD_BASE)/version version
+
+# Avoid implicit rule for source version file.
+$(BUILD_BASE)/version:
+	;
 
 snapshot: $(VERSION)
 
@@ -227,10 +243,12 @@ clobber: clean
 
 clean:
 	@$(VECHO) CLEAN
-	rm -f *~ *.o *.so *.a *.d *.i core a.out $(BUILD_BASE)/$(VERSION)
+	rm -f *~ *.o *.so *.a *.d *.i core a.out version $(VERSION)
 	rm -rf obj*
 	rm -f ldscripts/*~
 	rm -f libhugetlbfs-sock
+	rm -f libhugetlbfs-sock
+	rm -f elf.xBD elf_1G.xBD
 
 %.d: %.c $(VERSION)
 	@$(CC) $(CPPFLAGS) -MM -MT "$(foreach DIR,$(OBJDIRS),$(DIR)/$*.o) $@" $< > $@

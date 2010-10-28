@@ -449,37 +449,6 @@ static INTRN_ATTR_EXTEND *Get_intrinsic_op_Eattr (INTRINSIC id) {
   return NULL;
 }
 
-static void WN_Set_Deref_If_Needed(WN *wn) {
-  INTRINSIC intrn=WN_intrinsic(wn);
-  if (intrinsic_need_deref(intrn)) {
-    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
-
-    switch (p->pos) {
-      case P0:
-        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
-      case P1:
-        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
-      case P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
-      case P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
-      case P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
-      case P0_P2:
-        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
-      case P1_P3:
-        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
-      case P2_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      case P3_P4:
-        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
-      default:
-        Is_True(0, ("intrinsic has no extended attribution"));
-    }
-  }
-        return;
-}
-
 static int intrinsic_op_extend_kid (int index) {
    return intrn_eattr[index].extend_kid;
 }
@@ -603,6 +572,47 @@ void WFE_Stmt_Append_Extend_Intrinsic(WN *wn, WN *master_variable, SRCPOS src) {
    }
 }
 #endif
+
+static void WN_Set_Deref_If_Needed(WN *wn) {
+  INTRINSIC intrn=WN_intrinsic(wn);
+
+#if defined(TARG_SL)
+  if (intrinsic_need_deref(intrn)) {
+    INTRN_ATTR_EXTEND *p=Get_intrinsic_op_Eattr(intrn);
+
+    switch (p->pos) {
+      case P0:
+        WN_Set_Parm_Dereference(WN_kid(wn,0));  break;
+      case P1:
+        WN_Set_Parm_Dereference(WN_kid(wn,1));  break;
+      case P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,2));  break;
+      case P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,3));  break;
+      case P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,4));  break;
+      case P0_P2:
+        WN_Set_Parm_Dereference(WN_kid(wn,0)); WN_Set_Parm_Dereference(WN_kid(wn,2)); break;
+      case P1_P3:
+        WN_Set_Parm_Dereference(WN_kid(wn,1)); WN_Set_Parm_Dereference(WN_kid(wn,3)); break;
+      case P2_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,2)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      case P3_P4:
+        WN_Set_Parm_Dereference(WN_kid(wn,3)); WN_Set_Parm_Dereference(WN_kid(wn,4)); break;
+      default:
+        Is_True(0, ("intrinsic has no extended attribution"));
+    }
+  }
+#elif defined(TARG_X8664)
+  if (intrn == INTRN_LOADLPD || intrn == INTRN_LOADHPD ||
+      intrn == INTRN_LOADLPS || intrn == INTRN_LOADHPS ||
+      intrn == INTRN_LOADUPS || intrn == INTRN_LOADUPS256 ||
+      intrn == INTRN_LOADUPD || intrn == INTRN_LOADUPD256 ||
+      intrn == INTRN_LOADDQU || intrn == INTRN_LOADDQU256) {
+    WN_Set_Parm_Dereference(WN_kid(wn,0));
+  }
+#endif
+}
 
 // KEY bug 11288: support for anonymous unions:
 // ---------------------------------------------
@@ -2880,20 +2890,24 @@ WGEN_Address_Of(gs_t arg0)
 	  case MTYPE_C8:
 	    imag_mtype = MTYPE_F8;
 	    break;
-#ifdef TARG_IA64
 	  case MTYPE_C10:
 	    imag_mtype = MTYPE_F10;
 	    break;
-#else
 	  case MTYPE_CQ:
 	    imag_mtype = MTYPE_FQ;
 	    break;
-#endif
 	  default:
 	    Fail_FmtAssertion ("WGEN_Address_Of: Unexpected rtype in IMAGPART_EXPR");
 	}
 	INT ofst;
-	if (imag_mtype == MTYPE_FQ)
+	if (imag_mtype == MTYPE_F10)
+	{
+#ifdef TARG_X8664
+	  if (Is_Target_32bit()) ofst = 12; else
+#endif // TARG_X8664
+	  ofst = 16;
+	}
+        else if (imag_mtype == MTYPE_FQ)
 	{
 #ifdef TARG_X8664
 	  if (Is_Target_32bit()) ofst = 12; else
@@ -3952,6 +3966,27 @@ WGEN_target_builtins (gs_t exp, INTRINSIC * iopc, BOOL * intrinsic_op)
       break;
     case GSBI_IX86_BUILTIN_VEC_EXT_V4SI:
       *iopc = INTRN_VEC_EXT_V2SI;
+      break;
+    case GSBI_IX86_BUILTIN_VEC_EXT_V4HI:
+      // add intrinsic for _mm_extract_pi16
+      if (WN_operator(arg1) != OPR_INTCONST)
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3");
+      switch (WN_const_val(arg1)){
+      case 0:
+        *iopc = INTRN_PEXTRW0;
+        break;
+      case 1:
+        *iopc = INTRN_PEXTRW1;
+        break;
+      case 2:
+        *iopc = INTRN_PEXTRW2;
+        break;
+      case 3:
+        *iopc = INTRN_PEXTRW3;
+        break;
+      default:
+        Fail_FmtAssertion ("selector must be an integer constant in the range 0..3" );
+      }
       break;
     case GSBI_IX86_BUILTIN_VEC_EXT_V2DI:
       *iopc = INTRN_VEC_EXT_V2SI;
@@ -6213,9 +6248,10 @@ WGEN_Expand_Expr (gs_t exp,
 	case 8: 
 	  tcon = Host_To_Targ_Float(MTYPE_F8, gs_tree_real_cst_d(exp));
 	  break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
         case 12:
         case 16:
+          // TODO handle MTYPE_F16
           tcon = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(exp));
           break;
 #else	  
@@ -6263,7 +6299,14 @@ WGEN_Expand_Expr (gs_t exp,
                                      gs_tree_real_cst_ld(gs_tree_realpart(exp)),
                                      gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
           break;
-#else	  
+#elif defined(TARG_X8664)	  
+	case 24:
+	case 32:
+	  tcon = Host_To_Targ_Complex_10(MTYPE_C10,
+				   gs_tree_real_cst_ld(gs_tree_realpart(exp)),
+				   gs_tree_real_cst_ld(gs_tree_imagpart(exp)));
+	  break;
+#else
 	case 24:
 	case 32:
 	  tcon = Host_To_Targ_Complex_Quad(
@@ -7097,6 +7140,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  WN *then_block = WN_CreateBlock ();
 	  WN *else_block = WN_CreateBlock ();
 	  WN *if_stmt    = WN_CreateIf (wn0, then_block, else_block);
+          WN *comma_value  = NULL;
 #ifdef KEY
 	  SRCPOS if_stmt_srcpos = Get_Srcpos();
          // Bug 11937: Generate guard variables where necessary. (See
@@ -7115,6 +7159,7 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 	  gs_t guard_var1 = WGEN_Guard_Var_Pop();
           if (wn1 && !typed_ite) {
+            comma_value = wn1;
             wn1 = WN_CreateEval (wn1);
             WGEN_Stmt_Append (wn1, Get_Srcpos());
           }
@@ -7134,6 +7179,7 @@ WGEN_Expand_Expr (gs_t exp,
    	      wn2 = WGEN_Expand_Expr (gs_tree_operand(exp, 2), FALSE, 0, 0, 0, 0, FALSE, FALSE, target_wn);
             gs_t guard_var2 = WGEN_Guard_Var_Pop();
             if (wn2 && !typed_ite) {
+              comma_value = wn2;
               wn2 = WN_CreateEval (wn2);
               WGEN_Stmt_Append (wn2, Get_Srcpos());
             }
@@ -7143,8 +7189,18 @@ WGEN_Expand_Expr (gs_t exp,
               WGEN_add_guard_var(guard_var2, else_block, FALSE);
             }
           }
-          // Generate IF statement.
-          WGEN_Stmt_Append (if_stmt, if_stmt_srcpos);
+
+          if (target_wn == NULL && TY_mtype(ty_idx) != MTYPE_V &&
+                  (TY_mtype(ty_idx1) == MTYPE_V || (TY_mtype(ty_idx2) == MTYPE_V))) {
+              WN* block = WN_CreateBlock();
+              WN_INSERT_BlockLast(block, if_stmt);
+              wn  = WN_CreateComma(OPR_COMMA,
+                      TY_mtype(ty_idx1) == MTYPE_V ? TY_mtype(ty_idx2) : TY_mtype(ty_idx1),
+                      MTYPE_V, block, comma_value);
+          } else {
+              // Generate IF statement.
+              WGEN_Stmt_Append (if_stmt, if_stmt_srcpos);
+          }
 #else
 	  WGEN_Stmt_Append (if_stmt, Get_Srcpos());
 	  WGEN_Stmt_Push (then_block, wgen_stmk_if_then, Get_Srcpos());
@@ -8093,14 +8149,12 @@ WGEN_Expand_Expr (gs_t exp,
               arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 #ifdef TARG_IA64
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_F10, arg_wn);
-#else	      
-#ifdef TARG_X8664
-	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_FQ, MTYPE_FQ, arg_wn);
-	      if (ret_mtype != MTYPE_FQ)
+#elif defined(TARG_X8664)
+	      wn = WN_CreateExp1 (OPR_FLOOR, MTYPE_F10, MTYPE_F10, arg_wn);
+	      if (ret_mtype != MTYPE_F10)
 		wn = WN_Type_Conversion(wn, ret_mtype);
 #else
 	      wn = WN_CreateExp1 (OPR_FLOOR, ret_mtype, MTYPE_FQ, arg_wn);
-#endif
 #endif
 	      whirl_generated = TRUE;
               break;
@@ -8112,6 +8166,7 @@ WGEN_Expand_Expr (gs_t exp,
 #ifndef TARG_MIPS  // MIPS needs quad emulation for sqrt operation
               case GSBI_BUILT_IN_SQRTL:
 #endif
+	       	if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 		if (! gs_flag_errno_math(program)) {
 		  arg_wn = WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
 		  wn = WN_CreateExp1 (OPR_SQRT, ret_mtype, MTYPE_V, arg_wn);
@@ -8129,11 +8184,11 @@ WGEN_Expand_Expr (gs_t exp,
                 if (!Force_IEEE_Comparisons)
                 {
                   iopc = INTRN_SINL;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                   break;
                 }
@@ -8155,11 +8210,11 @@ WGEN_Expand_Expr (gs_t exp,
                 if (!Force_IEEE_Comparisons)
                 {
                   iopc = INTRN_COSL;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                   break;
                 }
@@ -8278,6 +8333,7 @@ WGEN_Expand_Expr (gs_t exp,
                 break;
 
 	      case GSBI_BUILT_IN_POW:
+	      case GSBI_BUILT_IN_POWF:
                 // Bug 8195: If for whatever reason the pow(3) call is unused,
                 // need_result will be false. Then, the value that this very
                 // function assigns to ret_mtype for pow(3) is MTYPE_V. So,
@@ -8289,9 +8345,9 @@ WGEN_Expand_Expr (gs_t exp,
 
                 if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F8;
 		if (! gs_flag_errno_math(program)) {  // Bug 14262
-		  FmtAssert(ret_mtype == MTYPE_F8,
-			    ("unexpected mtype for intrinsic 'pow'"));
-		  iopc = INTRN_F8EXPEXPR;
+                  if (ret_mtype == MTYPE_F4) iopc = INTRN_F4EXPEXPR;
+                  else if (ret_mtype == MTYPE_F8) iopc = INTRN_F8EXPEXPR;
+		  else Fail_FmtAssertion ("unexpected mtype for intrinsic 'pow'");
 		  intrinsic_op = TRUE;
 		}
 		break;
@@ -8313,19 +8369,19 @@ WGEN_Expand_Expr (gs_t exp,
 		break;
 
 	      case GSBI_BUILT_IN_POWIL: // bug 11246
-#ifdef TARG_IA64
-		// on IA64, we use MTYPE_F10 for long double
+#if defined(TARG_IA64) || defined(TARG_X8664)
+		// on IA64 or TARG_8664, we use MTYPE_F10 for long double
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_F10;
 		FmtAssert(ret_mtype == MTYPE_F10,
                           ("unexpected mtype for intrinsic 'powil'"));
+		iopc = INTRN_F10F10I4EXPEXPR;
 #else		
 		if (ret_mtype == MTYPE_V) ret_mtype = MTYPE_FQ;
 		FmtAssert(ret_mtype == MTYPE_FQ,
 			  ("unexpected mtype for intrinsic 'powil'"));
+		iopc = INTRN_FQFQI4EXPEXPR;
 #endif
-		iopc = INTRN_FQFQI4EXPEXPR;
 		intrinsic_op = TRUE;
-		iopc = INTRN_FQFQI4EXPEXPR;
 		break;
 #endif // KEY
 
@@ -8671,6 +8727,7 @@ WGEN_Expand_Expr (gs_t exp,
 		ErrMsg(EC_Unimplemented_Feature, "__builtin_apply_args",
 		  Orig_Src_File_Name?Orig_Src_File_Name:Src_File_Name, lineno);
 #endif
+                Set_PU_has_apply_args(Get_Current_PU());
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_APPLY_ARGS;
 		break;	
@@ -8745,16 +8802,21 @@ WGEN_Expand_Expr (gs_t exp,
 		  WGEN_Stmt_Append (alloca_kid1, Get_Srcpos());
 
 		  // The src is actually in 0(kid1)
-		  kid1 = 
-		    WN_CreateIload (OPR_ILOAD, MTYPE_I4, MTYPE_I4, 0,
-				    MTYPE_To_TY(MTYPE_I4), 
-				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
-				    kid1, 0);
+                  if (Is_Target_32bit())
+                      kid1 = WN_CreateIload (OPR_ILOAD, MTYPE_I4, MTYPE_I4, 0,
+                              MTYPE_To_TY(MTYPE_I4), 
+                              Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+                              kid1, 0);
+                  else
+                      kid1 = WN_CreateIload (OPR_ILOAD, MTYPE_I8, MTYPE_I8, 0,
+                              MTYPE_To_TY(MTYPE_I8), 
+                              Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
+                              kid1, 0);
 		  load_wn = 
 		    WN_CreateMload (0, 
 				    Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
 				    kid1, kid2);
-		  sp_addr = WN_LdidPreg(MTYPE_U4, 29); // $sp
+		  sp_addr = WN_LdidPreg(Is_Target_32bit() ? MTYPE_U4 : MTYPE_U8, Stack_Pointer_Preg_Offset); // $sp
 		  WGEN_Stmt_Append(WN_CreateMstore (0, 
 			      Make_Pointer_Type(MTYPE_To_TY(MTYPE_U8)), 
 						   load_wn,
@@ -8767,33 +8829,69 @@ WGEN_Expand_Expr (gs_t exp,
 		  call_wn = WN_Create (OPR_ICALL, ret_mtype, MTYPE_V, 1);
 		  WN_kid(call_wn, 0) = 
 		    WGEN_Expand_Expr (gs_tree_value (gs_tree_operand (exp, 1)));
+#if defined(TARG_X8664)
+                  // We assume the function will return floating point to avoid
+                  // Repair_Call_BB manually insert a "fldz" OP later.
+                  WN_set_ty (call_wn, Make_Function_Type(MTYPE_To_TY(MTYPE_F10)));
+#else
 		  WN_set_ty (call_wn, TY_pointed(Get_TY(
 			    gs_tree_type (gs_tree_value(gs_tree_operand (exp, 1))))));
+#endif
 		  WGEN_Stmt_Append (call_wn, Get_Srcpos());		
 
 		  TY_IDX tyi;
 		  TY& ty = New_TY(tyi);
-		  TY_Init(ty, 16, KIND_STRUCT, MTYPE_M,
+		  TY_Init(ty, 48, KIND_STRUCT, MTYPE_M,
 			  Save_Str("__apply"));
 		  Set_TY_align(tyi, 8);
 		  ST *tmpst = New_ST(CURRENT_SYMTAB);
 		  ST_Init(tmpst, TY_name_idx(ty),
 			  CLASS_VAR, SCLASS_AUTO, EXPORT_LOCAL, tyi);
 		  Set_ST_is_temp_var(tmpst);
+
 		  WN *load, *store;
-		  load = WN_LdidPreg(MTYPE_I8, 2); // $v0
-		  store = WN_Stid(MTYPE_I8, 
-				  (WN_OFFSET)0, tmpst, Spill_Int_Type, load);
+                  WN_OFFSET offset = 0;
+
+#if defined(TARG_X8664)
+                  // We need to save %rax and %rdx both on x8664, however use MTYPE_M as
+                  // the return type fails because of a check in lower_return_mstid function.
+                  if (Is_Target_64bit()) {
+                      TY_IDX int_return_tyi;
+                      TY& int_return_ty = New_TY(int_return_tyi);
+                      TY_Init(int_return_ty, 16, KIND_STRUCT, MTYPE_M, STR_IDX_ZERO);
+                      Set_TY_align(int_return_tyi, 8);
+
+                      load = WN_Ldid(MTYPE_M, -1, Return_Val_Preg, int_return_tyi);
+                      store = WN_Stid(MTYPE_M, 
+                              offset, tmpst, int_return_tyi, load);
+                      offset += int_return_ty.size;
+                  } else {
+#endif
+                  load = WN_Ldid(MTYPE_I8, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_I8));
+                  store = WN_Stid(MTYPE_I8, 
+                          offset, tmpst, Spill_Int_Type, load);
+                  offset += 8;
+#if defined(TARG_X8664)
+                  }
+#endif
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
 #if !defined(TARG_SL)
 		  // SL do not have float-point register
-		  load = WN_LdidPreg(MTYPE_F8, 32); //$f0
-		  store = WN_Stid(MTYPE_F8, 
-				  (WN_OFFSET)8, tmpst, Spill_Int_Type, load);
+		  load = WN_Ldid(MTYPE_F10, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_F10)); 
+		  store = WN_Stid(MTYPE_F10, 
+				  offset, tmpst, Spill_Int_Type, load);
 		  WGEN_Stmt_Append (store, Get_Srcpos());		
+                  offset += 16;
 #endif
-		  wn = WN_Lda (Pointer_Mtype, 0, tmpst, 
-			       Make_Pointer_Type (ST_type(tmpst), FALSE));
+#if defined(TARG_X8664)
+                  // xmm0
+		  load = WN_Ldid(MTYPE_V16F8, -1, Return_Val_Preg, MTYPE_To_TY(MTYPE_V16F8)); 
+		  store = WN_Stid(MTYPE_V16F8, 
+				  offset, tmpst, Spill_Int_Type, load);
+		  WGEN_Stmt_Append (store, Get_Srcpos());		
+                  offset += 16;
+#endif
+		  wn = WN_Lda (Pointer_Mtype, 0, tmpst);
 
 		  // Dealloca/Restore SP
 		  WN *dealloca_wn = WN_CreateDealloca (2);
@@ -8815,6 +8913,28 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 		Set_PU_has_alloca(Get_Current_PU());
 		iopc = INTRN_RETURN;
+
+                call_wn = WN_Create (OPR_INTRINSIC_CALL, ret_mtype, MTYPE_V, 
+                        num_args);
+                WN_intrinsic (call_wn) = iopc;
+                WN_Set_Linenum (call_wn, Get_Srcpos());
+                WN_Set_Call_Default_Flags (call_wn);
+                i = 0;
+                for (list = gs_tree_operand (exp, 1);
+                        list;
+                        list = gs_tree_chain (list)) {
+                    arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+                    arg_ty_idx = Get_TY(gs_tree_type(gs_tree_value(list)));
+                    arg_mtype  = TY_mtype(arg_ty_idx);
+                    arg_wn = WN_CreateParm (Mtype_comparison (arg_mtype), 
+                            arg_wn,
+                            arg_ty_idx, WN_PARM_BY_VALUE);
+                    WN_kid (call_wn, i++) = arg_wn;
+                }
+                WGEN_Stmt_Append (call_wn, Get_Srcpos());
+                WGEN_Stmt_Append (WN_CreateReturn(), Get_Srcpos());
+
+                whirl_generated = TRUE;
 		break;	
 
                 // Implement built-in versions of the ISO C99 floating point
@@ -8991,11 +9111,11 @@ WGEN_Expand_Expr (gs_t exp,
                 {
                   iopc = INTRN_COSL;
                   intrinsic_op = TRUE;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                 }
                 break;
@@ -9006,11 +9126,11 @@ WGEN_Expand_Expr (gs_t exp,
                 {
                   iopc = INTRN_SINL;
                   intrinsic_op = TRUE;
-		  if (ret_mtype != MTYPE_FQ)
+		  if (ret_mtype != MTYPE_F10)
 		  {
 		    // generate a cvt to 'cvt_to'
 		    cvt_to = ret_mtype;
-		    ret_mtype = MTYPE_FQ;
+		    ret_mtype = MTYPE_F10;
 		  }
                 }
                 break;
@@ -9273,7 +9393,20 @@ WGEN_Expand_Expr (gs_t exp,
 	    for (i = 0, list = gs_tree_operand (exp, 1);
 		 list;
 		 i++, list = gs_tree_chain (list)) {
-              arg_wn     = WGEN_Expand_Expr (gs_tree_value (list));
+	      // if intrinsic equals _mm_extract_pi16, 
+	      // the second param is fixed to const 0,1,2,3, so 
+	      // there is no need to generate the second arg node.
+#ifdef TARG_X8664
+              if (i ==1 && (iopc == INTRN_PEXTRW0 ||
+                            iopc == INTRN_PEXTRW1 ||
+                            iopc == INTRN_PEXTRW2 ||
+                            iopc == INTRN_PEXTRW3)) {
+                num_args = 1;
+                break;
+	      }
+#endif
+              arg_wn = WGEN_Expand_Expr (gs_tree_value (list));
+	      
 #ifdef KEY // bug 11286
 	      if (i == 1 && TARGET_64BIT &&
 		  (gs_decl_function_code(func) == GSBI_BUILT_IN_POWI ||
@@ -9304,9 +9437,8 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
-#if defined(TARG_SL)
             WN_Set_Deref_If_Needed(wn);
-#endif
+
 #ifdef KEY
 	    if (cvt_to != MTYPE_UNKNOWN) // bug 8251
               wn = WN_Cvt (ret_mtype, cvt_to, wn);
@@ -9755,7 +9887,8 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
         // bug 11238: pass on the target
         wn = WGEN_Expand_Expr (gs_tree_operand (exp, 1), need_result,
-                               0, 0, 0, 0, FALSE, FALSE, target_wn);
+                               nop_ty_idx, component_ty_idx, component_offset,
+                               field_id, is_bit_field, is_aggr_init_via_ctor, target_wn); 
 #else
         wn = WGEN_Expand_Expr (gs_tree_operand (exp, 1), need_result);
 #endif
@@ -9842,14 +9975,17 @@ WGEN_Expand_Expr (gs_t exp,
 	  TY_IDX ty_idx = Get_TY (gs_tree_type(exp));
 	  TYPE_ID mtype = Fix_TY_mtype(ty_idx);
 
-	  if (mtype != MTYPE_FQ && mtype != MTYPE_M && !MTYPE_is_complex(mtype)) {
+	  if (mtype != MTYPE_F10 && mtype != MTYPE_M && !MTYPE_is_complex(mtype)) {
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
 	    wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				ty_idx, Make_Pointer_Type(ty_idx), wn);
 	  }
-	  else if (mtype == MTYPE_C4) {
+	  else if (MTYPE_is_complex(mtype)) {
+        Is_True((mtype == MTYPE_C4 || mtype == MTYPE_C8 || mtype == MTYPE_C10 ||
+            mtype == MTYPE_C16 || mtype == MTYPE_CQ),
+            ("WGEN_Expand_Expr: unexpected complex type"));
 	    wn = WGEN_x8664_va_arg(ap_wn, MTYPE_float(mtype), ty_idx, FALSE);
-	    wn = WN_CreateIload(OPR_ILOAD, MTYPE_C4, MTYPE_C4, 0, ty_idx,
+	    wn = WN_CreateIload(OPR_ILOAD, mtype, mtype, 0, ty_idx,
 				Make_Pointer_Type(ty_idx), wn);
 	  }
 	  else {
@@ -9891,7 +10027,7 @@ WGEN_Expand_Expr (gs_t exp,
 	      }
 	    }
 	    
-	    if( mtype == MTYPE_FQ )
+	    if( mtype == MTYPE_F10 )
 	      wn = WN_CreateIload(OPR_ILOAD, Widen_Mtype (mtype), mtype, 0,
 				  ty_idx, Make_Pointer_Type(ty_idx), wn);
 	    else
@@ -9977,13 +10113,11 @@ WGEN_Expand_Expr (gs_t exp,
 			  WN_Intconst (Pointer_Mtype, -8));
 	  wn = WN_Binary (OPR_ADD, Pointer_Mtype, wn,
 			  WN_Intconst (Pointer_Mtype, rounded_size));
-	} else
-
-	/* Compute new value for AP.  */
-    {
-      wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
+	} else {
+          /* Compute new value for AP.  */
+          wn = WN_Binary (OPR_ADD, Pointer_Mtype, WN_COPY_Tree (ap_load),
           WN_Intconst (Pointer_Mtype, rounded_size));
-    }
+        }
 #ifdef TARG_X8664 // bug 12118: pad since under -m32, vector types are 8-byte aligned
 	if (MTYPE_is_vector(mtype) && ! TARGET_64BIT) {
 	  wn = WN_Add(Pointer_Mtype, wn, WN_Intconst(Pointer_Mtype, 7));

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* -*- c++ -*-
  *
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
@@ -628,7 +632,7 @@ struct LOAD_STORE_ENTRY
   CODEREP* cr;
   ST* st;
   INT offset;
-  TYPE_ID type;
+  TYPE_ID type : 8;
   BOOL is_ptr;
   BOOL ret_val;
 

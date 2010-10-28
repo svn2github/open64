@@ -218,76 +218,56 @@ int hugetlbfs_test_path(const char *mount)
 #endif
 }
 
-#define MOUNTS_SZ	4096
+#define LINE_MAXLEN	2048
 
 const char *hugetlbfs_find_path(void)
 {
-	int err, readerr;
-	char *tmp;
-	int fd, len;
-	char buf[MOUNTS_SZ];
-	char mytag[12]; /* to check if the tag is hugetlbfs, so 10 bytes are enough */
-	const char hugetlbtag[]="hugetlbfs";
+	int fd;
+	char line[LINE_MAXLEN + 1];
+	char *eol;
+	int bytes, err;
+	off_t offset;
+
 	/* Have we already located a mount? */
 	if (*htlb_mount)
 		return htlb_mount;
 
-	/* No?  Let's see if we've been told where to look */
-	tmp = getenv("HUGETLB_PATH");
-	if (tmp) {
-		err = hugetlbfs_test_path(tmp);
-		if (err < 0) {
-			ERROR("Can't statfs() \"%s\" (%s)\n",
-			      tmp, strerror(errno));
-			return NULL;
-		} else if (err == 0) {
-			ERROR("\"%s\" is not a hugetlbfs mount\n", tmp);
-			return NULL;
-		}
-		strncpy(htlb_mount, tmp, sizeof(htlb_mount)-1);
-		return htlb_mount;
-	}
-
-	/* Oh well, let's go searching for a mountpoint */
 	fd = open("/proc/mounts", O_RDONLY);
 	if (fd < 0) {
 		fd = open("/etc/mtab", O_RDONLY);
 		if (fd < 0) {
 			ERROR("Couldn't open /proc/mounts or /etc/mtab (%s)\n",
-			      strerror(errno));
+				strerror(errno));
 			return NULL;
 		}
 	}
 
-	len = read(fd, buf, sizeof(buf));
-	readerr = errno;
-	close(fd);
-	if (len < 0) {
-		ERROR("Error reading mounts (%s)\n", strerror(errno));
-		return NULL;
-	}
-	if (len >= sizeof(buf)) {
-		ERROR("/proc/mounts is too long\n");
-		return NULL;
-	}
-	buf[sizeof(buf)-1] = '\0';
+	while ((bytes = read(fd, line, LINE_MAXLEN)) > 0) {
+		line[LINE_MAXLEN] = '\0';
+		eol = strchr(line, '\n');
+		if (!eol) {
+			ERROR("Line too long when parsing mounts\n");
+			break;
+		}
 
-	tmp = buf;
-	while (tmp) {
-		err = sscanf(tmp,
-			     "%*s %" stringify(PATH_MAX)
-			     "s %12s ",
-			     htlb_mount, mytag);
+		/*
+		 * Truncate the string to just one line and reset the file
+		 * to begin reading at the start of the next line.
+		 */
+		*eol = '\0';
+		offset = bytes - (eol + 1 - line);
+		lseek(fd, -offset, SEEK_CUR);
 
-		if ((err == 2) && (strcmp(mytag, hugetlbtag) == 0) &&(hugetlbfs_test_path(htlb_mount) == 1)) 
+		err = sscanf(line, "%*s %" stringify(PATH_MAX) "s hugetlbfs ",
+			htlb_mount);
+		if ((err == 1) && (hugetlbfs_test_path(htlb_mount) == 1)) {
+			close(fd);
 			return htlb_mount;
+		}
 
 		memset(htlb_mount, 0, sizeof(htlb_mount));
-                
-		tmp = strchr(tmp, '\n');
-		if (tmp)
-			tmp++;
 	}
+	close(fd);
 
 #if defined(OPEN64_MOD) && defined(M_PAGE)
         if (hugepage_m_stype != SIZE_1G)

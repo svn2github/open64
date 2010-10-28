@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -216,6 +216,7 @@ struct TCON {
 	mUINT64 k0;			/* Unsigned integer */
 	float fval;			/* 32-bit floating point */
 	double dval;			/* 64-bit floating point */
+	long double ldval;		/* 80-bit floating point */
 	QUAD_TYPE qval;			/* 128-bit floating point */
 	struct {			/* string literal */
 	    mUINT32 cp;			/* STR_IDX to string table */
@@ -236,6 +237,7 @@ struct TCON {
 #endif // key
 	float fival;
 	double dival;
+	long double ldival;		/* 80-bit floating point */
 	QUAD_TYPE qival;
     } cmplxval;
 };
@@ -269,6 +271,8 @@ inline float
 TCON_fval (const TCON& tcon)		{ return tcon.vals.fval; }
 inline double
 TCON_dval (const TCON& tcon)		{ return tcon.vals.dval; }    
+inline long double
+TCON_ldval (const TCON& tcon)		{ return tcon.vals.ldval; }    
 inline QUAD_TYPE
 TCON_qval (const TCON& tcon)		{ return tcon.vals.qval; }
 inline mUINT32

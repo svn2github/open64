@@ -206,8 +206,8 @@ void ISA_Create_Lit_Class(const char* name, LIT_CLASS_TYPE type, ...)
   va_list ap;
   LIT_RANGE range;
   bool is_signed = type == SIGNED;
-  long long min = is_signed ? LONG_LONG_MAX : ULONG_LONG_MAX;
-  long long max = is_signed ? LONG_LONG_MIN : 0;
+  long long min = is_signed ? LLONG_MAX : ULLONG_MAX;
+  long long max = is_signed ? LLONG_MIN : 0;
   int num_ranges = 0;
 
   // Find the smallest min and largest max for all ranges, and

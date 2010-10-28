@@ -263,7 +263,13 @@ extern omp_v_thread_t	 __omp_root_v_thread; /* necessary?*/
 extern omp_u_thread_t *	 __omp_root_u_thread; /* Where do theyshould be initialized somewhere */
 extern omp_team_t	 __omp_root_team;     /* hold information for sequential part*/
 
-/* prototypes, implementations are defined in omp_thread.h */
+/* prototypes, implementations are defined in omp_thread.h
+ *
+ * Note with newer versions of GCC, no function will be generated
+ * unless there is a normal function prototype when the actual
+ * function definition is marked inline.
+ */
+extern int __ompc_can_fork(void);
 extern void __ompc_set_nested(const int __nested);
 extern void __ompc_set_dynamic(const int __dynamic);
 extern int __ompc_get_dynamic(void);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -121,9 +121,7 @@ extern TY_IDX MTYPE_TO_TY_array[MTYPE_LAST+1];
 // Well known predefined types
 extern TY_IDX Void_Type, FE_int_Type, FE_double_Type;
 extern TY_IDX Spill_Int_Type, Spill_Float_Type;
-#if defined(TARG_X8664) || defined(TARG_LOONGSON)
 extern TY_IDX Quad_Type;
-#endif /* TARG_X8664 */
 
 #ifdef KEY
 extern TY_IDX Spill_Int32_Type;

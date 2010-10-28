@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2608,6 +2612,7 @@ ETABLE::ETABLE(CFG *cfg,
 
   LPRE_set_do_loads(pre_kind == PK_LPRE);
   LPRE_set_do_consts(pre_kind == PK_LPRE);
+  _complex_loop_map.clear();
 }
 
 ETABLE::~ETABLE(void)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -159,6 +159,7 @@
 #include "ti_si.h"
 #include "isr.h"
 #endif
+#include "wn_mp.h"    // for Verify_No_MP()
 
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
@@ -1486,6 +1487,7 @@ Backend_Processing (PU_Info *current_pu, WN *pu)
 	Set_Error_Phase ( "MP Lowering" );
         WB_LWR_Initialize(pu, NULL);
 	pu = WN_Lower (pu, LOWER_MP, NULL, "Before MP Lowering");
+        Verify_No_MP(WN_func_body(pu));
 //Bug 4688
 #ifdef KEY
         extern void Post_MP_Processing (WN *);
@@ -1792,6 +1794,17 @@ Preprocess_PU (PU_Info *current_pu)
 #endif
 
   Stop_Timer (T_ReadIR_CU);
+
+  /* If -tf is set then IR_dump_wn_addr and IR_dump_wn_id
+   * won't be set in Configure().
+   */
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+
   Check_for_IR_Dump(TP_IR_READ,pu,"IR_READ");
 
   if (Show_Progress) {

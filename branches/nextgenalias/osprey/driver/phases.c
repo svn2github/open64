@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -991,8 +991,10 @@ add_file_args (string_list_t *args, phases_t index)
 			    input_source = construct_name(input_source,"ii");
 			else if (source_lang == L_as) {
 			    input_source = construct_name(input_source,"s");
-			    if (!keep_flag)
+			    if (!keep_flag) {
 			      input_source = concat_strings(input_source, ".s");
+			      mark_for_cleanup(input_source);
+			    }
 			}
 			else
 			    input_source = construct_name(input_source,"i");
@@ -2133,7 +2135,8 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 	// Bug 3995.
 	if (!option_was_seen(O_fno_fast_stdlib) &&
 	    !option_was_seen(O_nolibopen64rt)) {	// bug 9611
-            if (option_was_seen(O_shared)) {
+            if (option_was_seen(O_shared) || option_was_seen(O_pie) ||
+                option_was_seen(O_fpie) || option_was_seen(O_fPIE)) {
                 add_library(args, "open64rt_shared");
             } else {
                 add_library(args, "open64rt");
@@ -2350,14 +2353,24 @@ postprocess_ld_args (string_list_t *args)
                     HUGEPAGE_DESC desc;
 
                     for (desc = hugepage_desc; desc != NULL; desc = desc->next) {
-                        if (desc->alloc == ALLOC_BDT && !do_link) {
+                        if ((desc->alloc == ALLOC_BD
+			     || desc->alloc == ALLOC_BDT)
+			    && !do_link) {
                             /* libhugetlbfs linker script only supports dynamic link. 
                              */
                             if (!option_was_seen(O_static)) {
-                                if (desc->size == SIZE_2M)
-                                    dir = concat_strings(dir, "/elf.xBDT");
-                                else if (desc->size == SIZE_1G)
-                                    dir = concat_strings(dir, "/elf_1G.xBDT");
+				if (desc->alloc == ALLOC_BD) {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBD");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBD");
+				}
+				else {
+				    if (desc->size == SIZE_2M)
+					dir = concat_strings(dir, "/elf.xBDT");
+				    else if (desc->size == SIZE_1G)
+					dir = concat_strings(dir, "/elf_1G.xBDT");
+				}
                                 
                                 add_after_string(args, p, concat_strings("-Wl,-T", dir));
                                 do_link = TRUE;
@@ -3132,7 +3145,7 @@ run_ld (void)
         if (abi == ABI_N32) {
           asprintf(&our_path, "%s" LIBPATH "/32", root_prefix);
         } else {
-          asprintf(&our_path, "%s" LIBPATH, root_prefix);
+          asprintf(&our_path, "%s" LIBPATH "/64", root_prefix);
         }
 
         add_string(args, concat_strings("-L", our_path));

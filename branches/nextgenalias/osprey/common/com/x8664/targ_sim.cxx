@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -258,8 +258,8 @@ INT Classify_Aggregate(const TY_IDX ty,
     case MTYPE_F8:
       classes[0] = X86_64_SSE_CLASS;
       return 1;
-    case MTYPE_CQ:
-    case MTYPE_FQ:
+    case MTYPE_C10:
+    case MTYPE_F10:
       classes[0] = X86_64_X87_CLASS;
       return 0;
     case MTYPE_C4:
@@ -418,7 +418,7 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
       // info.return_via_first_arg = TRUE;
       break;
 
-    case MTYPE_FQ:
+    case MTYPE_F10:
 
       info.count = 1;
       info.mtype[0] = mtype;
@@ -589,7 +589,7 @@ Get_Return_Info(TY_IDX rtype, Mtype_Return_Level level, BOOL ff2c_abi)
       }
       break;
 
-    case MTYPE_CQ:
+    case MTYPE_C10:
       if (Is_Target_32bit()) {
         info.count = 0;
         info.return_via_first_arg = TRUE;
@@ -896,8 +896,10 @@ Get_Parameter_Location (TY_IDX ty, BOOL is_output)
       }
       break;
 
-    case MTYPE_CQ:
-    case MTYPE_FQ:
+    case MTYPE_C10:
+    case MTYPE_F10:
+    case MTYPE_C16:
+    case MTYPE_F16:
       ploc.reg = 0;  /* pass in memory */
       break;
 

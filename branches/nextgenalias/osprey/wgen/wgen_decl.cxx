@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -95,6 +95,7 @@ extern "C" {
 #include "wgen_dst.h" // DST_enter_member_function
 #include "dwarf_DST_dump.h"
 #include "targ_sim.h" // PUSH_RETURN_ADDRESS_ON_STACK
+#include "wgen_omp_directives.h"
 
 #ifdef KEY
 #include <ext/hash_map>
@@ -2053,8 +2054,10 @@ AGGINIT::WGEN_Add_Aggregate_Init_Real (gs_t real, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       tc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    case 12:
     case 16:
+      // TODO handle MTYPE_F16
       tc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(real));
       break;
 #else
@@ -2108,8 +2111,10 @@ AGGINIT::WGEN_Add_Aggregate_Init_Complex (gs_t rval, gs_t ival, INT size)
       WGEN_Convert_To_Host_Order((long *)&buffer);
       itc = Host_To_Targ_Float (MTYPE_F8, buffer);
       break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+    case 24:
     case 32:
+      // TODO handle MTYPE_F16
       rtc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(rval));
       itc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(ival));
       break;
@@ -2347,13 +2352,14 @@ AGGINIT::WGEN_Add_Aggregate_Init_Vector (gs_t init_list)
 
   init = gs_tree_vector_cst_elts (init_list);
 
-  gs_t size = gs_type_size (gs_tree_type (gs_tree_value (init)));
-  Is_True (gs_tree_code (size) == GS_INTEGER_CST,
-           ("WGEN_Add_Aggregate_Init_Vector: Vector of variable-sized units?"));
-
-  UINT esize = gs_get_integer_value(size) / BITSPERBYTE;
+  // find the element size from vector mtype
+  TY_IDX vector_type = Get_TY(gs_tree_type(init_list));
+  Is_True (MTYPE_is_vector(TY_mtype(vector_type)), 
+            ("WGEN_Add_Aggregate_Init_Vector: invalid vector type"));
+  TYPE_ID elem_mtype = Mtype_vector_elemtype(TY_mtype(vector_type));
+  UINT esize = MTYPE_byte_size(elem_mtype);
   UINT nunits = vec_size / esize;
-  gs_code_t code = gs_tree_code (gs_tree_value (init));
+  gs_code_t code = MTYPE_is_integral(elem_mtype) ? GS_INTEGER_CST : GS_REAL_CST;
 
   for (i = 0;
        init;
@@ -3323,6 +3329,9 @@ AGGINIT::Traverse_Aggregate_Struct (
     }
 
     gs_t element_value = gs_constructor_elts_value(init_list, idx);
+    if (gs_tree_code(element_value) == GS_NOP_EXPR)
+        element_value = gs_tree_operand(element_value, 0);
+
     fld_ty = FLD_type(fld);
     if (gs_tree_code(element_value) == GS_CONSTRUCTOR) {
       // recursively process nested ARRAYs and STRUCTs
@@ -5259,11 +5268,13 @@ WGEN_Handle_Named_Return_Value (gs_t fn)
   // table in order to generate DWARF for it.  Bug 4900.
   Get_ST(named_ret_obj);
 
-  // The return type should be returned in memory.
   TY_IDX ret_ty_idx = Get_TY(gs_tree_type(gs_tree_type(fn)));
-  FmtAssert(TY_return_in_mem(ret_ty_idx),
-	    ("WGEN_Handle_Named_Return_Value: nrv type not in mem"));
 
+  // It is possible that g++ does nvr for complex type.
+  // We won't do anything in such case, since lowering phase will handle it
+  // according to ABI.
+  if (!TY_return_in_mem(ret_ty_idx)) return;
+  
   // Get the ST for the fake first parm.
   WN *first_formal = WN_formal(Current_Entry_WN(), 0);
 

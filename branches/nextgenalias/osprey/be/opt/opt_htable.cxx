@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1097,12 +1097,14 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_F4;
       else if ( rtype == MTYPE_C8 )
 	return MTYPE_F8;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if ( rtype == MTYPE_C10 )
 	return MTYPE_F10;
 #endif
       else if ( rtype == MTYPE_CQ )
 	return MTYPE_FQ;
+      else if ( rtype == MTYPE_C16 )
+	return MTYPE_F16;
       else {
 	FmtAssert( FALSE, 
 		   ("CODEREP::Operand_type: unknown type %d", rtype) );
@@ -1118,12 +1120,14 @@ Operand_type( OPCODE op, INT which_kid, INT num_kids )
 	return MTYPE_C4;
       else if ( rtype == MTYPE_F8 )
 	return MTYPE_C8;
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
       else if ( rtype == MTYPE_F10 )
 	return MTYPE_C10;
 #endif
       else if ( rtype == MTYPE_FQ )
 	return MTYPE_CQ;
+      else if ( rtype == MTYPE_F16 )
+	return MTYPE_C16;
       else {
 	FmtAssert( FALSE, 
 		   ("CODEREP::Operand_type: unknown type %d", rtype) );
@@ -2030,17 +2034,9 @@ CODEMAP::Canon_add_sub(WN       *wn,
     if (opr == OPR_ADD)
       ccr->Set_tree(kid1.Tree());
     else
-#ifdef KEY // bug 14605: force to signed because generating negate
-      ccr->Set_tree(Add_unary_node(
-                      OPCODE_make_op(OPR_NEG,
-                        Mtype_TransferSign(MTYPE_I4, OPCODE_rtype(op)),
-                        MTYPE_V),
-                      kid1.Tree()));
-#else
       ccr->Set_tree(Add_unary_node(
                         OPCODE_make_op(OPR_NEG, OPCODE_rtype(op), MTYPE_V), 
                         kid1.Tree()));
-#endif
     return propagated;
   }
   if (kid1.Tree() == NULL) {
@@ -2365,16 +2361,16 @@ CODEMAP::Add_def(IDTYPE st, mINT16 version, STMTREP *stmt,
       Delay_U64_Lowering) {
 
     // Fix 777333.   Also add CVT for I8I4LDID.
-    if ( dtyp == MTYPE_U8 && dsctyp == MTYPE_U4 ) {
+    if ( dtyp == MTYPE_U8 && MTYPE_byte_size(dsctyp) <= 4 ) {
       // make U8U4LDID into U8U4CVT(U4U4LDID)
       if ( ! is_store ) 
-        need_cvt = Need_type_conversion(dsctyp, dtyp, &opc);
+        need_cvt = Need_type_conversion(MTYPE_U4, dtyp, &opc);
       dtyp = MTYPE_U4;
     }
-    if ( dtyp == MTYPE_I8 && dsctyp == MTYPE_I4 ) {
+    if ( dtyp == MTYPE_I8 && MTYPE_byte_size(dsctyp) <= 4 ) {
       // make I8I4LDID into I8I4CVT(I4I4LDID)
       if ( ! is_store ) 
-        need_cvt = Need_type_conversion(dsctyp, dtyp, &opc);
+        need_cvt = Need_type_conversion(MTYPE_I4, dtyp, &opc);
       dtyp = MTYPE_I4;
     }
   }
@@ -2826,14 +2822,19 @@ CODEMAP::Add_tcon(TCON_IDX tc)
 
     case MTYPE_F4:
     case MTYPE_F8:
-#if defined(TARG_IA64)
+#if defined(TARG_IA64) || defined(TARG_X8664)
     case MTYPE_F10:
     case MTYPE_C10:
 #endif
     case MTYPE_FQ:
     case MTYPE_C4:
     case MTYPE_C8:
+#ifdef TARG_X8664
+    case MTYPE_V16C8:
+#endif
     case MTYPE_CQ:
+    case MTYPE_F16:
+    case MTYPE_C16:
       {
         ST *new_sym = New_Const_Sym(tc, MTYPE_To_TY(mtype));
 	cr->Init_rconst(mtype, new_sym);
@@ -3484,20 +3485,7 @@ CODEMAP::Add_expr(WN *wn, OPT_STAB *opt_stab, STMTREP *stmt, CANON_CR *ccr,
 #ifdef KEY // bug 10577
     			    , TRUE
 #endif
-			    );
-#ifdef KEY
-  // If the PARM is signed, its child is unsigned, the new child is signed and the size
-  // of the original child is less than the size of the  PARM, then change the new operator
-  // to an unsigned.  Otherwise a negative result will be (incorrectly) sign extened.
-  // This corrects a regression introduced by a fix in file opt_htable.cxx method
-  // CODEMAP::Canon_add_sub (search for string "bug 14605"). 
-  if( MTYPE_signed(OPCODE_rtype(op)) && !MTYPE_signed(WN_rtype(WN_kid0(wn))) &&
-      MTYPE_signed(kid->Dtyp()) &&
-      MTYPE_byte_size(OPCODE_rtype(op)) > MTYPE_byte_size(OPCODE_desc(WN_opcode(WN_kid0(wn)))) )
-  {
-    kid->Set_dtyp(Mtype_TransferSign(MTYPE_U4, kid->Dtyp()));
-  }
-#endif
+                           );
 
     /* CVTL-RELATED start (correctness) */
     // Attempt of fix 370390.  However, this breaks testn32/test_overall/longs.c
@@ -5178,7 +5166,12 @@ STMTREP::Print(FILE *fp) const
   fprintf(fp, " b=%s",Print_bit());
   fprintf(fp, " flags:0x%x", _flags&0x1f );
   fprintf(fp, " pj%d", Proj_op_uses());
-  fprintf(fp, " Sid%d\n", Stmt_id());
+  fprintf(fp, " Sid%d", Stmt_id());
+  if (OPERATOR_is_call (_opr) && OPERATOR_has_sym (_opr)) {
+    ST* st = St();
+    if (st && ST_name (*st)) { fprintf (fp, " #%s", ST_name (*st)); }
+  }
+  fprintf (fp, "\n");
 
   if (Has_chi()) {
     CHI_NODE *cnode;

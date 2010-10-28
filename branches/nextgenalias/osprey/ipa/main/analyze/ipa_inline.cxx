@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -120,13 +120,8 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   OPC_U8STID,     /* MTYPE_U8 */
   OPC_F4STID,     /* MTYPE_F4 */
   OPC_F8STID,     /* MTYPE_F8 */
-#ifdef TARG_IA64
   OPC_F10STID,    /* MTYPE_F10 */
   OPC_F16STID,    /* MTYPE_F16 */
-#elif TARG_X8664
-  OPC_UNKNOWN,    /* MTYPE_F10 */ 
-  OPC_UNKNOWN,    /* MTYPE_F16 */ 
-#endif
   OPC_UNKNOWN,    /* MTYPE_STR */
   OPC_FQSTID,     /* MTYPE_FQ */
   OPC_UNKNOWN,    /* MTYPE_M */
@@ -138,7 +133,7 @@ OPCODE Stid_Opcode [MTYPE_LAST + 1] = {
   ,OPC_BSSTID,    /* MTYPE_BS */
   OPC_A4STID,     /* MTYPE_A4 */
   OPC_A8STID,     /* MTYPE_A8 */
-  OPC_UNKNOWN,    /* MTYPE_C10 */
+  OPC_C10STID,    /* MTYPE_C10 */
   OPC_UNKNOWN,    /* MTYPE_C16 */
   OPC_UNKNOWN,    /* MTYPE_I16 */
   OPC_UNKNOWN     /* MTYPE_U16 */
@@ -554,7 +549,7 @@ void inline_do_it (IPA_EDGE * ed, IPA_NODE * caller, IPA_NODE * callee,
 						  callee);
     if (Trace_IPA || Trace_Perf) {
         UINT32 callee_weight = Effective_weight (callee);
-	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
+	fprintf (stderr, "%s inlined into %s\n", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n", DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
     }
@@ -840,7 +835,9 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
                     }
                 }
 
-		if (!INLINE_Aggressive && loopnest == 0 && callee->PU_Size().Call_Count() > 0 && callee_weight > non_aggr_callee_limit) {
+		if (!INLINE_Aggressive && loopnest == 0 && 
+                    callee->PU_Size().Call_Count() > 0   && 
+                    callee_weight > non_aggr_callee_limit) {
                     /* Less aggressive inlining: don't inline unless it is
                      * either small, leaf, or called from a loop. 
                      */
@@ -929,7 +926,7 @@ check_size_and_freq (IPA_EDGE *ed, IPA_NODE *caller,
     inline_do_it (ed, caller, callee, cg);
 #else
     inline_do_it: if (Trace_IPA || Trace_Perf) {
-	fprintf (stderr, "%s inlined into %s", callee->Name(),caller->Name());
+	fprintf (stderr, "%s inlined into %s\n", callee->Name(),caller->Name());
 	fprintf (TFile, "%s inlined into ", DEMANGLE (callee->Name()));
 	fprintf (TFile, "%s (size: %d + %d = %d)   (edge# %d) \n",
                  DEMANGLE (caller->Name()), callee_weight, caller_weight, combined_weight, ed->Edge_Index());
@@ -1338,9 +1335,8 @@ IPA_NODE::UpdateSize (IPA_NODE *callee, IPA_EDGE *ed)
 // size
 //--------------------------------------------------------------
 void
-Update_Call_Graph (IPA_NODE *n)
+Update_Call_Graph (IPA_NODE *n, IPA_EDGE *edge)
 {
-
     /* by removing a call, we decrease the number of basic block by 1 */
     PU_SIZE size = n->PU_Size ();
     size.Inc_PU_Size (-1, 0, -1);
@@ -1352,6 +1348,10 @@ Update_Call_Graph (IPA_NODE *n)
     n->Summary_Proc()->Decr_call_count ();
     n->Summary_Proc()->Decr_callsite_count ();
     // Don't update Total_Succ as the edge is still present.
+
+    // mark the edge to indicate that caller has been updated.
+    edge->Set_Updated_Caller();
+
 
 } // Update_Call_Graph 
 
@@ -1774,13 +1774,25 @@ do_inline (IPA_EDGE *ed, IPA_NODE *caller,
     }
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
 #ifdef KEY
-    else if (PU_is_nested_func(caller->Get_PU()) ||
-             PU_is_nested_func(callee->Get_PU()) ||
+    else if (PU_is_nested_func(callee->Get_PU()) ||
              PU_uplevel(callee->Get_PU())) {
             result = FALSE;
             reason = "not inlining nested functions";
             ed->Set_reason_id (38);
     } 
+#endif
+    else if (PU_has_attr_noreturn(callee->Get_PU()) &&
+             callee->PU_Size().Stmt_count() > TINY_SIZE ) {
+            result = FALSE;
+            reason = "not inlining non-tiny noreturn functions";
+            ed->Set_reason_id (39);
+    }
+#ifdef KEY
+    else if (PU_has_apply_args(callee->Get_PU())) {
+            result = FALSE;
+            reason = "not inlining __builtin_apply_args functions";
+            ed->Set_reason_id(40);
+    }
 #endif
     // The following else-if must be last
     else if (!IPA_Enable_Lang) {
@@ -1910,6 +1922,12 @@ Get_Sorted_Callsite_List (IPA_NODE *n, IPA_CALL_GRAPH *cg,
 
 
 // decide if the given call could be deleted or inlined
+// This function has effects when IPA_Enable_DCE is true.
+// A deletable edge is marked so and the call graph and 
+// call counts are updated.  So the client should make
+// sure that this method is called only once on any edge.
+// In future, we can separate this functionality from
+// Analyze_call().  
 static void
 Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 {
@@ -1919,6 +1937,14 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 	    
     if (IPA_Enable_DCE) {
 	// Do dead call elimination analysis
+
+        if (edge->Has_Updated_Caller())
+	{
+	  // this edge is deleted and caller is updated, so return.
+          // this will allow invoking Analyze_call() on an edge multiple
+          // times.
+          return;
+	}
 		
 	if (!callee->Summary_Proc()->Has_pragma_side_effect() && // KEY
 	    ((edge->Is_Deletable () || // set by const. propagation
@@ -1948,7 +1974,7 @@ Analyze_call (IPA_NODE* caller, IPA_EDGE* edge, const IPA_CALL_GRAPH* cg)
 			DEMANGLE (caller->Name())); 
 	    }
 
-	    Update_Call_Graph (caller);
+	    Update_Call_Graph (caller,edge);
 			
 	    if (IPA_Enable_DFE)
 		Update_Total_Prog_Size (caller, callee, cg);
@@ -2087,18 +2113,32 @@ void Perform_Inline_Analysis2( IPA_CALL_GRAPH* cg, MEM_POOL* pool )
 }
 #endif // KEY
 
+
+static
+void analyze_calls_in_caller(IPA_NODE *caller, IPA_CALL_GRAPH *cg, INVOCATION_COST& cost_vector)
+{ 
+   if (caller == NULL)
+     return;
+
+   if (caller->Should_Be_Skipped()) { 
+	    Total_Inlined++;
+            return; 
+   }
+   EDGE_INDEX_VECTOR callsite_list;  	 
+   callsite_list.clear ();
+   Get_Sorted_Callsite_List (caller, cg, cost_vector, callsite_list);
+   EDGE_INDEX_VECTOR::const_iterator last = callsite_list.end ();
+   for (EDGE_INDEX_VECTOR::iterator first = callsite_list.begin ();
+	   first != last; ++first) {
+      IPA_EDGE *edge = cg->Edge(*first); 
+      if (edge->Has_Inline_Attrib()) continue; 
+      Analyze_call (caller, cg->Edge (*first), cg);
+   }
+}
+
 void
 Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 {
-    INVOCATION_COST cost_vector (cg, pool);
-    
-    if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
-        Verbose_inlining = fopen ("Verbose_inlining.log", "w");
-	N_inlining = fopen ("N_inlining.log", "w");
-	Y_inlining = fopen ("Y_inlining.log", "a+");
-	e_weight = fopen ("callee_wght.log","w");
-    }
-    Init_inline_parameters ();
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
 
@@ -2106,33 +2146,19 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
 	inline_count = CXX_NEW (INLINE_COUNTER_ARRAY (cg, pool), pool);
 
 #endif // _STANDALONE_INLINER
-
-    EDGE_INDEX_VECTOR callsite_list;
-    IPA_NODE_ITER cg_iter (cg, LEVELORDER, pool);
-
-
-    /* traverse all nodes at levelorder */
-    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
-	IPA_NODE* caller = cg_iter.Current();
-
-	if (caller == NULL)
-	    continue;
-
-	if (caller->Should_Be_Skipped()) { 
-	    Total_Inlined++;
-	    continue;
-	}
-
-	callsite_list.clear ();
-	Get_Sorted_Callsite_List (caller, cg, cost_vector, callsite_list);
-
-	EDGE_INDEX_VECTOR::const_iterator last = callsite_list.end ();
-	for (EDGE_INDEX_VECTOR::iterator first = callsite_list.begin ();
-	     first != last; ++first) {
-
-	    Analyze_call (caller, cg->Edge (*first), cg);
-
-	}
+ 
+   INVOCATION_COST cost_vector (cg, pool);
+   if(Get_Trace ( TP_IPA, IPA_TRACE_TUNING)) {
+        Verbose_inlining = fopen ("Verbose_inlining.log", "w");
+	N_inlining = fopen ("N_inlining.log", "w");
+	Y_inlining = fopen ("Y_inlining.log", "a+");
+	e_weight = fopen ("callee_wght.log","w");
+    }
+    Init_inline_parameters ();
+    Inline_Analyzer analyzer(cg, pool, cost_vector);
+    analyzer.analyze();
+    if ( INLINE_List_Actions ) {
+      analyzer.report();
     }
 
 #if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
@@ -2178,31 +2204,431 @@ Perform_Inline_Analysis (IPA_CALL_GRAPH* cg, MEM_POOL* pool)
     }
 } // Perform_Inline_Analysis
 
+BOOL
+Inline_Analyzer::all_calls_inlined(IPA_NODE *node)
+{ 
+  if (the_cg->Num_In_Edges(node)==0) return FALSE; 
+  IPA_PRED_ITER edge_iter( the_cg, node );
+  for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
+    IPA_EDGE *edge = edge_iter.Current_Edge ();
+    if (( edge != NULL) && edge->Has_Inline_Attrib()) continue;
+    return FALSE; 
+  }
+  return TRUE; 
+} 
+
+void 
+Inline_Analyzer::update_budget(IPA_EDGE *edge)
+{ 
+  NODE_INDEX_VECTOR modified;
+  IPA_NODE *callee = the_cg->Callee(edge);
+
+  nodes_affected_by_inlining(edge,modified);
+
+  NODE_INDEX_VECTOR::const_iterator last = modified.end();
+  INT32 count = 0;
+  for (NODE_INDEX_VECTOR::iterator first = modified.begin();
+      first != last ; ++first) {
+     IPA_NODE *node = the_cg->Node(*first);
+     if (all_calls_inlined(node)) continue;
+     count++;
+  }
+
+  if (all_calls_inlined(callee)) count--;
+  budget(budget()-count*Effective_weight(callee));
+}
+
+Inline_Analyzer::Inline_Analyzer(IPA_CALL_GRAPH *cg, MEM_POOL *pool, INVOCATION_COST &cost)
+{ 
+  the_cg = cg;
+  the_pool = pool;
+  cost_vector = &cost;
+  call_in_loop = (BOOL *) MEM_POOL_Alloc(pool, cg->Node_Size()*sizeof(BOOL));
+  int i;
+  for (i = 0; i < cg->Node_Size(); i++)
+    call_in_loop[i]=FALSE;
+}
+
+BOOL
+Inline_Analyzer::visited(std::map<IPA_NODE_INDEX,BOOL>&vec,IPA_NODE *node)
+{
+  if (vec.find(node->Array_Index()) == vec.end())
+    return FALSE;
+  return TRUE; 
+} 
+
 void
-Inline_Small_funcs(IPA_CALL_GRAPH *cg, UINT32 pu_size, MEM_POOL *pool)
-{  
-  IPA_NODE_ITER cg_iter( cg, PREORDER, pool ); 
-  UINT32 orig =   IPA_PU_Minimum_Size;
-  IPA_PU_Minimum_Size = pu_size;
-  for (cg_iter.First (); !cg_iter.Is_Empty(); cg_iter.Next ()) {
-  	IPA_NODE* callee = cg_iter.Current ();
-        if ((callee == NULL) || 
-            (callee->Weight() > pu_size)){
-          continue; 
- 	} 
+Inline_Analyzer::nodes_affected_by_inlining(IPA_EDGE *edge, NODE_INDEX_VECTOR &modified)
+{ 
+  std::map<IPA_NODE_INDEX, BOOL> visited;
+  help_find_nodes_affected_by_inlining(edge,modified, visited);
+} 
 
-        // Go through all the predecessors and inline the call
-
-        IPA_PRED_ITER edge_iter( cg, callee );
-
-        for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
-           IPA_EDGE *edge = edge_iter.Current_Edge ();
-           if( edge != NULL)
-           { 
-             Analyze_call (cg->Caller(edge), edge, cg);
-	   } 
+void
+Inline_Analyzer::help_find_nodes_affected_by_inlining(IPA_EDGE *edge, 
+                                                      NODE_INDEX_VECTOR &modified,
+                                                      std::map<IPA_NODE_INDEX,BOOL> &visited_vector)
+{ 
+  // caller is definitely affected. 
+  visited_vector[the_cg->Caller(edge)->Array_Index()] = TRUE;
+  modified.push_back(the_cg->Caller(edge)->Array_Index());
+  IPA_PRED_ITER edge_iter (the_cg, the_cg->Caller(edge));
+  for (edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next ()) {
+    IPA_EDGE *edge2 = edge_iter.Current_Edge ();
+    if (edge2) {
+      if (the_cg->Graph()->Is_Recursive_Edge (edge2->Edge_Index ())) continue; 
+      if (edge2->Has_Inline_Attrib())
+      { 
+        if (!visited(visited_vector, the_cg->Caller(edge2)))
+	{ 
+          help_find_nodes_affected_by_inlining(edge2,modified,visited_vector);
 	}
-    } 
+      }
+    }
+  }
+}
 
-  IPA_PU_Minimum_Size = orig ;
+void 
+Inline_Analyzer::compute_statistics
+(
+  INT32&avg_wt, 
+  INT32&call_count,
+  INT32&avg_leaf_wt,
+  INT32 &max_wt, 
+  INT32&avg_fanout
+)
+{ 
+
+  INT32 total_wt = 0;
+  INT32 leaf_count = 0;
+  INT32 total_fanout = 0;
+  INT32 total_leaf_wt = 0;
+  max_wt = 0;
+  int i;
+  int size = 0;
+  for (i = 0; i < the_cg->Node_Size(); i++)
+  {
+    if (!call_in_loop[i]) continue;
+    size++;
+    IPA_NODE *node= the_cg->Node(i);
+
+    // ignore leaves.
+    INT32 fan_out = the_cg->Num_Out_Edges(node);
+    if (fan_out == 0)
+    { 
+      leaf_count++;
+      INT32 node_wt = Effective_weight(node);
+      total_leaf_wt += node_wt;
+      continue;
+    }
+    total_fanout += fan_out;
+    INT32 node_wt = Effective_weight(node);
+    total_wt += node_wt;
+    if (max_wt < node_wt)
+     max_wt = node_wt;
+  }
+
+  INT32 non_leaf_count = (size-leaf_count); 
+  call_count = size;
+  if (non_leaf_count == 0)
+  { 
+    avg_wt = 0;
+    avg_fanout = 0;
+    avg_leaf_wt = 0;
+    return; 
+  }
+  else
+  { 
+    avg_wt = total_wt/non_leaf_count;
+    avg_fanout = total_fanout/non_leaf_count;
+    if (leaf_count > 0)
+      avg_leaf_wt = total_leaf_wt/leaf_count; 
+    else
+      avg_leaf_wt = 0;
+  }
+} 
+
+void
+Inline_Analyzer::analyze()
+{ 
+  if (!INLINE_First_Inline_Calls_In_Loops
+      || INLINE_Aggressive)
+  {
+     IPA_NODE_ITER cg_iter (the_cg, LEVELORDER, the_pool);
+     /* traverse all nodes at levelorder */
+     for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+	 IPA_NODE* caller = cg_iter.Current();
+         if (caller==NULL)  continue;
+         analyze_calls_in_caller(caller, the_cg, *cost_vector);
+     }
+     return;
+  }
+
+  mark_calls_in_loop();
+
+  INT32 avg_wt = 0;
+  INT32 max_wt = 0; 
+  INT32 avg_leaf_wt = 0;
+  INT32 avg_fanout = 0;
+  INT32 call_count = 0;
+
+  // compute the following statistics on the calls in loops. 
+  //  o average size 
+  //  o the max function size of function called in a loop.
+  //  o average fanout of a call. 
+  // use that as a guideline for inlining decisions. 
+  //   plimit = avg_size + avg_fanout*avg_size;
+
+  compute_statistics(avg_wt, call_count, avg_leaf_wt, max_wt, avg_fanout);
+
+  IPA_NODE_ITER cg_iter (the_cg, LEVELORDER, the_pool);
+
+  if (avg_wt != 0)
+  {
+    // readjust the non aggressive callee limit
+    // based on the avgerage size of a function 
+    // called from a loop
+
+    INT32 orig2 = non_aggr_callee_limit;
+
+    if (avg_wt < orig2)
+       non_aggr_callee_limit = 2*orig2; 
+    else
+       non_aggr_callee_limit = 2*orig2 + 100;
+
+    // use a 50% inline budget for calls in loops
+    budget(avg_wt*call_count/2);
+
+    if ( INLINE_List_Actions ) {
+      fprintf(stderr, "call stats: avg_wt=%d, avg_fanout=%d, small_pu=%d, IPA_PU_Limit=%d\n",avg_wt,avg_fanout,non_aggr_callee_limit,IPA_PU_Limit);
+    }
+
+
+    /* traverse all nodes at levelorder */
+    for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+       IPA_NODE* caller = cg_iter.Current();
+       if ( (caller==NULL) ||
+            !call_in_loop[caller->Array_Index()])
+         continue;
+       inline_calls_in_caller(caller);
+       if (budget() < 0) break;
+    }
+
+    // reset the parameters to original values.
+    non_aggr_callee_limit = orig2;
+  }
+
+  /* traverse all nodes at levelorder */
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+	IPA_NODE* caller = cg_iter.Current();
+        if (caller==NULL) continue;
+        analyze_calls_in_caller(caller, the_cg, *cost_vector);
+  }
+
+}
+
+void
+Inline_Analyzer::inline_calls_in_caller
+(
+  IPA_NODE *call 
+)
+{
+  if ( INLINE_List_Actions ) {
+  fprintf(stderr, "Current budget is %d\n", budget());
+  fprintf(stderr, "Picking node %s with weight %d for inlining \n",call->Name(),Effective_weight(call));
+  }
+  analyze_calls_in_caller(call, the_cg, *cost_vector);
+
+  IPA_SUCC_ITER edge_iter(the_cg, call);
+  for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
+  IPA_EDGE *edge = edge_iter.Current_Edge ();
+  if (( edge != NULL)
+      && (edge->Has_Inline_Attrib()))
+  { 
+    update_budget(edge); 
+  }
+  }
+}
+
+static
+char *reason(IPA_EDGE *edge)
+{ 
+  INT32 reason_id = edge->reason_id();
+  switch (reason_id)
+  { 
+    case 0:
+	return "callee is skipped";
+    case 1:
+        return "edge is skipped";
+    case 2:
+        return "call deleted by DCE";
+    case 3:
+	return "caller is a nested procedure";
+    case 4:
+        return "callee has nested procedure(s) so ignore user MUST inline request";
+    case 5:
+        return "callee has nested procedure(s)";
+    case 6:
+        return "callee is recursive";
+    case 7:
+	return "callee is varargs";
+    case 8:
+	return "function with alternate entry point";
+    case 9:
+        return "number of parameters mismatched";
+    case 10:
+	return "callee has pragmas which are associated with formals";
+    case 11:
+	return "callee has flag that suggested that it should be MP'ed";
+    case 12:
+	return "callee has parallel pragmas that suggest turning off inlining";
+    case 13:
+	return "callee has VLAs and caller has parallel_pragma"; 
+    case 14:
+	return "callee has PDO pramgas and caller has parallel_pragma"; 
+    case 15:
+	    return "callsite pragma requested not to inline";
+    case 16:
+	return "exception handling function";
+    case 17:
+	return "exception handling code with pstatics";
+
+    case 18:
+	return "depth in call graph exceeds specified maximum";
+    case 19:
+	return "user requested not to inline";
+    case 20:
+        return "function has local fstatics and is set preemptible";
+    case 21:
+        return "function is preemptible and has not been set to mustinline";
+    case 22:
+	return "incompatible return types";
+    case 24:
+    case 25:
+	return "not inlining across language boundaries";
+    case 26:
+      return "combined size exceeds -IPA:plimit";
+    case 27:
+        return "hotness  < -IPA:min_hotness ";
+    case 28:
+      return "callee size > -IPA:callee_limit";
+    case 29:
+      return "callee_size > -INLINE:aggressive=off callee limit";
+    case 30:
+      return "small, but size but exceeds hard function size limit";
+    case 31:
+      return "Olimit exceeds -OPT:Olimit";
+    case 32:
+      return       "Edge is never invoked";
+    case 33:
+      return "Density  > Max_density ";
+    case 34:
+      return "optimization options are different for caller and callee";
+  case 35:
+	    return "Trying to do pure-call-optimization for this callsite";
+  case 36:
+            return "not inlining C++ with exceptions into non-C++";
+  case 37:
+            return "formal parameter is a loop index";
+  case 38:
+            return "not inlining nested functions";
+  case 39:
+            return "not inlining non-tiny noreturn functions";
+  case 40:
+            return "not inlining __builtin_apply_args functions";
+  default:
+    return "unknown reason";
+  } 
+} 
+
+
+
+void 
+Inline_Analyzer::mark_calls_in_loop()
+{
+  INT32 i;
+  NODE_INDEX_VECTOR worklist;
+
+  IPA_NODE_ITER cg_iter (the_cg, LEVELORDER, the_pool);
+
+  /* traverse all nodes at levelorder */
+  for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+    IPA_NODE* caller = cg_iter.Current();
+    if (caller == NULL) continue; 
+    IPA_SUCC_ITER edge_iter(the_cg, caller);
+    for( edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next() ){
+      IPA_EDGE *edge = edge_iter.Current_Edge ();
+      if( edge != NULL)
+      { 
+	INT loopnest = edge->Summary_Callsite ()->Get_loopnest ();
+        IPA_NODE *callee = the_cg->Callee(edge);
+        if (loopnest > 0) 
+        {
+          if (!call_in_loop[callee->Array_Index()])
+          {
+            call_in_loop[callee->Array_Index()]=TRUE;
+            worklist.push_back(callee->Array_Index());
+	  }
+	}
+      }   
+    }
+  }
+
+  while (!worklist.empty())
+  { 
+
+    IPA_NODE_INDEX caller = worklist.back();
+    // remove it from the work list. 
+    worklist.pop_back();
+    IPA_SUCC_ITER edge_iter (the_cg, the_cg->Node(caller));
+    for (edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next ()) {
+    IPA_EDGE *edge = edge_iter.Current_Edge ();
+    if (edge != NULL)
+    {
+      IPA_NODE_INDEX callee = the_cg->Callee(edge)->Array_Index();
+      if (!call_in_loop[callee])
+      {
+        call_in_loop[callee]=TRUE;
+        worklist.push_back(callee);
+      }
+    }
+    }
+  }
+}
+
+
+void
+Inline_Analyzer::report()
+{
+
+   // For each of the calls in loops, find the number of edges
+   // not inlined and report. 
+   /* traverse all nodes at levelorder */
+
+   IPA_NODE_ITER cg_iter( the_cg, PREORDER, the_pool );
+   for (cg_iter.First(); !cg_iter.Is_Empty(); cg_iter.Next()) {
+       IPA_NODE* caller = cg_iter.Current();
+       if (caller==NULL) continue; 
+       INT32 inlined_edges=0;
+       IPA_SUCC_ITER edge_iter (the_cg, caller);
+       INT32 total = the_cg->Num_Out_Edges(caller);
+       BOOL in_loop = call_in_loop[caller->Array_Index()];
+       if (the_cg->Num_Out_Edges(caller) == 0) continue; 
+       fprintf(stderr, "caller=%s %s weight=%d fully inlined = %s\n",caller->Name(), in_loop ? "*" : "", Effective_weight(caller), all_calls_inlined(caller) ? "yes" : "no");
+       for (edge_iter.First (); !edge_iter.Is_Empty (); edge_iter.Next ()) {
+          IPA_EDGE *edge = edge_iter.Current_Edge ();
+          if (edge != NULL)
+          {
+	     if (edge->Has_Inline_Attrib())
+             { 
+             fprintf(stderr, "   edge %d : inlined %s weight(%d)\n",edge->Edge_Index(), the_cg->Callee(edge)->Name(), Effective_weight(the_cg->Callee(edge)));
+	     } 
+             else
+             { 
+             fprintf(stderr, "   edge %d : didnot %s weight(%d): reason=%s\n",edge->Edge_Index(), the_cg->Callee(edge)->Name(), Effective_weight(the_cg->Callee(edge)), reason(edge));
+	     } 
+          }
+       }
+    }
+
 }

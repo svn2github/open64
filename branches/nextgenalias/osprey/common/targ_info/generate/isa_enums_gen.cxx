@@ -160,7 +160,7 @@ void ISA_Create_Enum_Class ( const char* name, ...)
 }
 
 
-static char*
+static const char*
 Print_ECV_EName (const char *name)
 {
   // will print direct to file, so can use temp buffers
@@ -191,7 +191,7 @@ Print_ECV_EName (const char *name)
   return buf;
 }
 
-static char*
+static const char*
 Print_ECV_Name (ECV_struct ecv)
 {
     if (ecv.ecv_int == UNDEFINED) {
@@ -299,4 +299,8 @@ void ISA_Enums_End(void)
 		 "}\n\n");
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

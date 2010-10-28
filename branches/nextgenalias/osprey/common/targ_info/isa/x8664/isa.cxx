@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -71,7 +71,7 @@
 #include <stddef.h>
 #include "isa_gen.h"
 
-main ()
+int main ()
 {
   ISA_Create( "x8664",
 
@@ -570,6 +570,14 @@ main ()
 	      "sub64v8",
 	      "sub64v16",
 	      "sub64v32",
+	      "test8",
+	      "testx8",
+	      "testxx8",
+	      "testxxx8",
+	      "test16",
+	      "testx16",
+	      "testxx16",
+	      "testxxx16",
 	      "test32",
 	      "testx32",
 	      "testxx32",
@@ -578,6 +586,8 @@ main ()
 	      "testx64",
 	      "testxx64",
 	      "testxxx64",
+	      "testi8",
+	      "testi16",
 	      "testi32",
 	      "testi64",
 	      "xor8",
@@ -879,7 +889,13 @@ main ()
 	      "stapdx",
 	      "stapdxx",
 	      "stups",
+	      "stupsx",
+	      "stupsxx",
+	      "stups_n32",
 	      "stupd",
+	      "stupdx",
+	      "stupdxx",
+	      "stupd_n32",
 	      "maxsd",
 	      "maxss",
 	      "fmax128v32",
@@ -971,6 +987,14 @@ main ()
 	      "subxxxsd",
 	      "subxxss",
 	      "subxxxss",
+              "ucomisd",
+              "ucomixsd",
+              "ucomixxsd",
+              "ucomixxxsd",
+              "ucomiss",
+              "ucomixss",
+              "ucomixxss",
+              "ucomixxxss",
 	      "fsub128v32",
 	      "fsubx128v32",
 	      "fsubxx128v32",
@@ -3477,4 +3501,5 @@ main ()
 
 	      /* END */
 	      NULL);
+  return 0;
 }

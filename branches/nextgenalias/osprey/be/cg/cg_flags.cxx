@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -120,6 +120,11 @@ BOOL CG_skip_local_sched = FALSE;
 BOOL CG_skip_local_swp = FALSE;
 #ifdef TARG_X8664
 BOOL CG_cmp_load_exec = FALSE;
+BOOL CG_fma4_load_exec = FALSE;
+BOOL CG_128bitstore = TRUE;
+BOOL CG_branch_fuse = TRUE;
+BOOL CG_dispatch_schedule = FALSE;
+BOOL CG_strcmp_expand = TRUE;
 #endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;
@@ -326,6 +331,7 @@ BOOL EMIT_explicit_bundles = TRUE;
 INT32 EMIT_Long_Branch_Limit = DEFAULT_LONG_BRANCH_LIMIT;
 
 INT32 CGEXP_expandconstant = DEFAULT_CGEXP_CONSTANT;
+BOOL CG_divrem_opt = FALSE;
 BOOL CGEXP_use_copyfcc = TRUE;
 BOOL CGEXP_normalize_logical = FALSE;
 BOOL CGEXP_gp_prolog_call_shared = TRUE;
@@ -515,6 +521,7 @@ BOOL CG_p2align = FALSE;
 BOOL CG_loop32 = FALSE;
 BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;
+BOOL CG_Movext_ICMP = TRUE;
 #endif
 #ifdef TARG_LOONGSON
 BOOL CGEXP_float_use_madd = FALSE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -347,7 +347,7 @@ Targ_Name ( TARGET_PROCESSOR b)
     case TARGET_xeon: return "Xeon";
     case TARGET_anyx86: return "Anyx86";
     case TARGET_barcelona: return "Barcelona";
-    case TARGET_orochi: return "Orochi";
+    case TARGET_orochi: return "Bdver1";
     default:
       r = bnb[bnb_used].name;
       bnb_used = (bnb_used + 1) % 4;
@@ -382,11 +382,11 @@ static void Adjust_m32_MTYPE_Info()
   MTYPE_alignment(MTYPE_F8) = 4;
   MTYPE_alignment(MTYPE_C8) = 4;
 
-  MTYPE_bit_size(MTYPE_FQ)  = 96;
-  MTYPE_alignment(MTYPE_FQ) = 4;
+  MTYPE_bit_size(MTYPE_F10)  = 96;
+  MTYPE_alignment(MTYPE_F10) = 4;
 
-  MTYPE_bit_size(MTYPE_CQ)  = 192;
-  MTYPE_alignment(MTYPE_CQ) = 4;
+  MTYPE_bit_size(MTYPE_C10)  = 192;
+  MTYPE_alignment(MTYPE_C10) = 4;
 }
 
 
@@ -485,7 +485,7 @@ Prepare_Target ( void )
         Target_SSE3 = TRUE;
       targ = TARGET_barcelona;
     }
-    else if ( strcasecmp ( Processor_Name, "orochi" ) == 0 ) {
+    else if ( strcasecmp ( Processor_Name, "bdver1" ) == 0 ) {
       if (!Target_SSE2_Set && !Target_SSE3_Set)
         Target_SSE3 = TRUE;
       if (!Target_SSE2_Set && !Target_SSSE3_Set)

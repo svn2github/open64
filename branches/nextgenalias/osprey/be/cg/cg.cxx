@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -160,7 +160,7 @@ MEM_POOL MEM_local_region_pool; /* allocations local to processing a region */
 MEM_POOL MEM_local_region_nz_pool;
 
 BOOL Trace_REGION_Interface = FALSE;
-
+BOOL is_str_expand = FALSE;
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
 INT32 current_PU_handle = 0;
 INT32 rse_budget;
@@ -193,6 +193,8 @@ BOOL PU_has_local_dynamic_tls;
 TN*  Local_Dynamic_TLS_Base;
 BOOL PU_References_GOT;  // for -m32 -fpic
 BOOL PU_has_avx128;      // cause emit of vzeroupper 
+BOOL PU_has_builtin_apply_args; // __builtin_apply_args
+BOOL PU_has_builtin_apply; // __builtin_apply
 #endif
 
 BOOL edge_done = FALSE;
@@ -276,6 +278,9 @@ CG_PU_Initialize (WN *wn_pu)
   Local_Dynamic_TLS_Base = NULL;
 
   PU_References_GOT = FALSE;
+
+  PU_has_builtin_apply_args = FALSE;
+  PU_has_builtin_apply = FALSE;
 
   if (CG_localize_x87_tns && Is_Target_SSE2()) {
     fprintf(stderr,
@@ -1697,7 +1702,7 @@ extern void Generate_Return_Address(void);
 #endif
   IGLS_Schedule_Region (FALSE /* after register allocation */);
   // use cflow to handle branch fusing cmp/jcc for Orochi and greater.
-  if (Is_Target_Orochi()) {
+  if (Is_Target_Orochi() && CG_branch_fuse && !CG_dispatch_schedule) {
     CFLOW_Optimize(CFLOW_BR_FUSE, "CFLOW (fifth pass)");
   }
 #endif
@@ -1945,6 +1950,14 @@ extern void Generate_Return_Address(void);
        SL1_patch();
      }
 #endif 
+
+#ifdef TARG_X8664
+    if (Is_Target_Orochi() == TRUE)
+    {
+      extern void CG_Sched( MEM_POOL*, BOOL );
+      CG_Sched( &MEM_local_pool, Get_Trace( TP_SCHED, 1 ) );
+    }
+#endif
 
     /* Emit the code for the PU. This may involve writing out the code to
      * an object file or to an assembly file or both. Additional tasks

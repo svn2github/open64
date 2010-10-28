@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -69,7 +69,7 @@
 #include "topcode.h"
 #include "isa_subset_gen.h"
 
-main()
+int main()
 {
   ISA_SUBSET x86_64;
 
@@ -414,6 +414,14 @@ main()
 		    TOP_subi32,
 		    TOP_sbbi32,
 		    TOP_subi64,
+		    TOP_test8,
+		    TOP_testx8,
+		    TOP_testxx8,
+		    TOP_testxxx8,
+		    TOP_test16,
+		    TOP_testx16,
+		    TOP_testxx16,
+		    TOP_testxxx16,
 		    TOP_test32,
 		    TOP_testx32,
 		    TOP_testxx32,
@@ -422,6 +430,8 @@ main()
 		    TOP_testx64,
 		    TOP_testxx64,
 		    TOP_testxxx64,
+		    TOP_testi8,
+		    TOP_testi16,
 		    TOP_testi32,
 		    TOP_testi64,
 		    TOP_xor8,
@@ -637,6 +647,14 @@ main()
 		    TOP_comixss,
 		    TOP_comixxss,
 		    TOP_comixxxss,
+                    TOP_ucomisd,
+                    TOP_ucomixsd,
+                    TOP_ucomixxsd,
+                    TOP_ucomixxxsd,
+                    TOP_ucomiss,
+                    TOP_ucomixss,
+                    TOP_ucomixxss,
+                    TOP_ucomixxxss,
 		    TOP_cltd,
 		    TOP_cqto,
 		    TOP_cvtdq2pd,
@@ -787,7 +805,13 @@ main()
 		    TOP_stapsxx,
 		    TOP_stapdxx,
 		    TOP_stups,
+		    TOP_stupsx,
+		    TOP_stupsxx,
+                    TOP_stups_n32,
 		    TOP_stupd,
+		    TOP_stupdx,
+		    TOP_stupdxx,
+                    TOP_stupd_n32,
 		    TOP_movsd,
 		    TOP_movss,
 		    TOP_movdq,

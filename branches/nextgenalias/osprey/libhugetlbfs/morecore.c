@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -50,6 +50,7 @@ static long mapsize;
 #endif
 
 #ifdef OPEN64_MOD
+#define MAX_TOP_PAD (1024*1024)
 void *heapbase;
 void *heaptop;
 long mapsize;
@@ -62,6 +63,7 @@ HUGEPAGE_STYPE hugepage_s_stype = SIZE_2M; /* type of huge page supported by the
 
 long hugepages_heap_limit;
 long hugepages_seg_total;
+int heap_starts_in_bd;
 static long hugepages_avail;
 #endif
 
@@ -93,8 +95,11 @@ static long hugetlbfs_next_addr(long addr)
  */
 #define IOV_LEN	64
 #ifdef OPEN64_MOD
+/* Took out (hugepage_heap_stype == hugepage_elf_stype)
+ * From IN_UNIFY_PAGE, since we will always be initially allocating
+ * memory from the rest of a 1GB page used to map BD.
+ */
 #define IN_UNIFY_PAGE  ((hugepage_elf_stype == SIZE_1G) && \
-                        (hugepage_heap_stype == hugepage_elf_stype) && \
                         (newbrk > 0) && \
                         ((unsigned long) heaptop <= newbrk))
 #endif
@@ -128,6 +133,7 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
             if (delta < 0) {
                 p = heaptop;
                 heaptop = heaptop + increment;
+		DEBUG("... = %p\n", p);
                 return p;
             }
             else {
@@ -160,7 +166,7 @@ static void *hugetlbfs_morecore(ptrdiff_t increment)
 
 		/* map in (extend) more of the file at the end of our last map */
 #ifdef OPEN64_MOD
-                if (sbrk(delta) == -1l){
+                if (sbrk(delta) == (void *)-1l){
 			WARNING("New heap segment map at %p failed: %s\n",
 	                	heapbase+mapsize, strerror(errno));
 	 		return NULL;
@@ -306,6 +312,7 @@ void __hugetlbfs_setup_morecore(void)
 	unsigned long heapaddr;
 #ifdef OPEN64_MOD
         unsigned long curbrk = (unsigned long) sbrk(0);
+	long top_pad;
 #endif
 	env = getenv("HUGETLB_MORECORE");
 
@@ -356,7 +363,11 @@ void __hugetlbfs_setup_morecore(void)
 	}
 
 	env = getenv("HUGETLB_MORECORE_HEAPBASE");
-	if (env) {
+	if (env
+#ifdef OPEN64_MOD
+            && ! heap_starts_in_bd
+#endif
+            ) {
 		heapaddr = strtoul(env, &ep, 16);
 		if (*ep != '\0') {
 			ERROR("Can't parse HUGETLB_MORECORE_HEAPBASE: %s\n",
@@ -364,36 +375,60 @@ void __hugetlbfs_setup_morecore(void)
 			return;
 		}
 	}
-#ifdef OPEN64_MOD
-        else if ((heapbase > 0) && (hugepage_heap_stype == hugepage_elf_stype)) {
-            heapaddr = (unsigned long) heapbase;
-            mapsize = (unsigned long) sbrk(0) - heapaddr;
-        }
-#endif
-        else {
+#ifndef OPEN64_MOD
+	else {
 		heapaddr = (unsigned long)sbrk(0);
 		heapaddr = hugetlbfs_next_addr(heapaddr);
 	}
+#else	
+        else if (! heap_starts_in_bd) {
+            if ((heapbase > 0) && (hugepage_heap_stype == hugepage_elf_stype)) {
+                heapaddr = (unsigned long) heapbase;
+                mapsize = (unsigned long) sbrk(0) - heapaddr;
+            }
+            else {
+                heapaddr = (unsigned long)sbrk(0);
+                heapaddr = hugetlbfs_next_addr(heapaddr);
+            }
+        }
+#endif
 
 #ifdef OPEN64_MOD
-        if (heapaddr > curbrk)
+        if (! heap_starts_in_bd && heapaddr > curbrk)
             sbrk(heapaddr - curbrk);
 #endif
 	zero_fd = open("/dev/zero", O_RDONLY);
-        
-	DEBUG("setup_morecore(): heapaddr = 0x%lx\n", heapaddr);
+#ifdef OPEN64_MOD
+	if (! heap_starts_in_bd) {
+#endif
+	    DEBUG("setup_morecore(): heapaddr = 0x%lx\n", heapaddr);
 
-	heaptop = heapbase = (void *)heapaddr;
-	__morecore = &hugetlbfs_morecore;
+	    heaptop = heapbase = (void *)heapaddr;
+	    __morecore = &hugetlbfs_morecore;
+#ifdef OPEN64_MOD
+	}
+#endif
 
 	/* Set some allocator options more appropriate for hugepages */
 
+#ifndef OPEN64_MOD
         if (shrink_ok)
             mallopt(M_TRIM_THRESHOLD, blocksize / 2);
         else
             mallopt(M_TRIM_THRESHOLD, -1);
 
         mallopt(M_TOP_PAD, blocksize / 2);
+#else
+	top_pad = blocksize / 2;
+        if (top_pad > MAX_TOP_PAD)
+		top_pad = MAX_TOP_PAD;
+        if (shrink_ok)
+            mallopt(M_TRIM_THRESHOLD, top_pad);
+        else
+            mallopt(M_TRIM_THRESHOLD, -1);
+
+        mallopt(M_TOP_PAD, top_pad);
+#endif
         /* we always want to use our morecore, not ordinary mmap().
          * This doesn't appear to prohibit malloc() from falling back
          * to mmap() if we run out of hugepages. */
@@ -465,5 +500,25 @@ void  __setup_hugepage(int l_limit, int attr)
         if (hugepages_heap_limit > 0)
             __hugetlbfs_setup_morecore();
     }
+}
+
+/* Set up to allow heap allocation for
+ * the rest of a HUGE page mapped BD section.
+ */
+
+void __hugetlbfs_setup_bd_morecore(void)
+{
+        long top_pad;
+
+	blocksize = gethugepagesize();
+        heap_starts_in_bd = 1;
+	__morecore = &hugetlbfs_morecore;
+
+        mallopt(M_TRIM_THRESHOLD, -1);
+	top_pad = blocksize / 2;
+        if (top_pad > MAX_TOP_PAD)
+		top_pad = MAX_TOP_PAD;
+	mallopt(M_TOP_PAD, top_pad);
+	mallopt(M_MMAP_MAX, 0);
 }
 #endif

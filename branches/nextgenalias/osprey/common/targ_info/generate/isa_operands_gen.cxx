@@ -54,8 +54,6 @@
 //  $Author: marcel $
 //  $Source: /proj/osprey/CVS/open64/osprey1.0/common/targ_info/generate/isa_operands_gen.cxx,v $
 
-typedef struct operand_value_type *OPERAND_VALUE_TYPE;
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -946,4 +944,8 @@ void ISA_Operands_End(void)
 		 "}\n");
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /* Lowering pass for OpenMP directives.  Converts OpenMP directives
    into explicit calls to the runtime library (libgomp) and data
    marshalling to implement data sharing and copying clauses.

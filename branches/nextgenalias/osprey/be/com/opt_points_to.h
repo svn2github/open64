@@ -927,6 +927,7 @@ WN *Find_addr_recur(WN *wn, const SYMTAB &stab)
     if(INTRN_copy_addr(WN_intrinsic(wn)))
       return Find_addr_recur(WN_kid0(WN_kid0(wn)),stab);
     return NULL;
+#endif
 
   case OPR_PARM:
     if ((WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) && WN_kid_count(wn))
@@ -934,14 +935,6 @@ WN *Find_addr_recur(WN *wn, const SYMTAB &stab)
     // otherwise, there is no address expression
     return NULL;
 
-#else
-  case OPR_PARM:
-    // if it is called by reference, LDID is a addr expr
-    if (WN_Parm_By_Reference(wn) && WN_kid_count(wn))
-      return Find_addr_recur(WN_kid0(wn), stab);
-    // otherwise, there is no address expression
-    return NULL;
-#endif
   case OPR_LDA:
     return wn;
   case OPR_LDID:

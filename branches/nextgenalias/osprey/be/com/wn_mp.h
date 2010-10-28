@@ -100,6 +100,8 @@ extern WN * Gen_MP_Unlock ( ST * lock ) ;
 extern WN * Gen_MP_Setlock ( void );
 extern WN * Gen_MP_Unsetlock ( void );
 
+extern void Verify_No_MP(WN *tree);
+
   // list of the STORE nodes for the REDUCTION pragmas of an MP construct
 typedef DYN_ARRAY<WN *> REDUCTION_LIST;
 extern INT

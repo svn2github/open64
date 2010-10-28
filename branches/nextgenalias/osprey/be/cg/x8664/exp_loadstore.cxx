@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -170,7 +170,7 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
       return base != NULL ? TOP_fldl : TOP_fldl_n32;
   case MTYPE_F16:
       return TOP_lddqu;
-  case MTYPE_FQ:
+  case MTYPE_F10:
     return base != NULL ? TOP_fldt : TOP_fldt_n32;
   case MTYPE_V16F4:
   case MTYPE_V16C4:
@@ -432,7 +432,7 @@ Pick_Store_Instruction( TYPE_ID mtype,
       return base != NULL ? TOP_fstpl : TOP_fstpl_n32;
   case MTYPE_F16:
     return TOP_stdqu;
-  case MTYPE_FQ:
+  case MTYPE_F10:
     return base != NULL ? TOP_fstpt : TOP_fstpt_n32;
   case MTYPE_V16F4: 
   case MTYPE_V16C4: 
@@ -515,7 +515,7 @@ static void Expand_Split_Store( TYPE_ID mtype,
 
 
 void
-Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
+Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, VARIANT variant, OPS *ops)
 {
   TOP top =
     Pick_Store_Instruction( mtype, base, ofst, TN_register_class(src) );
@@ -536,6 +536,9 @@ Expand_Store (TYPE_ID mtype, TN *src, TN *base, TN *ofst, OPS *ops)
 	top = TOP_stdqa;
     }      
   }
+
+  if (variant & V_HIGH64)
+	  top = TOP_sthpd;
 
   if( OP_NEED_PAIR( mtype ) ){
     Expand_Split_Store( mtype, src, base, ofst, ops );
@@ -678,7 +681,7 @@ Expand_Misaligned_Load ( OPCODE op, TN *result, TN *base, TN *disp, VARIANT vari
 static void
 Expand_Composed_Store (TYPE_ID mtype, TN *obj, TN *base, TN *disp, VARIANT variant, OPS *ops)
 {
-  return Expand_Store( mtype, obj, base, disp, ops );
+  return Expand_Store( mtype, obj, base, disp, variant, ops );
 }
 
 void
@@ -696,32 +699,46 @@ Expand_Misaligned_Store (TYPE_ID mtype, TN *obj_tn, TN *base_tn, TN *disp_tn, VA
     else Build_OP(!Is_Target_SSE2() ? TOP_stlps_n32 : TOP_store64_fsse_n32, obj_tn, disp_tn, ops);
   }
   else if (mtype == MTYPE_V16F4 || mtype == MTYPE_V16C4) {
-    TN* ofst = TN_is_symbol( disp_tn )
-      ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
-      : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    if (base_tn != NULL) {
-      Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
-      Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+    if(Is_Target_Orochi() && CG_128bitstore){
+      if(base_tn != NULL)
+        Build_OP (TOP_stups, obj_tn, base_tn, disp_tn, ops);
+      else Build_OP (TOP_stups_n32, obj_tn, disp_tn, ops);
     }
-    else {
-      Build_OP (TOP_stlps_n32, obj_tn, disp_tn, ops);    
-      Build_OP (TOP_sthps_n32, obj_tn, ofst, ops);    
+    else{
+      TN* ofst = TN_is_symbol( disp_tn )
+        ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
+        : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
+      if (base_tn != NULL) {
+        Build_OP (TOP_stlps, obj_tn, base_tn, disp_tn, ops);    
+        Build_OP (TOP_sthps, obj_tn, base_tn, ofst, ops);    
+      }
+      else {
+        Build_OP (TOP_stlps_n32, obj_tn, disp_tn, ops);    
+        Build_OP (TOP_sthps_n32, obj_tn, ofst, ops);    
+      }
+      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
     }
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   } 
   else if (mtype == MTYPE_V16F8 || mtype == MTYPE_V16C8) {
-    TN* ofst = TN_is_symbol( disp_tn )
-      ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
-      : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
-    if (base_tn != NULL) {
-      Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
-      Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+    if(Is_Target_Orochi() && CG_128bitstore){
+      if(base_tn != NULL)
+        Build_OP (TOP_stupd, obj_tn, base_tn, disp_tn, ops);
+      else Build_OP (TOP_stupd_n32, obj_tn, disp_tn, ops);
     }
-    else {
-      Build_OP (TOP_stlpd_n32, obj_tn, disp_tn, ops);    
-      Build_OP (TOP_sthpd_n32, obj_tn, ofst, ops);    
+    else{
+      TN* ofst = TN_is_symbol( disp_tn )
+        ? Gen_Symbol_TN( TN_var(disp_tn), TN_offset(disp_tn) + 8, TN_RELOC_NONE )
+        : Gen_Literal_TN( TN_value(disp_tn) + 8, TN_size(disp_tn) );
+      if (base_tn != NULL) {
+        Build_OP (TOP_stlpd, obj_tn, base_tn, disp_tn, ops);    
+        Build_OP (TOP_sthpd, obj_tn, base_tn, ofst, ops);    
+      }
+      else {
+        Build_OP (TOP_stlpd_n32, obj_tn, disp_tn, ops);    
+        Build_OP (TOP_sthpd_n32, obj_tn, ofst, ops);    
+      }
+      Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
     }
-    Set_OP_cond_def_kind(OPS_last(ops), OP_ALWAYS_COND_DEF);
   }
   else
     Expand_Composed_Store (mtype, obj_tn, base_tn, disp_tn, variant, ops);
@@ -1354,7 +1371,7 @@ Exp_Ldst (
 	Expand_Misaligned_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, 
 	                         variant, &newops);
       else
-	Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, &newops);
+	Expand_Store (OPCODE_desc(opcode), tn, base_tn, ofst_tn, variant, &newops);
 
     } else if( is_load ){
       if ( opcode == OPC_V16C8V16C8LDID ||

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -226,14 +226,14 @@ static BOOL last_call_ff2c_abi; // whether the last outgoing call use this abi
 #define LOW_LANDING_PAD
 #endif
 
-static WN *lower_scf(WN *, WN *, LOWER_ACTIONS);
+static WN *lower_scf(WN *, WN *, LOWER_ACTIONS, WN **);
 static WN *lower_expr(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_store(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_call(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_intrinsic(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_intrinsic_call(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_intrinsic_op(WN *, WN *, LOWER_ACTIONS);
-static WN *lower_if(WN *, WN *, LOWER_ACTIONS);
+static WN *lower_if(WN *, WN *, LOWER_ACTIONS, WN **);
 static WN *lower_stmt(WN *, WN *, LOWER_ACTIONS);
 static WN *lower_entry(WN *, LOWER_ACTIONS);
 #ifdef LOW_LANDING_PAD
@@ -274,6 +274,7 @@ static void lower_mload_actual (WN *, WN *, PLOC, LOWER_ACTIONS);
 static void lower_complex_emulation(WN *, WN *, LOWER_ACTIONS, WN **, WN **);
 static void lower_complex_expr(WN *, WN *, LOWER_ACTIONS, WN **, WN **);
 
+static void vcast_complex_types(WN* tree); 
 
 static void lower_copy_maps(WN *, WN *, LOWER_ACTIONS);
 static void lower_tree_copy_maps(WN *, WN *, LOWER_ACTIONS);
@@ -330,6 +331,7 @@ typedef struct CURRENT_STATE
   SRCPOS	srcpos;
   WN		*stmt;
   WN		*function;
+  WN            *block;
   LOWER_ACTIONS	actions;
 } CURRENT_STATE, *CURRENT_STATEp;
 
@@ -339,6 +341,7 @@ CURRENT_STATE	current_state;
 #define	current_stmt		current_state.stmt
 #define	current_actions		current_state.actions
 #define current_function	current_state.function
+#define current_block           current_state.block
 
 typedef enum MSTORE_ACTIONS
 {
@@ -381,7 +384,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_U8,       /* MTYPE_U8 */
   MTYPE_F4,       /* MTYPE_F4 */
   MTYPE_F8,       /* MTYPE_F8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   MTYPE_F10,      /* MTYPE_F10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_F10 */
@@ -398,7 +401,7 @@ static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
  ,MTYPE_UNKNOWN,  /* MTYPE_BS */
   MTYPE_UNKNOWN,  /* MTYPE_A4 */
   MTYPE_UNKNOWN,  /* MTYPE_A8 */
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
   MTYPE_C10,	  /* MTYPE_C10 */
 #else
   MTYPE_UNKNOWN,  /* MTYPE_C10 */
@@ -611,6 +614,9 @@ static void setCurrentState(WN *tree, LOWER_ACTIONS actions)
 
     if (WN_opcode(tree) == OPC_FUNC_ENTRY)
       current_function = tree;
+
+    if (WN_opcode(tree) == OPC_BLOCK)
+      current_block = tree;
   }
 }
 
@@ -1457,10 +1463,21 @@ static PREG_NUM AssignPregExprPos(WN *block, WN *tree, TY_IDX ty,
     *	This lowering may leed to infinite regress if the
     * 	children cannot be lowered (and are allocated a temp, for example) 
     */
+#ifdef TARG_X8664
+    if (Is_Target_SSE3() && Vcast_Complex)
+    {
+    WN_INSERT_BlockLast(stBlock, stid);
+ 
+    if (actions)
+      stBlock = lower_block(stBlock, actions);
+    } else {
+#endif
     if (actions)
       stid = lower_store(stBlock, stid, actions);
-
     WN_INSERT_BlockLast(stBlock, stid);
+#ifdef TARG_X8664
+    }
+#endif
 
     WN_INSERT_BlockLast(block, stBlock);
   }
@@ -2002,6 +2019,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
   *      z= R(z) + I(z)i
   *
   */
+  
   switch (WN_operator(tree))
   {
   case OPR_LDID:
@@ -2012,8 +2030,24 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       *		 z =  {  R(z) , I(z) }
       */
       TY_IDX    beTY   = MTYPE_To_TY(type);
+      TYPE_ID   ctype = WN_rtype(tree);
+#ifdef TARG_X8664
+      if (!MTYPE_is_complex(ctype) && !(ctype == MTYPE_V16C8))
+      {
+	*realpart = tree;
+	*imagpart = NULL;
+	break;
+      }
+      if (ctype == MTYPE_C8 && Is_Target_SSE3() && Vcast_Complex){
+	OPCODE opcode = WN_opcode(tree);
+        if (OPCODE_rtype(opcode) == MTYPE_C8)
+          WN_set_rtype(tree, MTYPE_V16C8);
+        if (OPCODE_desc(opcode) == MTYPE_C8)
+          WN_set_desc(tree, MTYPE_V16C8);
+      }
+#endif
       WN_OFFSET offset = WN_load_offset(tree);
-
+      
       if (WN_class(tree) == CLASS_CONST && offset == 0)
       {
 	TCON	val = WN_val(tree);
@@ -2026,15 +2060,27 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
  	  break;
 	}
       }
-
-      *realpart = WN_Ldid(type, offset,
+#ifdef TARG_X8664
+      if ((ctype != MTYPE_C8 && ctype != MTYPE_V16C8) ||
+        ST_sclass(WN_st(tree)) == SCLASS_REG && 
+	(Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree))) ||
+        !Is_Target_SSE3() || !Vcast_Complex)
+      {
+#endif
+	*realpart = WN_Ldid(type, offset,
 			  coerceST(WN_st(tree), type),
 			  beTY);
 
-      *imagpart = WN_Ldid(type,
+        *imagpart = WN_Ldid(type,
 			  coerceOFFSET(tree, type, offset),
 			  coerceST(WN_st(tree), type),
 			  beTY);
+#ifdef TARG_X8664
+      } else { 
+        *realpart = WN_Realpart(type, WN_COPY_Tree(tree));
+        *imagpart = WN_Imagpart(type, WN_COPY_Tree(tree));
+      }
+#endif
     }
     break;
 
@@ -2048,6 +2094,18 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       *  base and index. The index is put in a preg (and reused) while
       *  the base is cloned.
       */
+      TYPE_ID   ctype = WN_rtype(tree);
+
+#ifdef TARG_X8664 
+      if (!MTYPE_is_complex(ctype) && !(ctype == MTYPE_V16C8))
+#else
+      if (!MTYPE_is_complex(ctype))
+#endif
+      {
+	*realpart = tree;
+	*imagpart = NULL;
+	break;
+      }
       WN_OFFSET offset = WN_load_offset(tree);
 
       if (Action(LOWER_BASE_INDEX))
@@ -2127,11 +2185,51 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       *    z + w = (R(z) + R(w)) + (I(z) + I(w))i
       */
 
-      lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
-      lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
+	else
+	{
+	  rz = WN_kid0(tree);
+	  iz = NULL;
+	}
+      }
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+	else
+	{
+	  rw = WN_kid1(tree);
+	  iw = NULL;
+	}
+      }
  
-      *realpart = WN_Add( type, rz, rw);
-      *imagpart = WN_Add( type, iz, iw);
+      if (rz != NULL && rw != NULL)
+        *realpart = WN_Add( type, rz, rw);
+      else if (rz != NULL)
+	*realpart = rz;
+      else if (rw != NULL)
+        *realpart = rw;
+      else FmtAssert(FALSE, ("Real part of complex expression is NULL"));
+
+      if (iz != NULL && iw != NULL)
+        *imagpart = WN_Add( type, iz, iw);
+      else if (iz != NULL)
+	*imagpart = iz;
+      else if (iw != NULL)
+        *imagpart = iw;
+      else *imagpart = NULL; 
+      
     }
     break;
 
@@ -2142,11 +2240,50 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       */
       WN	*rz, *rw, *iz, *iw;
 
-      lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
-      lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
+	else
+	{
+	  rz = WN_kid0(tree);
+	  iz = NULL;
+	}
+      }
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+	else
+	{
+	  rw = WN_kid1(tree);
+	  iw = NULL;
+	}
+      }
  
-      *realpart = WN_Sub( type, rz, rw);
-      *imagpart = WN_Sub( type, iz, iw);
+      if (rz != NULL && rw != NULL)
+        *realpart = WN_Sub( type, rz, rw);
+      else if (rz != NULL)
+	*realpart = rz;
+      else if (rw != NULL)
+        *realpart = WN_Neg(type, rw);
+      else FmtAssert(FALSE, ("Real part of complex expression is NULL"));
+
+      if (iz != NULL && iw != NULL)
+        *imagpart = WN_Sub( type, iz, iw);
+      else if (iz != NULL)
+	*imagpart = iz;
+      else if (iw != NULL)
+        *imagpart = WN_Neg( type, iw);
+      else *imagpart = NULL; 
     }
     break;
 
@@ -2158,22 +2295,73 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       */
       WN	*rz, *rw, *iz, *iw;
       LEAF	rzN, rwN, izN, iwN;
+      WN	*m1, *m2, *m3, *m4;
 
-      lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
-      lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
+	else
+	{
+	  rz = WN_kid0(tree);
+	  iz = NULL;
+	}
+      }
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+	else
+	{
+	  rw = WN_kid1(tree);
+	  iw = NULL;
+	}
+      }
 
-      rzN = Make_Leaf(block, rz, type);
-      rwN = Make_Leaf(block, rw, type);
-      izN = Make_Leaf(block, iz, type);
-      iwN = Make_Leaf(block, iw, type);
+      if (rz != NULL)
+        rzN = Make_Leaf(block, rz, type);
+      if (rw != NULL)
+        rwN = Make_Leaf(block, rw, type);
+      if (iz != NULL)
+	izN = Make_Leaf(block, iz, type);
+      if (iw != NULL)
+	iwN = Make_Leaf(block, iw, type);
 
-      *realpart = WN_Sub(type,
-			 WN_Mpy(type, Load_Leaf(rzN), Load_Leaf(rwN)),
-			 WN_Mpy(type, Load_Leaf(izN), Load_Leaf(iwN)));
+      m1 = m2 = m3 = m4 = NULL;
+      if (rz != NULL && rw != NULL)
+	m1 = WN_Mpy(type, Load_Leaf(rzN), Load_Leaf(rwN));
+      if (iz != NULL && iw != NULL)
+	m2 = WN_Mpy(type, Load_Leaf(izN), Load_Leaf(iwN));
+      if (rz != NULL && iw != NULL)
+	m3 = WN_Mpy(type, Load_Leaf(rzN), Load_Leaf(iwN));
+      if (iz != NULL && rw != NULL)
+	m4 = WN_Mpy(type, Load_Leaf(rwN), Load_Leaf(izN));
+	
+      if (m1 != NULL && m2 != NULL)
+        *realpart = WN_Sub(type, m1, m2); 
+      else if (m1 != NULL)
+        *realpart = m1;
+      else if (m2 != NULL)
+        *realpart = WN_Neg(type, m2);
+      else
+	*realpart = NULL;
 
-      *imagpart = WN_Add(type,
-			 WN_Mpy(type, Load_Leaf(rzN), Load_Leaf(iwN)),
-			 WN_Mpy(type, Load_Leaf(rwN), Load_Leaf(izN)));
+      if (m3 != NULL && m4 != NULL)
+        *imagpart = WN_Add(type, m3, m4);
+      else if (m3 != NULL)
+        *imagpart = m3;
+      else if (m4 != NULL)
+        *imagpart = m4;
+      else *imagpart = NULL;
+      FmtAssert(*realpart != NULL, ("Real part of complex expression is NULL"));
     }
     break;
 
@@ -2215,8 +2403,15 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       */
       TCON	val = Const_Val(tree);
 
-      *realpart = Make_Const( Extract_Complex_Real(val));
-      *imagpart = Make_Const( Extract_Complex_Imag(val));
+      if(MTYPE_is_complex(TCON_ty(val)))
+      {
+        *realpart = Make_Const( Extract_Complex_Real(val));
+        *imagpart = Make_Const( Extract_Complex_Imag(val));
+      }else
+      {
+        *realpart = Make_Const( val);
+	*imagpart = NULL;
+      }
 
       // Fix for Bug# 496
       //WN_Delete(tree);
@@ -2417,7 +2612,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 				  FB_FREQ_UNKNOWN );
 	}
 
-	WN_INSERT_BlockLast(block, lower_if(block, IF, actions));
+	WN_INSERT_BlockLast(block, lower_if(block, IF, actions, NULL));
     
 	*realpart = WN_LdidPreg(type, realpartN);
 	*imagpart = WN_LdidPreg(type, imagpartN);
@@ -2435,15 +2630,50 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
       WN	*rz, *rw, *iz, *iw; 
       LEAF	rzN, rwN, izN, iwN;
 
-      lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
-      lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid0(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid0(tree), actions, &rz, &iz);
+	else
+	{
+	  rz = WN_kid0(tree);
+	  iz = NULL;
+	}
+      }
+      {
+	TYPE_ID ltype = WN_rtype(WN_kid1(tree));
+#ifdef TARG_X8664 
+	if (ltype == MTYPE_V16C8 || MTYPE_is_complex(ltype))
+#else
+	if (MTYPE_is_complex(ltype))
+#endif
+          lower_complex_expr(block, WN_kid1(tree), actions, &rw, &iw);
+	else
+	{
+	  rw = WN_kid1(tree);
+	  iw = NULL;
+	}
+      }
   
       rzN = Make_Leaf(block, rz, type);
-      izN = Make_Leaf(block, iz, type);
+      if (iz != NULL)
+	izN = Make_Leaf(block, iz, type);
+      else
+	izN = Make_Leaf(block, WN_Floatconst(type, 0.0), type);
       rwN = Make_Leaf(block, rw, type);
-      iwN = Make_Leaf(block, iw, type);
+      if (iw != NULL)
+        iwN = Make_Leaf(block, iw, type);
 
-      if (Fast_Complex_Allowed)
+      if (iw == NULL)
+      {
+	*realpart = WN_Div(type, Load_Leaf(rzN), Load_Leaf(rwN));
+	*imagpart = WN_Div(type, Load_Leaf(izN), Load_Leaf(rwN));
+      }
+      else if (Fast_Complex_Allowed)
       {
        /*
 	*   z / w
@@ -2618,7 +2848,7 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 				  FB_FREQ_UNKNOWN );
 	}
     
-	WN_INSERT_BlockLast(block, lower_if(block, IF, actions));
+	WN_INSERT_BlockLast(block, lower_if(block, IF, actions, NULL));
     
 	*realpart = WN_LdidPreg(type, realpartN);
 	*imagpart = WN_LdidPreg(type, imagpartN);
@@ -2656,6 +2886,15 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 	  WN_Delete(tree);
 	}
         break;
+#ifdef TARG_X8664 
+      case INTRN_V16C8MPY_ADDSUB:
+	{
+	  lower_complex_expr(block, WN_CreateExp2(OPR_MPY, MTYPE_V16C8, MTYPE_V, 
+				  WN_actual(tree, 0), WN_actual(tree, 2)), actions,
+			  realpart, imagpart);
+	}
+        break;	
+#endif
 
 	//*****************************************************************
 	//
@@ -2701,6 +2940,17 @@ static void lower_complex_expr(WN *block, WN *tree, LOWER_ACTIONS actions,
 
   case OPR_PARM:
     lower_complex_expr(block, WN_kid0(tree), actions, realpart, imagpart);
+    break;
+  case OPR_FIRSTPART:
+    lower_complex_expr(block, WN_kid0(tree), actions, realpart, imagpart);
+    //WN_Delete(*imagpart);
+    *imagpart = NULL;
+    break;
+  case OPR_SECONDPART:
+    lower_complex_expr(block, WN_kid0(tree), actions, realpart, imagpart);
+    //WN_Delete(*realpart);
+    *realpart = *imagpart;
+    *imagpart = NULL;
     break;
   }
 }
@@ -3101,6 +3351,9 @@ static WN *lower_float_to_unsigned(WN *block, WN *expr, TYPE_ID src,
      r = WN_Cvt(MTYPE_I8,dst,WN_Trunc(src,MTYPE_I8,expr));
   } else if (src==MTYPE_FQ) {  /* Need to do this this way because there
 				* is no quad floor */
+#if defined (TARG_X8664)
+     FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
      
      /*
       *  store the expr into a preg to avoid building a dag
@@ -3798,7 +4051,7 @@ static WN *lower_recip(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
 #endif
   {
-    div = WN_Div(type, WN_Floatconst(type, 1.0), kid0);
+    div = WN_Div(type, WN_Floatconst(Mtype_complex_to_real(type), 1.0), kid0);
   }
   else if (Action(LOWER_QUAD) && MTYPE_is_quad(type))
   {
@@ -4562,10 +4815,13 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
 
       if( Is_Target_32bit() && ! sseregparm && ! MTYPE_is_complex(mtype) ||
-    	      MTYPE_is_quad(mtype) ){
+    	      mtype == MTYPE_F10 || mtype == MTYPE_C10){
 	WN_st_idx(tree) = ST_st_idx( MTYPE_To_PREG(mtype) );
 	WN_load_offset(tree) = First_X87_Preg_Return_Offset;
       }
+
+      if (mtype == MTYPE_FQ || mtype == MTYPE_CQ)
+         FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
 #endif
       return tree;
 
@@ -5685,6 +5941,19 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	Action(LOWER_INL_STACK_INTRINSIC))
     {
       tree = lower_emulation(block, tree, actions, intrinsic_lowered);
+      tree = WN_Simplify_Rebuild_Expr_Tree(tree, alias_manager);
+      
+#ifdef TARG_X8664 
+      if (Action(LOWER_COMPLEX))
+      {
+	      OPCODE opcode = WN_opcode(tree);    
+      if (OPCODE_rtype(opcode) == MTYPE_C8)
+        WN_set_rtype(tree, MTYPE_V16C8);
+      if (OPCODE_desc(opcode) == MTYPE_C8)
+        WN_set_desc(tree, MTYPE_V16C8);
+      }
+#endif
+      
       kids_lowered = TRUE;
     }
     break;
@@ -6100,28 +6369,68 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
 
   case OPR_IMAGPART:
-    if (Action(LOWER_COMPLEX))
-    {
-      WN	*realexp, *imagexp;
-      lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
-      WN_Delete(tree);
-      tree = lower_expr(block, imagexp, actions);
-    }
-    break;
-
   case OPR_REALPART:
     if (Action(LOWER_COMPLEX))
     {
       WN	*realexp, *imagexp;
-
-      lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
-      WN_Delete(tree);
-      tree = lower_expr(block, realexp, actions);
+#ifdef TARG_X8664
+      if (WN_operator(WN_kid0(tree)) != OPR_LDID || 
+		      WN_rtype(tree) != MTYPE_F8 ||
+		      !Is_Target_SSE3() || !Vcast_Complex)
+      {
+#endif
+        lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
+	if (OPR_REALPART == WN_operator(tree)){ 
+          WN_Delete(tree);
+          tree = lower_expr(block, realexp, actions);
+	} else {
+          WN_Delete(tree);
+          tree = lower_expr(block, imagexp, actions);
+	}
+#ifdef TARG_X8664
+      } else {
+	if (WN_desc(WN_kid0(tree)) == MTYPE_C8)
+          WN_set_desc(WN_kid0(tree), MTYPE_V16C8);
+	if (WN_rtype(WN_kid0(tree)) == MTYPE_C8)
+          WN_set_rtype(WN_kid0(tree), MTYPE_V16C8);
+      }
+#endif
     }
     break;
-    
-  case OPR_EQ:
+  case OPR_COMPLEX:
     if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    {
+      ST *st;
+      TYPE_ID type = WN_rtype(tree); 
+      TYPE_ID ftype = Mtype_complex_to_real(type);
+#ifdef TARG_X8664 
+      if ( type == MTYPE_C8)
+        type = MTYPE_V16C8;
+#endif
+      PREG_NUM r, i;
+      st = New_ST(CURRENT_SYMTAB);
+      ST_Init (st,
+            Save_Str("complex_tmp"),
+            CLASS_VAR,
+            SCLASS_AUTO,
+            EXPORT_LOCAL,
+            Be_Type_Tbl(type));
+       Set_ST_is_temp_var(st);
+      r = AssignExpr(block, WN_kid0(tree), ftype);
+      i = AssignExpr(block, WN_kid1(tree), ftype); 
+      WN_INSERT_BlockLast(block, 
+        WN_Stid(ftype, 0, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, r))); 
+      WN_INSERT_BlockLast(block, 
+        WN_Stid(ftype, 8, st, MTYPE_To_TY(ftype), WN_LdidPreg(ftype, i))); 
+      tree = WN_Ldid(type, 0, ST_st_idx(st), MTYPE_To_TY(type));
+    }
+    break;
+  case OPR_EQ:
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+#ifdef TARG_X8664 
+			    || MTYPE_V16C8 == WN_desc(tree)
+#endif
+	  ))
     {
       /*
        *  x == y
@@ -6141,7 +6450,11 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
 
   case OPR_NE:
-    if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+#ifdef TARG_X8664 
+			    || MTYPE_V16C8 == WN_desc(tree)
+#endif
+	  ))
     {
       /*
        *  x != y
@@ -6516,7 +6829,7 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 	if_tree = WN_CreateIf( WN_kid0(tree), if_then, if_else );
 	if ( Cur_PU_Feedback )
 	  Cur_PU_Feedback->FB_lower_branch( tree, if_tree );
-	WN_INSERT_BlockLast( block, lower_if( body, if_tree, actions ) );
+	WN_INSERT_BlockLast( block, lower_if( body, if_tree, actions, NULL) );
 
 	return WN_LdidPreg(type, tmpN);
       }
@@ -6696,6 +7009,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
   {
     if (WN_desc(tree) == MTYPE_FQ)
     {
+#if defined (TARG_X8664)
+      FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
       switch (WN_operator(tree))
       {
       case OPR_CONST:
@@ -6721,6 +7037,9 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
     if (WN_rtype(tree) == MTYPE_FQ)
     {
+#if defined (TARG_X8664)
+      FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
       switch (WN_operator(tree))
       {
       case OPR_CONST:
@@ -6755,7 +7074,22 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
   {
     tree = WN_NaryToExpr(tree);
   }
-
+  
+#ifdef TARG_X8664
+  if (Action(LOWER_COMPLEX) && (WN_rtype(tree) == MTYPE_C8 ||
+       WN_desc(tree) == MTYPE_V16C8 && WN_has_sym(tree) && 
+       ST_sclass(WN_st(tree)) == SCLASS_REG && 
+       (Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree))))){
+    WN *realexp, *imagexp;
+    lower_complex_expr(block, tree, actions, &realexp, &imagexp);
+    if (WN_operator(tree) == OPR_PARM)
+      WN_kid0(tree) = WN_Complex(MTYPE_C8, realexp, imagexp);
+    else if(WN_rtype(tree) == MTYPE_C8)
+      tree = WN_Complex(MTYPE_C8, realexp, imagexp);
+    else
+      tree = WN_Complex(MTYPE_V16C8, realexp, imagexp);
+  }
+#endif
   /* Lower kids if not done already. */
   if (! kids_lowered)
   {
@@ -6767,7 +7101,6 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
 
   return tree;
 }
-
 
 /* ====================================================================
  *
@@ -7718,7 +8051,8 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
 #endif
 #ifdef TARG_X8664 // fortran complex treated as structs (bug 1664)
-    if (Action(LOWER_RETURN_VAL) && MTYPE_is_complex(WN_desc(tree)) &&
+    if (Action(LOWER_RETURN_VAL) && 
+       (MTYPE_is_complex(WN_desc(tree)) || WN_desc(tree) == MTYPE_V16C8)  &&
        (Is_Target_32bit() || last_call_ff2c_abi || F2c_Abi) &&
        WN_operator(WN_kid0(tree)) == OPR_LDID && 
        WN_st(WN_kid0(tree)) == Return_Val_Preg) {
@@ -7739,13 +8073,26 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	return lower_store_bits (block, tree, actions);
     }
 
-    if (Action(LOWER_COMPLEX) && MTYPE_is_complex(WN_desc(tree)))
+    if (Action(LOWER_COMPLEX) && (MTYPE_is_complex(WN_desc(tree)) 
+#ifdef TARG_X8664
+      || WN_desc(tree) == MTYPE_V16C8 && ST_sclass(WN_st(tree)) == SCLASS_REG 
+      && (Is_Return_Preg(WN_offset(tree)) || Is_Formal_Preg(WN_offset(tree)))
+#endif
+       ))
     {
       WN	*realexp, *imagexp;
       TYPE_ID	realTY;
 
       realTY =	Mtype_complex_to_real( WN_desc(tree));
       lower_complex_expr(block, WN_kid0(tree), actions, &realexp, &imagexp);
+      // if realTY != WN_rtype(WN_kid0(tree)) a C4 is packed into a F8
+      // it is a special case ignored here
+      if (imagexp == NULL && realTY == WN_rtype(WN_kid0(tree)))
+      {
+        imagexp = WN_Floatconst(realTY, 0.0);
+        WN_kid0(tree) = WN_CreateExp2( OPR_PAIR, WN_desc(tree), MTYPE_V, 
+			realexp, imagexp);
+      }
 
 #ifdef TARG_X8664 // MTYPE_C4 is returned in one SSE register
       if (WN_rtype(WN_kid0(tree)) == MTYPE_F8) {
@@ -7878,6 +8225,32 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
 	   imagexp_copy = WN_LdidPreg(realTY, imagexpN);
 	}
 
+#ifdef TARG_X8664
+	if (ST_class(WN_st(tree)) == CLASS_PREG && WN_desc(tree)== MTYPE_C8
+	   && Is_Target_SSE3() && Vcast_Complex &&
+	   !(ST_sclass(WN_st(tree)) == SCLASS_REG && 
+ 	    (Is_Formal_Preg(WN_offset(tree)) || Is_Return_Preg(WN_offset(tree)))))
+	{
+	  PREG_NUM zN;
+	  TYPE_ID type;
+	  TY_IDX ty;
+	  type = WN_desc(tree);
+	  ty = WN_ty(tree);
+
+	  if (type == MTYPE_C8)
+	  {
+	    type = MTYPE_V16C8;
+	    ty = MTYPE_To_TY(type);
+	  }
+		  
+	  zN = AssignExpr(block, WN_Complex(type, 
+		realexp_copy, imagexp_copy), type);
+	  wn = WN_Stid(type, offset, WN_st(tree), ty, 
+		  WN_LdidPreg(type, zN));
+	  return wn;  
+	} else 
+#endif
+	{
 	wn = WN_Stid(realTY,
 		     offset, 
 		     coerceST(WN_st(tree), realTY),
@@ -7901,6 +8274,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
         WN_Delete(tree);
 
         return imagexp;
+	}
       }
     }
 
@@ -8064,11 +8438,12 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
   //    end if
   if (VHO_Enable_Simple_If_Conv && 
       !Action(LOWER_RETURN_VAL) /* Lower after LNO */ &&
-      //bug 13853: these three lowers happen before lno, so should
+      //bug 13853: these four lowers happen before lno, so should
       //           not transform select back to if
       !Action(LOWER_FAST_EXP)                         &&
       !Action(LOWER_TREEHEIGHT)                       &&
       !Action(LOWER_INLINE_INTRINSIC)                 &&
+      !Action(LOWER_SPLIT_SYM_ADDRS)                  &&
       OPCODE_is_store(WN_opcode(tree)) &&
       WN_operator(WN_kid0(tree)) == OPR_SELECT &&
       !MTYPE_is_vector(WN_desc(tree)) && MTYPE_is_float(WN_desc(tree))) {
@@ -8094,7 +8469,7 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
       WN_kid0(istore) = WN_COPY_Tree(WN_kid1(select));
       tree = WN_CreateIf (test, then_block, else_block);
       WN_INSERT_BlockLast(then_block, istore);
-      tree = lower_if(block, tree, actions);
+      tree = lower_if(block, tree, actions, NULL);
       return tree;
     } 
   }
@@ -10066,8 +10441,9 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   WN		*wn;
   BOOL          intrinsic_lowered;
 
-  Is_True(MTYPE_is_complex(WN_rtype(tree)),
-	 ("expected complex type in lower_complex_emulation"));
+// F8C8ABS
+//  Is_True(MTYPE_is_complex(WN_rtype(tree)),
+//	 ("expected complex type in lower_complex_emulation"));
 
  /*
   *  there is no way to turn off intrinsics consistently
@@ -10084,7 +10460,7 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
        actions |= LOWER_INTRINSIC;
    }
 #if defined(TARG_X8664) || defined(TARG_LOONGSON) // for C4INTRINSIC_OP, wn is type MTYPE_F8
-  if (WN_rtype(wn) == MTYPE_F8) { // store to a temp and return two halves
+  if (WN_rtype(wn) == MTYPE_F8 && WN_desc(tree) != MTYPE_C8 && WN_rtype(tree) != MTYPE_C8) { // store to a temp and return two halves
     ST *c4temp_st = Gen_Temp_Symbol(MTYPE_To_TY(MTYPE_F8), ".c4");
     WN *stid = WN_Stid(MTYPE_F8, 0, c4temp_st, MTYPE_To_TY(MTYPE_F8), wn);
     WN_Set_Linenum (stid, WN_Get_Linenum(tree));
@@ -10095,7 +10471,18 @@ static void lower_complex_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   }
   else
 #endif
-  lower_complex_expr(block, wn, actions, realpart, imagpart);
+  {
+#if defined(TARG_X8664)
+//    if (Is_Target_SSE3() && Vcast_Complex)
+//    {
+      if (WN_rtype(wn) == MTYPE_V16C8)
+        WN_set_rtype(wn, MTYPE_C8);
+      if (WN_desc(wn) == MTYPE_V16C8)
+        WN_set_desc(wn, MTYPE_C8);
+//    }
+#endif
+    lower_complex_expr(block, wn, actions, realpart, imagpart);
+  }
 }
 
 
@@ -10276,6 +10663,13 @@ static WN *lower_cis_intrinsic(WN *block, WN *tree, LOWER_ACTIONS actions)
   call = lower_intrinsic_call(block, call, actions);
   WN_INSERT_BlockLast(block, call);
 
+#ifdef TARG_X8664
+  if (complex_mtyp == MTYPE_C8 && Is_Target_SSE3() && Vcast_Complex)
+  {
+    complex_mtyp = MTYPE_V16C8;
+    complex_ty = MTYPE_To_TY(complex_mtyp);
+  }
+#endif
   WN *ldid = WN_Ldid(complex_mtyp, 0, return_sincos, complex_ty);
   return lower_expr(block, ldid, actions);
 }
@@ -11175,11 +11569,21 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (TY_is_varargs(call_ty) ||
 	(! TY_has_prototype(call_ty) && 
 	 (callee_st == NULL || ST_sclass(callee_st) != SCLASS_TEXT))) {
-      WN *sse_cnt_wn = WN_Intconst(MTYPE_I4, MIN(8, sse_args));
-      WN *sse_cnt_stid = WN_StidIntoPreg(MTYPE_I4, RAX, Int32_Preg, sse_cnt_wn);
-	
-      WN_Set_Linenum(sse_cnt_stid, srcpos);
-      WN_INSERT_BlockLast(callblock, sse_cnt_stid);
+
+      // check whether the previous WN is an INTRINSIC_CALL to APPLY or not
+      BOOL skip = FALSE;
+      WN *previous_wn = WN_prev(tree);
+      if (previous_wn != NULL && WN_operator_is(previous_wn, OPR_INTRINSIC_CALL) &&
+              WN_intrinsic(previous_wn) == INTRN_APPLY) 
+          skip = TRUE;
+
+      if (!skip) {
+          WN *sse_cnt_wn = WN_Intconst(MTYPE_I4, MIN(8, sse_args));
+          WN *sse_cnt_stid = WN_StidIntoPreg(MTYPE_I4, RAX, Int32_Preg, sse_cnt_wn);
+
+          WN_Set_Linenum(sse_cnt_stid, srcpos);
+          WN_INSERT_BlockLast(callblock, sse_cnt_stid);
+      }
     }
   }
 #endif
@@ -11560,7 +11964,7 @@ static WN *lower_assert(WN *block, WN *tree, LOWER_ACTIONS actions)
   WN_Set_Linenum(IF, WN_Get_Linenum(tree));
   WN_Delete(tree);
 
-  IF = lower_scf(block, IF, actions);
+  IF = lower_scf(block, IF, actions, NULL);
   return IF;
 }
 
@@ -11671,7 +12075,7 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
 	preg_st = Float_Preg;
 #endif
 #else
-	preg_st = (mtype==MTYPE_FQ || mtype==MTYPE_CQ || MTYPE_is_vector(mtype) ) ?
+	preg_st = (MTYPE_is_F10_or_C10(mtype) || MTYPE_is_vector(mtype) ) ?
 	             MTYPE_To_PREG(mtype) : Float_Preg;
 #endif
       else preg_st = (mtype==MTYPE_I8 || mtype==MTYPE_U8 || MTYPE_is_vector(mtype) ) ? 
@@ -11684,9 +12088,9 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
       if( Is_Target_SSE2()         &&
 	  Preg_Offset_Is_X87(preg) &&
 	  mtype != MTYPE_C4 &&
-	  !MTYPE_is_quad( mtype ) ){
-	WN_kid0(tree) = WN_Cvt( Promoted_Mtype[mtype], MTYPE_FQ, WN_kid0(tree) );
-	wn = WN_CreateStid( OPR_STID, MTYPE_V, MTYPE_FQ,
+	  !MTYPE_is_F10_or_C10( mtype ) ){
+	WN_kid0(tree) = WN_Cvt( Promoted_Mtype[mtype], MTYPE_F10, WN_kid0(tree) );
+	wn = WN_CreateStid( OPR_STID, MTYPE_V, MTYPE_F10,
 			    preg, preg_st, Be_Type_Tbl(mtype), WN_kid0(tree) );
       } else
 #endif // TARG_X8664
@@ -12279,6 +12683,12 @@ WN *lower_block(WN *tree, LOWER_ACTIONS actions)
   out = WN_CreateBlock();
   WN_Set_Linenum (out, current_srcpos);
 
+#ifdef TARG_X8664
+  if (Is_Target_SSE3() && Vcast_Complex &&
+      Action(LOWER_COMPLEX)) 
+    vcast_complex_types(tree);
+#endif
+
   for (node = WN_first(tree); node; node = next_node)
   {
 
@@ -12323,7 +12733,7 @@ WN *lower_block(WN *tree, LOWER_ACTIONS actions)
     }
     else if (OPCODE_is_scf(WN_opcode(node)))
     {
-	node = lower_scf(out, node, actions);
+	node = lower_scf(out, node, actions, &next_node);
     }
     else
     {
@@ -12420,7 +12830,526 @@ WN *lower_block(WN *tree, LOWER_ACTIONS actions)
   WN_Delete(tree);
 
   popCurrentState(blockState);
-  return out;
+   return out;
+}
+
+/* ======================================================================
+ * Compare wn1 and wn2, return TRUE if they are the same.
+ * wn_trans is a value-transfering statement
+ * ===================================================================
+ */
+
+static BOOL lower_compare(WN * wn1, WN * wn2, WN * wn_trans)
+{
+  if (wn_trans) {
+    OPERATOR opr = WN_operator(wn_trans);    
+
+    if (OPERATOR_is_store(opr)
+	&& !OPERATOR_is_scalar_store(opr)) {
+      // If wn1 is a scalar load and the same as wn_tran's source,
+      // compare whether wn2 is an indirect load from the same address that
+      // wn_trans stores into.
+      //
+      // e.g., wn1 and wn2 are considered to be the same in the following scenario:
+      // wn_trans:   U8U8LDID 1886 <st 2305> T<9,.predef_U8,8> 
+      //              U8U8LDID 0 <st 141570> T<9,.predef_U8,8>
+      //              U8INTCONST 0 (0x0)
+      //               I4I4LDID 1165 <st 1025> T<4,.predef_I4,4>
+      //              I8I4CVT
+      //             U8ARRAY 1 8
+      //            U8ISTORE 0 T<67,anon_ptr.,8> 
+      //
+      // wn1:        U8U8LDID 1886 <st 2305> T<9,.predef_U8,8> 
+      //
+      // wn2:        U8U8LDID 0 <st 141570> T<9,.predef_U8,8>
+      //             U8INTCONST 0 (0x0)
+      //             I4I4LDID 1165 <st 1025> T<4,.predef_I4,4> 
+      //              I8I4CVT
+      //             U8ARRAY 1 8
+      //            U8U8ILOAD 0 T<9,.predef_U8,8> T<67,anon_ptr.,8>
+      opr = WN_operator(wn2);
+      if (OPERATOR_is_scalar_load(WN_operator(wn1))
+	  && (WN_Simp_Compare_Trees(wn1, WN_kid(wn_trans,0)) == 0)
+	  && OPERATOR_is_load(opr)
+	  && !OPERATOR_is_scalar_load(opr)
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_trans,1), WN_kid(wn2,0)) == 0))
+	return TRUE;
+    
+      // Dido for wn2.
+      opr = WN_operator(wn1);
+      if (OPERATOR_is_scalar_load(WN_operator(wn2))
+	  && (WN_Simp_Compare_Trees(wn2, WN_kid(wn_trans,0)) == 0)
+	  && OPERATOR_is_load(opr)
+	  && !OPERATOR_is_scalar_load(opr)
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_trans,1), WN_kid(wn1,0)) == 0))
+	return TRUE;
+    }
+  }
+  
+  if (WN_operator(wn1) != WN_operator(wn2))
+    return FALSE;
+
+  int count = WN_kid_count(wn1);
+  if (count != WN_kid_count(wn2))
+    return FALSE;
+
+  for (int i = 0; i < count; i++) {
+    if (!lower_compare(WN_kid(wn1,i), WN_kid(wn2,i), wn_trans))
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+/* =============================================================
+ * Get a WHIRL that represents the value of (wn1 - wn2).
+ * Return NULL if wn1 is the same as wn2.
+ * ============================================================
+ */
+static WN * lower_get_diff(WN * wn1, WN * wn2, LOWER_ACTIONS actions)
+{
+  if (WN_Simp_Compare_Trees(wn1, wn2) == 0)
+    return NULL;
+
+  OPERATOR op1 = WN_operator(wn1);
+  OPERATOR op2 = WN_operator(wn2);
+
+  if ((op1 == op2) && (WN_kid_count(wn1) == 2)) {
+    if ((op1 == OPR_ADD) || (op1 == OPR_SUB)) {
+      // If one operand is the same, get the diff for the other operand.
+      if (WN_Simp_Compare_Trees(WN_kid(wn1, 1), WN_kid(wn2, 1)) == 0)
+	return lower_get_diff(WN_kid(wn1, 0), WN_kid(wn2, 0), actions);
+      else if (WN_Simp_Compare_Trees(WN_kid(wn1, 0), WN_kid(wn2, 0)) == 0)
+	return lower_get_diff(WN_kid(wn1, 1), WN_kid(wn2, 1), actions);
+    }
+  }
+
+  if (OPERATOR_is_load(op1) && !OPERATOR_is_load(op2))
+    return lower_get_diff(wn2, wn1, actions);
+
+  if (OPERATOR_is_load(op2)) {
+    switch (op1) {
+    case OPR_MPY:
+      // "const * x - x" is equal to "(const - 1) * x"
+      if ((WN_Simp_Compare_Trees(WN_kid(wn1, 0), wn2) == 0) 
+	  && (WN_operator(WN_kid(wn1, 1)) == OPR_INTCONST)) {
+	int val = WN_const_val(WN_kid(wn1, 1));
+	if (val == 2)
+	  return lower_copy_tree(wn2, actions);
+	else {
+	  WN * wn_copy = lower_copy_tree(wn1, actions);
+	  WN_const_val(wn_copy) -= 1;
+	  return wn_copy;
+	}
+      }
+      break;
+    default:
+      ;
+    }
+  }
+
+  return WN_Binary(OPR_SUB, WN_rtype(wn1), 
+		   lower_copy_tree(wn1, actions),
+		   lower_copy_tree(wn2, actions));
+}
+
+/* =====================================================================
+ * Given wn2 who has a value of val_in, evaluate the value of wn1.
+ * Return TRUE if evaluation is successful. Return wn1's value
+ * in * val_out.
+ * TODO: add more implementation when needed.
+ * =====================================================================
+ */
+
+static BOOL lower_get_val(WN * wn1, WN * wn2, int val_in, int * val_out)
+{
+  OPERATOR opr = WN_operator(wn1);
+  int val1;
+  int val2;
+  BOOL ret_val = FALSE;
+
+  if (opr == OPR_INTCONST) {
+    *val_out = WN_const_val(wn1);
+    return TRUE;
+  }
+
+  if (WN_Simp_Compare_Trees(wn1, wn2) == 0) {
+    *val_out = val_in;
+    return TRUE;
+  }
+
+  switch (opr) {
+  case OPR_ADD:
+    if (lower_get_val(WN_kid(wn1, 0), wn2, val_in, &val1)
+	&& lower_get_val(WN_kid(wn1, 1), wn2, val_in, &val2)) {
+      *val_out = val1 + val2;
+      ret_val = TRUE;
+    }
+    break;
+  case OPR_MPY:
+    if (lower_get_val(WN_kid(wn1,0), wn2, val_in, &val1)
+	&& lower_get_val(WN_kid(wn1,1), wn2, val_in, &val2)) {
+      *val_out = val1 * val2;
+      ret_val = TRUE;
+    }
+  default:
+    ;
+  }
+
+  return ret_val;
+}
+
+/* ======================================================================
+ * Given a bit operation, query whether wn2 has an statement that updates
+ * the same bit as wn1.  If so, return TRUE, otherwise return FALSE.
+ */
+
+static BOOL lower_update_same_bit(WN * wn1, WN * wn2, LOWER_ACTIONS actions)
+{
+  OPERATOR opr = WN_operator(wn2);
+
+  if (opr == OPR_BLOCK) {
+    WN * wn = WN_first(wn2);
+    for (wn = WN_first(wn2); wn; wn = WN_next(wn)) {
+      if (lower_update_same_bit(wn1, wn, actions))
+	return TRUE;
+    }
+  }
+  else if (OPERATOR_is_store(opr)) {
+    if (!OPERATOR_is_scalar_store(opr)) {
+      WN * wn_data = WN_kid(wn2, 0);
+      WN * wn_load = WN_kid(wn_data, 0);
+      opr = WN_operator(wn_load);
+
+      // Match wn1 for "a bit-op (1 << m)"
+      // Match wn2 for "a = a bit-op ( 1 << n))".
+      // where m != n
+      if (WN_is_bit_op(wn1) && WN_is_power_of_2(WN_kid(wn1,1))
+	  && WN_is_bit_op(wn_data) && WN_is_power_of_2(WN_kid(wn_data, 1))
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_data,0), WN_kid(wn1,0)) == 0)
+	  && OPERATOR_is_load(opr)
+	  && !OPERATOR_is_scalar_load(opr)
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_load,0), WN_kid(wn2, 1)) == 0)) {
+	WN * wn_bit1 = WN_kid(wn1, 1);
+	WN * wn_bit2 = WN_kid(wn_data, 1);
+
+	if (WN_operator(wn_bit1) == WN_operator(wn_bit2)) {
+	  if (WN_operator(wn_bit1) != OPR_CONST) {
+	    wn_bit1 = WN_get_bit_from_expr(wn_bit1);
+	    wn_bit2 = WN_get_bit_from_expr(wn_bit2);
+	    // Get "m - n"
+	    WN * wn_diff = lower_get_diff(wn_bit1, wn_bit2, actions);
+	    if (wn_diff) {
+	      int val;
+	      // Check whether the difference of wn_bit1 and wn_bit2 can be a zero.
+	      // Assuming the difference is zero, estimate the value of wn_bit1
+	      // and wn_bit2.  Since shift operator can not take a negative value as
+	      // its shift-count operand, if the estimated value of either wn_bit1 or
+	      // wn_bit2 is a negative, then a conclusion can be drawn that the difference
+	      // of wn_bit1 and wn_bit2 should not be zero and therefore
+	      // wn1 and wn2 should not update the same bit.
+	      if ((lower_get_val(wn_bit1, wn_diff, 0, &val) && (val < 0))
+		  || (lower_get_val(wn_bit2, wn_diff, 0, &val) && (val < 0))) {
+		WN_DELETE_Tree(wn_diff);
+		return FALSE;
+	      }
+	      WN_DELETE_Tree(wn_diff);
+	    }
+	  }
+	  else 
+	    return (WN_const_val(wn_bit1) == WN_const_val(wn_bit2));
+	}
+      }
+    }
+    // Most conservative.
+    return TRUE;
+  }
+  
+  return FALSE;
+}
+
+/* ======================================================================
+ * Query whether given wn is an if-condition that can be simplified.
+ *
+ * Match pattern for:
+ * (a & ( 1 << m) == 0)  or (a & ( 1 << m) != 0)
+ */
+static BOOL lower_simplify_cond( WN * wn_cond)
+{
+  OPERATOR opr = WN_operator(wn_cond);
+
+  if ((opr == OPR_NE) || (opr == OPR_EQ)) {
+    WN * wn_bit_op = WN_kid(wn_cond, 0);
+    WN * wn_const = WN_kid(wn_cond, 1);
+    
+    if ((WN_operator(wn_bit_op) == OPR_BAND) 
+	&& WN_is_power_of_2(WN_kid(wn_bit_op, 1))
+	&& (WN_operator(wn_const) == OPR_INTCONST)
+	&& (WN_const_val(wn_const) == 0)) 
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+/* ===================================================================
+ * Do specialized if-merging.
+ * From:
+ *
+ * case 1:
+ * if (a & ( 1 << m)) {
+ *    block 1
+ * }
+ * else {
+ *    block 2
+ * }
+ * t = (a ^ ( 1 << m)        
+ * a = t;
+ * if (a & ( 1 << m) {
+ *    block 3
+ * }
+ * else {
+ *    block 4
+ * }
+ *
+ * case 2:
+ * if (a & ( 1 << m)) {
+ *    block 1
+ * }
+ * else {
+ *    block 2
+ * }
+ * a = (a ^ ( 1 << m));
+ * if (a & ( 1 << m)) {
+ *    block 3
+ * }
+ * else {
+ *    block 4
+ * }
+ *
+ * where, block 1 and block 2 do not modify if-condition.
+ *
+ * To:
+ * if (a & ( 1 << m)) {
+ *   block 1;
+ *   a =  (a ^ ( 1 << m));
+ *   block 4;
+ * }
+ * else {
+ *   block 2;
+ *   a =  (a ^ ( 1 << m));
+ *   block 3;
+ * }
+ * ==================================================================
+ */
+static void lower_simp_if_flip(WN * tree, LOWER_ACTIONS actions, WN ** ret_next)
+{
+  WN * wn_cond = WN_kid(tree, 0);
+  WN * wn_bit_op = WN_kid(wn_cond, 0);
+
+  if (lower_simplify_cond(wn_cond)) {
+    WN * wn_store = WN_next(tree);
+    if (wn_store && OPERATOR_is_store(WN_operator(wn_store))) {
+      OPERATOR opr = WN_operator(wn_store);	  
+      WN * wn_data = WN_kid(wn_store, 0);
+
+      if ((WN_operator(wn_data) == OPR_BXOR) 
+	  && WN_is_power_of_2(WN_kid(wn_data, 1))
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_bit_op, 0), WN_kid(wn_data, 0)) == 0)
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_bit_op, 1), WN_kid(wn_data, 1)) == 0)) {
+	WN * wn_addr = NULL;
+	WN * wn_next = NULL;
+	WN * wn_trans = NULL;
+
+	if (OPERATOR_is_scalar_store(opr)) {
+	  // case 1
+	  WN * wn_dest = WN_next(wn_store);
+	  if (wn_dest) {
+	    opr = WN_operator(wn_dest);
+	    if (OPERATOR_is_store(opr) && !OPERATOR_is_scalar_store(opr)) {
+	      wn_data = WN_kid(wn_dest, 0);
+	      opr = WN_operator(wn_data);
+	      if (OPERATOR_is_load(opr) && OPERATOR_is_scalar_load(opr)
+		  && (WN_st_idx(wn_data) == WN_st_idx(wn_store))) {
+		wn_addr = WN_kid(wn_dest,1);
+		wn_next = WN_next(wn_dest);
+		wn_trans = wn_dest;
+	      }
+	    }
+	  }
+	}
+	else {
+	  // case 2
+	  wn_addr = WN_kid(wn_store,1);
+	  wn_next = WN_next(wn_store);
+	}
+
+	wn_data = WN_kid(wn_bit_op,0);
+	opr = WN_operator(wn_data);
+	if (wn_addr && wn_next
+	    && OPERATOR_is_load(opr) 
+	    && !OPERATOR_is_scalar_load(opr)
+	    && (WN_Simp_Compare_Trees(wn_addr, WN_kid(wn_data,0)) == 0)
+	    && (WN_operator(wn_next) == OPR_IF)
+	    && lower_compare(WN_kid(wn_next,0), WN_kid(tree,0), wn_trans)
+	    && !lower_update_same_bit(wn_bit_op, WN_then(tree), actions)
+	    && !lower_update_same_bit(wn_bit_op, WN_else(tree), actions)) {
+	  WN * wn_then1 = WN_then(tree);
+	  WN * wn_else1 = WN_else(tree);
+	  WN * wn_then2 = WN_then(wn_next);
+	  WN * wn_else2 = WN_else(wn_next);
+	  WN * wn_cur;
+	  WN * wn_copy;
+	  
+	  // Tail duplicate statements between "tree" and "wn_next" into the then-clause
+	  // and the else-clause of "tree"
+	  for (wn_cur = WN_next(tree); 
+	       wn_cur && wn_cur != wn_next;
+	       wn_cur = WN_next(wn_cur)) {
+	    wn_copy = lower_copy_tree(wn_cur, actions);
+	    WN_INSERT_BlockLast(wn_then1, wn_copy);
+	    
+	    wn_copy = lower_copy_tree(wn_cur, actions);
+	    WN_INSERT_BlockLast(wn_else1, wn_copy);
+	  }
+
+	  // Copy statements from the then-clause of "wn_next" into the else-clause of "tree"
+	  for (wn_cur = WN_first(wn_then2); wn_cur; wn_cur = WN_next(wn_cur)) {
+	    wn_copy = lower_copy_tree(wn_cur, actions);
+	    WN_INSERT_BlockLast(wn_else1, wn_copy);
+	  }
+
+	  // Copy statements from the else-clause of "wn_next" into the then-clause of "tree"
+	  for (wn_cur = WN_first(wn_else2); wn_cur; wn_cur = WN_next(wn_cur)) {
+	    wn_copy = lower_copy_tree(wn_cur, actions);
+	    WN_INSERT_BlockLast(wn_then1, wn_copy);
+	  }
+
+	  WN * wn_iter = NULL;
+	  WN * wn_prev = NULL;
+
+	  // Delete statements between "tree" and "wn_next".
+	  for (wn_cur = WN_next(tree); 
+	       wn_cur && wn_cur != wn_next;
+	       wn_cur = wn_iter) {
+	    wn_prev = WN_prev(wn_cur);
+	    wn_iter = WN_next(wn_cur);
+	    WN_next(wn_prev) = wn_iter;
+	    WN_prev(wn_iter) = wn_prev;
+	    WN_DELETE_Tree(wn_cur);
+	  }
+
+	  // Delete wn_next
+	  wn_prev = WN_prev(wn_next);
+	  wn_iter = WN_next(wn_next);
+	  WN_next(wn_prev) = wn_iter;
+
+	  if (wn_iter)
+	    WN_prev(wn_iter) = wn_prev;
+	  else if (current_block
+		   && WN_last(current_block) == wn_next)
+	    WN_last(current_block) = wn_prev;
+
+	  if (ret_next) 
+	    *ret_next = wn_iter;
+	      
+	  WN_DELETE_Tree(wn_next);
+	}
+      }
+    }
+  }
+}
+
+/* ===================================================================
+ * Simplify if-conditions that are bit-ands.
+ *  case 1:
+ *  From:
+ *  if (a & ( 1 << m)) {         
+ *    if (a & ( 1 << n)) {
+ *      block;
+ *    }
+ *  }
+ *
+ *  To:
+ *  if (( a & (( 1 << m) | ( 1 << n))) == ((1 << m) | (1 << n))) {
+ *    block;
+ *  }
+ *
+ * case 2:
+ * From:
+ * if ((a & ( 1 << m)) == 0) {
+ *  if ((a & ( 1 << n)) == 0) {
+ *     block;
+ *  }
+ * }
+ *
+ * To:
+ * if ((a & ( (1 << m) | ( 1 << n))) == 0) {
+ *   block;
+ * }
+ * ===================================================================
+ */
+static void lower_simp_bit_and(WN * tree, LOWER_ACTIONS actions)
+{
+  FmtAssert(WN_operator(tree) == OPR_IF, ("Expect a if-condition"));
+  WN * wn_cond = WN_kid(tree, 0);
+  WN * wn_bit_op = WN_kid(wn_cond, 0);
+  WN * wn_then = WN_then(tree);
+
+  if (lower_simplify_cond(wn_cond)
+      && WN_block_nonempty(wn_then) 
+      && !WN_block_nonempty(WN_else(tree))) {
+    WN * wn_first = WN_first(wn_then);
+    WN * wn_last = WN_last(wn_then);
+    
+    if ((wn_first == wn_last) && (WN_operator(wn_first) == OPR_IF)) {
+      WN * wn_cond2 = WN_kid(wn_first, 0);
+      WN * wn_bit_op2 = WN_kid(wn_cond2, 0);
+      WN * wn_then2 = WN_then(wn_first);
+      WN * wn_else2 = WN_else(wn_first);
+      
+      if (lower_simplify_cond(wn_cond2) 
+	  && WN_block_nonempty(wn_then2)
+	  && !WN_block_nonempty(wn_else2)
+	  && (WN_operator(wn_cond) == WN_operator(wn_cond2))
+	  && (WN_Simp_Compare_Trees(WN_kid(wn_bit_op,0), WN_kid(wn_bit_op2, 0)) == 0)) {
+	// make ( 1 << m) | ( 1 << n)
+	WN * wn_op2 = WN_Binary(OPR_BIOR, WN_rtype(wn_bit_op),
+				lower_copy_tree(WN_kid(wn_bit_op, 1), actions),
+				lower_copy_tree(WN_kid(wn_bit_op2,1), actions));
+	BOOL doit = FALSE;
+
+	switch (WN_operator(wn_cond)) {
+	case OPR_EQ:
+	  // case 2
+	  WN_DELETE_Tree(WN_kid(wn_bit_op, 1));
+	  WN_kid(wn_bit_op, 1) = wn_op2;
+	  doit = TRUE;
+	  break;
+	case OPR_NE:
+	  // case 1
+	  WN_DELETE_Tree(WN_kid(wn_bit_op, 1));
+	  WN_kid(wn_bit_op, 1) = wn_op2;
+	  WN_set_operator(wn_cond,OPR_EQ);
+	  WN_DELETE_Tree(WN_kid(wn_cond, 1));
+	  WN_kid(wn_cond, 1) = lower_copy_tree(wn_op2, actions);
+	  doit = TRUE;
+	  break;
+	default:
+	  ;
+	}
+
+	if (doit) {
+	  WN * wn_next;
+	  for (WN * wn_tmp = WN_first(wn_then2); wn_tmp; wn_tmp = wn_next) {
+	    wn_next = WN_next(wn_tmp);
+	    WN_INSERT_BlockLast(wn_then, lower_copy_tree(wn_tmp, actions));
+	  }
+	  WN_DELETE_FromBlock(wn_then, wn_first);
+	}
+      }
+    }
+  }
 }
 
 
@@ -12678,7 +13607,7 @@ static INT tree_has_cand_cior (WN *tree)
 
 /* ====================================================================
  *
- * WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
+ * WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
  *
  * Perform lowering (see WN_Lower description) on statements in IF
  * node <tree>, returning lowered statements.  Returned tree will always
@@ -12686,12 +13615,15 @@ static INT tree_has_cand_cior (WN *tree)
  *
  * ==================================================================== */
 
-static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
+static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
 {
   INT cand_cior_count = 0;
 
   Is_True(WN_opcode(tree) == OPC_IF,
 	  ("expected IF node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  if (ret_next)
+    *ret_next = WN_next(tree);
 
   if (WN_Is_If_MpVersion(tree))
     return lower_block(lower_mp(block, tree, actions), actions);
@@ -12713,6 +13645,12 @@ static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions)
       }
   }
 #endif
+
+  if (Action(LOWER_SIMPLIFY_BIT_OP)) {
+      lower_simp_if_flip(tree, actions, ret_next);
+      lower_simp_bit_and(tree, actions);
+  }
+  
 #ifndef SHORTCIRCUIT_HACK
   if (Action(LOWER_IF))
 #else
@@ -13125,6 +14063,265 @@ static WN* simplify_multiply ( WN* do_loop, LOWER_ACTIONS actions )
 }
 #endif
 
+/* ======================================================================
+ * BOOL lower_find(WN * tree, WN * wn)
+ * 
+ * Find a match of wn in tree.  Return TRUE if found.
+ *
+ * ===================================================================== */
+
+static BOOL lower_find(WN * tree, WN * wn)
+{
+  if (WN_Simp_Compare_Trees(tree, wn) == 0)
+    return TRUE;
+
+  for (int i = 0; i < WN_kid_count(tree); i++)
+    if (lower_find(WN_kid(tree, i), wn))
+      return TRUE;
+
+  return FALSE;
+}
+
+/* ======================================================================
+ * void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
+ *
+ * Walk upward in the tree, find the operand that matches wn_old,
+ * replace it with wn_new.
+ *
+ * ====================================================================== */
+static void lower_match_and_replace(WN * tree, WN * wn_old, WN * wn_new)
+{
+  for (int i = 0; i < WN_kid_count(tree); i++) {
+    WN * wn_kid = WN_kid(tree, i);
+    if (WN_Simp_Compare_Trees(wn_kid, wn_old) == 0) {
+      WN_DELETE_Tree(wn_kid);
+      WN_kid(tree, i) = wn_new;
+      break;
+    }
+    else
+      lower_match_and_replace(wn_kid, wn_old, wn_new);
+  }
+}
+
+static BOOL  Is_Invaried_Value(WN *expr, WN *ind) 
+{
+   if (WN_operator_is(expr, OPR_INTCONST)) return TRUE;
+
+   //If another indirect load, it may be varied 
+   if (WN_operator_is(expr, OPR_ILOAD) || WN_operator_is(expr, OPR_LDA)) 
+     return FALSE; 
+
+   if (WN_operator_is(expr, OPR_LDID)){
+        if (WN_same_id(expr, ind))
+              return FALSE;
+   else // it is not an induction 
+             return TRUE;
+   }
+   
+   else { //check all the kids
+           for (int i=0; i< WN_kid_count(expr); i++) 
+               if (!Is_Invaried_Value(WN_kid(expr,i), ind)) 
+                 return FALSE;
+
+        return TRUE; //all kids are constant
+  }
+
+}
+
+/* =======================================================================
+ * WN lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
+ *
+ * Recognize bit operation patterns in induction variable expression and replace
+ * a DO-LOOP by a bit-and operation with a bit-mask if possible.
+ *
+ * From:
+ * for (j = 0; j < width; j++)
+ *    pat2 += state & (((unsigned long long) 1 << (width + j)));
+ *
+ *
+ * To:
+ * if (width < 32) {
+ *    rmask1 = ((unsigned long long) 1 << (width + width)) - 1;
+ *    rmask2 = rmask1 & ~((((unsigned long long) 1) << width) - 1);
+ *    rmask3 = ((width > 0) ? rmask2 : 0;
+ *    pat2 += (state & rmask3);
+ * }
+ * else {
+ *    for (j =  0; j < width; j++)
+ *       pat2 += state & (unsigned int) (((unsigned long long) 1 << (width + j)));
+ * }
+ *
+ * ======================================================================= */ 
+static WN *lower_iv_simplification(WN *block, WN *tree, LOWER_ACTIONS actions)
+{
+  Is_True(WN_opcode(tree)==OPC_DO_LOOP,
+	  ("expected DO_LOOP node, not %s", OPCODE_name(WN_opcode(tree))));
+
+  WN * loop_body = WN_do_body(tree);
+  WN * loop_info = WN_do_loop_info(tree);
+  WN * wn_first = WN_first(loop_body);
+  WN * wn_last = WN_last(loop_body);
+
+  if (loop_info && wn_first && (wn_first == wn_last)) {
+    OPERATOR st_opr = WN_operator(wn_first);
+    // match for a += b & ( 1 << m), where "b" and "m" do not depend on "a".
+    // and m = invar + induc, where "invar" is a loop invariant, 
+    // and "induc" is loop induction variable.
+    // Currenly, we limit to the case that "a" is a scalar non-address taken
+    // local variable.
+    if (OPERATOR_is_store(st_opr)) {
+      WN * wn_add = WN_kid(wn_first,0);
+      if (WN_operator(wn_add) == OPR_ADD) {
+	WN * wn_op1 = WN_kid(wn_add,0);
+	WN * wn_op2 = WN_kid(wn_add,1);
+	WN * wn_ld = (OPERATOR_is_load(WN_operator(wn_op1)) ? wn_op1 : 
+		      ((OPERATOR_is_load(WN_operator(wn_op2))) ? wn_op2 : NULL));
+	if (wn_ld) {
+	  OPERATOR ld_opr = WN_operator(wn_ld);
+	  WN * wn_and = (wn_op1 == wn_ld) ? wn_op2 : wn_op1;
+
+	  if (WN_operator(wn_and) == OPR_BAND) {
+	    WN * wn_shift = WN_kid(wn_and, 1);
+	    WN * wn_shift_count = NULL;
+	    WN * wn_b = WN_kid(wn_and, 0);
+	    WN * wn_induc = NULL;
+	    WN * wn_invar = NULL;
+	    WN * loop_indvar = WN_loop_induction(loop_info);
+
+	    if (WN_operator(wn_b) == OPR_CVT)
+	      wn_b = WN_kid(wn_b,0);
+	  
+	    if (WN_is_power_of_2(wn_shift)
+		&& OPERATOR_is_scalar_load(WN_operator(wn_b))) {
+	      if (WN_operator(wn_shift) == OPR_CVT)
+		wn_shift = WN_kid(wn_shift, 0);		
+
+	      if ((MTYPE_byte_size(WN_rtype(wn_shift)) == 8)
+		  && OPERATOR_is_scalar_store(st_opr)
+		  && OPERATOR_is_scalar_load(ld_opr)) {
+		ST * st = &St_Table[WN_st_idx(wn_first)];
+
+		if ((WN_st_idx(wn_first) == WN_st_idx(wn_ld))
+		    && (WN_offset(wn_first) == WN_offset(wn_ld))
+		    && (ST_sclass(st) == SCLASS_AUTO)
+		    && !ST_addr_passed(st)
+		    && !ST_addr_saved(st)
+		    && !lower_find(wn_and, wn_ld)) {
+		  wn_shift_count = WN_get_bit_from_expr(wn_shift);
+		  
+		  // Match "m = invar + induc"
+		  if (wn_shift_count && (WN_operator(wn_shift_count) == OPR_ADD)) {
+		    WN * wn1 = WN_kid(wn_shift_count, 0);
+		    WN * wn2 = WN_kid(wn_shift_count, 1);
+		    
+		    if (Is_Invaried_Value(wn1, loop_indvar)
+			&& !Is_Invaried_Value(wn2, loop_indvar)) {
+		      wn_invar = wn1;
+		      wn_induc = wn2;
+		    }
+		    else if (Is_Invaried_Value(wn2, loop_indvar)
+			     && !Is_Invaried_Value(wn1, loop_indvar)) {
+		      wn_invar = wn2;
+		      wn_induc = wn1;
+		    }
+		  }
+		}
+	      }
+	    }
+
+	    // Check whether the loop has a uni-stride increment.
+	    if (wn_invar && wn_induc && (WN_operator(wn_induc) == OPR_LDID)) {
+	      BOOL is_incr;
+	      OPCODE ub_compare;
+	      WN * loop_stride = WN_LOOP_Increment(tree, &is_incr);
+	      WN * lower_bound = WN_LOOP_LowerBound(tree);
+	      WN * upper_bound = WN_LOOP_UpperBound(tree, &ub_compare, TRUE);
+	      OPERATOR ub_opr = OPCODE_operator(ub_compare);
+
+	      if (is_incr && (WN_operator(loop_stride) == OPR_INTCONST)
+		  && (WN_const_val(loop_stride) == 1)
+		  && (ub_opr == OPR_LT)
+		  && (WN_operator(lower_bound) == OPR_INTCONST)
+		  && (WN_const_val(lower_bound) == 0)
+		  && (WN_Simp_Compare_Trees(upper_bound, wn_invar) == 0)) {
+		WN * wn_hi = NULL;
+		WN * wn_lo = NULL;
+		
+		// Create "width".
+		wn_lo = lower_copy_tree(wn_invar, actions);
+	      
+		// Create "width + width".
+		wn_hi = WN_Binary(OPR_ADD, WN_rtype(wn_invar),
+				  lower_copy_tree(wn_invar, actions),
+				  lower_copy_tree(upper_bound, actions));
+
+		// Create "(((unsigned long long) 1) << width)"
+		WN * wn_shift_lo = lower_copy_tree(wn_shift, actions);
+		lower_match_and_replace(wn_shift_lo, wn_shift_count, wn_lo);
+
+		// Create "((unsigned long long) 1 << (width + width))"
+		WN * wn_shift_hi = lower_copy_tree(wn_shift, actions);
+		lower_match_and_replace(wn_shift_hi, wn_shift_count, wn_hi);
+
+		// Create rmask1
+		WN * wn_rmask1 = WN_Binary(OPR_SUB, WN_rtype(wn_shift_hi),
+					   wn_shift_hi,
+					   WN_Intconst(WN_rtype(wn_shift_hi), 1));
+		
+		// Create "(((unsigned long long) 1) << invar) - 1"
+
+		WN * wn_bnot_op = WN_Binary(OPR_SUB, WN_rtype(wn_shift_lo),
+					    wn_shift_lo,
+					    WN_Intconst(WN_rtype(wn_shift_lo), 1));
+
+		// Create "~((((unsigned long long) 1) << width) - 1)"
+		WN * wn_bnot = WN_Unary(OPR_BNOT, WN_rtype(wn_shift), wn_bnot_op);
+
+		// Create rmask2
+		WN * wn_rmask2 = WN_Binary(OPR_BAND, WN_rtype(wn_shift),
+					   wn_rmask1, wn_bnot);
+		
+		// Create "width > 0"
+		WN * wn_rel = WN_Relational(ub_opr, Boolean_type,
+					    lower_copy_tree(lower_bound, actions),
+					    lower_copy_tree(upper_bound, actions));
+		// Create rmask3
+		WN * wn_rmask3 = WN_Ternary(OPR_SELECT,WN_rtype(wn_shift), wn_rel,
+					    wn_rmask2, WN_Intconst(WN_rtype(wn_shift), 0));
+
+		// Create the final statement.
+		WN * wn_st = lower_copy_tree(wn_first, actions);
+		lower_match_and_replace(wn_st, wn_shift, wn_rmask3);
+
+		// Create if-statement.
+		WN * wn_then = WN_CreateBlock();
+		WN_INSERT_BlockFirst(wn_then, wn_st);
+		WN * wn_else = WN_CreateBlock();
+		WN_INSERT_BlockFirst(wn_else, tree);
+		WN * wn_test = WN_Relational(ub_opr, Boolean_type,
+					     lower_copy_tree(upper_bound, actions),
+					     WN_Intconst(WN_rtype(upper_bound), 32));
+		WN * wn_if = WN_CreateIf(wn_test, wn_then, wn_else);
+		WN_Set_Linenum(wn_if, WN_Get_Linenum(tree));
+
+		// Lower if-statement.
+		FmtAssert(Action(LOWER_SIMPLIFY_BIT_OP), ("Unexpected action bit"));
+		actions -= LOWER_SIMPLIFY_BIT_OP;
+		WN * wn_ret = lower_if(block, wn_if, actions, NULL);
+		actions |= LOWER_SIMPLIFY_BIT_OP;
+		
+		return wn_ret;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+
+  return tree;
+}
+
 /* ====================================================================
  *
  * WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
@@ -13147,6 +14344,14 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
      if (WN_opcode(tree) != OPC_DO_LOOP) 
          return tree; 
   }
+
+  if (Action(LOWER_SIMPLIFY_BIT_OP)) {
+    tree = lower_iv_simplification(block, tree, actions);
+    // Check if transformed. If not, continue with do_loop 
+    if (WN_opcode(tree) != OPC_DO_LOOP) 
+      return tree;
+  }
+
   loop_info = WN_do_loop_info(tree);  
   loop_nest_depth = loop_info ? WN_loop_depth(loop_info) : loop_nest_depth+1;
 
@@ -14357,12 +15562,12 @@ static WN *lower_region(WN *tree, LOWER_ACTIONS actions)
 
 WN *lower_scf_non_recursive(WN *block, WN *tree, LOWER_ACTIONS actions)
 {
-  return lower_scf(block,tree,actions | LOWER_TOP_LEVEL_ONLY);
+  return lower_scf(block,tree,actions | LOWER_TOP_LEVEL_ONLY, NULL);
 }
 
 /* ====================================================================
  *
- * WN *lower_scf(WN *block, WN *tree, LOWER_ACTIONS actions)
+ * WN *lower_scf(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
  *
  * Perform lowering (see WN_Lower description) on structured control
  * flow node <tree>.  Returned tree will always have a structured
@@ -14370,9 +15575,12 @@ WN *lower_scf_non_recursive(WN *block, WN *tree, LOWER_ACTIONS actions)
  *
  * ==================================================================== */
 
-static WN *lower_scf(WN *block, WN *tree, LOWER_ACTIONS actions)
+static WN *lower_scf(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
 {
   CURRENT_STATE scfState = pushCurrentState(tree, actions);
+
+  if (ret_next)
+    *ret_next = WN_next(tree);
 
   switch (WN_opcode(tree))
   {
@@ -14389,7 +15597,7 @@ static WN *lower_scf(WN *block, WN *tree, LOWER_ACTIONS actions)
     break;
       
   case OPC_IF:
-    block = lower_if(block, tree, actions);
+    block = lower_if(block, tree, actions, ret_next);
     break;
 
   case OPC_BLOCK:
@@ -14504,7 +15712,11 @@ static WN *lower_trapuv(WN *block, WN *tree, LOWER_ACTIONS actions)
 #ifdef KEY
 	  // Load the constant using integer registers instead of floating
 	  // point registers, since storing NaN from x87 registers will trap.
-	  if (btype == MTYPE_FQ) {
+	  if (btype == MTYPE_FQ || btype == MTYPE_F10) {
+#if defined (TARG_X8664)
+            if (btype == MTYPE_FQ)
+              FmtAssert(FALSE, ("MTYPE_FQ: unexpected mtype"));
+#endif
 	    TYPE_ID ty = MTYPE_U8;
 	    TCON c = ST_tcon_val(WN_st(con));
 	    WN *intconst = WN_Intconst(ty, TCON_k0(c));
@@ -15127,27 +16339,27 @@ static BOOL test_vcast_complex_types_stmt_expr(WN* tree)
   OPERATOR opr = WN_operator(tree);
 
   if (OPCODE_is_compare(opcode) ||
-      opr == OPR_PAIR ||
-      opr == OPR_CONST ||
+//      opr == OPR_PAIR ||
+//      opr == OPR_CONST ||
       (opr == OPR_INTRINSIC_OP &&
        (WN_intrinsic(tree) != INTRN_C8CONJG ||
 	!Is_Target_64bit())) ||
-      opr == OPR_CVT ||
-      opr == OPR_DIV ||
-      opr == OPR_SQRT ||
+//      opr == OPR_CVT ||
+      !Fast_Complex_Allowed && opr == OPR_DIV && MTYPE_is_complex(WN_rtype(WN_kid1(tree)))||
+//      opr == OPR_SQRT ||
       opr == OPR_FIRSTPART ||
       opr == OPR_SECONDPART ||
       (!OPCODE_is_expression(opcode) && 
        !OPCODE_is_load(opcode) &&
        !OPCODE_is_store(opcode)))
     return FALSE;
-
+/*  
   if ((opr == OPR_LDID || opr == OPR_STID) && WN_st(tree) && 
       ST_class(WN_st(tree)) == CLASS_PREG &&
       (WN_rtype(tree) == MTYPE_C8 ||
        WN_desc(tree) == MTYPE_C8))
     return FALSE;    
-
+*/
   for (UINT kidno=0; kidno<WN_kid_count(tree); kidno++)
     if (!test_vcast_complex_types_stmt_expr(WN_kid(tree,kidno)))
       return FALSE;
@@ -15160,15 +16372,35 @@ static void vcast_complex_types_stmt_expr(WN* tree, WN* parent, INT kid)
   OPCODE opcode = WN_opcode(tree);
   OPERATOR opr = WN_operator(tree);
 
+  if (opr == OPR_FIRSTPART || opr == OPR_SECONDPART || opr == OPR_IO)
+    return;
+
   for (UINT kidno=0; kidno<WN_kid_count(tree); kidno++)
     vcast_complex_types_stmt_expr(WN_kid(tree,kidno), tree, kidno);
+
+  if (OPCODE_is_compare(opcode) ||
+//        opr == OPR_PAIR ||
+//      opr == OPR_CONST ||
+      (opr == OPR_INTRINSIC_OP &&
+       (WN_intrinsic(tree) != INTRN_C8CONJG ||
+	!Is_Target_64bit())) ||
+//      opr == OPR_CVT ||
+//      opr == OPR_DIV ||
+        opr == OPR_SQRT ||
+//      ( OPCODE_is_store(opcode) && WN_operator(WN_kid0(tree)) == OPR_PAIR ) ||
+      (!OPCODE_is_expression(opcode) && 
+       !OPCODE_is_load(opcode) &&
+       !OPCODE_is_store(opcode)))
+    return;
 
   if (OPCODE_rtype(opcode) == MTYPE_C8)
     WN_set_rtype(tree, MTYPE_V16C8);
   if (OPCODE_desc(opcode) == MTYPE_C8)
     WN_set_desc(tree, MTYPE_V16C8);
 
-  if (opr == OPR_MPY && WN_rtype(tree) == MTYPE_V16C8) {
+  if (opr == OPR_MPY && WN_rtype(tree) == MTYPE_V16C8 
+    && WN_rtype(WN_kid(tree,0)) == MTYPE_V16C8 
+    && WN_rtype(WN_kid(tree,1)) == MTYPE_V16C8) {
     WN* kids[3];
     WN* wn;
     if (WN_operator(WN_kid0(tree)) == OPR_LDID) {
@@ -15217,7 +16449,6 @@ static void vcast_complex_types(WN* tree)
       WN* next_stmt=WN_next(stmt);
       if (!OPCODE_is_call(WN_opcode(stmt))) {
 	if (!OPCODE_is_scf(WN_opcode(stmt))) {
-	  if (test_vcast_complex_types_stmt_expr(stmt))
 	    vcast_complex_types_stmt_expr(stmt, tree, 0);
 	} else
 	  vcast_complex_types(stmt);
@@ -15300,7 +16531,7 @@ WN *WN_Lower(WN *tree, LOWER_ACTIONS actions, struct ALIAS_MANAGER *alias,
   }
   else if (OPCODE_is_scf(WN_opcode(tree)))
   {
-    tree = lower_scf(NULL, tree, actions);
+    tree = lower_scf(NULL, tree, actions, NULL);
   }
   else if (OPCODE_is_stmt(WN_opcode(tree)))
   {
@@ -15390,6 +16621,8 @@ extern WN *  Transform_To_Memcpy(WN *dst, WN *src, INT32 offset, TY_IDX dstTY, T
                            MTYPE_To_TY(WN_rtype(size)),
                            WN_PARM_BY_VALUE);
 
+  WN_Set_Parm_Passed_Not_Saved (parms[0]);
+  WN_Set_Parm_Passed_Not_Saved (parms[1]);
 
   call= WN_Generate_Intrinsic_Call(NULL, INTRN_MEMCPY, 3, parms);
   return call;
@@ -16068,32 +17301,6 @@ static BOOL Valid_Array_Addr(WN *wn, WN *ind, int bytenum)
              Any_Indirect_Load(WN_kid0(wn)); //check validity of index 
 }
 
-
-
-static BOOL  Is_Invaried_Value(WN *expr, WN *ind) 
-{
-   if (WN_operator_is(expr, OPR_INTCONST)) return TRUE;
-
-   //If another indirect load, it may be varied 
-   if (WN_operator_is(expr, OPR_ILOAD) || WN_operator_is(expr, OPR_LDA)) 
-     return FALSE; 
-
-   if (WN_operator_is(expr, OPR_LDID)){
-        if (WN_same_id(expr, ind))
-              return FALSE;
-   else // it is not an induction 
-             return TRUE;
-   }
-   
-   else { //check all the kids
-           for (int i=0; i< WN_kid_count(expr); i++) 
-               if (!Is_Invaried_Value(WN_kid(expr,i), ind)) 
-                 return FALSE;
-
-        return TRUE; //all kids are constant
-  }
-
-}
 
 /* IGNORE: opcode to ignore 
  * ABORT_OPT: opcode to abort the transformation
@@ -16786,4 +17993,3 @@ if (!alias)
 
   return return_block;
 }
-

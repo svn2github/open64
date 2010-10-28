@@ -1977,7 +1977,8 @@ extern TN*
 CGTARG_TN_For_Asm_Operand (const char* constraint, 
                            const WN* load,
                            TN* pref_tn,
-                           ISA_REGISTER_SUBCLASS* subclass, TYPE_ID id)
+                           ISA_REGISTER_SUBCLASS* subclass,
+                           const WN* asm_wn, TYPE_ID id)
 {
   // skip constraint modifiers:
   // = input and output parameters are separated in the WHIRL for ASM

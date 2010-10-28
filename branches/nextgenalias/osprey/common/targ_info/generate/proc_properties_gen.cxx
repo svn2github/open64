@@ -186,8 +186,8 @@ void PROC_Properties_End(void)
     }
   }
 
-  char *int_type;
-  char *int_suffix;
+  const char *int_type;
+  const char *int_suffix;
   int int_size;
   if (bit_pos <= 8) {
     int_type = "mUINT8";
@@ -266,4 +266,8 @@ void PROC_Properties_End(void)
   }
 
   Emit_Footer (hfile);
+
+  fclose(hfile);
+  fclose(cfile);
+  fclose(efile);
 }

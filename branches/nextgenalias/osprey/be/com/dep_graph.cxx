@@ -341,7 +341,11 @@ void ARRAY_DIRECTED_GRAPH16::PruneMapsUsingParity(void)
   }
 }
 
+#ifndef LNO
 void ARRAY_DIRECTED_GRAPH16::Print(FILE *fp)
+#else
+void ARRAY_DIRECTED_GRAPH16::Print(FILE *fp, INT)
+#endif
 {
   VINDEX16 i;
   EINDEX16 e;

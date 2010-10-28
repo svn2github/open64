@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1183,7 +1183,7 @@ private:
 #ifdef KEY
     float _probability;			// if inside a branch, probability of it being taken
 #endif
-    TYPE_ID _return_type;		// Return type of this CALL
+    TYPE_ID _return_type:8;		// Return type of this CALL
 
     TY_IDX _virtual_class;              // the class of the virtual function 
     mUINT32 _vtable_offset;             // virtual function position, the offset of the vtable 
@@ -1601,8 +1601,8 @@ private:
 
     /* 64-bit aligned at this point */
 
-    mTYPE_ID _mtype;			// result type
-    mTYPE_ID _target_mtype;		// used only when _addr_of is true: 
+    mTYPE_ID _mtype : 8;		// result type
+    mTYPE_ID _target_mtype : 8;		// used only when _addr_of is true: 
 					// specify the mtype of what this
 					// value points to
     
@@ -2335,7 +2335,7 @@ private:
     mUINT32 _type   :  8;               // type information about the symbol
     mUINT32 _state  :  8;               // state of the symbol
     mUINT32 _modref : 16;               // mod ref state of the symbol
-    mTYPE_ID _btype;                    // backend type
+    mTYPE_ID _btype :  8;               // backend type
     
 public:
     /* access functions */

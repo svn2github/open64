@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -105,6 +105,7 @@
 #include "calls.h"
 #include "cg_loop.h"
 #include "config_lno.h"  // for LNO_Prefetch_Ahead
+#include "erbe.h"
 
 UINT32 CGTARG_branch_taken_penalty;
 BOOL CGTARG_branch_taken_penalty_overridden = FALSE;
@@ -507,6 +508,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_andx8:
   case TOP_andxx8:
   case TOP_andxxx8:
+  case TOP_test8:
+  case TOP_testx8:
+  case TOP_testxx8:
+  case TOP_testxxx8:
   case TOP_cmp8:
   case TOP_cmpx8:
   case TOP_cmpxx8:
@@ -547,6 +552,10 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
   case TOP_andx16:
   case TOP_andxx16:
   case TOP_andxxx16:
+  case TOP_test16:
+  case TOP_testx16:
+  case TOP_testxx16:
+  case TOP_testxxx16:
   case TOP_cmp16:
   case TOP_cmpx16:
   case TOP_cmpxx16:
@@ -1712,7 +1721,12 @@ VARIANT CGTARG_Analyze_Branch(
     if( OP_code(cmp_op) == TOP_test32  ||
 	OP_code(cmp_op) == TOP_test64  ||
 	OP_code(cmp_op) == TOP_testi32 ||
-	OP_code(cmp_op) == TOP_testi64 ){
+	OP_code(cmp_op) == TOP_testi64 ||
+    OP_code(cmp_op) == TOP_test8   ||
+    OP_code(cmp_op) == TOP_test16   ||
+    OP_code(cmp_op) == TOP_testi8   ||
+    OP_code(cmp_op) == TOP_testi16
+    ){
       if( *tn1 == *tn2 )
 	*tn2 = Gen_Literal_TN( 0, 4 );
       else
@@ -1977,6 +1991,8 @@ void CGTARG_Initialize(void)
   Set_Immed_To_Reg_Table( TOP_ori64,  TOP_or64  );
   Set_Immed_To_Reg_Table( TOP_xori32, TOP_xor32 );
   Set_Immed_To_Reg_Table( TOP_xori64, TOP_xor64 );
+  Set_Immed_To_Reg_Table( TOP_cmpi8,  TOP_cmp8  );
+  Set_Immed_To_Reg_Table( TOP_cmpi16, TOP_cmp16 );
   Set_Immed_To_Reg_Table( TOP_cmpi32, TOP_cmp32 );
   Set_Immed_To_Reg_Table( TOP_cmpi64, TOP_cmp64 );
   Set_Immed_To_Reg_Table( TOP_imuli32,TOP_imul32 );
@@ -2676,10 +2692,12 @@ CGTARG_Generate_Countdown_Loop ( TN *trip_count_tn,
   for ( op = branch->prev; op != NULL; op = op->prev ) {
     if (!cmp_found) {
       // Quit if the comparion before the branch is actually a "test".  
-      if (OP_code(op) == TOP_test32 || OP_code(op) == TOP_test64)
+      if (OP_code(op) == TOP_test32 || OP_code(op) == TOP_test64 || 
+          OP_code(op) == TOP_test8 || OP_code(op) == TOP_test16 )
 	return;
 
-      if (OP_code(op) == TOP_cmp32 || OP_code(op) == TOP_cmp64) {
+      if (OP_code(op) == TOP_cmp32 || OP_code(op) == TOP_cmp64 ||
+          OP_code(op) == TOP_cmp8 || OP_code(op) == TOP_cmp16 ) {
 	cmp_found = TRUE;
 	cmp = op;
       }
@@ -3094,6 +3112,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
                            const WN* load,
                            TN* pref_tn,
                            ISA_REGISTER_SUBCLASS* subclass, 
+                           const WN* asm_wn,
 			   TYPE_ID type)
 {
   // skip constraint modifiers:
@@ -3168,17 +3187,21 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       // immediate could have been put in preg by wopt
       load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
     }
-    FmtAssert(load && (WN_operator(load) == OPR_INTCONST ||
+    if (!(load && (WN_operator(load) == OPR_INTCONST ||
                        (WN_operator(load) == OPR_LDA &&
-                        ST_sym_class(WN_st(load)) == CLASS_CONST)),
-              ("Cannot find immediate operand for ASM"));
+                        ST_sym_class(WN_st(load)) == CLASS_CONST)))) {
+      ErrMsgSrcpos(EC_Invalid_Asm_Constrain, WN_Get_Linenum(asm_wn),
+                    ": Cannot find immediate operand for ASM");
+    }
     if (WN_operator(load) == OPR_INTCONST)
     {
       ret_tn = Gen_Literal_TN(WN_const_val(load), 
                               MTYPE_bit_size(WN_rtype(load))/8);
       // Bugs 3177, 3043 - safety check from gnu/config/i386/i386.h.
-      FmtAssert(CONST_OK_FOR_LETTER(WN_const_val(load), *constraint), 
-       ("The value of immediate operand supplied is not within expected range."));
+      if (!CONST_OK_FOR_LETTER(WN_const_val(load), *constraint)) {
+        ErrMsgSrcpos(EC_Invalid_Asm_Constrain, WN_Get_Linenum(asm_wn),
+                ": The value of immediate operand supplied is not within expected range.");
+      }
     }
     else
     {
@@ -3283,7 +3306,7 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
     // It is really the user's responsibility to do any type conversions between
     // long double and double/float. We will not handle any type conversions
     // as part of handling the inline asm. This is what Gcc does.
-    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(MTYPE_FQ));
+    ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(MTYPE_F10));
   }
   else if (*constraint == 'f')
   {

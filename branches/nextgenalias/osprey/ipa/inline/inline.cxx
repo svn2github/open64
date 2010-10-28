@@ -600,23 +600,8 @@ Perform_inlining()
     Init_inline();
 
     IPA_NODE_ITER cg_iter (POSTORDER, Malloc_Mem_Pool);
+
     MEM_POOL_Constructor ipo_pool (&Ipo_mem_pool, "Ipo_mem_pool", 0);
-    if (INLINE_Inline_only_small_funcs && 
-        (INLINE_PU_Small_Size > 0))
-    {
-	MEM_POOL_Constructor pool (&inline_mpool, "inline_mpool", TRUE);
-
-	set_timer();
-
-        Inline_Small_funcs(IPA_Call_Graph, INLINE_PU_Small_Size, &inline_mpool);
-
-	get_timer(PHASE_ANALYZE);
-
-        inline_counters = CXX_NEW (INLINE_COUNTERS (IPA_Call_Graph, &Ipo_mem_pool),
-			       &Ipo_mem_pool); 
-    }
-    else
-    { 
     
     if (INLINE_Enable_Auto_Inlining) {
 	MEM_POOL_Constructor pool (&inline_mpool, "inline_mpool", TRUE);
@@ -638,7 +623,6 @@ Perform_inlining()
         inline_counters = CXX_NEW (INLINE_COUNTERS (IPA_Call_Graph, &Ipo_mem_pool),
 			       &Ipo_mem_pool); 
 
-    }
 
     for (cg_iter.First (); !cg_iter.Is_Empty(); cg_iter.Next ()) {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1293,6 +1293,20 @@ void dump_bbs (BB *bb)
    Set_Trace_File_internal(f);
 }
 
+/* ================================================================= */
+
+void Print_BB_by_id ( mBB_NUM id) 
+{
+  BB *bp;
+
+  for (bp = REGION_First_BB; bp; bp = BB_next(bp)) {
+    if (bp->id == id){
+      Print_BB ( bp );
+      fprintf ( TFile,"\n" );
+      break;
+    }
+  }
+}
 /* ================================================================= */
 
 void Print_All_BBs ( void ) 

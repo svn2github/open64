@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1105,6 +1105,20 @@ inline void
 Set_PU_is_cdecl (PU_IDX pui)		{ Pu_Table[pui].flags |= PU_IS_CDECL; }
 inline void
 Clear_PU_is_cdecl (PU_IDX pui)		{ Pu_Table[pui].flags &= ~PU_IS_CDECL; }
+
+inline BOOL
+PU_nothrow (const PU& pu)		{ return (pu.flags & PU_NOTHROW) != 0;}
+inline void
+Set_PU_nothrow (PU& pu)			{ pu.flags |= PU_NOTHROW; }
+inline void
+Clear_PU_nothrow (PU& pu)		{ pu.flags &= ~PU_NOTHROW; }
+
+inline BOOL
+PU_has_apply_args (const PU& pu)        { return (pu.flags & PU_HAS_APPLY_ARGS) != 0;}
+inline void
+Set_PU_has_apply_args (PU& pu)          { pu.flags |= PU_HAS_APPLY_ARGS; }
+inline void
+Clear_PU_has_apply_args (PU& pu)        { pu.flags &= ~PU_HAS_APPLY_ARGS; }
 
 inline UINT64
 PU_src_lang (const PU& pu)		{ return pu.src_lang; }

@@ -580,12 +580,8 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
       }
 #endif
       wn = WN_CreateParm(exp->Dtyp(), wn, exp->Ilod_ty(), exp->Offset());
-#if defined(TARG_SL)
-      // avoid cse of implicit aliases stuff, mostly in sl specific intrinsics
+      // avoid cse of implicit aliases stuff
       if (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) {
-#else
-      if (WN_Parm_By_Reference(wn)) {
-#endif
 	POINTS_TO *pt = exp->Points_to(emitter->Opt_stab());
 	Is_True(pt != NULL, ("Reference parameter has NULL POINTS_TO."));
 	emitter->Alias_Mgr()->Gen_alias_id(wn, pt);

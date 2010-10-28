@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -5872,20 +5876,6 @@ void    loc_intrinsic(opnd_type     *result_opnd,
    IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
    IR_RANK(ir_idx) = res_exp_desc->rank;
 
-
-# ifdef _TARGET32
-   if (arg_info_list[info_idx1].ed.linear_type == Integer_8 ||
-       arg_info_list[info_idx1].ed.linear_type == Real_8 ||
-       arg_info_list[info_idx1].ed.linear_type == Logical_8) {
-
-      CLEAR_TBL_NTRY(type_tbl, TYP_WORK_IDX);
-      TYP_TYPE(TYP_WORK_IDX) = CRI_Ptr;
-      TYP_LINEAR(TYP_WORK_IDX) = CRI_Ptr_8;
-      TYP_PTR_INCREMENT(TYP_WORK_IDX) = 64;
-      ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx)) = ntr_type_tbl();
-      IR_TYPE_IDX(ir_idx) = ATD_TYPE_IDX(ATP_RSLT_IDX(*spec_idx));
-   }
-# endif
 
 # ifdef _TARGET_OS_MAX
    if (arg_info_list[info_idx1].ed.linear_type == Integer_4 ||

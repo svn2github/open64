@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2962,7 +2962,17 @@ Handle_ISTORE (WN *istore, OPCODE opcode)
 {
   VARIANT variant  = Memop_Variant(istore);
   WN *kid1 = WN_kid1(istore);
-  TN *kid0_tn = Expand_Expr (WN_kid0(istore), istore, NULL);
+  TN *kid0_tn;
+  if (WN_operator(WN_kid0(istore)) == OPR_FIRSTPART)
+  {
+    kid0_tn = Expand_Expr(WN_kid0(WN_kid0(istore)),istore,NULL);
+    variant |= V_LOW64;
+  } else if (WN_operator(WN_kid0(istore)) == OPR_SECONDPART){
+    kid0_tn = Expand_Expr(WN_kid0(WN_kid0(istore)),istore,NULL);
+    variant |= V_HIGH64; 
+  } else {
+    kid0_tn = Expand_Expr (WN_kid0(istore), istore, NULL);
+  }
   ST *st;
 
 #if defined(EMULATE_LONGLONG) && !defined(TARG_SL) && !defined(TARG_PPC32)
@@ -3774,6 +3784,24 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
       *kidno = 2;
       return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid2 (expr))), 4);
 
+
+    case INTRN_PSLLDQ:
+    case INTRN_PSRLDQ:
+#ifdef Is_True_On
+      {
+        const char * intrn_name = INTRN_c_name (id);
+        Is_True (WN_kid_count (expr) == 2,
+                 ("Handle_Imm_Op: Invalid # of kids of %s intrn", intrn_name));
+        Is_True (WN_operator (WN_kid0 (WN_kid1 (expr))) == OPR_INTCONST,
+           ("Handle_Imm_Op: Arg 2 of %s intrn must be immediate constant",
+            intrn_name));
+        Is_True (WN_const_val (WN_kid0 (WN_kid1 (expr))) %8 == 0,
+            ("offset is bit size must be byte based\n"));
+      }
+#endif
+      *kidno = 1;
+      return Gen_Literal_TN (WN_const_val (WN_kid0 (WN_kid1 (expr)))/8, 4);
+
     case INTRN_PSLLWI:
     case INTRN_PSLLDI:
     case INTRN_PSLLQI:
@@ -3782,8 +3810,6 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSRLQI:
     case INTRN_PSRAWI:
     case INTRN_PSRADI:
-    case INTRN_PSLLDQ:
-    case INTRN_PSRLDQ:
     case INTRN_PSLLWI128:
     case INTRN_PSLLDI128:
     case INTRN_PSLLQI128:
@@ -4582,22 +4608,39 @@ Handle_Fma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
   TN* opnd2;
   TOP opcode; 
   TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
-  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+  BOOL is_vector = MTYPE_is_vector(rtype);
+
+  // now match a scalar or vector fma4 
+  switch (WN_opcode(mul_wn)) {
+  case OPC_F4MPY:
+    opcode = TOP_vfmaddss;
+    break;
+  case OPC_F8MPY:
+    opcode = TOP_vfmaddsd;
+    break;
+  case OPC_V16F4MPY:
+  case OPC_V16C4MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfmaddps;
+    break;
+  case OPC_V16F8MPY:
+  case OPC_V16C8MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfmaddpd;
+    break;
+  default:
+    FmtAssert(FALSE, ("unexpected fma form"));
+    break;
+  }
 
   opnd2 = Expand_Expr(add_wn, expr,  NULL); 
   opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
   opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
  
-  if (WN_opcode(mul_wn) == OPC_F8MPY) {
-    opcode = (is_vector) ? TOP_vfmaddpd : TOP_vfmaddsd;
-  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
-    opcode = (is_vector) ? TOP_vfmaddps : TOP_vfmaddss;
-  }
-  
   if(result == NULL) 
     result = Allocate_Result_TN(expr, NULL); 
 
-  // Position tn's from loads on the 2nd operand if possible.
+  // Position tn's from loads on operand 1's position if possible.
   if (OPCODE_is_load(WN_opcode(WN_kid0(mul_wn))))
     Build_OP(opcode,  result,  opnd1,  opnd0, opnd2, &New_OPs); 
   else
@@ -4619,18 +4662,35 @@ Handle_Fms_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
   TN* opnd2;
   TOP opcode; 
   TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
-  BOOL is_vector = MTYPE_is_mmx_vector(rtype);
+  BOOL is_vector = MTYPE_is_vector(rtype);
+
+  // now match a scalar or vector fma4 
+  switch (WN_opcode(mul_wn)) {
+  case OPC_F4MPY:
+    opcode = TOP_vfmsubss;
+    break;
+  case OPC_F8MPY:
+    opcode = TOP_vfmsubsd;
+    break;
+  case OPC_V16F4MPY:
+  case OPC_V16C4MPY:
+    FmtAssert(is_vector, ("unexpected fms vector form"));
+    opcode = TOP_vfmsubps;
+    break;
+  case OPC_V16F8MPY:
+  case OPC_V16C8MPY:
+    FmtAssert(is_vector, ("unexpected fms vector form"));
+    opcode = TOP_vfmsubpd;
+    break;
+  default:
+    FmtAssert(FALSE, ("unexpected fms form"));
+    break;
+  }
 
   opnd2 = Expand_Expr(sub_wn, expr,  NULL); 
   opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
   opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
- 
-  if (WN_opcode(mul_wn) == OPC_F8MPY) {
-    opcode = (is_vector) ? TOP_vfmsubpd : TOP_vfmsubsd;
-  } else if (WN_opcode(mul_wn) == OPC_F4MPY) {
-    opcode = (is_vector) ? TOP_vfmsubps : TOP_vfmsubss;
-  }
-  
+
   if(result == NULL) 
     result = Allocate_Result_TN(expr, NULL); 
 
@@ -5227,26 +5287,24 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
       TYPE_ID rtype = OPCODE_rtype(opcode);
       WN *mul_wn = NULL;
       // Looking for a fm{a/s} candidate via FMA4 insns
-      if (MTYPE_is_float(rtype)) {
-        if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
-            (WN_opcode(mul_wn) != OPC_FQMPY)) {
+      if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
+        if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
+            (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY) ) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype)) {
-            if (WN_operator(expr) == OPR_ADD) {
-              return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
-            } else if (WN_operator(expr) == OPR_SUB) {
-              return Handle_Fms_Operation(expr, result, mul_wn, FALSE);
-            }
-          }
-        } else if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
-                   (WN_opcode(mul_wn) != OPC_FQMPY)) {
-          rtype = OPCODE_rtype(WN_opcode (mul_wn));
-          if (MTYPE_is_float(rtype)) {
+          if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
               return Handle_Fma_Operation(expr, result, mul_wn, TRUE);
             } else if (WN_operator(expr) == OPR_SUB) {
               return Handle_Fms_Operation(expr, result, mul_wn, TRUE);
             }
+          }
+        } else if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
+                   (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY)) {
+          rtype = OPCODE_rtype(WN_opcode (mul_wn));
+          if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
+            if (WN_operator(expr) == OPR_ADD) {
+              return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
+            } 
           }
         }
       }
@@ -5894,7 +5952,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4EQ: case OPC_I4U4EQ: variant = V_BR_U4EQ; break;
   case OPC_U4FQEQ:
   case OPC_BFQEQ: case OPC_I4FQEQ: variant = V_BR_QEQ; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10EQ:
   case OPC_BF10EQ: case OPC_I4F10EQ: variant = V_BR_XEQ; break;
 #endif
   case OPC_U4F8EQ:
@@ -5929,7 +5988,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4NE: case OPC_I4U4NE: variant = V_BR_U4NE; break;
   case OPC_U4FQNE:
   case OPC_BFQNE: case OPC_I4FQNE: variant = V_BR_QNE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10NE:
   case OPC_BF10NE: case OPC_I4F10NE: variant = V_BR_XNE; break;
 #endif
   case OPC_U4F8NE:
@@ -5964,7 +6024,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GT: case OPC_I4U4GT: variant = V_BR_U4GT; break;
   case OPC_U4FQGT:
   case OPC_BFQGT: case OPC_I4FQGT: variant = V_BR_QGT; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10GT:
   case OPC_BF10GT: case OPC_I4F10GT: variant = V_BR_XGT; break;
 #endif
   case OPC_U4F8GT:
@@ -6000,7 +6061,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4GE: case OPC_I4U4GE: variant = V_BR_U4GE; break;
   case OPC_U4FQGE:
   case OPC_BFQGE: case OPC_I4FQGE: variant = V_BR_QGE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10GE:
   case OPC_BF10GE: case OPC_I4F10GE: variant = V_BR_XGE; break;
 #endif
   case OPC_U4F8GE:
@@ -6036,10 +6098,11 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LT: case OPC_I4U4LT: variant = V_BR_U4LT; break;
   case OPC_U4FQLT:
   case OPC_BFQLT: case OPC_I4FQLT: variant = V_BR_QLT; break;
-  case OPC_U4F8LT:
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10LT:
   case OPC_BF10LT: case OPC_I4F10LT: variant = V_BR_XLT; break;
 #endif
+  case OPC_U4F8LT:
   case OPC_BF8LT: case OPC_I4F8LT: variant = V_BR_DLT; 
 #ifdef TARG_LOONGSON
     need_negative = FALSE;
@@ -6072,7 +6135,8 @@ WHIRL_Compare_To_OP_variant (OPCODE opcode, BOOL invert)
   case OPC_BU4LE: case OPC_I4U4LE: variant = V_BR_U4LE; break;
   case OPC_U4FQLE:
   case OPC_BFQLE: case OPC_I4FQLE: variant = V_BR_QLE; break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X8664)
+  case OPC_U4F10LE:
   case OPC_BF10LE: case OPC_I4F10LE: variant = V_BR_XLE; break;
 #endif
   case OPC_U4F8LE:
@@ -6585,9 +6649,9 @@ Handle_ASM (const WN* asm_wn)
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
 #if defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn);
 #else
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn, 
 				       default_type);
 #endif
 
@@ -6650,9 +6714,9 @@ Handle_ASM (const WN* asm_wn)
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
 #if defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn);
 #else
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn,
 				       MTYPE_I4);
 #endif
 
@@ -6673,14 +6737,14 @@ Handle_ASM (const WN* asm_wn)
     if (TN_is_register(tn)) {
 #ifdef TARG_X8664
       if( ( TN_register_class(tn) == ISA_REGISTER_CLASS_x87 ) &&
-	  ( WN_rtype(load) != MTYPE_FQ ) ){
+	  ( WN_rtype(load) != MTYPE_F10 ) ){
 	const TYPE_ID rtype = WN_rtype(load);
 	extern void Expand_Float_To_Float( TN*, TN*, TYPE_ID, TYPE_ID, OPS* );
 	FmtAssert( MTYPE_is_float(rtype), ("NYI") );
 	TN* tmp_tn = Gen_Typed_Register_TN( rtype, MTYPE_byte_size(rtype) );
 
 	Expand_Expr( load, NULL, tmp_tn );
-	Expand_Float_To_Float( tn, tmp_tn, MTYPE_FQ, rtype, &New_OPs );
+	Expand_Float_To_Float( tn, tmp_tn, MTYPE_F10, rtype, &New_OPs );
       } else
 #endif // TARG_X8664
 	Expand_Expr (load, NULL, tn);

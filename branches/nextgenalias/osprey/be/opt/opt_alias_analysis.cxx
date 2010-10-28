@@ -984,7 +984,7 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
       }
     }
     break;
-#if defined(TARG_SL)
+
   case OPR_PARM:
     if( WN_Parm_Dereference(wn) ) {
       Simplify_Pointer( WN_kid0(wn), &ai );
@@ -1012,7 +1012,6 @@ void OPT_STAB::Analyze_Base_Flow_Sensitive(POINTS_TO *pt, WN *wn)
       }
       break;
     }
-#endif
 
   case OPR_ISTORE:
   case OPR_ISTBITS:
@@ -2315,11 +2314,7 @@ void OPT_STAB::Allocate_mu_chi_and_virtual_var(WN *wn, BB_NODE *bb)
     break;
 
   case OPR_PARM:
-#if defined(TARG_SL)
     if ( WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn) ) {
-#else
-    if ( WN_Parm_By_Reference(wn) ) {
-#endif
 #ifdef KEY
       if (WOPT_Enable_New_Vsym_Allocation) {
         POINTS_TO pt;
@@ -3215,11 +3210,7 @@ OPT_STAB::Generate_mu_and_chi_list(WN *wn, BB_NODE *bb)
 
   case OPR_PARM:
     // generating the mu-list for parameters.
-    if ( WN_Parm_By_Reference(wn) 
-#if defined(TARG_SL)
-         || WN_Parm_Dereference(wn)
-#endif
-		    ) {
+    if ( WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn) ) {
       occ = Get_occ(wn);
       AUX_ID vp_idx = occ->Aux_id();
       // With virtual var, PARM only cares about its own vp.
@@ -3370,11 +3361,7 @@ OPT_STAB::Transfer_alias_class_to_occ_and_aux(RID *const rid,
     if (OPCODE_is_load(opc) ||
 	OPCODE_is_store(opc) ||
 	opr == OPR_LDA ||
-#if defined(TARG_SL)
 	(opr == OPR_PARM && (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)))) {
-#else
-	(opr == OPR_PARM && WN_Parm_By_Reference(wn))) {
-#endif
       if (OPERATOR_is_scalar_load (opr) || OPERATOR_is_scalar_store (opr) ||
 	  opr == OPR_LDA) {
 	POINTS_TO *sym_pt = Aux_stab_entry(WN_aux(wn))->Points_to();
@@ -4148,12 +4135,10 @@ OPT_STAB::Compute_FSA_stmt_or_expr(WN *wn)
 	   OPCODE_name(opc)));
   
   OCC_TAB_ENTRY *occ;
-#if defined(TARG_SL)
+
   if (OPERATOR_is_scalar_iload (opr) || opr == OPR_MLOAD ||
       (opr == OPR_PARM && WN_Parm_Dereference(wn))) {
-#else
-  if (OPERATOR_is_scalar_iload (opr) || opr == OPR_MLOAD) {
-#endif
+
     // to be consistent with OPR_ISTORE
     occ = Get_occ(wn);
 

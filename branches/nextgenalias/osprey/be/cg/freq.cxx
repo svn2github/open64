@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1534,7 +1534,6 @@ Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
       std::stack<BB *> lmv_bbs;
 
       BB *loophead = LOOP_DESCR_loophead(cloop);
-      fprintf(tfile,"LMV Loop: loop head: %d\n",BB_id(loophead));
 
       // Find the header predecessor that is not inside the current
       // loop, i.e. the loop preheader
@@ -1550,7 +1549,6 @@ Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
       }
       if (!preheader)
         continue;
-      fprintf(tfile,"LMV Loop: preheader %d\n",BB_id(preheader));
       lmv_bbs.push(preheader);
 
       // Follow the chain of single predecessors to find the
@@ -1576,7 +1574,6 @@ Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
         }
         if (n_preds == 1) {
           bb = single_pred;
-          fprintf(tfile,"LMV Loop: next single pred %d\n",BB_id(bb));
           lmv_bbs.push(bb);
         }
       } while (n_preds == 1);
@@ -1625,9 +1622,6 @@ Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
           }
           if (n_succ != 2 || !off_path_match)
             break;
-
-          fprintf(tfile,"LMV Loop: next hammock %d, %d (m %d) (o %d)\n",
-              BB_id(pred1),BB_id(pred2),BB_id(merge),BB_id(off_path));
 
           lmv_bbs.push(pred2);
           lmv_bbs.push(merge);

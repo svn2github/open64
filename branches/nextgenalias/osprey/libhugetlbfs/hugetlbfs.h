@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * libhugetlbfs - Easy use of Linux hugepages
  * Copyright (C) 2005-2006 David Gibson & Adam Litke, IBM Corporation.
  *
@@ -31,6 +35,7 @@ long hugetlbfs_num_free_pages(void);
 long hugetlbfs_num_pages(void);
 long dump_proc_pid_maps(void);
 
-#define PF_LINUX_HUGETLB	0x100000
+#define PF_LINUX_HUGETLB	0x0100000
+#define PF_LINUX_HUGETLB_NTM	0x1000000    /* No text mapping */
 
 #endif /* _HUGETLBFS_H */

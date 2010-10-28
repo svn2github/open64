@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 #include "wintrinsic.h"
 
 #ifndef FALSE
@@ -33,6 +37,7 @@ typedef enum INTR_RETURN_KIND {
   RETURN_SZT,	/* size_t */
   RETURN_PC,	/* Pointer to char */
   RETURN_F10 	/* Double extended precision floating point */
+  RETURN_C10 	/* Double extended precision complex */
 } INTR_RETURN_KIND;
 typedef struct intr_map_info {
 #ifdef DEBUG

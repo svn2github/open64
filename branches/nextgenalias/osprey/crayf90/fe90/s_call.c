@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007, 2008. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -404,6 +408,11 @@ boolean call_list_semantics(opnd_type     *result_opnd,
       cif_usage_rec(gen_idx, AT_Tbl_Idx, line, col, CIF_Symbol_Reference);
    }
 
+#if 0
+   /* Workaround for bug 563 (bugs.open64.net).  Note that other
+    * compilers don't consider dummy procedures to be variables that
+    * can be put into the shared or private lists.
+    */
    if (cdir_switches.parallel_region       &&
        AT_OBJ_CLASS(gen_idx) == Pgm_Unit   &&
        ATP_PROC(gen_idx)     == Dummy_Proc &&
@@ -416,6 +425,7 @@ boolean call_list_semantics(opnd_type     *result_opnd,
       PRINTMSG(line, 1041, Error, col, AT_OBJ_NAME_PTR(gen_idx));
       ok = FALSE;
    }
+#endif
 
    if (expr_mode == Restricted_Imp_Do_Expr) {
       PRINTMSG(line, 658, Error, col, AT_OBJ_NAME_PTR(gen_idx));

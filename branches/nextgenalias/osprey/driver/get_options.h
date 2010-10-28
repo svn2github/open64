@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -86,13 +86,14 @@ typedef enum
 {
     ALLOC_NA = 0,
     ALLOC_HEAP,
+    ALLOC_BD,
     ALLOC_BDT,
     ALLOC_BSS,  /* add a new entry before ALLOC_END, then append its name in the name table below */
     ALLOC_END
 } HUGEPAGE_ALLOC;
 
 /* name table */
-static const char * hugepage_alloc_name[ALLOC_END] = {"NA", "HEAP", "BDT", "BSS"};
+static const char * hugepage_alloc_name[ALLOC_END] = {"NA", "HEAP", "BD", "BDT", "BSS"};
 
 typedef struct hugepage_desc_tag {
     HUGEPAGE_ALLOC alloc;

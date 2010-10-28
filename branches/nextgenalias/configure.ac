@@ -76,7 +76,7 @@ case "$BUILD_COMPILER" in
 esac
 
 AC_ARG_WITH(build-optimize,
-[  --with-build-optimize=DEFAULT|DEBUG	Use DEFAULT or DEBUG flags in build],
+[  --with-build-optimize=DEFAULT|DEBUG	Use DEFAULT or DEBUG flags in compiler build],
 BUILD_OPTIMIZE="$with_build_optimize",
 BUILD_OPTIMIZE=DEFAULT)
 
@@ -91,6 +91,24 @@ case "$BUILD_OPTIMIZE" in
     ;;
   *)
     AC_MSG_ERROR(["BUILD_OPTIMIZE=$BUILD_OPTIMIZE is not supported"])
+    ;;
+esac
+
+AC_ARG_WITH(build-lib-optimize,
+[  --with-build-lib-optimize=DEFAULT|DEBUG Use DEFAULT or DEBUG flags in library build.
+    Note that --with-build-lib-optimize=DEBUG is currently not well tested.],
+BUILD_LIB_OPTIMIZE="$with_build_lib_optimize",
+BUILD_LIB_OPTIMIZE=DEFAULT)
+
+case "$BUILD_LIB_OPTIMIZE" in
+  DEFAULT|default)
+    BUILD_LIB_OPTIMIZE=DEFAULT
+    ;;
+  DEBUG|debug)
+    BUILD_LIB_OPTIMIZE=DEBUG
+    ;;
+  *)
+    AC_MSG_ERROR(["BUILD_LIB_OPTIMIZE=$BUILD_LIB_OPTIMIZE is not supported"])
     ;;
 esac
 
@@ -275,6 +293,7 @@ AC_SUBST([BUILD_HOST])
 AC_SUBST([BUILD_TARGET])
 AC_SUBST([BUILD_VENDOR])
 AC_SUBST([BUILD_OPTIMIZE])
+AC_SUBST([BUILD_LIB_OPTIMIZE])
 AC_SUBST([BUILD_COMPILER])
 AC_SUBST([BUILD_BOTH])
 AC_SUBST([LIB_MACHINE_TYPE])
@@ -350,7 +369,11 @@ fi
 if test "${BUILD_TARGET}" = "SL"; then
 LIBLIST="include libelf"
 else
-LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  if test "${BUILD_TARGET}" = "IA64"; then
+     LIBLIST="include libelf libopenmp libfortran libmv libu"
+  else
+     LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
+  fi
 fi
 
 AC_CONFIG_FILES([
@@ -365,7 +388,7 @@ AC_CONFIG_FILES([
 ])
 
 if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
-  LIBLIST="libopen64rt libacml_mv $LIBLIST libu libinstr2"
+  LIBLIST="libopen64rt libacml_mv $LIBLIST libinstr2"
   AC_CONFIG_FILES([
     osprey/targdir_lib/libopen64rt/Makefile
     osprey/targdir_lib/libinstr2/Makefile

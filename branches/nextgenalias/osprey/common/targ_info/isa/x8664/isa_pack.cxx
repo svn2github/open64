@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -69,7 +69,7 @@
 #include "topcode.h"
 #include "isa_pack_gen.h"
  
-main()
+int main()
 {
   ISA_Pack_Begin("x8664", 32);
 
@@ -132,6 +132,8 @@ main()
 			 TOP_cmpxxx16,	0x000000ff,
 			 TOP_cmpxxx32,	0x000000ff,
 			 TOP_cmpxxx64,	0x000000ff,
+			 TOP_testxxx8,  0x000000ff,
+			 TOP_testxxx16, 0x000000ff,
 			 TOP_testxxx32,	0x000000ff,
 			 TOP_testxxx64,	0x000000ff,
 		    TOP_nop,	0x000000ff,
@@ -675,12 +677,20 @@ main()
 		    TOP_fmovddupx,     0x000000ff,
 		    TOP_fmovddupxx,    0x000000ff,
 		    TOP_fmovddupxxx,   0x000000ff,
+		    TOP_test8,	       0x000000ff,
+		    TOP_testx8,	       0x000000ff,
+		    TOP_testxx8,	   0x000000ff,
+		    TOP_test16,	       0x000000ff,
+		    TOP_testx16,	   0x000000ff,
+		    TOP_testxx16,	   0x000000ff,
 		    TOP_test32,	0x000000ff,
 		    TOP_testx32,	0x000000ff,
 		    TOP_testxx32,	0x000000ff,
 		    TOP_testx64,	0x000000ff,
 		    TOP_testxx64,	0x000000ff,
 		    TOP_test64,	0x000000ff,
+		    TOP_testi8,	0x000000ff,
+		    TOP_testi16,	0x000000ff,
 		    TOP_testi32,	0x000000ff,
 		    TOP_testi64,	0x000000ff,
 		    TOP_xor8,	0x000000ff,
@@ -780,7 +790,13 @@ main()
 		    TOP_stapd,  0x000000ff,
 		    TOP_staps,  0x000000ff,
 		    TOP_stupd,  0x000000ff,
+		    TOP_stupdx,  0x000000ff,
+		    TOP_stupdxx, 0x000000ff,
+                    TOP_stupd_n32,     0x000000ff,
 		    TOP_stups,  0x000000ff,
+		    TOP_stupsx,  0x000000ff,
+		    TOP_stupsxx, 0x000000ff,
+                    TOP_stups_n32,     0x000000ff,
 		    TOP_stntpd, 0x000000ff,
 		    TOP_stntps, 0x000000ff,
 		    TOP_storenti128, 0x000000ff,
@@ -859,6 +875,14 @@ main()
 		    TOP_subxss,	0x000000ff,
 		    TOP_subxxsd,0x000000ff,
 		    TOP_subxxss,0x000000ff,
+                    TOP_ucomisd,       0x000000ff,
+                    TOP_ucomixsd,      0x000000ff,
+                    TOP_ucomixxsd,     0x000000ff,
+                    TOP_ucomixxxsd,    0x000000ff,
+                    TOP_ucomiss,       0x000000ff,
+                    TOP_ucomixss,      0x000000ff,
+                    TOP_ucomixxss,     0x000000ff,
+                    TOP_ucomixxxss,    0x000000ff,
 		    TOP_stss_n32,	0x000000ff,
 		    TOP_stsd_n32,	0x000000ff,
 		    TOP_stss,	0x000000ff,
@@ -3391,4 +3415,5 @@ main()
 		    TOP_UNDEFINED);
 
   ISA_Pack_End();
+  return 0;
 }

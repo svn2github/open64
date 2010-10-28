@@ -398,7 +398,7 @@ endif
 
 ifdef BUILD_OPTIMIZE
  ifeq ($(BUILD_OPTIMIZE), DEFAULT)
-   BUILD_OPTIMIZE = NODEBUG
+   override BUILD_OPTIMIZE = NODEBUG
  else
   ifeq ($(BUILD_OPTIMIZE), "")
     ABORT_BUILD = BUILD_OPTIMIZE has no value!

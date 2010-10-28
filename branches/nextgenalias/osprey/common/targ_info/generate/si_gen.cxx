@@ -133,15 +133,15 @@ class GNAME {
 public:
   GNAME();
   // Generate a unique name.  Don't care about prefix.
-  GNAME(char* prefix);
+  GNAME(const char* prefix);
   // Generate a unique name.  Force a particular prefix.
   GNAME(GNAME& other);
   // Generate a name that is a copy of <other>.  The name will not be unique.
   // Really only useful when <other> is about to be destructed, but we still
   // need to refer to it.
-  char* Gname();
+  const char* Gname();
   // Return the name.  This is the name under which the object is defined.
-  char* Addr_Of_Gname();
+  const char* Addr_Of_Gname();
   // Return a pointer to the named object.
   void Stub_Out();
   // We've decided not to define the object after all but we may still want a
@@ -160,7 +160,7 @@ GNAME::GNAME() : stubbed(false) {
   sprintf(gname,"&gname%d",count++);
 }
 
-GNAME::GNAME(char* prefix) : stubbed(false) {
+GNAME::GNAME(const char* prefix) : stubbed(false) {
   assert(strlen(prefix) <= 8);
   sprintf(gname,"&%s%d",prefix,count++);
 }
@@ -169,14 +169,14 @@ GNAME::GNAME(GNAME& other) : stubbed(false) {
   sprintf(gname,"%s",other.gname);
 }
 
-char* GNAME::Gname() {
+const char* GNAME::Gname() {
   if (stubbed)
     return "0";
   else
     return gname + 1;
 }
 
-char* GNAME::Addr_Of_Gname() {
+const char* GNAME::Addr_Of_Gname() {
   if (stubbed)
     return "0";
   else
@@ -263,8 +263,8 @@ bool RES_WORD::Allocate_Field(int width, int count, int &word, int &bit)
 {
   int new_inx = bit_inx + width;
 
-  if (    use_long_longs && new_inx >= bits_per_long_long
-       || !use_long_longs && new_inx >= bits_per_long
+  if (    (use_long_longs && new_inx >= bits_per_long_long)
+       || (!use_long_longs && new_inx >= bits_per_long)
   ) {
     return false;
   }
@@ -326,17 +326,17 @@ class RES {
 /////////////////////////////////////
 
 public:
-  RES(char *name,int count);
+  RES(const char *name,int count);
   // <name> is used for documentation and debugging.  <count> is the number of
   // elements in the class.
 
   static RES* Get(int id);
   // Find and return the resource with the given <id>.
 
-  char* Name() const { return name; }
+  const char* Name() const { return name; }
   // Return debugging name.
 
-  char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
+  const char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
   // Return name of pointer to this resource object (in generated code).
 
   unsigned int Count() const { return count; }
@@ -358,13 +358,13 @@ public:
 
 private:
   const int count;          // Available per cycle
-  char* const name;         // For documentation and debugging
+  const char* name;         // For documentation and debugging
+  const int id;             // Unique numerical identifier
   GNAME gname;              // Generated symbolic name
   int word;                 // Which word in the table?
   int field_width;          // How wide the field?
   int shift_count;          // How much to shift (starting pos of the low
                             //   order bit
-  const int id;             // Unique numerical identifier
   static int total;         // Total number of different RESs (not the the
                             //   total of their counts, 1 for each RES)
   static std::map<int,RES*> resources;
@@ -383,7 +383,7 @@ private:
 int  RES::total = 0;
 std::map<int,RES*> RES::resources;
 
-RES::RES(char *name, int count)
+RES::RES(const char *name, int count)
 // constructor maintains list of all resources.
   : count(count), name(name), id(total++), gname("resource")
 {
@@ -489,10 +489,10 @@ public:
   void Output(FILE* fd);
   // Output my definition and initialization.
 
-  char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
+  const char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
   // Return name of pointer to me (in generated code).
 
-  char* Gname() { return gname.Gname(); }
+  const char* Gname() { return gname.Gname(); }
   // Return my name (in generated code).
 
   bool Compute_Maybe_Output_II_RES_REQ(int ii, FILE* fd,
@@ -518,13 +518,13 @@ public:
   // Count up all the resources of each kind that I require (in all my cycles)
   // and output a definition and initialization.
 
-  char* Res_Count_Vec_Gname() { return res_count_vec_gname.Gname(); }
+  const char* Res_Count_Vec_Gname() { return res_count_vec_gname.Gname(); }
   // Return name of pointer to start of my resource count vector.
 
   int Res_Count_Vec_Size() const { return res_count_vec_size; }
   // Return length of my resource count vector.
 
-  char* Res_Id_Set_Gname() { return res_id_set_gname.Gname(); }
+  const char* Res_Id_Set_Gname() { return res_id_set_gname.Gname(); }
   // Return name of pointer to start of vector of resource id sets, one per
   // cycle.
 
@@ -542,25 +542,20 @@ private:
     CYCLE_RES(int cycle, const RES* res) : cycle(cycle), res_id(res->Id()) {}
     // Construct the <cycle,res> combination.
 
+    CYCLE_RES(const CYCLE_RES& rhs) : cycle(rhs.cycle), res_id(rhs.res_id) {}
+    // Copy constructor for use by STL map.
+
     int Cycle() const { return cycle; }
     // Return cycle component.
 
     RES* Res() const { return RES::Get(res_id); }
     // Return resource component.
 
-    friend bool operator < (const CYCLE_RES a, const CYCLE_RES b)
+    friend bool operator < (const CYCLE_RES& a, const CYCLE_RES& b)
     // Ordering for map.
-    {  // I didn't want to put this inline, but mongoose C++ forced me to.
-      return    a.cycle< b.cycle
-             || a.cycle == b.cycle && a.res_id < b.res_id;
-    }
-
-    CYCLE_RES()
-    // Horrible useless required constructor required by STL map.
-     : cycle(0), res_id(0)
-    {  // Also forced inline by mongoose C++.
-      fprintf(stderr,"### Default initializer for CYCLE_RES"
-              " shouldn't happen.\n");
+    {
+      return    (a.cycle < b.cycle)
+             || (a.cycle == b.cycle && a.res_id < b.res_id);
     }
 
   private:
@@ -568,7 +563,7 @@ private:
     const short res_id;
   };
 
-  typedef std::map< CYCLE_RES,int,std::less <CYCLE_RES> > CYCLE_RES_COUNT_MAP;
+  typedef std::map<CYCLE_RES,int> CYCLE_RES_COUNT_MAP;
   // For keeping track of the number of resources of a given type in a given
   // cycle.  <cycle,res> => count
 
@@ -742,11 +737,11 @@ class ISLOT {
 /////////////////////////////////////
 
 public:
-  ISLOT(char* name, int skew, int avail_count);
+  ISLOT(const char* name, int skew, int avail_count);
   // <name> is for documentation and debugging.  <skew> gives a latency skew
   // instructions issued in me.
 
-  char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
+  const char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
   // Return pointer to my name in generated.
 
   static int Count() { return count; }
@@ -756,7 +751,7 @@ public:
   // Output all the issue slots and a vector of pointers to them all.
 
 private:
-  char* const name;             // User supplied for documentation & debugging
+  const char* name;             // User supplied for documentation & debugging
   const int skew;               // Latency skew
   const int avail_count;        // How many instructions can happen in it
   GNAME gname;                  // Symbolic name in generated
@@ -767,7 +762,7 @@ private:
 std::list<ISLOT*> ISLOT::islots;
 int ISLOT::count = 0;
 
-ISLOT::ISLOT(char* name, int skew, int avail_count)
+ISLOT::ISLOT(const char* name, int skew, int avail_count)
   : name(name),
     skew(skew),
     avail_count(avail_count)
@@ -831,7 +826,7 @@ public:
   void Output(FILE* fd);
   // Output latency vector to <fd>.
 
-  char* Gname() { return gname.Gname(); }
+  const char* Gname() { return gname.Gname(); }
   // Return name of pointer to me in generated file.
 
 private:
@@ -915,7 +910,7 @@ class INSTRUCTION_GROUP {
 
 public:
   // These functions correspond exactly with the defined C client interface.
-  INSTRUCTION_GROUP(char* name);
+  INSTRUCTION_GROUP(const char* name);
   void Set_Any_Operand_Access_Time(int time);
   void Set_Operand_Access_Time(int operand_index, int time);
   void Set_Any_Result_Available_Time(int time);
@@ -924,35 +919,32 @@ public:
   void Set_Last_Issue_Cycle( int time );
   void Set_Store_Available_Time( int time );
   void Add_Resource_Requirement(const RES* res, int cycle);
-#if defined(TARG_SL)
-  void Add_Alternative_Resource_Requirement(const RES*res, int cycle); 
-#endif 
+  void Add_Alternative_Resource_Requirement(const RES* res, int cycle);
   void Add_Valid_ISLOT(ISLOT* islot);
   void Set_Write_Write_Interlock();
 
   static void Output_All(FILE* fd);
   // Write them all out
 
-  char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
+  const char* Addr_Of_Gname() { return gname.Addr_Of_Gname(); }
   // Name of pointer to me in generated file.
 
 private:
   int id;                               // Index in vector of same
   GNAME gname;                          // Variable name in generated    
-  char* const name;                     // User supplied name for documentation
+  const char* name;                     // User supplied name for documentation
   RES_REQ res_requirement;              // Required to issue
-#if defined(TARG_SL)
-  RES_REQ alternative_res_requirement;  // alternative resource if res_requirement can not be satisified. 
-#endif
+  RES_REQ alternative_res_requirement;  // Alternative resource if
+                                        // res_requirement cannot be satisified
 
-  std::list<ISLOT*> valid_islots;            // If there are any issue slots at all
+  std::list<ISLOT*> valid_islots;       // If there are any issue slots at all
   GNAME islot_vec_gname;                // Variable name of above in generated
 
   LATENCY_INFO operand_latency_info;    // When operands latch
   LATENCY_INFO result_latency_info;     // When results available
 
   int load_access_time;                 // When loads access memory
-  int last_issue_cycle;			// Last issue cycle in simulated insts
+  int last_issue_cycle;                 // Last issue cycle in simulated insts
   int store_available_time;             // When stores make value available in
                                         //   memory 
 
@@ -990,7 +982,7 @@ private:
 std::list<INSTRUCTION_GROUP*> INSTRUCTION_GROUP::instruction_groups;
 int INSTRUCTION_GROUP::count = 0;
 
-INSTRUCTION_GROUP::INSTRUCTION_GROUP(char* name)
+INSTRUCTION_GROUP::INSTRUCTION_GROUP(const char* name)
     : id(count++),
       name(name),
       operand_latency_info(max_operands),
@@ -1051,7 +1043,6 @@ void INSTRUCTION_GROUP::Add_Resource_Requirement(const RES* res, int cycle)
   }
 }
 
-#if defined(TARG_SL)
 void INSTRUCTION_GROUP::Add_Alternative_Resource_Requirement(const RES* res, int cycle)
 {
   if (! alternative_res_requirement.Add_Resource(res,cycle)) {
@@ -1061,7 +1052,6 @@ void INSTRUCTION_GROUP::Add_Alternative_Resource_Requirement(const RES* res, int
     fprintf(stderr,"###    %s at cycle %d.\n",res->Name(),cycle);
   }
 }
-#endif
 
 void INSTRUCTION_GROUP::Add_Valid_ISLOT(ISLOT* islot)
 {
@@ -1114,8 +1104,9 @@ void INSTRUCTION_GROUP::Output_II_Info(FILE* fd)
     }
   }
 
-  for ( i = 0; i < sizeof(bad_iis) / sizeof(bad_iis[0]); ++i ) {
-    bad_iis[i] = 0ULL;
+  unsigned int j;
+  for ( j = 0; j < sizeof(bad_iis) / sizeof(bad_iis[0]); ++j ) {
+    bad_iis[j] = 0ULL;
   }
 
   for ( i = 0; i <= greatest_bad_ii; ++i ) {
@@ -1196,15 +1187,13 @@ void INSTRUCTION_GROUP::Output_Issue_Slot_Info(FILE* fd)
 
 void INSTRUCTION_GROUP::Output(FILE* fd)
 {
-  int i;
+  unsigned int i;
 
   fprintf(fd,"\n/* Instruction group %s */\n",name);
   res_requirement.Output(fd);
   res_requirement.Compute_Output_Resource_Count_Vec(fd);
-#if defined(TARG_SL)
   alternative_res_requirement.Output(fd); 
   alternative_res_requirement.Compute_Output_Resource_Count_Vec(fd);
-#endif
   Output_II_Info(fd);
   Output_Latency_Info(fd);
   Output_Issue_Slot_Info(fd);
@@ -1225,10 +1214,8 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
              store_available_time);
   fprintf(fd,"  %-15s, /* resource requirement */\n",
              res_requirement.Gname());
-#if defined(TARG_SL)
-  fprintf(fd, "  %-15s, /* alternative resource requirement*/ \n", 
-             alternative_res_requirement.Gname()); 
-#endif
+  fprintf(fd,"  %-15s, /* alternative resource requirement*/\n",
+             alternative_res_requirement.Gname());
   fprintf(fd,"  %-15s, /* res id used set vec */\n",
              res_requirement.Res_Id_Set_Gname());
   fprintf(fd,"  %-15d, /* II info size */\n",
@@ -1242,7 +1229,7 @@ void INSTRUCTION_GROUP::Output(FILE* fd)
     fprintf(fd, "0x%" LL_FORMAT "x", bad_iis[i]);
     if ( i < sizeof(bad_iis) / sizeof(bad_iis[0]) - 1 ) fprintf(fd, ",");
   }
-  fprintf(fd, "}}    , /* Bad IIs */\n");
+  fprintf(fd, "}}    , /* bad IIs */\n");
   fprintf(fd,"  %-15d, /* valid issue slots vec size */\n",
              (unsigned int) valid_islots.size());
   fprintf(fd,"  %-15s, /* valid issue slots vec */\n",
@@ -1307,11 +1294,11 @@ public:
   // Create schedling info for the "dummy" instructions.
 
 private:
-  static std::vector<char*> top_sched_info_ptr_map;  // The map itself.
+  static std::vector<const char*> top_sched_info_ptr_map;  // The map itself.
   static std::vector<bool> top_sched_info_defined;   // Which elements defined
 };
 
-std::vector<char*> TOP_SCHED_INFO_MAP::top_sched_info_ptr_map(TOP_count,"0");
+std::vector<const char*> TOP_SCHED_INFO_MAP::top_sched_info_ptr_map(TOP_count,"0");
 std::vector<bool> TOP_SCHED_INFO_MAP::top_sched_info_defined(TOP_count,false);
 
 void TOP_SCHED_INFO_MAP::Create_Dummies( void )
@@ -1388,24 +1375,24 @@ void TOP_SCHED_INFO_MAP::Output( FILE* fd )
 static INSTRUCTION_GROUP* current_instruction_group;
 
 /*ARGSUSED*/
-void Machine(char* name, ISA_SUBSET isa, int argc, char** argv)
+void Machine(const char* name, ISA_SUBSET isa, int argc, char** argv)
 {
   machine_isa = isa;
 
   TOP_SCHED_INFO_MAP::Create_Dummies();
 }
 
-RESOURCE RESOURCE_Create(char* name, int count)
+RESOURCE RESOURCE_Create(const char* name, int count)
 {
   return new RES(name,count);
 }
 
-ISSUE_SLOT ISSUE_SLOT_Create(char* name, int skew, int count)
+ISSUE_SLOT ISSUE_SLOT_Create(const char* name, int skew, int count)
 {
   return new ISLOT(name,skew,count);
 }
 
-void Instruction_Group(char* name,...)
+void Instruction_Group(const char* name,...)
 {
   va_list ap;
   TOP opcode;
@@ -1460,12 +1447,10 @@ void Resource_Requirement( RESOURCE resource, int time )
   current_instruction_group->Add_Resource_Requirement(resource,time);
 }
 
-#if defined(TARG_SL)
 void Alternative_Resource_Requirement( RESOURCE resource, int time )
 {
   current_instruction_group->Add_Alternative_Resource_Requirement(resource,time);
 }
-#endif 
 
 void Valid_Issue_Slot( ISSUE_SLOT slot )
 {
@@ -1477,7 +1462,7 @@ void Write_Write_Interlock()
   current_instruction_group->Set_Write_Write_Interlock();
 }
 
-void Machine_Done( char* filename )
+void Machine_Done( const char* filename )
 {
   FILE* fd = fopen(filename,"w");
   // assume we won't have a target .so name with > 40 characters

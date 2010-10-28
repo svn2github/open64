@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -136,6 +136,9 @@ static char *opt_cfgrcs_id =	opt_cfg_INCLUDED"$Revision: 1.7 $";
 #ifndef opt_bb_INCLUDED
 #include "opt_bb.h"
 #endif
+#ifndef opt_proactive_INCLUDED
+#include "opt_proactive.h"
+#endif
 #ifndef opt_fb_INCLUDED
 #include "opt_fb.h"
 #endif
@@ -159,10 +162,12 @@ class MOD_PHI_BB_CONTAINER;
 class OPT_STAB;
 class OPT_TAIL;
 class LMV_CFG_ADAPTOR; 
+class LOOP_UNROLL_UTIL;
 
 class CFG {
 friend class EXITBB_ITER;
 friend class OPT_TAIL;
+friend class LOOP_UNROLL_UTIL;
 private:
   BOOL		_trace;		// -ttOPT:0x0008 or 0x0004
 
@@ -221,6 +226,8 @@ private:
   STACK<MP_TY> _mp_type;        // the mp region type
   STACK<RID *> _mp_rid;         // the rid of the region
   STACK<BB_REGION *> _bb_region;// the BB_REGION of the parent (not just mp)
+  STACK<RID *> _eh_rid;         // the stack of eh_region's rid
+  
 #if defined(TARG_SL) //PARA_EXTENSION
   STACK<SL2_PARA_TY> _sl2_para_type;  // the sl2_para region type
   STACK<RID *> _sl2_para_rid;   // the rid of the region
@@ -229,6 +236,7 @@ private:
   REGION_LEVEL _rgn_level;	// context for cfg: preopt/mainopt/rvi
   BOOL         _has_regions;	// does the cfg have region nodes?
   INT32        _dohead_cnt;     // number of DOHEAD block, for PRE
+  BOOL         _allow_clone_calls; // allow clone block having calls
 
   BB_NODE_SET *_bb_set;         // A scratch bb set for temporary use
   BB_NODE_SET *_non_true_body_set; // scratch bb set for use in Compute_true_loop_body_set
@@ -369,6 +377,10 @@ private:
   void         Lower_while_do(WN *wn, END_BLOCK *ends_bb );
   INT	       Is_simple_expr(WN *wn);
   void         Lower_if_stmt(WN *wn, END_BLOCK *ends_bb );
+  WN          *if_convert(WN *wn);
+  BOOL         wn_is_assign(WN *wn);
+  BOOL         wn_is_assign_return(WN *wn);
+  BOOL         wn_is_return_convert(WN *wn);
   // add various high-level construct statements to CFG so they can
   // later be raised back up (mostly preopt phase)
   void         Add_one_io_stmt(WN *wn, END_BLOCK *ends_bb);
@@ -409,12 +421,14 @@ private:
   void	       Compute_true_loop_body_set(BB_LOOP *loop);
   BOOL         Loop_itself_is_empty(BB_LOOP *loop);
   BB_LOOP     *Get_last_loop(BB_LOOP *loop);
+  void         Remove_loop_construct (BB_LOOP *);
 
   // screen out those BBs originally assigned to the 'loop' but
   // actually does not belong to the 'loop'.
   void         Screen_out_false_loopnest(BB_LOOP *loop, BB_LOOP *sibling);
 
   void         Ident_mp_regions(void);
+  void         Ident_eh_regions(void);
 #if defined(TARG_SL) //PARA_EXTENSION
   void         Ident_sl2_para_regions(void);
 #endif
@@ -425,11 +439,14 @@ private:
   void         LMV_clone_pred_succ_relationship (LMV_CFG_ADAPTOR*); 
   void         LMV_clone_loop_body (LMV_CFG_ADAPTOR*); 
   void         LMV_update_internal_labels (LMV_CFG_ADAPTOR*);
-  BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*);
+  BB_LOOP*     LMV_clone_BB_LOOPs (LMV_CFG_ADAPTOR*);
+  BB_LOOP*     LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR*, BB_LOOP*);
   void         LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR*);
   void         LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* );
   void         LMV_clone_frequency(LMV_CFG_ADAPTOR* );
 
+  //bottom test loop check
+  BOOL bottom_test_loop(WN* while_do);
 
   // From here on, all are public access functions
 public:
@@ -560,6 +577,12 @@ public:
   BOOL         NULL_mp_type(void) const  { return _mp_type.Is_Empty(); }
   void         Clear_mp_type(void)       { _mp_type.Clear(); }
   void         Clear_mp_rid(void)        { _mp_rid.Clear(); }
+
+  void         Push_eh_rid(RID *rid)     { _eh_rid.Push(rid); }
+  RID         *Pop_eh_rid(void)          { return _eh_rid.Pop(); }
+  RID         *Top_eh_rid(void) const    { return _eh_rid.Top(); }
+  void         Clear_eh_rid(void)        { _eh_rid.Clear(); }
+  BOOL         Null_eh_rid(void) const   { return _eh_rid.Is_Empty(); }
 
   BOOL         Inside_mp_do(void)        { return !NULL_mp_type() &&
                                              Top_mp_type() != MP_REGION;
@@ -700,6 +723,9 @@ public:
 
   void         Delete_empty_BB();
 
+  BOOL         Allow_clone_calls (void) const { return _allow_clone_calls; }
+  void         Set_allow_clone_calls (BOOL b) { _allow_clone_calls = b; }
+
   // Clone a BB_NODE
   void         Clone_bb(IDTYPE source, IDTYPE dest, BOOL clone_wn);
   // Clone a list of BB_NODEs
@@ -734,8 +760,10 @@ public:
   // for the phase of removing useless store loop
   BB_NODE * ULSE_insert_bb_and_merge(STMTREP*, BB_NODE*, BB_NODE*);
   BOOL         If_convertible_cond(WN* wn);
-  BOOL         If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
-  BOOL         Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then);
+  BOOL         If_conv_criteria_met(WN* wn);
+  BOOL         Cand_is_select(WN *wn);
+  BOOL         Cand_is_return_inside_select(WN *wn);
+  BOOL         Screen_cand(WN* wn);
 #if defined(TARG_SL)
   BOOL         Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn);
 #endif

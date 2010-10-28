@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -438,7 +442,7 @@ CGSPILL_Initialize_For_PU(void)
   LOCAL_SPILLS_used(slc) = NULL;
 
   slc = &lra_x87_spills;
-  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_FQ );
+  LOCAL_SPILLS_mem_type(slc) = MTYPE_To_TY( MTYPE_F10 );
   LOCAL_SPILLS_free(slc) = NULL;
   LOCAL_SPILLS_used(slc) = NULL;
 
@@ -570,7 +574,7 @@ CGSPILL_Get_TN_Spill_Location (TN *tn, CGSPILL_CLIENT client)
        */
       if( TN_size(tn) == 16 || TN_size(tn) == 12 ){
 	mem_type = TN_register_class(tn) == ISA_REGISTER_CLASS_x87
-	  ? MTYPE_To_TY( MTYPE_FQ ) : Quad_Type;
+	  ? MTYPE_To_TY( MTYPE_F10 ) : Quad_Type;
       }
       // MMX
       if (TN_register_class(tn) == ISA_REGISTER_CLASS_mmx) {

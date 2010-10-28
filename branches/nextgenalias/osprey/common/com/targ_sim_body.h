@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -84,12 +88,12 @@ typedef struct subprogram_interface {
   Preg_Range dbl_results;
 
   /* Argument conversion: */
-  mTYPE_ID int_type;	/* Convert to at least this type */
+  mTYPE_ID int_type : 8;	/* Convert to at least this type */
 #ifdef TARG_NVISA
-  mTYPE_ID int64_type;	/* Convert to at least this type */
+  mTYPE_ID int64_type : 8;	/* Convert to at least this type */
 #endif
-  mTYPE_ID flt_type;	/* Convert to at least this type */
-  mTYPE_ID dbl_type;	/* Convert to at least this type */
+  mTYPE_ID flt_type : 8;	/* Convert to at least this type */
+  mTYPE_ID dbl_type : 8;	/* Convert to at least this type */
 
   /* Argument save area definition: */
   mINT16 min_save_area_bytes;	/* Minimum size to be reserved */
@@ -318,7 +322,7 @@ First_PLOC_Reg (PLOC ploc, TY_IDX parm_ty)
 	case MTYPE_FQ:
 		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F8);
 		break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X6448)
 	case MTYPE_C10:
 		PLOC_size(first) = MTYPE_RegisterSize(MTYPE_F10);
 		break;
@@ -364,7 +368,7 @@ Next_PLOC_Reg (PLOC prev)
 		    PLOC_reg(next) = 0;
 		}
 		break;
-#ifdef TARG_IA64
+#if defined(TARG_IA64) || defined(TARG_X6448)
 	case MTYPE_C10:
 		PLOC_offset(next) += MTYPE_RegisterSize(MTYPE_F10);
 		if (PLOC_offset(next) == ploc_last_offset)

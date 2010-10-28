@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -531,20 +531,6 @@ Process_Targ_Group ( char *targ_args )
 	    add_option_seen ( O_m64 );
 	    toggle ( &abi, ABI_64 );
 	  }
-          // aes and avx
-	  if (!strncasecmp(cp, "aes=on", 6)){
-	    add_option_seen(O_maes);
-	    toggle(&aes, TRUE);
-	  }else if (!strncasecmp(cp, "aes=off", 7)){
-	    add_option_seen(O_mno_aes);
-	    toggle(&aes, FALSE);
-	  }else if (!strncasecmp(cp, "avx=on", 6)){
-	    add_option_seen(O_mavx);
-	    toggle(&avx, TRUE);
-	  }else if (!strncasecmp(cp, "avx=off", 7)){
-	    add_option_seen(O_mno_avx);
-	    toggle(&avx, FALSE);
-          }
 #endif
 #ifdef TARG_LOONGSON
 	  if ( strncasecmp ( cp+4, "n32", 3 ) == 0 ) {
@@ -561,9 +547,26 @@ Process_Targ_Group ( char *targ_args )
 	    toggle ( &abi, ABI_W64 );
 	  }
 #endif
+	} else {
+#ifdef TARG_X8664
+          // non abi TARG options
+          // aes and avx
+	  if (!strncasecmp(cp, "aes=on", 6)){
+	    add_option_seen(O_maes);
+	    toggle(&aes, TRUE);
+	  }else if (!strncasecmp(cp, "aes=off", 7)){
+	    add_option_seen(O_mno_aes);
+	    toggle(&aes, FALSE);
+	  }else if (!strncasecmp(cp, "avx=on", 6)){
+	    add_option_seen(O_mavx);
+	    toggle(&avx, TRUE);
+	  }else if (!strncasecmp(cp, "avx=off", 7)){
+	    add_option_seen(O_mno_avx);
+	    toggle(&avx, FALSE);
+          }
+#endif
 	}
 	break;
-
 
       case 'f':
 #ifdef TARG_X8664
@@ -1852,7 +1855,7 @@ static struct
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
   { "wolfdale", "wolfdale",		ABI_64,		TRUE,	TRUE,  FALSE,
     TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
-  { "orochi",   "orochi",		ABI_64,		TRUE,	TRUE,  TRUE,
+  { "bdver1",   "bdver1",		ABI_64,		TRUE,	TRUE,  TRUE,
     TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  TRUE  },
   { "barcelona","barcelona",		ABI_64,		TRUE,	TRUE,  TRUE,
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE },
@@ -1996,59 +1999,54 @@ get_auto_cpu_name ()
   // If /proc/cpuinfo doesn't have a supported model name, try to derive one
   // from the family and model numbers.  If that fails, fall back to a default.
   // Bug 5785.
-  if (cpu_name == NULL ||
-      // need to differentiate Core-based Xeon's
-      !strcmp(cpu_name, "xeon")) {
-    char *abi_name;
-    if (intel == TRUE) {
-      switch (cpu_family) {
-	case 4:			// most 80486s
-	case 5:			// Intel P5, P54C, P55C, P24T
-	    return "i386";
+  // need to differentiate Core-based Xeon's
+  if (intel == TRUE && (cpu_name == NULL || !strcmp(cpu_name, "xeon"))) {
+    switch (cpu_family) {
+      case 4:			// most 80486s
+      case 5:			// Intel P5, P54C, P55C, P24T
+        return "i386";
 
-	case 6:			// P6, Core, ...
-	  if (model == 7 ||	// Harpertown	bug 14685
-	      model == 23 ||	// Wolfdale
-	      model == 26)	// Nehalem
-	    return "wolfdale";
+      case 6:			// P6, Core, ...
+        if (model == 7 ||	// Harpertown	bug 14685
+            model == 23 ||	// Wolfdale
+            model == 26)	// Nehalem
+          return "wolfdale";
 
-	  if (model >= 15)
-	    return "core";
+        if (model >= 15)
+          return "core";
 
-	  // Treat the rest of the P6 family as generic x86 since we don't
-	  // optimize for them.
-	  return "i386";
+        // Treat the rest of the P6 family as generic x86 since we don't
+        // optimize for them.
+        return "i386";
 
-	case 15:		// P4
-	  cpu_name = "xeon";
-	  cpu_name_64bit = "em64t";
-	  break;
-      }
-
-    } else if (amd == TRUE) {
-      switch (cpu_family) {
-	case 4:			// 5x86
-	case 5:			// K5, K6
-	case 6:			// K7
-	  return "athlon";
-	case 15:		// Opteron, Athlon64
-	  return "opteron";
-        case 16: 
-	  return "barcelona";   // Barcelona
-        case 21:
-	  return "orochi";      // Orochi
-      }
+      case 15:		// P4
+        cpu_name = "xeon";
+        cpu_name_64bit = "em64t";
+        break;
     }
 
-    if (cpu_name == NULL) {
-      return get_default_cpu_name("cannot deduce a supported CPU name"
-				  " from /proc/cpuinfo");
+  } else if (amd == TRUE) {
+    switch (cpu_family) {
+      case 4:                   // 5x86
+      case 5:                   // K5, K6
+      case 6:                   // K7
+        return "athlon";
+      case 15:
+        return "opteron";       // Family 0fh (K8)
+      case 16:
+        return "barcelona";     // Family 10h
+      case 17:
+      case 18:
+      case 20:
+        return "opteron";       // Generic tuning for Family 11h, 12h, 14h
+      case 21:
+        return "bdver1";        // Family 15h
     }
   }
 
   if (cpu_name == NULL) {
-    error("cpu_name NULL");
-    return NULL;
+      return get_default_cpu_name("cannot deduce a supported CPU name"
+                                  " from /proc/cpuinfo");
   }
 
   // If cpuinfo doesn't say if CPU is 32 or 64-bit, ask the OS.
@@ -2417,6 +2415,15 @@ Process_Hugepage_Group(char * hugepage_args)
             else
                 continue;
         }
+        else if (strncmp(p, "bd=", 3) == 0) {
+            p = &p[3];
+            hugepage_alloc = ALLOC_BD;
+            process_state = 1;
+            if (!(*p))
+                has_err = TRUE;
+            else
+                continue;
+        }
         else if (strncmp(p, "bdt=", 4) == 0) {
             p = &p[4];
             hugepage_alloc = ALLOC_BDT;
@@ -2464,5 +2471,36 @@ Process_Hugepage_Group(char * hugepage_args)
     if (!has_err) 
         add_option_seen(O_HP);
 }
+
+#ifdef TARG_X8664
+
+static void
+Process_fp(char *level)
+{
+    if (!strcmp(level, "strict")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "strict-contract")) {
+	/* Same as strict but allow contractions like fma (floating
+	   point multiply and add) if they are available.  */
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=1"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=0"));
+    }
+    else if (!strcmp(level, "relaxed")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=2"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=1"));
+    }
+    else if (!strcmp(level, "aggressive")) {
+	add_option_seen(add_string_option(O_OPT_, "IEEE_arith=3"));
+	add_option_seen(add_string_option(O_OPT_, "roundoff=2"));
+	add_option_seen(add_string_option(O_TENV_, "simd_amask=off"));
+	add_option_seen(add_string_option(O_TENV_, "simd_fmask=off"));
+    }
+    else {
+	warning("Ignored illegal argument: %s in -fp-accuracy", level);
+    }
+}
+#endif
 
 #include "opt_action.i"

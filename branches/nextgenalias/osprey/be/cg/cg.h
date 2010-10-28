@@ -82,6 +82,8 @@ extern BOOL PU_has_local_dynamic_tls;         // for local-dynamic tls
 extern struct tn*  Local_Dynamic_TLS_Base;    // return value for __get_tls_addr
 extern BOOL PU_References_GOT; // for -m32 -fpic
 extern BOOL PU_has_avx128; // cause emit of vzeroupper
+extern BOOL PU_has_builtin_apply_args; // __builtin_apply_args
+extern BOOL PU_has_builtin_apply; // __builtin_apply
 #endif
 
 extern BOOL CG_PU_Has_Feedback;

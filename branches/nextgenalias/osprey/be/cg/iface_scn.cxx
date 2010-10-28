@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -535,9 +539,7 @@ Classify_Type(
     case MTYPE_FQ:  ft = FT_float128;       break;
     case MTYPE_C4:  /* complex is sometimes of KIND_SCALAR */
     case MTYPE_C8:
-#ifndef TARG_X8664
     case MTYPE_C10:
-#endif
     case MTYPE_CQ:
         switch(TY_size(ty)) {
         case 8:  ft = FT_complex64;   break;
@@ -556,9 +558,7 @@ Classify_Type(
     case MTYPE_C4: ft = FT_complex64;  break;
     case MTYPE_C8: ft = FT_complex128; break;
     case MTYPE_CQ:
-#ifndef TARG_X8664
     case MTYPE_C10:
-#endif
       ft = FT_complex256; break;
     default: 
       if (TY_is_union(ty))

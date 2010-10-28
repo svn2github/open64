@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -588,6 +592,13 @@ static void Rename_Update_MP(WN *scalar_ref,ST* new_st,
   }
 }
 
+// Return TRUE if the ref is an input to inline assembly.
+static BOOL Is_Asm_Input(WN *ref)
+{
+  WN *parent = LWN_Get_Parent(ref);
+  return parent != NULL && WN_operator(parent) == OPR_ASM_INPUT;
+}
+
 // Renames a variable's name if all of its references are in a given loop
 extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
 
@@ -643,6 +654,10 @@ extern BOOL scalar_rename(WN* ref, HASH_TABLE<WN*,INT>* checked) {
       // Bug 1258 - can not promote temporary storing floating point complex 
       // type to pseudo-register.
       else if ((opr == OPR_STID) && MTYPE_is_complex(WN_desc(scalar_ref)))
+        can_rename = FALSE;
+      // Avoid promoting asm input operands to a larger size.
+      else if (opr == OPR_LDID && desc_type != Promote_Type(desc_type) &&
+               Is_Asm_Input(scalar_ref))
         can_rename = FALSE;
 #endif      
     } else

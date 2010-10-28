@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -99,6 +99,7 @@ static char *rcs_id = 	opt_cfg_CXX"$Revision: 1.30 $";
 #include "opt_ssa.h"
 #include "opt_tail.h"
 #include "w2op.h"
+#include "wn_tree_util.h"
 
 CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
      : _bb_vec(pool),
@@ -113,7 +114,8 @@ CFG::CFG(MEM_POOL *pool, MEM_POOL *lpool)
        _sl2_para_rid(pool),
        _sl2_para_type(pool),
 #endif
-       _bb_region(pool)
+       _bb_region(pool),
+       _eh_rid(pool)
 {
   _mem_pool = pool;
   _loc_pool = lpool;
@@ -1209,7 +1211,7 @@ CFG::Is_simple_expr(WN *wn) {
 #if defined(TARG_IA32) || defined(TARG_X8664)
   if (! MTYPE_is_integral(WN_rtype(wn)))
     return 0;
-#elif defined(TARG_SL) 
+#elif defined(TARG_SL)
   if (! MTYPE_is_integral(WN_rtype(wn)))
     return 0;
   if (opr == OPR_SELECT)
@@ -1432,8 +1434,8 @@ static BOOL Same_store_target(WN *wn1, WN *wn2)
     return WN_aux(wn1) == WN_aux(wn2);
   if (opr1 == OPR_STBITS) 
     return WN_aux(wn1) == WN_aux(wn2) && 
-    	   WN_bit_offset(wn1) == WN_bit_offset(wn2) &&
-	   WN_bit_size(wn1) == WN_bit_size(wn2);
+      WN_bit_offset(wn1) == WN_bit_offset(wn2) &&
+      WN_bit_size(wn1) == WN_bit_size(wn2);
   // ISTORE/ISTBITS
   if (WN_store_offset(wn1) != WN_store_offset(wn2))
     return FALSE;
@@ -1446,59 +1448,65 @@ static BOOL Same_store_target(WN *wn1, WN *wn2)
   return Same_addr_expr(WN_kid1(wn1), WN_kid1(wn2));
 }
 
-BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then)
+BOOL CFG::Screen_cand(WN* wn)
 {
+  FmtAssert(WN_operator(wn) == OPR_IF, ("Screen_cand: Not an if stmt"));
+  WN *then_wn = WN_then(wn);
+  WN *else_wn = WN_else(wn);
+  BOOL empty_then = !then_wn || !WN_first(then_wn);
+  BOOL empty_else = !else_wn || !WN_first(else_wn);
+
   WN *if_test = WN_if_test(wn);
   WN *stmt = WN_first(empty_then ? else_wn : then_wn);
-  
+
   if (WN_operator(stmt) == OPR_MSTORE)
     return TRUE;
-  
+
   // Get the desc type
   MTYPE dsctyp = WN_desc(stmt);
-  
+
   if (dsctyp == MTYPE_M) {
     // don't generate select for MTYPE_M because there is no register for
     // MTYPE_M
     return TRUE;
   }
-  
+
   if (! WOPT_Enable_If_Conv_For_Istore &&
       (WN_operator(stmt) == OPR_ISTORE || WN_operator(stmt) == OPR_ISTBITS))
     return TRUE;
-  
+
   if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS) {
     if (_opt_stab->Is_volatile(WN_aux(stmt)))
       return TRUE;	
 #ifdef TARG_NVISA
-      // shared memory is semi-volatile, in that we can't write multiple
-      // different values at the same time.
-      if (ST_in_shared_mem(_opt_stab->St(WN_aux(stmt)))) {
-        DevWarn("skip if-conversion of shared store");
-        return TRUE;
-      }
+    // shared memory is semi-volatile, in that we can't write multiple
+    // different values at the same time.
+    if (ST_in_shared_mem(_opt_stab->St(WN_aux(stmt)))) {
+      DevWarn("skip if-conversion of shared store");
+      return TRUE;
+    }
 #endif
   }
   else {
     if (TY_is_volatile(WN_ty(stmt)))
       return TRUE;
   }
-  
+
   if ((WN_operator(stmt) == OPR_STBITS || WN_operator(stmt) == OPR_ISTBITS) &&
       (empty_then || empty_else)) 
     return TRUE;
-  
+
   if (!OPCODE_Can_Be_Speculative(OPC_I4I4ILOAD)) {
     if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS) {
       if (!empty_then) {
-	ST *st = _opt_stab->St(WN_aux(WN_first(then_wn)));
-	if (ST_sclass(st) == SCLASS_FORMAL_REF)
-	  return TRUE; // may be storing into read-only data (bug 12
+        ST *st = _opt_stab->St(WN_aux(WN_first(then_wn)));
+        if (ST_sclass(st) == SCLASS_FORMAL_REF)
+          return TRUE; // may be storing into read-only data (bug 12
       }
       if (!empty_else) {
-	ST *st = _opt_stab->St(WN_aux(WN_first(else_wn)));
-	if (ST_sclass(st) == SCLASS_FORMAL_REF)
-	  return TRUE; // may be storing into read-only data (bug 12
+        ST *st = _opt_stab->St(WN_aux(WN_first(else_wn)));
+        if (ST_sclass(st) == SCLASS_FORMAL_REF)
+          return TRUE; // may be storing into read-only data (bug 12
       }
     }
     else if (empty_then || empty_else) {
@@ -1507,24 +1515,24 @@ BOOL CFG::Screen_cand(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL em
       // the addr_expr, it is probably means speculation is unsafe, so give up
       // bug 7845
       if (OPERATOR_is_compare(WN_operator(if_test)) &&
-	  (Same_addr_expr(WN_kid0(if_test), addr_expr) ||
-	   Same_addr_expr(WN_kid1(if_test), addr_expr)))
-	return TRUE;
-      
+          (Same_addr_expr(WN_kid0(if_test), addr_expr) ||
+           Same_addr_expr(WN_kid1(if_test), addr_expr)))
+        return TRUE;
+
       // because need to generate an extra ILOAD, see that a similar ILOAD has
       // occurred unconditionally; check currently limited to conditional expr
       // plus previous 2 statements
       if (! Has_iload_with_same_addr_expr(addr_expr, if_test)) {
-	// check previous statement
-	if (_current_bb->Laststmt() == NULL) 
-	  return TRUE;
-	if (! Has_iload_with_same_addr_expr(addr_expr, _current_bb->Laststmt()))
-	  {
-	    if (WN_prev(_current_bb->Laststmt()) == NULL) 
-	      return TRUE;
-	    if (!Has_iload_with_same_addr_expr(addr_expr, WN_prev(_current_bb->Laststmt())))
-	      return TRUE;
-	  }
+        // check previous statement
+        if (_current_bb->Laststmt() == NULL) 
+          return TRUE;
+        if (! Has_iload_with_same_addr_expr(addr_expr, _current_bb->Laststmt()))
+        {
+          if (WN_prev(_current_bb->Laststmt()) == NULL) 
+            return TRUE;
+          if (!Has_iload_with_same_addr_expr(addr_expr, WN_prev(_current_bb->Laststmt())))
+            return TRUE;
+        }
       }
     }
   }
@@ -1547,7 +1555,7 @@ BOOL CFG::If_convertible_cond(WN *wn)
   if ( then_wn == NULL )
     empty_then = TRUE;
   else if ( WN_opcode(then_wn) == OPC_BLOCK && 
-	    WN_first(then_wn) == NULL )
+      WN_first(then_wn) == NULL )
     empty_then = TRUE;
 
   WN   *else_wn    = WN_else(wn);
@@ -1556,11 +1564,11 @@ BOOL CFG::If_convertible_cond(WN *wn)
   if ( else_wn == NULL )
     empty_else = TRUE;
   else if ( WN_opcode(else_wn) == OPC_BLOCK && 
-	    WN_first(else_wn) == NULL )
+      WN_first(else_wn) == NULL )
     empty_else = TRUE;
 
-  if (If_conv_criteria_met(wn, else_wn, then_wn, empty_else, empty_then)) {
-    if (Screen_cand(wn, else_wn, then_wn, empty_else, empty_then)) {
+  if (Cand_is_select(wn)) {
+    if (Screen_cand(wn)) {
       return FALSE;
     }
     return TRUE;
@@ -1568,8 +1576,75 @@ BOOL CFG::If_convertible_cond(WN *wn)
   return FALSE;
 }
 
+BOOL CFG::wn_is_assign(WN *wn)
+{
+  WN *wn_first = WN_first(wn);
+  WN *wn_last  = WN_last(wn);
+  return ((wn_first && (wn_first == wn_last) && OPERATOR_is_store(WN_operator(wn_first)))
+    || WN_operator(wn) == OPR_SELECT);
+}
 
-BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else, BOOL empty_then)
+BOOL CFG::wn_is_assign_return(WN *wn)
+{
+  WN *wn_first = WN_first(wn);
+  WN *wn_last  = WN_last(wn);
+
+  if (wn_last) {
+    WN *wn_last_prev = WN_prev(WN_last(wn));
+    return ((WN_operator(wn_last) == OPR_RETURN) 
+      && (wn_first == wn_last_prev) && OPERATOR_is_store(WN_operator(wn_first)));    
+  } else {
+    return FALSE;
+  }  
+}
+
+BOOL CFG::Cand_is_return_inside_select(WN *wn)
+{
+  FmtAssert(WN_operator(wn) == OPR_IF, ("Extract_Return: Unexpected WN"));
+  
+  WN *then_wn = WN_then(wn);
+  WN *else_wn = WN_else(wn);
+
+  WN *then_wn_last = WN_last(then_wn);
+  WN *else_wn_last = WN_last(else_wn);
+
+  if(!(then_wn_last && else_wn_last 
+    && (WN_operator(then_wn_last) == OPR_RETURN)
+    && (WN_operator(else_wn_last) == OPR_RETURN))) 
+    return FALSE;
+
+  WN *then_wn_prev = WN_prev(then_wn_last);
+  WN *else_wn_prev = WN_prev(else_wn_last);
+
+  // During the creation of cfg in  RVI phase2, the  IF-THEN-ELSE block,
+  // which was converted from SELECT during wn_lower between RVI phase1
+  // and phase2, may be converted again which will expect the opt_stab is
+  // still valid.Return FALSE to stop the convertion.
+  if(_opt_stab == NULL)
+    return FALSE;
+  
+  /* both is empty, return FALSE */
+  if (then_wn_prev == NULL && else_wn_prev == NULL)
+    return FALSE;
+
+  /* then is not empty and not assign-return, return FALSE */
+  if (then_wn_prev && !wn_is_assign_return(then_wn)) {
+    return FALSE; 
+  }
+
+  /* then is not empty and not assign-return, return FALSE */  
+  if (else_wn_prev && !wn_is_assign_return(else_wn)) {
+    return FALSE;
+  }
+
+  /* then and else have different target, return FALSE */
+  if (then_wn_prev && else_wn_prev && !Same_store_target(then_wn_prev, else_wn_prev))
+    return FALSE;
+
+  return TRUE;
+}
+
+BOOL CFG::Cand_is_select(WN* wn)
 {
   // Perform if-conversion for <simple if-then-else> statements.
   //
@@ -1583,20 +1658,10 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
   //   then and else block are non-empty, they stores to
   //   the same variable.
   //
-
-#ifdef TARG_MIPS
-  if (!(WOPT_Enable_Simple_If_Conv &&
-	// bug 5684: deleting branches interferes with branch profiling
-      ! Instrumentation_Enabled 
-      // is beneficial for ISA supporting cmov
-	&& Is_Target_ISA_M4Plus()))
-#else
-  if (!(WOPT_Enable_Simple_If_Conv &&
-	// bug 5684: deleting branches interferes with branch profiling
-      ! Instrumentation_Enabled 
-	))
-#endif
-    return FALSE;
+  WN *then_wn = WN_then(wn);
+  WN *else_wn = WN_else(wn);
+  BOOL empty_then = !then_wn || !WN_first(then_wn);
+  BOOL empty_else = !else_wn || !WN_first(else_wn);
 
 #if defined(TARG_X8664)  // do not if-convert if it has either empty then or else part and it
   if (
@@ -1609,9 +1674,9 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
        (WOPT_Enable_Simple_If_Conv <= 1) &&
 #endif
        (WN_next(wn) == NULL &&
-	!(_current_bb->Firststmt() != NULL && // no previous statement in BB
-	  (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL
-	   (WN_operator(_current_bb->Firststmt()) != OPR_LABEL))))
+       !(_current_bb->Firststmt() != NULL && // no previous statement in BB
+        (_current_bb->Firststmt() != _current_bb->Laststmt() || // prev is LABEL
+        (WN_operator(_current_bb->Firststmt()) != OPR_LABEL))))
        )
       ) 
     return FALSE;
@@ -1624,35 +1689,20 @@ BOOL CFG::If_conv_criteria_met(WN* wn, WN* else_wn, WN* then_wn, BOOL empty_else
   if(_opt_stab == NULL)
     return FALSE;
 
-  if (
-      // at least one of the then or else statement is non-empty
-      (empty_else && empty_then)
-      )
+  // at least one of the then or else statement is non-empty
+  if (empty_else && empty_then)
     return FALSE;
-    
-  if (!empty_else) {
-    // either the else-stmt is empty or has one  assignment
-    if (!(((WN_first(else_wn) == WN_last(else_wn)) &&
-	   OPERATOR_is_store(WN_operator(WN_first(else_wn)))) || 
-	  (WN_operator(else_wn) == OPR_SELECT)))
+
+  // either the else-stmt is empty or has one  assignment
+  if (!empty_else && !(wn_is_assign(else_wn)))
       return FALSE;
-  }
-
-  if (
-      // either the then-stmt is empty or has one assignment
-      (!empty_then &&
-       !(((WN_first(then_wn) == WN_last(then_wn)) &&
-	  OPERATOR_is_store(WN_operator(WN_first(then_wn)))) || (WN_operator(then_wn) == OPR_SELECT)))
-      )
+  
+  // either the then-stmt is empty or has one assignment
+  if (!empty_then && !wn_is_assign(then_wn))
     return FALSE;
-
-  if (
-      // both the then and else are empty or has one assignment with same lhs
-      !(empty_else ||
-	empty_then ||
-	Same_store_target(WN_first(else_wn), 
-			  WN_first(then_wn)))  
-    )
+  
+  // both the then and else are empty or has one assignment with same lhs
+  if ((!empty_else && !empty_then &&	!Same_store_target(WN_first(else_wn), WN_first(then_wn))))
     return FALSE;
   return TRUE;
 }
@@ -1691,525 +1741,226 @@ BOOL CFG::Is_Sub_ILOAD_Tree(WN *wn, WN *parent_wn, WN * mode_wn)
 }
 #endif
 
-WN*
-CFG::Conv_to_select(WN* wn)
+WN *
+CFG::if_convert(WN *wn)
 {
-  if (WN_opcode(wn) == OPC_BLOCK) {
-    wn = WN_first(wn);
-  }
+  Is_True(WN_operator(wn) == OPR_IF, ("CFG::if_convert: Unexpected wn"));
 
+  if (!(WOPT_Enable_Simple_If_Conv
+  // bug 5684: deleting branches interferes with branch profiling
+     && !Instrumentation_Enabled
+#ifdef TARG_MIPS
+     && Is_Target_ISA_M4Plus()
+#endif
+    ))
+    return wn;
+  
   WN *then_wn = WN_then(wn);
-  BOOL empty_then = FALSE;
-  if ( then_wn == NULL )
-    empty_then = TRUE;
-  else if ( WN_opcode(then_wn) == OPC_BLOCK && 
-	    WN_first(then_wn) == NULL ) {
-    empty_then = TRUE;
-    if (WN_opcode(then_wn) == OPC_BLOCK) {
-      then_wn = WN_first(then_wn);
-    }
+  WN *else_wn = WN_else(wn);
+
+  // Handle embedded if-stmt
+  if (then_wn && WN_first(then_wn) && WN_first(then_wn) == WN_last(then_wn) 
+      && WN_operator(WN_first(then_wn)) == OPR_IF) {
+    then_wn = if_convert(WN_first(then_wn));
+    WN_then(wn) = then_wn;
+  }
+  if (else_wn && WN_first(else_wn) && WN_first(else_wn) == WN_last(else_wn) 
+      && WN_operator(WN_first(else_wn)) == OPR_IF) {
+    else_wn = if_convert(WN_first(else_wn));
+    WN_else(wn) = else_wn;
   }
 
-  WN   *else_wn    = WN_else(wn);
-  BOOL  empty_else = FALSE;
+  BOOL if_select = Cand_is_select(wn);
+  BOOL if_select_return = Cand_is_return_inside_select(wn);
 
-  if ( else_wn == NULL )
-    empty_else = TRUE;
-  else if ( WN_opcode(else_wn) == OPC_BLOCK && 
-	    WN_first(else_wn) == NULL ) {
-    empty_else = TRUE;
-    if (WN_opcode(else_wn) == OPC_BLOCK) {
-      else_wn = WN_first(else_wn);
-    }
+  if (!if_select && !if_select_return)
+    return wn;
+
+  WN *return_wn = NULL;
+  WN *wn_bk = WN_COPY_Tree_With_Map(wn); /* back up wn */
+
+  if (if_select_return) {
+    /* store return_wn */
+    return_wn = WN_last(WN_else(wn));
+
+    /* reset then_block */
+    WN *then_block = WN_CreateBlock();
+    if (WN_prev(WN_last(then_wn)))
+      WN_INSERT_BlockFirst(then_block, WN_prev(WN_last(then_wn)));
+    then_wn     = then_block;
+    WN_then(wn) = then_wn;
+
+    /* reset else_block */
+    WN *else_block = WN_CreateBlock();
+    if (WN_prev(WN_last(else_wn)))
+      WN_INSERT_BlockFirst(else_block, WN_prev(WN_last(else_wn)));
+    else_wn     = else_block;
+    WN_then(wn) = else_block;
   }
 
-  if (!If_conv_criteria_met(wn, else_wn, then_wn, empty_else, empty_then))
-    return NULL;
+  if (Screen_cand(wn))
+    return wn_bk;
 
-  if (Screen_cand(wn, else_wn, then_wn, empty_else, empty_then))
-    return NULL;
+  BOOL empty_then = !then_wn || !WN_first(then_wn);    
+  BOOL empty_else = !else_wn || !WN_first(else_wn);
+  
+  // Get the store from either the first statement of the non-empty block
+  WN *stmt = WN_first(empty_then ? else_wn : then_wn);
 
-  //
-  // just evaluate the condition?
-  //
-  WN *if_test = WN_if_test(wn);
-  if ( empty_then && empty_else ) {
-    WN *eval_stmt = WN_CreateEval( if_test );
-    return eval_stmt;
-  }
+  WN *load = NULL;
+  WN *store = WN_COPY_Tree_With_Map(stmt);
+  MTYPE dsctyp = WN_desc(stmt);
 
-    // Get the store from either the first statement of the non-empty block
-    WN *stmt = WN_first(empty_then ? else_wn : then_wn);
+  if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS)
+    WN_set_aux(store, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
 
-    WN *load = NULL;
-    WN *store = WN_CopyNode(stmt);
-    WN_set_map_id(store, WN_map_id(stmt));
-    MTYPE dsctyp = WN_desc(stmt);
-
-    if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS)
-      WN_set_aux(store, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
-
-    // Generate a load for the empty block
-    if (empty_then || empty_else) {
-      if (WN_operator(stmt) == OPR_STID) {
-	load = WN_Ldid(dsctyp,
-		       WN_offset(stmt),
-		       (ST_IDX) WN_aux(stmt),
-		       WN_ty(stmt),
-		       WN_field_id(stmt));
-	WN_set_aux(load, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
-      }
-      else {
-	MTYPE rtype = WN_rtype(WN_kid0(stmt));
-	if (MTYPE_byte_size(rtype) < MTYPE_byte_size(dsctyp))
-	  rtype = dsctyp;// rtype should never be smaller than dsctyp (bug 6910)
-	else rtype = Mtype_TransferSign(dsctyp, rtype);
-	load = WN_CreateIload(OPR_ILOAD, 
-			      rtype,
-			      dsctyp,
-			      WN_offset(stmt), TY_pointed(WN_ty(stmt)),
-			      WN_ty(stmt), 
-			      Copy_addr_expr(WN_kid1(stmt), _opt_stab->Alias_classification()), 
-			      WN_field_id(stmt));
-	// copy alias class info from the ISTORE node
-	_opt_stab->Alias_classification()->Copy_alias_class(stmt, load);
-	IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, stmt);
-	if (ip_alias_class != OPTIMISTIC_AC_ID)
-	  WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
-	AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-	if (aa)
-	  aa->transferAliasTag(load,stmt);
-      }
-    }
-    WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
-    WN *else_expr = empty_else ? load : WN_kid0(WN_first(else_wn));
-    INT lanswer, ranswer;
-
-    // profitability check
-    if (
-#if !defined(TARG_IA32) && !defined(TARG_X8664)
-      // The expr in the then-block can be speculated and non-volatile,
-      // is a const or LDA.
-      Is_simple_expr(then_expr) &&
-
-      // The expr in the else-block can be speculated and non-volatile,
-      // is a const or LDA.
-      Is_simple_expr(else_expr) 
-#else // allow simple expressions of up to 4 leaf nodes
-      (lanswer = (empty_then ? 1 : Is_simple_expr(then_expr))) && 
-
-      (ranswer = (empty_else ? 1 : Is_simple_expr(else_expr))) && 
-
-      (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
-#endif
-       ) {
+  // Generate a load for the empty block
+  if (empty_then || empty_else) {
+    if (WN_operator(stmt) == OPR_STID) {
+      load = WN_Ldid(dsctyp, WN_offset(stmt), (ST_IDX) WN_aux(stmt),
+                      WN_ty(stmt), WN_field_id(stmt));
+      WN_set_aux(load, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
+    } else {
+      MTYPE rtype = WN_rtype(WN_kid0(stmt));
+      if (MTYPE_byte_size(rtype) < MTYPE_byte_size(dsctyp))
+        rtype = dsctyp;// rtype should never be smaller than dsctyp (bug 6910)
+      else 
+        rtype = Mtype_TransferSign(dsctyp, rtype);
+      
 #ifdef TARG_SL
-
-      //
-      // For such case,
-      //    if(p)
-      //      res = p->a
-      //    else
-      //      res = 0;
-      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
-      //
-      WN *cond_kid0 = WN_kid0(if_test);
-      WN *cond_kid1 = WN_kid1(if_test);
-      OPERATOR opr = WN_operator(if_test);
-
-      if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
-       && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
-       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
-         return NULL;
+      if (rtype == MTYPE_I2 && dsctyp == MTYPE_I2) {
+        rtype = MTYPE_I4;
+      }
 #endif
-      // Generate a SELECT expression
-      WN *sel = WN_Select( Mtype_comparison(dsctyp),
-			   WN_if_test(wn), then_expr, else_expr );
-      WN_kid0(store) = sel;
-      WN_Set_Linenum( store, WN_Get_Linenum(wn) );
-      return store;
+      load = WN_CreateIload(OPR_ILOAD, rtype, dsctyp, WN_offset(stmt), 
+                TY_pointed(WN_ty(stmt)), WN_ty(stmt), 
+                Copy_addr_expr(WN_kid1(stmt), _opt_stab->Alias_classification()), 
+                WN_field_id(stmt));
+
+      // copy alias class info from the ISTORE node
+      _opt_stab->Alias_classification()->Copy_alias_class(stmt, load);
+      IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, stmt);
+      if (ip_alias_class != OPTIMISTIC_AC_ID)
+        WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
     }
-    return NULL;
+  }
+ 
+  WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
+  WN *else_expr = empty_else ? load : WN_kid0(WN_first(else_wn));
+  INT lanswer, ranswer;
+
+  // profitability check
+  if (
+#if !defined(TARG_IA32) && !defined(TARG_X8664) && !defined(TARG_SL)
+    // The expr in the then-block can be speculated and non-volatile,
+    // is a const or LDA.
+    Is_simple_expr(then_expr) &&
+
+    // The expr in the else-block can be speculated and non-volatile,
+    // is a const or LDA.
+    Is_simple_expr(else_expr) 
+#else // allow simple expressions of up to 4 leaf nodes
+    (lanswer = (empty_then ? 1 : Is_simple_expr(then_expr))) && 
+
+    (ranswer = (empty_else ? 1 : Is_simple_expr(else_expr))) && 
+
+    (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
+#endif
+     ) {
+    // Generate a SELECT expression
+    WN *sel;
+#ifdef TARG_SL 
+    //
+    // For such case,
+    //    if(p)
+    //      res = p->a
+    //    else
+    //      res = 0;
+    // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
+    //
+    WN *if_test   = WN_if_test(wn);
+    WN *cond_kid0 = WN_kid0(if_test);
+    WN *cond_kid1 = WN_kid1(if_test);
+    OPERATOR opr = WN_operator(if_test);
+
+    if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
+     && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
+     && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
+      return wn_bk;
+
+    if (opr == OPR_GE || opr == OPR_GT || opr == OPR_LE) {
+      // SL only have one compare instruction, that is "<".
+      // So do following convert when generating "SELECT" for better
+      // optimization of CG phase.
+      // a >= b ? 5 : 3   ==>   a < b ? 3 : 5
+      // a >  b ? 5 : 3   ==>   b < a ? 5 : 3
+      // a <= b ? 5 : 3   ==>   b < a ? 3 : 5
+      WN *left_cond, *right_cond, *true_expr, *false_expr;
+      switch(opr) {
+        case OPR_GE:
+        {
+          left_cond  = cond_kid0;
+          right_cond = cond_kid1;
+          true_expr  = else_expr;
+          false_expr = then_expr;
+          break;
+        }
+        case OPR_GT:
+        {
+          left_cond  = cond_kid1;
+          right_cond = cond_kid0;
+          true_expr  = then_expr;
+          false_expr = else_expr;
+          break;          
+        }
+
+        case OPR_LE:
+        {
+          left_cond  = cond_kid1;
+          right_cond = cond_kid0;
+          true_expr  = else_expr;
+          false_expr = then_expr;
+          break;
+        }
+        default:
+          Fail_FmtAssertion("Lower_if_stmt: Unexpected compare operator");
+      }
+      
+      WN *test_wn = WN_CreateExp2(OPR_LT, WN_rtype(if_test), WN_desc(if_test), 
+                                    left_cond, right_cond);
+      sel = WN_Select(Mtype_comparison(dsctyp),
+                  test_wn, true_expr, false_expr);
+   } else
+#endif
+    sel = WN_Select(Mtype_comparison(dsctyp),
+          WN_if_test(wn), then_expr, else_expr);
+    WN_kid0(store) = sel;
+    WN_Set_Linenum(store, WN_Get_Linenum(wn));
+
+    WN *block = WN_CreateBlock();
+    WN_INSERT_BlockFirst(block, store);
+    if (if_select_return) {
+      WN_INSERT_BlockAfter(block, store, return_wn);
+    }
+    return block;    
+  } else {
+    return wn_bk;
+  }
 }
 
-// ====================================================================
-// fully lower IF statements
-// ====================================================================
 void
-CFG::Lower_if_stmt( WN *wn, END_BLOCK *ends_bb )
+CFG::Lower_if_stmt(WN *wn, END_BLOCK *ends_bb)
 {
   Is_True(Lower_fully(), ("CFG::Lower_if_stmt: Lower_fully not true"));
-
-  // The if stmt is lowered into one of 4 forms:
-  //
-  // IF there are empty "then" and "else" blocks:
-  //    EVAL cond
-  //
-  // IF there are non-empty "then" and "else" blocks:
-  //    if (! cond)
-  //       goto else
-  //    "then" block
-  //    goto merge
-  //    else:
-  //    "else" block (note: "else" block can be a region so put label outside)
-  //    merge:
-  //
-  // IF there is empty "else" (and non-empty "then") block:
-  //    if (! cond)
-  //       goto merge
-  //    "then" block
-  //    merge:
-  //
-  // IF there is empty "then" (and non-empty "else") block:
-  //    if (cond)
-  //       goto merge
-  //    "else" block
-  //    merge:
-  //    
-
-  WN    *then_wn    = WN_then(wn);
-  BOOL   empty_then = FALSE;
-
-  if ( then_wn == NULL )
-    empty_then = TRUE;
-  else { 
-    if ( WN_opcode(then_wn) == OPC_BLOCK && 
-	    WN_first(then_wn) == NULL )
-      empty_then = TRUE;
-  }
-
-  WN   *else_wn    = WN_else(wn);
-  BOOL  empty_else = FALSE;
-
-  if ( else_wn == NULL )
-    empty_else = TRUE;
-  else {
-    if ( WN_opcode(else_wn) == OPC_BLOCK && 
-	    WN_first(else_wn) == NULL )
-      empty_else = TRUE;
-  }
-
-  //
-  // just evaluate the condition?
-  //
-  WN *if_test = WN_if_test(wn);
-  if ( empty_then && empty_else ) {
-    WN *eval_stmt = WN_CreateEval( if_test );
-    WN_Set_Linenum( eval_stmt, WN_Get_Linenum(wn) );
-    Add_one_stmt( eval_stmt, NULL );
-
-    // Lower feedback data
-    if ( Cur_PU_Feedback )
-      Cur_PU_Feedback->FB_lower_branch( wn, NULL );
-
-    // this statement does not break the block
-    if ( ends_bb )
-      *ends_bb = END_NOT;
-    return;
-  }
-
-  // Perform if-conversion for <simple if-then-else> statements.
-  //
-  //   <simple if-then-else> :: if (cond) then <block> else <block> ;;
-  //   <block> :: <empty_block> | block stid <var> <simple_expr>  end_block ;;
-  //   <empty_block> :: block end_block ;;
-  //   <simple_expr> :: <var> | <const> | <f8const> ;;
-  //  
-  //   where <var> can be speculated and is non-volatile.  At
-  //   least one of then or else block is non-empty.  If both the 
-  //   then and else block are non-empty, they stores to
-  //   the same variable.
-  //
-#if defined(TARG_SL) 
-  // more aggressively peer down else and then case for nested selects
-  if (else_wn && ((WN_first(else_wn) == WN_last(else_wn)) && WN_first(else_wn) && (WN_operator(WN_first(else_wn)) == OPR_IF))) {
-    WN *sel_stmt = Conv_to_select(else_wn);
-    if (sel_stmt) {
-      WN* block = WN_CreateBlock();
-      WN_first(block) = sel_stmt;
-      WN_last(block) = sel_stmt;
-      else_wn = block;
-      WN_else(wn) = block;
-    }
-  }
-  if (then_wn && ((WN_first(then_wn) == WN_last(then_wn)) && WN_first(then_wn) && (WN_operator(WN_first(then_wn)) == OPR_IF))) {
-    WN *sel_stmt = Conv_to_select(then_wn);
-    if (sel_stmt) {
-      WN* block = WN_CreateBlock();
-      WN_first(block) = sel_stmt;
-      WN_last(block) = sel_stmt;
-      then_wn = block;
-      WN_then(wn) = block;
-    }
-  }
-#endif
-
-  if (If_conv_criteria_met(wn, else_wn, then_wn, empty_else, empty_then)) { 
-    
-    if (Screen_cand(wn, else_wn, then_wn, empty_else, empty_then))
-      goto skip_if_conversion;
-
-    // Get the store from either the first statement of the non-empty block
-    WN *stmt = WN_first(empty_then ? else_wn : then_wn);
-
-    WN *load = NULL;
-    WN *store = WN_CopyNode(stmt);
-    WN_set_map_id(store, WN_map_id(stmt));
-    MTYPE dsctyp = WN_desc(stmt);
-
-    if (WN_operator(stmt) == OPR_STID || WN_operator(stmt) == OPR_STBITS)
-      WN_set_aux(store, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
-
-    // Generate a load for the empty block
-    if (empty_then || empty_else) {
-      if (WN_operator(stmt) == OPR_STID) {
-	load = WN_Ldid(dsctyp,
-		       WN_offset(stmt),
-		       (ST_IDX) WN_aux(stmt),
-		       WN_ty(stmt),
-		       WN_field_id(stmt));
-	WN_set_aux(load, WN_aux(stmt)); // setting mapping to indicate ST_is_aux
-      }
-      else {
-	MTYPE rtype = WN_rtype(WN_kid0(stmt));
-	if (MTYPE_byte_size(rtype) < MTYPE_byte_size(dsctyp))
-	  rtype = dsctyp;// rtype should never be smaller than dsctyp (bug 6910)
-	else rtype = Mtype_TransferSign(dsctyp, rtype);
-#ifdef TARG_SL
-        if (rtype == MTYPE_I2 && dsctyp == MTYPE_I2) {
-          rtype = MTYPE_I4;
-        }
-#endif
-	load = WN_CreateIload(OPR_ILOAD, 
-			      rtype,
-			      dsctyp,
-			      WN_offset(stmt), TY_pointed(WN_ty(stmt)),
-			      WN_ty(stmt), 
-			      Copy_addr_expr(WN_kid1(stmt), _opt_stab->Alias_classification()), 
-			      WN_field_id(stmt));
-	// copy alias class info from the ISTORE node
-	_opt_stab->Alias_classification()->Copy_alias_class(stmt, load);
-	IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, stmt);
-	if (ip_alias_class != OPTIMISTIC_AC_ID)
-	  WN_MAP32_Set(WN_MAP_ALIAS_CLASS, load, ip_alias_class);
-	AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
-	if (aa)
-	  aa->transferAliasTag(load,stmt);
-      }
-    }
-    WN *then_expr = empty_then ? load : WN_kid0(WN_first(then_wn));
-    WN *else_expr = empty_else ? load : WN_kid0(WN_first(else_wn));
-    INT lanswer, ranswer;
-
-    // profitability check
-    if (
-#if !defined(TARG_IA32) && !defined(TARG_X8664)
-      // The expr in the then-block can be speculated and non-volatile,
-      // is a const or LDA.
-      Is_simple_expr(then_expr) &&
-
-      // The expr in the else-block can be speculated and non-volatile,
-      // is a const or LDA.
-      Is_simple_expr(else_expr) 
-#else // allow simple expressions of up to 4 leaf nodes
-      (lanswer = (empty_then ? 1 : Is_simple_expr(then_expr))) && 
-
-      (ranswer = (empty_else ? 1 : Is_simple_expr(else_expr))) && 
-
-      (lanswer + ranswer) <= WOPT_Enable_If_Conv_Limit
-#endif
-       ) {
-
-#ifdef TARG_SL 
-      //
-      // For such case,
-      //    if(p)
-      //      res = p->a
-      //    else
-      //      res = 0;
-      // if_conversion is skipped as accessing ZERO-address is illegal for SL. 
-      //
-       
-      WN *cond_kid0 = WN_kid0(if_test);
-      WN *cond_kid1 = WN_kid1(if_test);
-      OPERATOR opr = WN_operator(if_test);
-
-      if ((opr == OPR_EQ || opr == OPR_NE || opr == OPR_GE || opr == OPR_GT || opr == OPR_LE || opr == OPR_LT)  
-       && ((WN_operator(cond_kid1) == OPR_INTCONST) && (WN_const_val(cond_kid1) == 0))
-       && (Is_Sub_ILOAD_Tree(then_expr, NULL, cond_kid0) || Is_Sub_ILOAD_Tree(else_expr, NULL, cond_kid0))) 
-       goto skip_if_conversion;
-#endif
-      // Generate a SELECT expression
-      WN *sel;
-#if defined(TARG_SL)
-      if (opr == OPR_GE || opr == OPR_GT || opr == OPR_LE) {
-        // SL only have one compare instruction, that is "<".
-        // So do following convert when generating "SELECT" for better
-        // optimization of CG phase.
-        // a >= b ? 5 : 3   ==>   a < b ? 3 : 5
-        // a >  b ? 5 : 3   ==>   b < a ? 5 : 3
-        // a <= b ? 5 : 3   ==>   b < a ? 3 : 5
-        WN *left_cond, *right_cond, *true_expr, *false_expr;
-        switch(opr) {
-          case OPR_GE:
-          {
-            left_cond  = cond_kid0;
-            right_cond = cond_kid1;
-            true_expr  = else_expr;
-            false_expr = then_expr;
-            break;
-          }
-          case OPR_GT:
-          {
-            left_cond  = cond_kid1;
-            right_cond = cond_kid0;
-            true_expr  = then_expr;
-            false_expr = else_expr;
-            break;          
-          }
-
-          case OPR_LE:
-          {
-            left_cond  = cond_kid1;
-            right_cond = cond_kid0;
-            true_expr  = else_expr;
-            false_expr = then_expr;
-            break;
-          }
-          default:
-            Fail_FmtAssertion("Lower_if_stmt: Unexpected compare operator");
-        }
-        
-        WN *test_wn = WN_CreateExp2(OPR_LT, WN_rtype(if_test), WN_desc(if_test), 
-                                      left_cond, right_cond);
-        sel = WN_Select( Mtype_comparison(dsctyp),
-                    test_wn, true_expr, false_expr );
-     } else
-#endif
-      sel = WN_Select( Mtype_comparison(dsctyp),
-			   WN_if_test(wn), then_expr, else_expr );
-      WN_kid0(store) = sel;
-      WN_Set_Linenum( store, WN_Get_Linenum(wn) );
-      Add_one_stmt( store, NULL );
-
-      // Lower feedback data
-      if ( Cur_PU_Feedback )
-	Cur_PU_Feedback->FB_lower_branch( wn, NULL );
-
-// this statement does not break the block
-      if ( ends_bb )
-	*ends_bb = END_NOT;
-      return;
-    }
-  }
-
-
- skip_if_conversion:
-
-  // we need a merge block, but don't connect it yet
-  BB_NODE *merge_bb = Create_labelled_bb();
-  BB_NODE *then_bb = NULL, *else_bb = NULL;
-  BB_NODE *true_bb = NULL, *false_bb = NULL;
-  BOOL     true_branch;
-  BOOL     then_exists = !empty_then;
-  BOOL     else_exists = !empty_else;
-
-  if (WOPT_Enable_Edge_Placement) {
-    then_exists = else_exists = TRUE;
-  }
-
-  //
-  // do we need to negate the condition?
-  //
-  if ( !then_exists ) {
-    Is_True( ! empty_else, 
-      ("CFG::Lower_if_stmt: empty then and else") );
-    else_bb = Create_bb();
-
-    true_bb = merge_bb;
-    false_bb = else_bb;
-    true_branch = TRUE;
-  }
-  else {
-    // create an empty, unconnected, then block
-    then_bb = Create_bb();
-    then_bb->Set_linenum( WN_Get_Linenum(then_wn) );
-
-    if ( !else_exists ) {
-      true_bb = then_bb;
-      false_bb = merge_bb;
-      true_branch = FALSE;
-    }
-    else {
-      else_bb = Create_labelled_bb();
-      else_bb->Set_linenum( WN_Get_Linenum(else_wn) );
-      true_bb = then_bb;
-      false_bb = else_bb;
-      true_branch = FALSE;
-    }
-  }
-  // Add the conditional branch
-  WN *wn_branch;
-  BB_NODE *cond_bb =
-    Create_conditional( if_test, true_bb, false_bb, true_branch, &wn_branch );
-
-  // Handle "then" part
-  if ( then_exists ) {
-    Append_bb( then_bb );
-    Connect_predsucc(cond_bb, then_bb);
-    END_BLOCK then_end;
-    Add_one_stmt( then_wn, &then_end );
-
-    if ( then_end != END_BREAK ) {
-      // need to get to merge block, either by falling through, or
-      // by goto
-      if ( else_exists ) {
-	// we may need another block to add the goto to
-	if ( then_end == END_FALLTHRU ) 
-	  (void) New_bb( TRUE/*connect*/ );
-
-        WN *goto_wn = WN_CreateGoto(merge_bb->Labnam());
-	// adding the statement connects us to merge block
-	Add_one_stmt( goto_wn, NULL );
-        if(WN_prev(goto_wn) != NULL && (WN_prev(goto_wn)) != NULL) {
-          WN*  prev_wn=WN_prev(goto_wn);
-          if ( Cur_PU_Feedback ) {
-            FB_FREQ outgoing_fb=Cur_PU_Feedback->Query_total_out(prev_wn);
-            Cur_PU_Feedback->Annot(goto_wn, FB_EDGE_OUTGOING, outgoing_fb);
-          }
-
-        }
-      }
-      else {
-	Connect_predsucc( _current_bb, merge_bb );
-      }
-    }
-  }
-
-  // Handle "else" part
-  if ( else_exists ) {
-    Append_bb( else_bb );
-    if ( !then_exists )
-      Connect_predsucc( cond_bb, else_bb );
-    END_BLOCK else_end;
-    Add_one_stmt( else_wn, &else_end );
-
-    if ( else_end != END_BREAK ) {
-      Connect_predsucc( _current_bb, merge_bb );
-    }
-  }
-
-  // Handle "merge" block
-  Append_bb( merge_bb );
+  WN *conv_wn = if_convert(wn);
+  if (WN_operator(conv_wn) == OPR_IF)
+    Add_one_if_stmt(conv_wn, ends_bb);
+  else
+    Add_one_stmt(conv_wn, ends_bb);
 
   // Lower feedback data
-  if ( Cur_PU_Feedback )
-    Cur_PU_Feedback->FB_lower_branch( wn, wn_branch );
-
-  // this statement does not break the block because we've created
-  // a merge point
-  if ( ends_bb )
-    *ends_bb = END_NOT;
+  if (Cur_PU_Feedback)
+    Cur_PU_Feedback->FB_lower_branch(wn, NULL);
 }
 
 // ====================================================================
@@ -2818,6 +2569,7 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
   // box?  If it's a black-box, we just leave it as a "region" op
   // and don't lower it further.
   if ( RID_level(rid) >= Rgn_level() ) { // black box region
+
     WN *wtmp;
     BB_NODE *bsave = _current_bb;
 
@@ -2923,12 +2675,22 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
     Pop_sl2_para_type();
     Pop_sl2_para_rid();
   }
-#endif 
+#endif
+
+  if (REGION_is_EH(wn)) 
+  {
+    if (_current_bb->Succ() ||
+        _current_bb->Kind() == BB_EXIT)
+        (void) New_bb(FALSE, BB_REGIONEXIT);
+    else
+        (void) New_bb(TRUE, BB_REGIONEXIT);
+  }
+    
   Pop_bb_region();
 
   // remember the last block in the region
   BB_NODE *last_region_bb = _current_bb;
-
+    
   // bug 8690
   if (REGION_is_mp(wn) && _rgn_level != RL_MAINOPT &&
       Is_region_with_pragma(wn,WN_PRAGMA_SINGLE_PROCESS_BEGIN)) {
@@ -3057,6 +2819,93 @@ CFG::Process_entry( WN *wn, END_BLOCK *ends_bb )
 //   it's added to.
 // ====================================================================
 
+
+
+BOOL CFG::bottom_test_loop(WN* scf_loop){
+  
+  Is_True(scf_loop != NULL,("NULL passed to bottom_test_loop\n"));
+
+  const OPCODE   opc = WN_opcode(scf_loop);
+  const OPERATOR opr = OPCODE_operator(opc);
+  
+  Is_True(opr == OPR_WHILE_DO || opr == OPR_DO_LOOP,
+          ("%s not supported, only handle OPR_WHILE_DO or OPR_DO_LOOP\n",OPCODE_name(opc)));
+
+  WN *do_loopinfo = NULL;
+  WN *do_tripcount = NULL;
+
+  // for const tripcount(>0) do_loop , we always do bottom_test_loop
+  if ( (opr == OPR_DO_LOOP) && 
+       (do_loopinfo = WN_do_loop_info(scf_loop)) &&
+       (do_tripcount = WN_loop_trip(do_loopinfo)) &&
+       (WN_operator(do_tripcount) == OPR_INTCONST) &&
+       (WN_const_val(do_tripcount) > 0)) {
+    if (Trace()) {
+      fprintf(TFile,"bottom_test_loop:\n");
+      fdump_tree_no_st(TFile,scf_loop);
+    }
+    return TRUE;
+  }
+
+
+  WN* loop_condition = (opr == OPR_WHILE_DO) ? WN_while_test(scf_loop) : WN_end(scf_loop);
+  WN* loop_body = (opr == OPR_WHILE_DO) ? WN_while_body(scf_loop) : WN_do_body(scf_loop) ;
+
+  const OPCODE cond_op = WN_opcode(loop_condition);
+  const OPCODE body_op = WN_opcode(loop_body);
+  const OPERATOR opr_body = OPCODE_operator(body_op);
+
+  Is_True(OPCODE_is_expression(cond_op), 
+	  ("Bad condition opcode %s\n", 
+	   OPCODE_name(cond_op)));
+  Is_True(opr_body == OPR_BLOCK, 
+	  ("Bad Body block opcode %s\n",
+	   OPCODE_name(body_op)));
+
+  WN_TREE_CONTAINER<PRE_ORDER>  wcpre(loop_condition);
+  WN_TREE_CONTAINER<PRE_ORDER> ::iterator wipre;
+  WN_count wc;
+  INT32 stmt_count=0;
+
+  for (wipre = wcpre.begin(); wipre != wcpre.end(); ++wipre)
+    wc(wipre.Wn());
+  if (wc.num_nodes >= WOPT_Bottom_Test_Loop_Cond_Limit) {
+    for ( WN *stmt = WN_first(loop_body); stmt != NULL; stmt = WN_next(stmt) ) {
+      const OPCODE op_in_body = WN_opcode(stmt);
+      if( ! OPCODE_is_stmt(op_in_body) ) {
+	if (Trace()) {
+	  fprintf(TFile,"bottom_test_loop:\n");
+	  fdump_tree_no_st(TFile,scf_loop);
+	}
+	return TRUE;
+      }
+      if ( ! OPCODE_has_label(op_in_body)) {
+	stmt_count++;
+	if (stmt_count >= WOPT_Bottom_Test_Loop_Body_Limit) {
+	  if (Trace()) {
+	    fprintf(TFile,"bottom_test_loop:\n");
+	    fdump_tree_no_st(TFile,scf_loop);
+	  }
+	  return TRUE;
+	}
+      }
+    }
+    if (Trace()) {
+	  fprintf(TFile,"non bottom_test_loop:\n");
+	  fdump_tree_no_st(TFile,scf_loop);
+    }
+    return FALSE;
+  }
+  else {
+    if (Trace()) {
+      fprintf(TFile,"bottom_test_loop:\n");
+      fdump_tree_no_st(TFile,scf_loop);
+    }
+    return TRUE;
+  }
+}
+
+
 void
 CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 {
@@ -3172,8 +3021,19 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
 
   case OPR_DO_LOOP:
     Create_empty_preheader (wn);
-    if (Lower_fully())
-      Lower_do_loop( wn, ends_bb );
+    if (Lower_fully()) {
+      if ( OPT_Space && WOPT_Bottom_Test_Loop_Check ) {
+        if ( ! bottom_test_loop(wn) ) {
+          Add_one_do_loop_stmt( wn, ends_bb );
+        }
+        else {
+          Lower_do_loop( wn, ends_bb );
+        }
+      }
+      else {
+        Lower_do_loop( wn, ends_bb );
+      }
+    }
     else
       Add_one_do_loop_stmt( wn, ends_bb );
     break;
@@ -3181,7 +3041,17 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
   case OPR_WHILE_DO:
     Create_empty_preheader (wn);
     if (Lower_fully()) {
-      Lower_while_do( wn, ends_bb );
+      if (OPT_Space && WOPT_Bottom_Test_Loop_Check) {
+        if ( ! bottom_test_loop(wn)) {
+	   Add_one_while_do_stmt(wn, ends_bb);
+	}
+	else {
+	  Lower_while_do( wn, ends_bb );
+	}
+      }
+      else {
+	Lower_while_do( wn, ends_bb );
+      }
     }
     else {
       Add_one_while_do_stmt( wn, ends_bb );
@@ -3734,7 +3604,7 @@ CFG::Process_multi_entryexit( BOOL is_whirl )
 {
   Is_Trace(Trace(), (TFile,"CFG::Process_multi_entryexit\n"));
 
-  // For our purposes "is_whirl" also means we can disconnect
+  // For our iurposes "is_whirl" also means we can disconnect
   // unreachable blocks because we have not yet inserted phi nodes.
   Process_not_reached( is_whirl );
 
@@ -3845,6 +3715,61 @@ CFG::Ident_mp_regions(void)
       }
     }
   }  
+}
+
+/* ============================================================================
+*  This routine is to identify eh regions based on regionstart and 
+*  regionexit bbs. It will mark all the bbs between regionstart
+*  and regionexit to be eh_region_bb and set its rid_id to be the current 
+*  eh_region rid. regionexit BB's rid_id is the parent eh_region's rid.
+============================================================================ */
+void
+CFG::Ident_eh_regions(void)
+{
+  CFG_ITER cfg_iter(this); 
+  BB_NODE *bb;
+  BB_REGION *bb_region;
+  INT32 eh_level = 0;
+
+  Clear_eh_rid();
+  
+  // EH region can be single entry and multiple exits
+  // In the mainopt, LOWER_REGION_EXITS is on, region_exits is changed to goto.
+  // however, the goto exit has stmt, while the newly added region_exit is empty bb.
+  FOR_ALL_NODE( bb, cfg_iter, Init() ) {
+  
+    if (bb->Kind() == BB_REGIONSTART) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_eh_regions, no regioninfo"));
+      if (RID_TYPE_eh(bb_region->Rid())) {
+        eh_level ++;
+        Push_eh_rid(bb_region->Rid());
+      }
+    }
+      
+    if (eh_level > 0 ) {
+      bb->Set_EH_region();
+      bb->Set_rid(Top_eh_rid());
+    }
+
+    if (bb->Kind() == BB_REGIONEXIT ) {
+      bb_region = bb->Regioninfo();
+      Is_True(bb_region != NULL, ("CFG::Ident_eh_regions, no regioninfo"));
+      // empty regionexit bb is the one that was added as the region end marker
+      if (RID_TYPE_eh(bb_region->Rid()) && !bb->Firststmt()) {
+        eh_level --;
+        Is_True(eh_level >= 0 , ("CFG::Ident_eh_regions, not match regionstart and regionexit"));
+        Pop_eh_rid();
+        if (!Null_eh_rid())
+            bb->Set_rid(Top_eh_rid());
+        else
+            bb->Set_rid(NULL);
+      }
+    }
+  }
+
+  Is_True(eh_level == 0 , ("CFG::Ident_eh_regions, not match regionstart and regionexit"));
+
 }
 
 #if defined(TARG_SL) //PARA_EXTENSION
@@ -3968,6 +3893,8 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
     opt_tail.Mutate();
   }
 
+  Ident_eh_regions();
+ 
   Process_multi_entryexit( TRUE/*is_whirl*/ );
 
   Ident_mp_regions();
@@ -4602,10 +4529,13 @@ CFG::Find_exit_blocks( void )
 void
 CFG::Remove_fake_entryexit_arcs( void )
 {
+  BOOL fakeentry_to_fakeexit = false;
+  
   if ( Fake_entry_bb() != NULL ) {
     BB_NODE     *succ;
     BB_LIST_ITER bb_succ_iter;
     FOR_ALL_ELEM( succ, bb_succ_iter, Init(Fake_entry_bb()->Succ()) ) {
+      if (succ == Fake_exit_bb()) fakeentry_to_fakeexit = true;
       succ->Remove_pred( Fake_entry_bb(), Mem_pool() );
     }
   }
@@ -4616,6 +4546,15 @@ CFG::Remove_fake_entryexit_arcs( void )
       pred->Remove_succ( Fake_exit_bb(), Mem_pool() );
     }
   }
+
+  // If the fake exit is the fake entry's succ
+  // then fake entry will be removed from fake exit's pred list
+  // thus the fake exit could not be removed from the fake 
+  // entry's succ list by the above remove_succ. We need to
+  // do it here.
+  if (fakeentry_to_fakeexit)
+    Fake_entry_bb()->Remove_succ(Fake_exit_bb(), Mem_pool() );
+    
 }
 
 // ====================================================================
@@ -5056,6 +4995,71 @@ CFG::Get_last_loop(BB_LOOP *loop)
   return last_loop;
 }
 
+// Remove given BB_LOOP from loop hierarchy. It is removed because
+// the loop construct no longer exist (because, for instance, 
+// fully-unrolling).
+//
+void
+CFG::Remove_loop_construct (BB_LOOP* loop) {
+        
+  // step 1: Bypass this loop "vertically" through step 1.1 and 1.2.
+  //
+  //  step 1.1 Set all immediate nested loops' nesting loop to be this 
+  //       <loop>'s immediate parent.
+  //
+  if (BB_LOOP* nested = (BB_LOOP*)loop->Child ()) {
+
+    BB_LOOP_ITER iter (nested);
+    BB_LOOP* nested_loop;
+    BB_LOOP* last_nested_loop = NULL;
+
+    FOR_ALL_NODE (nested_loop, iter, Init()) {
+      nested_loop->Set_parent (loop->Parent ()); 
+      last_nested_loop = nested_loop;
+    }
+  
+    // step 1.2: "promote" immediate nested loops to be this <loop>'s siblling.
+    //
+    loop->Set_child (NULL);
+    last_nested_loop->Set_Next (loop->Next ());
+    loop->Set_Next (nested);
+  }
+
+  // step 2: Bypass this <loop> "horizontally" by hooking this <loop>'s previous
+  //   sibling and next sibling.
+  //
+  BB_LOOP* first_sibling;
+  if (loop->Parent ())
+    first_sibling = loop->Parent ()->Child ();
+  else
+    first_sibling = Loops ();
+
+  {
+    BB_LOOP_ITER iter (first_sibling);
+    BB_LOOP* sibling;
+    FOR_ALL_NODE (sibling, iter, Init()) {
+      if (sibling->Next () == loop) {
+        sibling->Set_Next (loop->Next ());
+        break;
+      }
+    }
+
+    if (Loops () == loop) {
+      // change loop hierarchy root
+      //
+      Set_loops (loop->Next ());
+    }
+  }
+
+  // In case this <loop> is its parent's first kid, change parent's first kid
+  // to be <loop>'s next sibling.
+  //
+  if (loop->Parent() && loop->Parent()->Child () == loop) {
+    loop->Parent ()->Set_child (loop->Next ());  
+  }
+
+  CXX_DELETE (loop, Mem_pool ());
+}
 
 // bb is a member of loop->Body_set(), but has not yet been determined if it
 // is member of loop->True_body_set() or member of _non_true_body_set.  It 
@@ -5435,7 +5439,11 @@ Fix_SCF_for_mainopt(CFG *cfg)
     BB_LOOP *loop = bb->Loop();
     if (loop != NULL && loop->Header() == bb) {
       if (loop->End() != NULL) {
-	loop->Start()->Set_loop(loop);
+	if(loop->Start())
+	  loop->Start()->Set_loop(loop);
+	else {
+	  Is_True(loop->Is_flag_set(LOOP_PRE_WHILE),("wrong non bottom test loop lowering\n"));
+	}
 	loop->End()->Set_loop(loop);
 	loop->Body()->Set_loop(loop);
 	if (loop->Step())
@@ -5558,15 +5566,19 @@ verify_loops(CFG *cfg)
 		loop->Loopback()->Kind() == BB_GOTO ||
 		loop->Loopback()->Kind() == BB_LOGIF ||
 		loop->Loopback()->Kind() == BB_VARGOTO||
-		loop->Loopback()->Kind() == BB_REGIONSTART,
+		loop->Loopback()->Kind() == BB_REGIONSTART ||
+        loop->Loopback()->Kind() == BB_REGIONEXIT,
 		("found inconsistent BB_LOOP -- loopback is not BB_GOTO"));
       } else {
-	Is_True(loop->Start()->Loop() == loop &&
+	Is_True((loop->Start() == NULL || loop->Start()->Loop() == loop) &&
 		loop->End()->Loop() == loop &&
 		loop->Body()->Loop() == loop &&
 		(loop->Step() == NULL || loop->Step()->Loop() == loop),
 		// loop->Merge()->Loop() == loop,
 		("found inconsistent BB_LOOP and CFG."));
+	if (loop->Start() == NULL) {
+          Is_True(loop->Is_flag_set(LOOP_PRE_WHILE),("wrong non bottom test loop lowering!\n"));
+        }
       }
     }
     // verify innermost loop
@@ -6563,7 +6575,7 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
   BB_NODE *srcbb = Get_bb(src);
   BB_NODE *destbb = Get_bb(dst);
 
-  Is_True( srcbb->Clonable(TRUE),
+  Is_True( srcbb->Clonable(TRUE, NULL, _allow_clone_calls),
 	   ("CFG::Clone_bb:  BB%d is not clonable.", src) );
     
   destbb->Clear();
@@ -6572,6 +6584,8 @@ void CFG::Clone_bb(IDTYPE src, IDTYPE dst, BOOL clone_wn)
   destbb->Set_labnam(0);
   destbb->Set_phi_list(CXX_NEW(PHI_LIST(destbb), Mem_pool()));
   destbb->Set_linenum(srcbb->Linenum());
+  destbb->Set_rid_id(srcbb->Rid_id());
+  destbb->Set_rid(srcbb->Rid());
   // UPDATE FREQUENCY -- OLD CODE: destbb->Set_freq(srcbb->Freq());
 
   // Fix zero version for phi.
@@ -6774,12 +6788,16 @@ CFG::Clone_loop(BB_LOOP * bb_loop)
   BB_NODE * old_body = bb_loop->Body();
   BB_NODE * old_step = bb_loop->Step();
   BB_NODE * old_merge = bb_loop->Merge();
+  BB_NODE * old_preheader = bb_loop->Preheader ();
+  BB_NODE * old_tail = bb_loop->Tail ();
   WN *      new_index = NULL;
   BB_NODE * new_start = old_start ? Get_cloned_bb(old_start) : NULL;
   BB_NODE * new_end = old_end ? Get_cloned_bb(old_end) : NULL;
   BB_NODE * new_body = old_body ? Get_cloned_bb(old_body) : NULL;
   BB_NODE * new_step = old_step ? Get_cloned_bb(old_step) : NULL;
   BB_NODE * new_merge = old_merge ? Get_cloned_bb(old_merge) : NULL;
+  BB_NODE * new_preheader = old_preheader ? Get_cloned_bb(old_preheader) : NULL;
+  BB_NODE * new_tail = old_tail ? Get_cloned_bb(old_tail) : NULL;
 
   if (new_start && new_start->Loop())
     return new_start->Loop();
@@ -6818,6 +6836,8 @@ CFG::Clone_loop(BB_LOOP * bb_loop)
   if (bb_loop->Orig_wn())
     new_loopinfo->Set_orig_wn(bb_loop->Orig_wn());
   
+  new_loopinfo->Set_preheader (new_preheader);
+
   return new_loopinfo;
 }
 

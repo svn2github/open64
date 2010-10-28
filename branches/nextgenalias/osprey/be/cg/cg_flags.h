@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -93,6 +93,20 @@
  *  BOOL CG_cmp_load_exec
  *     Enable cmp load exec EBO optimization which folds loads onto
  *      cmp operations for X8664.
+ *
+ *  BOOL CG_fma4_load_exec
+ *     Enable fma4 load exec EBO optimization which folds loads onto
+ *      fma4 operations for X8664.
+ *
+ *  BOOL CG_dispatch_schedule
+ *     Enable dispatch scheduling for Orochi style architectures.
+ *
+ *  BOOL CG_128bitstore
+ *     Enable 128bit unaligned stores optimization which emits movup{s|d}
+ *     instead of movhp{s|d} with movlp{s|d}.
+ *
+ *  BOOL CG_branch_fuse
+ *     Enable branch fusion for specified targets.
  *
  *  BOOL CG_skip_local_swp
  *	Enable skipping of pipelining of inner loops based on the 
@@ -514,6 +528,11 @@ extern BOOL CG_skip_local_sched;
 extern BOOL CG_skip_local_swp;
 #ifdef TARG_X8664
 extern BOOL CG_cmp_load_exec;
+extern BOOL CG_fma4_load_exec;
+extern BOOL CG_dispatch_schedule;
+extern BOOL CG_128bitstore;
+extern BOOL CG_branch_fuse;
+extern BOOL CG_strcmp_expand;
 #endif
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;
@@ -673,6 +692,7 @@ extern BOOL  CG_round_spreg;
 extern BOOL  CG_check_packed;
 extern BOOL CG_branch_taken;
 #endif
+extern BOOL CG_divrem_opt;
 
 extern BOOL EMIT_pjump_all;
 extern BOOL EMIT_use_cold_section;
@@ -842,6 +862,7 @@ extern BOOL CG_use_movlpd;
 extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;
 extern BOOL CG_loadbw_execute;
+extern BOOL CG_Movext_ICMP;
 extern BOOL CG_p2align;
 extern BOOL CG_loop32;
 extern BOOL CG_compute_to;

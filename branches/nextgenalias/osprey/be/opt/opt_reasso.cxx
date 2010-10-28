@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of version 2 of the GNU General Public License as
@@ -2325,9 +2325,10 @@ toplvl_bb (CFG* acfg, BB_NODE *bb, OPT_STAB * optstab) {
                 if (
 #ifdef TARG_X8664
                     WN_desc(wn) != MTYPE_V16F8 
-                        && WN_desc(wn) != MTYPE_V16F4 && 
+                        && WN_desc(wn) != MTYPE_V16F4 &&
 #endif
-                        WN_desc(wn) != MTYPE_F8) 
+                        WN_desc(wn) != MTYPE_F8 
+                        && WN_desc(wn) != MTYPE_F4) 
                     continue;
                 if(whirlmap.find(WN_ver(wn)) 
                             == whirlmap.end()) {

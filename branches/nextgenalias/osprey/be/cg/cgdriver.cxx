@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -465,6 +465,16 @@ static OPTION_DESC Options_CG[] = {
 #ifdef TARG_X8664
   { OVK_BOOL,	OV_VISIBLE, TRUE, "cmp_peep", "",
     0, 0, 0,	&CG_cmp_load_exec, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "fma4_peep", "",
+    0, 0, 0,	&CG_fma4_load_exec, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "dsched", "",
+    0, 0, 0,	&CG_dispatch_schedule, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "unalign_st", "",
+    0, 0, 0,	&CG_128bitstore, NULL },
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "brfuse", "",
+    0, 0, 0,	&CG_branch_fuse, NULL },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "strcmp_expand", "",
+    0, 0, 0,    &CG_strcmp_expand, NULL },
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
@@ -527,6 +537,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_loadbw_execute, NULL },
   { OVK_BOOL,   OV_INTERNAL, TRUE, "valgrind_friendly", "valgrind",
     0, 0, 0,    &CG_valgrind_friendly, NULL },
+  { OVK_BOOL,   OV_INTERNAL, TRUE, "movext_icmp", "movext_icmp",
+    0, 0, 0,    &CG_Movext_ICMP, NULL },
 #endif
 
   // CG Dependence Graph related options.
@@ -759,6 +771,8 @@ static OPTION_DESC Options_CG[] = {
 
   // Whirl2ops / Expander options.
 
+  { OVK_BOOL,	OV_VISIBLE, TRUE, "divrem_opt", "",
+    0, 0, 0,	&CG_divrem_opt, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"fdiv_algorithm", "fdiv",
     0, 0, 0, &CGEXP_fdiv_algorithm, NULL },
   { OVK_NAME,	OV_INTERNAL, TRUE,"sqrt_algorithm", "sqrt",
@@ -2597,6 +2611,14 @@ CG_Init (void)
 			" conflicts with -CG:local_sched_alg\n");
       }
     }
+#ifdef TARG_X8664
+    if (Is_Target_Orochi()) {
+      // TODO: add CG_dispatch_schedule set to TRUE once
+      //       we have binutils support
+      if (CG_loop32 == FALSE)
+        CG_loop32 = TRUE; 
+    }
+#endif //TARG_X8664
 #endif // KEY
 } /* CG_Init */
 

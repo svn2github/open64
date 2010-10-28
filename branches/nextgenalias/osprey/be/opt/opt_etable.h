@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 //-*-c++-*-
 
 /*
@@ -1926,6 +1930,8 @@ private:
 
   STMTREP                *_entry_chi;           // used by SPRE rename
 
+  std::map<IDTYPE, BOOL> _complex_loop_map;
+
   // The following fields are for speeding up compile-time
   // INT32                _temp_id;       // used by step 1 (moved to htable)
   REHASH_CACHE_LIST      *_rehash_cache;        // cache rehashed expressions
@@ -2032,6 +2038,8 @@ public:
   MEM_POOL       *Per_expr_pool(void) const{ return _per_expr_pool; }
   EXP_HOISTING   *Exp_hoisting(void) const { return _exp_hoisting; }
   EXP_WORKLST_CONTAINER  *Exp_worklst(void)    { return &_exp_worklst; }
+  std::map<IDTYPE, BOOL> *Complex_loop_map(void)   { return &_complex_loop_map; }
+   
 
   void		  Count_lex_ident_exprs(INT32); // for statistics only
 

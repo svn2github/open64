@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -953,6 +953,18 @@ BOOL Valid_alias(const ALIAS_MANAGER *am, WN *wn)
   return FALSE;
 }
 
+static
+BOOL equivalent_struct(TY_IDX ty1, TY_IDX ty2)
+{
+    if (ty1 == ty2 ||
+        (!TY_anonymous(ty1) && TY_name_idx(ty1) == TY_name_idx(ty2) &&
+         TY_kind(ty1) == TY_kind(ty2) && TY_kind(ty1) == KIND_STRUCT)) { 
+        return TRUE;
+    }    
+
+    return FALSE;
+}
+
 
 //  Alias analysis for two WN *
 //
@@ -1034,8 +1046,17 @@ ALIAS_RESULT Aliased(const ALIAS_MANAGER *am, WN *wn1, WN *wn2,
 
   if (OPERATOR_is_store(WN_operator(wn1)) && OPERATOR_is_load(WN_operator(wn2)) ||
       OPERATOR_is_store(WN_operator(wn2)) && OPERATOR_is_load(WN_operator(wn1))) {
-    if (am->Rule()->Aliased_Memop(pt1, pt2, ignore_loop_carried)) // OSP-172
-      return POSSIBLY_ALIASED;
+  
+    // when the high level type show that pt1 and pt2 are two structs with same name, these
+    // two structs could be equivelant type, thus could not rely on their high level type
+    if (equivalent_struct(pt1->Highlevel_Ty(),pt2->Highlevel_Ty())) {
+        if (am->Rule()->Aliased_Memop(pt1, pt2, pt1->Ty(), pt2->Ty(), ignore_loop_carried)) // OSP-172
+          return POSSIBLY_ALIASED;
+    }else {
+        if (am->Rule()->Aliased_Memop(pt1, pt2, ignore_loop_carried))
+          return POSSIBLY_ALIASED;
+    }      
+        
   } else {
     // cannot apply ANSI type rule to STORE <--> STORE.
     if (am->Rule()->Aliased_Memop(pt1, pt2, (TY_IDX)NULL, (TY_IDX)NULL, 
@@ -1152,13 +1173,8 @@ ALIAS_RESULT Aliased_with_region(const ALIAS_MANAGER *am, const WN *wn, const WN
     // Test aliasing with call-by-ref parameters
     for (INT32 i = 0; i < WN_kid_count(region_or_call); i++) {
       WN *wn = WN_kid(region_or_call,i);  
-#if defined(TARG_SL)
       if (WN_operator(wn) == OPR_PARM && 
 	  (WN_Parm_By_Reference(wn)||WN_Parm_Dereference(wn))) {
-#else
-      if (WN_operator(wn) == OPR_PARM && 
-	  WN_Parm_By_Reference(wn)) {
-#endif
 	// check aliasing
 	IDTYPE id2 = am->Id(wn);
 	if (id2 == 0) return POSSIBLY_ALIASED;  // assume aliased 
@@ -1215,11 +1231,7 @@ ALIAS_RESULT Aliased_with_intr_op(const ALIAS_MANAGER *am, const WN *intr_op, co
   // go through call-by-ref all parameters
   for (INT32 i = 0; i < WN_kid_count(intr_op); i++) {
     WN *wn = WN_kid(intr_op,i);  
-#if defined(TARG_SL)
     if (WN_Parm_By_Reference(wn) || WN_Parm_Dereference(wn)) {
-#else
-    if (WN_Parm_By_Reference(wn)) {
-#endif
       // check aliasing
       IDTYPE id2 = am->Id(wn);
       if (id2 == 0) return POSSIBLY_ALIASED;  // assume aliased 
@@ -1369,11 +1381,7 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	ST_sclass(WN_st(wn1)) == SCLASS_REG) {
       id = am->Preg_id();
       am->Set_id(wn1, id);
-#if defined(TARG_SL)
     } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1) && !WN_Parm_Dereference(wn1)) {
-#else
-    } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1)) {
-#endif
       // It has no alias info.
       am->Set_id(wn2, 0);    // cancel the original alias info in wn2
       return;
@@ -1424,11 +1432,7 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 	ST_sclass(WN_st(wn1)) == SCLASS_REG) {
       id = am->Preg_id();
       am->Set_id(wn1, id);
-#if defined(TARG_SL)
     } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1) && !WN_Parm_Dereference(wn1)) {
-#else
-    } else if (opr == OPR_PARM && !WN_Parm_By_Reference(wn1)) {
-#endif
       // It has no alias info.
       am->Set_id(wn2, 0);    // cancel the original alias info in wn2
       return;

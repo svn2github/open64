@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -419,6 +419,10 @@ public:
 #ifdef _LIGHTWEIGHT_INLINER
   INLINED_BODY_LIST& Inlined_list ()    { return _inlined_list; }
 #endif // _LIGHTWEIGHT_INLINER
+
+  // return true if the call expresion node has an edge in the 
+  // IPA_NODE
+  BOOL has_edge_for_node(WN *wn) const;
 
   // node is the result of cloning  
   void Set_Clone ()	        { _flags |= _clone; }
@@ -875,6 +879,7 @@ private:
   static const mUINT32 _must_inline	= 0x20;
   static const mUINT32 _no_inline	= 0x40;
   static const mUINT32 _partial_inline	= 0x80;
+  static const mUINT32 _updated_caller  = 0x100; // for a deletable edge caller has been updated.  
   
   EDGE_INDEX _edge_index;			// index to the edge array in graph
   IPA_EDGE_INDEX _array_index;		// index into the IPA_EDGE_ARRAY
@@ -955,6 +960,9 @@ public:
 
   void Set_Deletable ()			{ _flags |= _deletable; }
   BOOL Is_Deletable () const		{ return _flags & _deletable; }
+
+  void Set_Updated_Caller()      	{ _flags |= _updated_caller; }
+  BOOL Has_Updated_Caller() const	{ return _flags & _updated_caller; }
 
   void Set_Recursive ()			{ _flags |= _recursive; }
   BOOL Is_Recursive () const		{ return _flags & _recursive;}
@@ -1191,7 +1199,7 @@ public:
 
 
   void Print_vobose (FILE*);
-  void Print_vobose (FILE*, TRAVERSAL_ORDER);
+  void Print_vobose (FILE*, TRAVERSAL_ORDER, BOOL);
 
   
   // map callsites in the caller to WN nodes

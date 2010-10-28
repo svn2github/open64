@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -518,69 +518,6 @@
 //                ending condition for repeat statement
 //          BB_SUMMARY
 //                summary BB
-//
-//
-//                   Structured Component Nodes
-//                   --------------------------
-//      This is the structured component node data structure that represents if-region, loop-region
-//      and other structured control flow components in the source program. 
-//
-// Reserved prefix:
-// ----------------
-//
-//     SC         for structured component node
-//
-// Exported types:
-// ---------------
-//     SC_NODE
-//
-//          A structured component node.  Every structured component node contains the
-//          following fields.
-//
-//              IDTYPE     _id
-//                    A unique identifier for a structured component node.
-//
-//              SC_TYPE    type
-//                    The type of a SC_NODE.  See SC_TYPE.
-//
-//              MEM_POOL * pool
-//                    Allocation memory pool.
-//
-//
-//              BB_NODE * bb_rep
-//                    A pointer to representing BB_NODE.  
-//
-//              BB_LIST * bbs
-//                    A list of BB_NODEs contained in this SC_NODE.
-//
-//              SC_NODE * parent
-//                    A pointer to the parent node.
-//
-//              SC_LIST * kids
-//                    A pointer to the list of child nodes.  The list is ordered
-//                    according to order of occurrence in the procedure.      
-//
-//              IDTYPE _class_id
-//                    ID of the loop class this SC_NODE belongs.  Scratch field. 
-//                    Loops are classified according to their path symmetricities in the SC tree.
-//
-//              int _depth
-//                    Depth of this SC_NODE in the SC tree. Scratch field.
-//
-//              int flag
-//                    Flag of this SC_NODE.  see SC_NODE_FLAG.
-//
-//     SC_LIST :SLIST_NODE
-//
-//          A singly linked list of SC_NODEs.  We use this class to build the children node list.
-//
-//     SC_LIST_CONTAINER : SLIST
-//     SC_LIST_ITER : SLIST_ITER
-//
-//          The standard container and iterator for singly linked list.
-//     
-//
-// ====================================================================
 // ====================================================================
 
 #if !defined(opt_bb_INCLUDED) || defined(opt_bb_CXX)
@@ -780,40 +717,9 @@ private:
 
 public:
   BB_LOOP(void);
-  BB_LOOP(    WN      *index,
-	      BB_NODE *start,
-	      BB_NODE *end,
-	      BB_NODE *body,
-	      BB_NODE *step,
-	      BB_NODE *merge)       { 
-		_child = NULL;
-		_parent = NULL;
-		_loopstmt = NULL;
-		_index = index;
-		_u1._start = start;
-		_end = end;
-		_body = body;
-		_step = step;
-		_u2._merge = merge;
-		_body_set = NULL;
-		_true_body_set = NULL;
-		_trip_count_stmt = NULL;
-		_trip_count_expr = NULL;
-		_entry_test = NULL;
-		_wn_trip_count = NULL;
-		_iv = NULL;
-		_iv_replacement = NULL;
-		_lftr_non_candidates = NULL;
-		_flags = LOOP_EMPTY;
-		_orig_wn = NULL;
-		_promoted_do = FALSE;
-		has_entry_guard = FALSE;
-		well_formed = FALSE;
-		_valid_doloop = TRUE;
-		header = NULL;
-                _size_estimate = 0;  
-  }
-  ~BB_LOOP(void);
+  BB_LOOP (WN *index, BB_NODE *start, BB_NODE *end, BB_NODE *body,
+	       BB_NODE *step, BB_NODE *merge);
+  ~BB_LOOP(void) {};
   BB_LOOP     *Child(void) const    { return _child;}
   BB_LOOP     *Parent(void) const   { return _parent;}
   WN          *Loopstmt(void) const { return _loopstmt; }
@@ -1074,6 +980,7 @@ enum BB_FLAG {
 #if defined(TARG_SL) //PARA_EXTENSION
   BB_SL2_PARA_REGION = 0x2000, // block is inside a SL2 parallel region
 #endif
+  BB_EH_REGION = 0x4000,
 };
 
 #define BB_VISIT    (BB_DFORDER)
@@ -1154,6 +1061,9 @@ private:
   IDTYPE       _pdom_dfs_last;// _pdom_dfs_id number of last post-dominated block
   BB_NODE_SET *_dom_frontier;// point to dominance frontier set
   BB_NODE_SET *_rcfg_dom_frontier;// point to dominance frontier set for reverse CFG
+  IDTYPE       _layout_id;          // it is used to represent where to place BB in reconstrucing CFG
+  RID         *_rid;          // which region BB belongs to, cannot use _rid_id because it may not be unique
+  
   // structure containing everything related to the label for this bb
   struct {
     mINT32     _labnam;      // label number in the WN node
@@ -1228,7 +1138,6 @@ private:
   } _u13;
 
   	       BB_NODE& operator = (const BB_NODE&);
-
 
 public:
   void         Clear(void);
@@ -1323,6 +1232,8 @@ public:
   void         Set_loopdepth(mUINT8 dep){ _loopdepth = dep;}
   mUINT16      Rid_id(void)         const  { return _rid_id;}
   void         Set_rid_id(mUINT16 id)   { _rid_id = id;}
+  RID          *Rid(void)          const{ return _rid;}
+  void         Set_rid(RID* rid)        { _rid = rid; }
   BB_FLAG      Flag(void)        const  { return _flags; }
   BOOL         Willexit(void)    const  { return (_flags & BB_WILLEXIT);}
   void         Set_willexit(void)       { _flags=(BB_FLAG)(_flags|BB_WILLEXIT);}
@@ -1355,6 +1266,15 @@ public:
   BOOL         MP_region(void)   const  { return (_flags & BB_MP_REGION);}
   void         Set_MP_region(void)      { _flags=(BB_FLAG)(_flags|BB_MP_REGION);}
   void         Reset_MP_region(void)    { _flags=(BB_FLAG)(_flags&~BB_MP_REGION);}
+
+  BOOL         EH_region(void)   const  { return (_flags & BB_EH_REGION);}
+  void         Set_EH_region(void)      { _flags=(BB_FLAG)(_flags|BB_EH_REGION);}
+  void         Reset_EH_region(void)    { _flags=(BB_FLAG)(_flags&~BB_EH_REGION);}
+
+  IDTYPE       layout_Id(void)          const  { return _layout_id;}
+  void         Set_layout_id(IDTYPE i )        { _layout_id = i;}
+  void         Set_layout_id(BB_NODE * node)   { _layout_id = node->layout_Id() ? node->layout_Id() : node->Id(); }
+    
 #if defined(TARG_SL) //PARA_EXTENSION
   BOOL         SL2_para_region(void) const    { return (_flags & BB_SL2_PARA_REGION);}
   void         Set_SL2_para_region(void)      { _flags=(BB_FLAG)(_flags|BB_SL2_PARA_REGION);}
@@ -1720,7 +1640,8 @@ public:
 
   // Can this BB be cloned?
   BOOL         Clonable(BOOL           allow_loop_cloning, 
-			const BVECTOR *cr_vol_map = NULL);
+			const BVECTOR *cr_vol_map = NULL,
+			BOOL allow_clone_calls=FALSE);
   INT32        Code_size_est(void) const;
 
   // Does this BB dominate every BB in the given  SC_NODE?
@@ -1734,6 +1655,8 @@ public:
   int  Executable_stmt_count();
   // Does this BB_NODE end with a branch targeting the given BB_NODE?
   BOOL Is_branch_to(BB_NODE *);
+  // Find first executable statement in this BB_NODE.
+  WN * First_executable_stmt();
 
 #if defined(TARG_SL)
   // if predecessors of current bb are from different region, this function  
@@ -1822,227 +1745,6 @@ public:
   void	      Find_first_last_stmt(BB_NODE *, BB_NODE *, WN **, WN **);
 
 }; // end bb_region class
-
-// Type of SC nodes
-enum SC_TYPE {
-  SC_NONE = 0,
-  SC_IF,     // if-region
-  SC_THEN,   // then-path of a if-region
-  SC_ELSE,   // else-path of a if-region
-  SC_LOOP,   // loop region
-  SC_BLOCK,  // blocks of straight-line codes
-  SC_FUNC,   // func entry
-  SC_LP_START, // H-WHIRL loop start
-  SC_LP_COND,  // H-WHIRL loop cond
-  SC_LP_STEP,  // H-WHIRL loop step
-  SC_LP_BACKEDGE,  // H-WHIRL loop backedge
-  SC_LP_BODY,  // loop body
-  SC_COMPGOTO, // COMPGOTO
-  SC_OTHER   // other structured control flows
-};
-
-extern BOOL SC_type_has_rep(SC_TYPE type);
-extern BOOL SC_type_has_bbs(SC_TYPE type);
-extern BOOL SC_type_is_marker(SC_TYPE type);
-
-static const char * sc_type_name[] =
-  {"NONE", "IF", "THEN", "ELSE", "LOOP", "BLOCK", "FUNC",
-   "LP_START", "LP_COND", "LP_STEP", "LP_BACKEDGE", "LP_BODY", "COMPGOTO", "OTHER"};
-
-// bit mask.
-enum SC_NODE_FLAG
-{
-  HAS_SYMM_LOOP = 0x1
-};
-
-
-// Structure component nodes.
-class SC_NODE {
-private:
-  SC_TYPE type;
-  IDTYPE _id;
-  MEM_POOL * pool;
-  union {
-    BB_NODE * bb_rep;  // Pointer to this SC_NODE's representing BB_NODE. Valid for SC_IF.
-    BB_LIST * bbs;     // A list of BB_NODEs. Valid for SC_BLOCK only.
-  } u1;
-  SC_NODE * parent;
-  SC_LIST * kids;
-  IDTYPE _class_id;
-  int _depth;
-  int _flag;
-
-private:
-  BOOL Is_member(BB_NODE *);
-
-public:
-  IDTYPE       Id(void)          const  { return _id; }
-  void         Set_id(IDTYPE i )        { _id = i; }
-  IDTYPE       Class_id(void)    const  { return _class_id; }
-  void         Set_class_id(IDTYPE i)   { _class_id = i; }
-  int          Depth(void)       const  { return _depth; }
-  void         Set_depth(int i)         { _depth = i; }
-  int          Flag()            const  { return _flag; }
-  void         Set_flag(int i)          { _flag = i; }
-  void         Remove_flag(int i);
-  BOOL         Has_flag(int i)          { return ((_flag & i) != 0); }
-  void         Add_flag(int i)          { if (!Has_flag(i)) {_flag += i; } }
-  SC_TYPE      Type(void)        const { return type; }
-  void         Set_type(SC_TYPE i)     { type = i; }
-  const char * Type_name(void) const   { return sc_type_name[type]; }
-  BB_NODE *    Get_bb_rep()    const   { return (SC_type_has_rep(type) ? u1.bb_rep : NULL); }
-  void         Set_bb_rep(BB_NODE * i) 
-  { 
-    FmtAssert(SC_type_has_rep(type), ("Unexpected SC_NODE"));
-    u1.bb_rep = i; 
-  }
-
-  BB_LIST *       Get_bbs()   const { return (SC_type_has_bbs(type) ? u1.bbs : NULL); }
-  void            Append_bbs(BB_NODE *i)
-  {
-    FmtAssert(SC_type_has_bbs(type), ("Unexpected SC_NODE"));
-    if (u1.bbs == NULL)
-      u1.bbs = CXX_NEW(BB_LIST(i), pool);
-    else
-      u1.bbs = u1.bbs->Append(i, pool);
-  }
-
-  void            Prepend_bbs(BB_NODE *i)
-  {
-    FmtAssert(SC_type_has_bbs(type), ("Unexpected SC_NODE"));
-    if (u1.bbs == NULL)
-      u1.bbs = CXX_NEW(BB_LIST(i), pool);
-    else
-      u1.bbs = u1.bbs->Prepend(i, pool);
-  }
-
-  void           Set_bbs(BB_LIST * i)
-  { 
-    FmtAssert(SC_type_has_bbs(type), ("Unexpected SC_NODE"));
-    u1.bbs = i; 
-  }
-
-  MEM_POOL * Get_pool()                { return pool; }
-  void       Set_pool(MEM_POOL * i)    { pool = i; }
-
-  SC_NODE *  Parent(void)      const   { return parent; }
-  void       Set_parent(SC_NODE * i)   { parent = i; }
-  void       Set_kids(SC_LIST * i)     { kids = i; }
-  SC_LIST *  Kids(void)        const   { return kids; }
-  void       Clear(void);
-  BOOL       Is_empty_block();
-  
-  SC_NODE(void)          { Clear(); }
-  SC_NODE(const SC_NODE&);
-  ~SC_NODE(void)         {}
-
-  void Print(FILE *fp=stderr, BOOL = TRUE) const;
-
-  void Append_kid(SC_NODE * sc);
-  void Prepend_kid(SC_NODE * sc);
-  void Remove_kid(SC_NODE * sc);
-  void Insert_before(SC_NODE * sc);
-  void Insert_after(SC_NODE * sc);
-  SC_NODE * Last_kid();
-  SC_NODE * First_kid();
-  SC_NODE * Next_sibling();
-  SC_NODE * Prev_sibling();
-  SC_NODE * Next_sibling_of_type(SC_TYPE);
-  SC_NODE * Next_in_tree();
-  SC_NODE * Get_nesting_if(SC_NODE *);
-  SC_NODE * First_kid_of_type(SC_TYPE);
-  BOOL Contains(BB_NODE *);
-  BB_NODE * Then();
-  BB_NODE * Else();
-  BB_NODE * Merge();
-  void      Set_merge(BB_NODE *);
-  BB_NODE * Head();
-  BB_NODE * Then_end();
-  BB_NODE * Else_end();
-  BB_NODE * Exit();
-  BB_LOOP * Loopinfo();
-  WN *      Index();
-  SC_NODE * Find_kid_of_type(SC_TYPE);
-  void Unlink();
-  void Convert(SC_TYPE);
-  void Delete();
-  BOOL Is_well_behaved();
-  BOOL Is_sese();
-  BOOL Has_same_loop_struct(SC_NODE *);
-  BOOL Has_symmetric_path(SC_NODE *, BOOL);
-  SC_NODE * Find_lcp(SC_NODE *);
-  BB_NODE * First_bb();
-  BB_NODE * Last_bb();
-  BOOL Is_pred_in_tree(SC_NODE *);
-  int Num_of_loops(SC_NODE *, BOOL, BOOL);
-  int Executable_stmt_count();
-  BOOL Has_loop();
-  SC_NODE * Get_real_parent();
-};
-
-class SC_LIST : public SLIST_NODE {
-private:
-  SC_NODE * node;
-  SC_LIST(const SC_LIST &);
-  SC_LIST &operator = (const SC_LIST&);
-
-public:
-  SC_LIST(void)         { Clear(); }
-  SC_LIST(SC_NODE * nd) { Clear(); node = nd;}
-  ~SC_LIST(void)        {};
-  
-  DECLARE_SLIST_NODE_CLASS( SC_LIST )
-  SC_LIST *Append (SC_NODE *bb, MEM_POOL *pool);  
-
-  SC_LIST *Prepend(SC_NODE *bb, MEM_POOL *pool)
-  {
-    SC_LIST * new_sclst = (SC_LIST*) CXX_NEW(SC_LIST(bb), pool);
-    new_sclst->Set_Next(this);
-    return new_sclst;
-  }
-
-  SC_LIST *Remove(SC_NODE *sc, MEM_POOL *pool);
-  BOOL Contains(SC_NODE *sc) const;
-  void Print (FILE *fp = stderr) const;
-  SC_NODE * Last_elem();
-  SC_NODE * First_elem();
-  
-  void Init(SC_NODE *nd)      { node = nd; }
-  void Clear(void)            { node = NULL; }
-
-  SC_NODE *Node(void)  const { return node;}
-  void Set_node(SC_NODE *sc)  { node = sc; }
-};
-
-class SC_LIST_CONTAINER : public SLIST {
-private:
-  DECLARE_SLIST_CLASS( SC_LIST_CONTAINER, SC_LIST )  
-
-  SC_LIST_CONTAINER(const SC_LIST_CONTAINER&);
-  SC_LIST_CONTAINER& operator = (const SC_LIST_CONTAINER&);
-
-public:
-  ~SC_LIST_CONTAINER(void) {};
-
-  void Append (SC_NODE *sc, MEM_POOL *pool);
-  void Prepend (SC_NODE *sc, MEM_POOL *pool);
-  void Remove(SC_NODE *sc, MEM_POOL *pool);
-  SC_NODE *Remove_head(MEM_POOL *pool);
-  BOOL Contains(SC_NODE *sc) const;
-};
-
-class SC_LIST_ITER : public SLIST_ITER {
-  DECLARE_SLIST_CONST_ITER_CLASS( SC_LIST_ITER, SC_LIST, SC_LIST_CONTAINER )
-public:
-  void     Init(void)       {}
-  void Validate_unique(FILE *fp=stderr);
-  SC_NODE *First_sc(void)   { return (First()) ? Cur()->Node():NULL; }
-  SC_NODE *Next_sc(void)    { return (Next())  ? Cur()->Node():NULL; }
-  SC_NODE *Cur_sc(void)     { return (Cur())   ? Cur()->Node():NULL; }
-  SC_NODE *First_elem(void) { return (First()) ? Cur()->Node():NULL; }
-  SC_NODE *Next_elem(void)  { return (Next())  ? Cur()->Node():NULL; }
-};
-
 
 #endif  // opt_bb_INCLUDED
 #endif  // opt_bb_INCLUDED || opt_bb_CXX

@@ -40,7 +40,7 @@
 */
 
 
-/* si.h
+/* ti_si.h
  ************************************
  *
  *  Description:
@@ -70,8 +70,8 @@
  *                      Return the value of an initalized (no reserved
  *                      resources) resource reservation entry.
  *
- *                  SI_RRW SI_RRW_Reserve( SI_RRW table, SI_RRW request )
- *                      Reserve the resource in <request> from <table> and
+ *                  SI_RRW SI_RRW_Reserve( SI_RRW table, SI_RRW requirement )
+ *                      Reserve the resource in <requirement> from <table> and
  *                      return the result.  IMPORTANT: The resources might not
  *                      be available, the the result must be checked (see
  *                      immediately below).
@@ -112,10 +112,10 @@
  *              An integer type which Represents a single type of resource.
  *              It may also be used by the client as an index into a table of
  *              counts.  The size of such a table should be the number of
- *              differetn types of resource defined for the hardware target, a
+ *              different types of resource defined for the hardware target, a
  *              value given by:
  *
- *                  INT SI_rexource_count
+ *                  INT SI_resource_count
  *
  *              The following access functions are defined for
  *              SI_RESOURCE_IDs:
@@ -140,7 +140,7 @@
  *                      Return the RESOURCE_ID whose usage is described by
  *                      <total>.
  *
- *                  UINT SI_RESOURCE_TOTAL_Total_Used(
+ *                  INT SI_RESOURCE_TOTAL_Total_Used(
  *                      SI_RESOURCE_TOTAL* total
  *                  )
  *                      Return the usage count of the RESOURCE_ID whose usage
@@ -203,7 +203,7 @@
  *                      be added to the operand access and result available
  *                      times.
  *
- *                  INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_SCHED_INFO* slot )
+ *                  INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_ISSUE_SLOT* slot )
  *                      How many instructions can occupy <slot> per cycle.
  *
  *              Access to all the issue slots in the machine is provided by:
@@ -237,7 +237,7 @@
  *                                                     SI_BAD_II_SET s1 )
  *                      Return the union of the given sets.
  *
- *                  bool SI_BAD_II_SET_MemberP( SI_BAD_II_SET s, INT i )
+ *                  bool SI_BAD_II_SET_MemberP( SI_BAD_II_SET s, UINT i )
  *                      Is <i> a member of <s>?
  *
  *                  SI_BAD_II_SET SI_BAD_II_SET_Empty()
@@ -260,18 +260,18 @@
  *          INT TSI_Operand_Access_Time( TOP top, INT operand_index )
  *              Time <top> accesses it's <operand_index>'th operand.
  *
- *          INT TSI_Result_Avail_Time( TOP top,INT result_index )
+ *          INT TSI_Result_Available_Time( TOP top, INT result_index )
  *              Time <top> makes it's <result_index>'th result available.
  *
  *          INT TSI_Load_Access_Time( TOP top )
- *              Time <top> (a load) reads it's value from memory.
+ *              Time <top> (a load) reads its value from memory.
  *
  *          INT TSI_Last_Issue_Cycle( TOP top )
  *              Time <top> issues its last instruction (non-zero only
  *		for simulated instructions).
  *
- *          INT TSI_Store_Avail_Time( TOP top )
- *              Time <top> (a store) makes it's result available in memory.
+ *          INT TSI_Store_Available_Time( TOP top )
+ *              Time <top> (a store) makes its result available in memory.
  *
  *          SS_RR TSI_Resource_Requirement( TOP top )
  *              Resource requirement to schedule <top>.
@@ -527,9 +527,9 @@ inline SI_RRW SI_RRW_Reserve( SI_RRW table, SI_RRW requirement )
   return table + requirement;
 }
 
-inline SI_RRW SI_RRW_Has_Overuse( SI_RRW word_with_reservations )
+inline SI_RRW SI_RRW_Has_Overuse( SI_RRW table_entry )
 {
-  return (word_with_reservations & SI_RRW_overuse_mask) != 0;
+  return (table_entry & SI_RRW_overuse_mask) != 0;
 }
 
 inline SI_RRW SI_RRW_Unreserve( SI_RRW table, SI_RRW requirement )
@@ -698,12 +698,10 @@ inline SI_RR TSI_Resource_Requirement( TOP top )
   return SI_top_si[(INT) top]->rr;
 }
 
-#if defined(TARG_SL)
 inline SI_RR TSI_Alternative_Resource_Requirement( TOP top )
 {
   return SI_top_si[(INT) top]->alter_rr;
 }
-#endif 
 
 inline SI_BAD_II_SET TSI_Bad_IIs( TOP top )
 {

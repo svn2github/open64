@@ -823,80 +823,8 @@ static ST_IDX mpr_sts [MPRUNTIME_LAST + 1] = {
 #define IS_MASTER_PREG_NAME  "mp_is_master"
 
 
-/*
-After returning from lower_mp(), all MP constructs should have been lowered
-in both the Whirl tree passed to lower_mp() and the nested PU (if one was
-created).  If all MP constructs have been lowered in a Whirl tree, the tree
-will contain no MP pragmas, MP IF's, or non-POD finalization IF's.  This
-class verifies this post- condition just before returning from lower_mp().
-
-This class could easily be extended to perform additional verification on
-the lowered Whirl.
-*/
-
-class Verify_MP_Lowered {
-  BOOL replace_block_set;
-  WN *replace_block_start;
-    // i.e. WN_next() of last node in replace_block
-  WN *replace_block_sibling;
-  BOOL nested_pu_set;
-  WN *nested_pu;
-
-  static void Verify_No_MP(WN *tree);
-
-public:
-  Verify_MP_Lowered() : replace_block_set(FALSE), nested_pu_set(FALSE) { }
-
-  void Set_replace_block(WN *replace, WN *sibling) {
-    Is_True(!replace_block_set, ("Set_replace_block() called already"));
-    replace_block_set = TRUE;
-    replace_block_start = replace;
-    replace_block_sibling = sibling;
-  }
-
-  void Set_nested_pu_tree(WN *pu) {
-    Is_True(!nested_pu_set, ("Set_nested_pu_tree() called already"));
-    nested_pu_set = TRUE;
-    nested_pu = pu;
-  }
-
-  void Set_replace_block_and_nested_pu(WN *replace, WN *sibling, WN *pu) {
-    Is_True(!replace_block_set && !nested_pu_set,
-            ("replace_block_start and/or nested_pu set already"));
-    replace_block_set = TRUE;
-    replace_block_start = replace;
-    replace_block_sibling = sibling;
-    nested_pu_set = TRUE;
-    nested_pu = pu;
-  }
-
-  ~Verify_MP_Lowered();
-};
-
-/*
-Destructor verifies that both the replace_block and nested PU have been set
-(either may be NULL), then verifies that neither contains any MP pragmas,
-MP IF's, or non-POD finalization IF's.  If compiled without debugging
-support, it does nothing.
-*/
-
-Verify_MP_Lowered::~Verify_MP_Lowered()
-{
-  Is_True(replace_block_set, ("replace_block_start not set"));
-  Is_True(nested_pu_set, ("nested_pu not set"));
-
-#ifdef Is_True_On
-  for (WN *wn = replace_block_start; wn && wn != replace_block_sibling;
-       wn = WN_next(wn))
-    Verify_No_MP(wn);
-
-  if (nested_pu)
-    Verify_No_MP(nested_pu);
-#endif
-}
-
-  // Verify that tree contains no MP pragmas or IF's
-void Verify_MP_Lowered::Verify_No_MP(WN *tree)
+// Verify that tree contains no MP pragmas or IF's
+void Verify_No_MP(WN *tree)
 {
   WN_ITER *wni = WN_WALK_TreeIter(tree);
 
@@ -921,8 +849,6 @@ void Verify_MP_Lowered::Verify_No_MP(WN *tree)
 			(unsigned long) wn, (unsigned long) tree);
   }
 }
-
-Verify_MP_Lowered *verify_mp_lowered_ptr; // set upon entry to lower_mp()
 
 
 /* Forward function declarations. */
@@ -2823,7 +2749,6 @@ is inheriting pu_recursive OK?
   PU_Info *parallel_pu = TYPE_MEM_POOL_ALLOC ( PU_Info, Malloc_Mem_Pool );
   PU_Info_init ( parallel_pu );
   Set_PU_Info_tree_ptr (parallel_pu, func_entry );
-  verify_mp_lowered_ptr->Set_nested_pu_tree(func_entry);
 
   PU_Info_proc_sym(parallel_pu) = ST_st_idx(parallel_proc);
   PU_Info_maptab(parallel_pu) = cmaptab = WN_MAP_TAB_Create(MEM_pu_pool_ptr);
@@ -4216,7 +4141,6 @@ Create_Copyfunc(ST *struct_st)
   PU_Info *copy_pu = TYPE_MEM_POOL_ALLOC ( PU_Info, Malloc_Mem_Pool );
   PU_Info_init ( copy_pu );
   Set_PU_Info_tree_ptr (copy_pu, func_entry );
-  //verify_mp_lowered_ptr->Set_nested_pu_tree(func_entry);
 
   PU_Info_proc_sym(copy_pu) = ST_st_idx(parallel_proc);
   PU_Info_maptab(copy_pu) = cp_cmaptab = WN_MAP_TAB_Create(MEM_pu_pool_ptr);
@@ -11780,6 +11704,7 @@ Process_Parallel_Region ( void )
   }
 
   Transform_Parallel_Block ( stmt_block );
+  Verify_No_MP(stmt_block);
 #ifdef KEY
   Gen_Threadpriv_Func(reference_block, parallel_func, FALSE);
 #endif
@@ -11909,9 +11834,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
   Is_True(PU_Info_proc_sym(Current_PU_Info) == last_pu_proc_sym,
           ("LowerMP_PU_Init() not called for this PU"));
 
-  Verify_MP_Lowered verify_mp_lowered;
-  verify_mp_lowered_ptr = &verify_mp_lowered;
-
   /* Special case handling of PU-scope pragmas. */
 
   if (block == NULL) {
@@ -11927,7 +11849,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     }
 
-    verify_mp_lowered.Set_replace_block_and_nested_pu(NULL, NULL, NULL);
     return (NULL);
 
   }
@@ -12047,18 +11968,14 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN *return_wn = WN_first( store_gtid );
       WN_DELETE_Tree(node);
       WN_Delete( store_gtid );
-      verify_mp_lowered.Set_replace_block_and_nested_pu( return_wn,
-        WN_next(call), NULL);
       return return_wn;
 
     } else if (WN_pragma(node) == WN_PRAGMA_CHUNKSIZE) {
       pu_chunk_node = node;
-      verify_mp_lowered.Set_replace_block_and_nested_pu(NULL, NULL, NULL);
       return (WN_next(node));
 
     } else if (WN_pragma(node) == WN_PRAGMA_MPSCHEDTYPE) {
       pu_mpsched_node = node;
-      verify_mp_lowered.Set_replace_block_and_nested_pu(NULL, NULL, NULL);
       return (WN_next(node));
 
     } else if (WN_pragma(node) == WN_PRAGMA_COPYIN) {
@@ -12070,7 +11987,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
       wn = WN_next(node);
       WN_DELETE_Tree ( node );
-      verify_mp_lowered.Set_replace_block_and_nested_pu(NULL, NULL, NULL);
       return (wn);
 
     } else if (WN_pragma(node) == WN_PRAGMA_CRITICAL_SECTION_BEGIN) {
@@ -12094,8 +12010,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN *return_wn = WN_first( store_gtid );
       WN_DELETE_Tree(node);
       WN_Delete( store_gtid );
-      verify_mp_lowered.Set_replace_block_and_nested_pu( return_wn,
-        WN_next(call), NULL);
       return return_wn;
 
     } else if (WN_pragma(node) == WN_PRAGMA_ORDERED_END) {
@@ -12108,8 +12022,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN_next(call) = wn;
       if (wn) WN_prev(wn) = call;
       WN_DELETE_Tree(node);
-      verify_mp_lowered.Set_replace_block_and_nested_pu(call,
-        WN_next(call), NULL);
       return call;
 
     } else
@@ -12142,8 +12054,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN_DELETE_Tree(WN_region_exits(node));
       RID_Delete(Current_Map_Tab, node);
       WN_Delete(node);
-      verify_mp_lowered.Set_replace_block_and_nested_pu(wn, WN_next(wn),
-        NULL);
       return wn;
 
     case WN_PRAGMA_MASTER_BEGIN:
@@ -12155,8 +12065,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
       WN_DELETE_Tree(WN_region_exits(node));
       RID_Delete(Current_Map_Tab, node);
       WN_Delete(node);
-      verify_mp_lowered.Set_replace_block_and_nested_pu(wn, WN_next(wn),
-        NULL);
       return wn;
 
     case WN_PRAGMA_DOACROSS:
@@ -12166,7 +12074,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     case WN_PRAGMA_PDO_BEGIN:
       mpt = MPP_ORPHANED_PDO;
-      verify_mp_lowered.Set_nested_pu_tree(NULL);
       break;
 
     case WN_PRAGMA_PARALLEL_BEGIN:
@@ -12497,8 +12404,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 
     WN_INSERT_BlockLast ( replace_block, Gen_MP_Copyin ( FALSE ) );
 
-    verify_mp_lowered.Set_nested_pu_tree(NULL);
-
   } else if (mpt == MPP_CRITICAL_SECTION) {
 
     line_number = WN_linenum(node);
@@ -12540,8 +12445,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
     WN_DELETE_Tree ( node );
     WN_Delete ( cur_node );
 
-    verify_mp_lowered.Set_nested_pu_tree(NULL);
-
   } else if (mpt == MPP_PARALLEL_DO) {
 
     BOOL is_omp = WN_pragma_omp(WN_first(WN_region_pragmas(node)));
@@ -12581,7 +12484,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
         WN_Delete ( node );
         local_count = 0;
         WN_INSERT_BlockLast ( replace_block, do_preamble_block );
-        verify_mp_lowered_ptr->Set_nested_pu_tree(NULL);
         goto finish_processing;
       } else
         Fail_FmtAssertion
@@ -12732,7 +12634,6 @@ lower_mp ( WN * block, WN * node, INT32 actions )
 	WN_Delete ( node );
 	local_count = 0;
 	WN_INSERT_BlockLast ( replace_block, do_preamble_block );
-	verify_mp_lowered_ptr->Set_nested_pu_tree(NULL);
 	goto finish_processing;
       } else
         Fail_FmtAssertion
@@ -13084,8 +12985,6 @@ finish_processing:
     /* For mp if's return the entire replacement block and the caller will
        handle it from there. */
 
-    verify_mp_lowered.Set_replace_block(replace_block,
-      WN_next(WN_last(replace_block)));
     return_nodes = replace_block;
 
   } else {
@@ -13102,7 +13001,6 @@ finish_processing:
       return_nodes = cont_nodes;
 
     WN_Delete ( replace_block );
-    verify_mp_lowered.Set_replace_block(return_nodes, cont_nodes);
   }
 
   return (return_nodes);

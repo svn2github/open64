@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -153,7 +157,7 @@ private:
   } u;
   
   WN_OFFSET _offset;
-  mTYPE_ID  _mtype;
+  mTYPE_ID  _mtype:8;
   mBOOL     _is_formal;
   
 public:

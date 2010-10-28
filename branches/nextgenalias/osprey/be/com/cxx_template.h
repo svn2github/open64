@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -219,6 +223,20 @@ public:
     _array[Newidx()] = val;
 #endif
   }
+  void DeleteElement(mUINT32 idx)
+  {
+    if (idx < _lastidx) {
+       for (int iter = idx; iter < _lastidx; iter++) {
+          _array[idx] = _array[idx+1];
+       }
+       _array[_lastidx] = NULL;
+       Decidx();
+    }
+    else if (idx == _lastidx) {
+        _array[idx] = NULL;
+        Decidx();
+    }
+  }
   mUINT32 Elements () const  { return (_lastidx+1); }
 
   mUINT32 Newidx(void);                  // allocate a valid index
@@ -325,6 +343,8 @@ public:
   void    Free()                                { _stack.Free_array(); }
   void    Alloc(const INT32 n)                  { _stack.Alloc_array(n); }
   mINT32  Elements() const			{ return(_stack.Lastidx() +1);}
+  // Delete Top_nth(n) element.
+  void    DeleteTop(mUINT32 n)         { _stack.DeleteElement(_stack.Lastidx() - n); }
 };
 
 
@@ -491,7 +511,6 @@ void STACK<T>::Settop(const T& val)
   Is_True(idx >= 0, ("STACK::Settop(): Stack Empty"));
   _stack[idx] = val;
 }
-
 
 template <class T>
 T& STACK<T>::Top_nth(const INT32 n) const

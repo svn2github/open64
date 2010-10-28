@@ -4,7 +4,7 @@
 
 % -*- fundamental -*-
 %
-%  Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+%  Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 %
 %  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
 %
@@ -215,7 +215,7 @@
 	""
 -I%D		;		ALL	CPP	"-I%D -include=%D"
 	"add following directory to the include search path list"
--iquote%D	;		ALL	CPP	"-iquote=%D"
+-iquote%D	;		ALL	CPP	"-iquote %D"
 	"add following directory to the include search path list"
 -x%-		set_explicit_lang(option_name,optargs);		ALL	NONE	""
 	"Specify explicit language for input files"
@@ -962,8 +962,8 @@ I-xall		;	FTN	ffe	self
 -openmp			;		FTN,Cc	ffe	-mp
         "enable the multiprocessing directives (same as -mp)"
 #ifdef KEY
--fopenmp		;		Cc	cfe	self
-        ""
+-fopenmp toggle(&mpkind,NORMAL_MP);	FTN,Cc	ffe,cfe	self
+        "enable the multiprocessing directives"
 #endif
 #ifndef KEY
 -dsm_clone		;		ALL	ipl,be,d	self
@@ -987,6 +987,17 @@ I-xall		;	FTN	ffe	self
 
 -mno-ieee-fp	;	ALL	be	"-OPT:IEEE_NaN_Inf=off"
 	"IEEE floating point comparisons not required"
+
+#ifdef X8664
+-ftz	;	ALL	be	"-TENV:simd_fmask=on -TENV:simd_amask=on"
+	"Flush denormalized results to zero"
+
+-no-ftz	;	ALL	be	"-TENV:simd_fmask=off -TENV:simd_amask=off"
+	"Do not flush denormalized results to zero"
+
+-fp-accuracy=%s	Process_fp(optargs);	ALL	NONE	""
+        "Set accuracy level of floating point operations"
+#endif
 
 -mp_keep warn_no_longer_supported2(option_name,"-CLIST/-FLIST"); 	FTN,cc	NONE	""
 	""
@@ -1459,6 +1470,10 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Do not warn about suspicious declarations of main"
 -Wmissing-braces	;	Cc	f	self
 	"Warn about possibly missing braces around initialisers"
+-Wextra                 ;       Cc      f       self
+        "Enable some extra warning flags that are not enabled by -Wall"
+-Wno-extra              ;       Cc      f       self
+        "Disable extra warning flags that are enabled by -Wextra"
 -Wno-missing-braces	;	Cc	f	self
 	"Do not warn about possibly missing braces around initialisers"
 -Wmissing-declarations	;		Cc	f	self
@@ -1933,6 +1948,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	"File tells Fortran compiler how to transform ids into linker symbols"
 -undef	;		Cc,as,CPP	CPP	self
 	""
+-Wmissing-include-dirs   ;   Cc,as,CPP    CPP    self
+        "Warn if a user-supplied include directory does not exist"
 %%% Code Generation Options
 -fcall-saved-%s	;		Cc	NONE	""
 	""

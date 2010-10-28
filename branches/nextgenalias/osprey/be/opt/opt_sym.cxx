@@ -370,9 +370,7 @@ static void Collect_addr_passed_for_PU(WN *wn)
   // Fix 625656:
   //  Catch the cases not covered by addr_saved in be/com/opt_addr_flags.cxx.
   if (WN_operator(wn) == OPR_PARM && (
-#if defined(TARG_SL)
       WN_Parm_Dereference(wn) ||
-#endif
       WN_Parm_By_Reference(wn) || WN_Parm_Passed_Not_Saved(wn))) 
     Collect_addr_passed(WN_kid0(wn));
   //

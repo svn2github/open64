@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -861,8 +861,8 @@ LOOP_MULTIVER::Annotate_alias_group (LMV_CANDIDATE* cand)
 
 /////////////////////////////////////////////////////////////////////////
 //
-//   As its name suggests, this function is the perform transoformation 
-// for given candidate. 
+//   As its name suggests, this function is to perform transoformation 
+// on given candidate. 
 //
 /////////////////////////////////////////////////////////////////////////
 //
@@ -941,7 +941,29 @@ LOOP_MULTIVER::Perform_loop_multiversioning (void)
 }
 
 
+//====================================================================
+//====================================================================
+//
+//   Implementation of LMV_CFG_ADAPTOR 
+//
+//====================================================================
+//====================================================================
+//
+void
+LMV_CFG_ADAPTOR::Get_all_src_bb (std::list<BB_NODE*>& bb_list) const {
 
+    bb_list.clear ();
+
+    const std::map<IDTYPE, IDTYPE>& map = _old_to_new_blk;
+    for (std::map<IDTYPE, IDTYPE>::const_iterator iter = map.begin (),
+         iter_end = map.end (); iter != iter_end; iter++) {
+        
+        IDTYPE src_id = (*iter).first;
+        Is_True (src_id != 0 && (*iter).second != 0, ("Invalid map entry"));
+
+        bb_list.push_back (_cfg->Get_bb (src_id));
+    }
+}
 
 
 //====================================================================
@@ -1099,6 +1121,8 @@ CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
   Clone_bb (src->Id(), clone->Id(), FALSE); 
   clone->Set_loopdepth (src->Loopdepth());
   clone->Set_rid_id (src->Rid_id());
+  clone->Set_rid(src->Rid());
+  clone->Set_layout_id(src->layout_Id());
   clone->Set_flag (src->Flag());
   // When cloning a 'DO' loop we lower the loop back to a while loop
   // because we cannot manufacture (yet) all the state contained in
@@ -1121,6 +1145,10 @@ CFG::LMV_clone_block (const BB_NODE* src, LMV_CFG_ADAPTOR* adaptor) {
   if (src->Labnam() != 0) {
     clone->Add_label (this);
     adaptor->Map_cloned_label (src->Labnam(), clone->Labnam());
+    BB_NODE* t = const_cast<BB_NODE*>(src);
+    if (t->Label_stmtrep ()) {
+      clone->Add_label_stmtrep (Mem_pool ());
+    }
   }
   return clone;
 }
@@ -1133,6 +1161,8 @@ CFG::LMV_create_alike_block (BB_KIND kind, BB_NODE* model) {
   BB_NODE* new_bb = Create_and_allocate_bb (kind);
   new_bb->Set_loopdepth (model->Loopdepth());
   new_bb->Set_rid_id (model->Rid_id());
+  new_bb->Set_rid(model->Rid());
+  new_bb->Set_layout_id(model->layout_Id());
   new_bb->Set_flag (model->Flag());
 
   // DCE requires non-null PHI-list to transfer dead phi functions
@@ -1202,7 +1232,7 @@ void
 CFG::LMV_clone_loop_body (LMV_CFG_ADAPTOR* adaptor) {
 
   // Clone the body by traversing the prev/next list from header
-  // all way down to the merge block. This traversal style enables us:
+  // all the way down to the merge block. This traversal style enables us:
   //  - to check whether header is the first block in the prev/next list.
   //  - whether there is a "hole" in the loop body in the prev/next list
   //  - ease the work of cloning the prev/next relationship.
@@ -1224,9 +1254,9 @@ CFG::LMV_clone_loop_body (LMV_CFG_ADAPTOR* adaptor) {
     prev_clone_blk = clone_blk;
   } while (src_blk && src_loop_body->MemberP (src_blk));
 
-  // if this assertion should be trigged, check out 
-  // CFG::LMV_eligible_for_multiversioning() to see how come this case 
-  // is not prevent. 
+  // If this assertion should be trigged, check out 
+  // CFG::LMV_eligible_for_multiversioning() to see why this case 
+  // was not prevented earlier.
   //
   Is_True (clone_cnt == src_loop_body->Size(), 
            ("Some blocks in the source loop body are not cloned which suggest "
@@ -1280,12 +1310,15 @@ CFG::LMV_update_internal_labels (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* bb;
   FOR_ALL_ELEM(bb, bbs_iter, Init(src_loop->True_body_set())) {
     STMTREP* br = bb->Branch_stmtrep();
-    if (!br) continue;
+    if (!br || !OPERATOR_has_label (br->Opr())) {
+      // HINT: <br> could be a call.
+      continue;
+    }
+
     INT lab = br->Label_number();
     if (lab == 0) continue;
 
-    INT new_lab = adaptor->Get_cloned_label (lab);
-    if (new_lab) {
+    if (INT new_lab = adaptor->Get_cloned_label (lab)) {
       STMTREP* new_br = adaptor->Get_cloned_bb (bb)->Branch_stmtrep(); 
       new_br->Set_label_number (new_lab); 
     }
@@ -1318,7 +1351,8 @@ CFG::LMV_update_internal_labels (LMV_CFG_ADAPTOR* adaptor) {
 
     BB_NODE* clone_pred = adaptor->Get_cloned_bb (bb);
     STMTREP* br = clone_pred->Branch_stmtrep();
-    if (br || br->Label_number() == src_loop->Merge()->Labnam()) {
+    if (br && OPERATOR_has_label (br->Opr()) && 
+        br->Label_number() == src_loop->Merge()->Labnam()) {
       INT t = adaptor->Cloned_loop_merge()->Labnam();
       Is_True (t != 0, 
           ("Label of new merge block BB:%d of source loop BB:%d is not "
@@ -1330,64 +1364,131 @@ CFG::LMV_update_internal_labels (LMV_CFG_ADAPTOR* adaptor) {
   }
 }
 
+BB_LOOP*
+CFG::LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR* adaptor, BB_LOOP* model) {
+
+    BB_LOOP* clone = CXX_NEW (BB_LOOP (NULL,
+                                 adaptor->Get_cloned_bb (model->Start ()),
+  					             adaptor->Get_cloned_bb (model->End ()),
+  					             adaptor->Get_cloned_bb (model->Body ()),
+  					             adaptor->Get_cloned_bb (model->Step ()),
+  					             adaptor->Get_cloned_bb (model->Merge ())),
+  				               Mem_pool());
+  
+    clone->Set_flag (model->Flags());
+  
+    // set flag "well-formed"
+    //
+    clone->Reset_well_formed ();
+    if (model->Well_formed ()) { clone->Set_well_formed (); }
+
+    // set flag "has-entry-guard"
+    //
+    clone->Reset_has_entry_guard();
+    if (model->Has_entry_guard()) { clone->Set_has_entry_guard(); }
+
+    // set flag "Valid_doloop"
+    clone->Reset_valid_doloop ();
+    if (model->Valid_doloop ()) { clone->Set_valid_doloop (); }
+      
+    clone->Set_test_at_entry (model->Test_at_entry ());
+    clone->Set_test_at_exit (model->Test_at_exit ());
+    clone->Set_exit_early (model->Exit_early ());
+
+    if (model->Promoted_do()) { clone->Set_promoted_do(); }
+
+    clone->Set_header_pred_count (model->Header_pred_count ());
+
+    if (WN* idx = model->Index ()) {
+        clone->Set_index (WN_COPY_Tree_With_Map (idx));
+    }
+
+    clone->Set_orig_wn (model->Orig_wn());
+
+    BB_NODE* prehdr = (prehdr = model->Preheader ()) ? 
+                      adaptor->Get_cloned_bb (prehdr) : NULL; 
+    clone->Set_preheader (prehdr);
+
+    BB_NODE* header = (header = model->Header()) ? 
+                      adaptor->Get_cloned_bb (header) : NULL; 
+    clone->Set_header (header);
+
+    BB_NODE* tail = (tail = model->Tail ()) ? 
+                     adaptor->Get_cloned_bb (tail) : NULL;
+    clone->Set_tail (tail);
+  
+    return clone;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 //
-//  Create BB_LOOP for the cloned loop; update chind/parent/sibling of 
-// related BB_LOOPs; associate some cloned blocks with newly created BB_LOOP.
+//  Create BB_LOOPs for the cloned loop nest and return the BB_LOOP corresponding
+// the outmost src loop.
 // 
 /////////////////////////////////////////////////////////////////////////////
 //
 BB_LOOP*
-CFG::LMV_clone_BB_LOOP (LMV_CFG_ADAPTOR* adaptor) {
+CFG::LMV_clone_BB_LOOPs (LMV_CFG_ADAPTOR* adaptor) {
 
-  BB_LOOP* src_loop = adaptor->Src_loop();
-  WN* idx = src_loop->Index();
-  BB_NODE* start = src_loop->Start ();
-  BB_NODE* end   = src_loop->End ();
-  BB_NODE* body  = src_loop->Body ();
-  BB_NODE* step  = src_loop->Step ();
+  // step 1: clone BB_LOOPs for the cloned loop nest. 
+  //
+  std::list<BB_NODE*> src_blks;
+  adaptor->Get_all_src_bb (src_blks);
 
-  if (start) start = adaptor->Get_cloned_bb (start);
-  if (end)   end   = adaptor->Get_cloned_bb (end);
-  if (body)  body  = adaptor->Get_cloned_bb (body);
-  if (step)  step  = adaptor->Get_cloned_bb (step);
+  typedef std::map<BB_LOOP*, BB_LOOP*> BB_LOOP_MAP;
+  BB_LOOP_MAP bb_loop_map;
 
-  BB_LOOP* dup_loop = CXX_NEW (BB_LOOP(idx, start, end, body, step, 
-                               adaptor->Cloned_loop_merge()), 
-                               Mem_pool());
+  for (std::list<BB_NODE*>::iterator iter = src_blks.begin (), 
+       iter_end = src_blks.end ();
+       iter != iter_end; iter++) {
 
-  BB_NODE_SET* t = CXX_NEW (BB_NODE_SET(Total_bb_count(), this, Mem_pool(),
-                            BBNS_EMPTY), Mem_pool());
-  dup_loop->Set_true_body_set (t);
- 
-  dup_loop->Set_parent (src_loop->Parent());
-  dup_loop->Set_loopstmt (src_loop->Loopstmt());
-  dup_loop->Set_wn_trip_count (src_loop->Wn_trip_count());
-  dup_loop->Set_flag (src_loop->Flags());
-  dup_loop->Set_orig_wn (src_loop->Orig_wn());
-
-  if (src_loop->Promoted_do()) { dup_loop->Set_promoted_do(); }
-  if (src_loop->Well_formed()) { dup_loop->Set_well_formed(); }
-  if (src_loop->Has_entry_guard()) { dup_loop->Set_has_entry_guard(); }
-  if (src_loop->Valid_doloop()) { dup_loop->Set_valid_doloop(); }
-
-  dup_loop->Set_header (adaptor->Cloned_loop_header ());
-  dup_loop->Set_preheader (adaptor->Cloned_loop_preheader ());
-  dup_loop->Set_size_estimate (src_loop->Size_estimate());
-
-  // associate the cloned BB_LOOP with some blocks 
-  BB_NODE_SET_ITER bb_iter;
-  BB_NODE* bb;
-  FOR_ALL_ELEM(bb, bb_iter, Init(src_loop->True_body_set ())) {
-    if (bb->Loop()) {
-      BB_NODE* blk = adaptor->Get_cloned_bb (bb);
-      blk->Set_loop (dup_loop); 
+    BB_NODE* src_blk = *iter;
+    if (BB_LOOP* loop = src_blk->Loop ()) {
+      BB_LOOP* cloned_loop = bb_loop_map[loop];
+      if (!cloned_loop) {
+        bb_loop_map[loop] = cloned_loop = LMV_clone_BB_LOOP (adaptor, loop);
+      }
+      adaptor->Get_cloned_bb (src_blk)->Set_loop (cloned_loop); 
     }
   }
-  if (src_loop->Preheader()->Loop())
-    adaptor->Get_cloned_bb(src_loop->Preheader())->Set_loop(dup_loop);
 
-  return dup_loop;
+  // step 2: Fix cloned BB_LOOPs; clone BB_LOOP hierarchy 
+  //
+  for (BB_LOOP_MAP::iterator iter = bb_loop_map.begin (),
+       iter_end = bb_loop_map.end (); 
+       iter != iter_end; iter++) {
+
+    BB_LOOP* src = (*iter).first;
+    BB_LOOP* dest = (*iter).second;
+
+    // HINT: loop-merge block of outermost look is likely not cloned, 
+    //    they are shared with src outmost loop.
+    //
+    if (!dest->Merge () && src->Merge ()) {
+      dest->Set_merge (src->Merge ());
+    }
+
+    if (BB_LOOP* parent = src->Parent ()) {
+      BB_LOOP_MAP::iterator iter = bb_loop_map.find (parent); 
+      dest->Set_parent (iter != bb_loop_map.end () ? (*iter).second : parent);
+    }
+
+    if (BB_LOOP* child = src->Child ()) {
+      BB_LOOP_MAP::iterator iter = bb_loop_map.find (child); 
+      dest->Set_child (iter != bb_loop_map.end () ? (*iter).second : child);
+    }
+
+    if (BB_LOOP* sibling = src->Next ()) {
+      BB_LOOP_MAP::iterator iter = bb_loop_map.find (sibling); 
+      // if <iter> is null, it means the <src> is the outmost loop we are 
+      // cloning, set the sibling to NULL. The laber CFG::Analyze_loops() will
+      // reestablish the prev/next link.
+      //
+      dest->Set_Next (iter != bb_loop_map.end () ? (*iter).second : NULL);
+    }
+  }
+
+  return bb_loop_map[adaptor->Src_loop()];
 }
 
 void
@@ -1400,6 +1501,8 @@ CFG::LMV_clone_BB_IFINFO (LMV_CFG_ADAPTOR* adaptor) {
     if (bb->Kind() != BB_LOGIF) { continue ; }
 
     BB_IFINFO* ifinfo = bb->Ifinfo();
+    if (!ifinfo) { continue; }
+
     BB_NODE *cond_blk, *then_blk, *else_blk, *merge_blk;
     cond_blk = adaptor->Get_cloned_bb (ifinfo->Cond());
     then_blk = adaptor->Get_cloned_bb (ifinfo->Then());
@@ -1473,6 +1576,7 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
       fb->Move_edge_dest (t->Id(), orig_merge->Id(), new_merge->Id());
     }
   }
+
   new_merge->Set_pred (orig_merge->Pred());
   orig_merge->Set_pred (NULL);
   Connect_predsucc (new_merge, orig_merge);
@@ -1490,7 +1594,8 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
     INT new_lab = new_merge->Labnam();
     FOR_ALL_ELEM (t, pred_iter, Init(new_merge->Pred())) {
       STMTREP* br = t->Branch_stmtrep();
-      if (br && br->Label_number () == lab) {
+      if (br && OPERATOR_has_label (br->Opr()) && 
+          br->Label_number () == lab) {
         br->Set_label_number (new_lab);
       }
     }
@@ -1505,7 +1610,7 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_NODE* orig_phdr = src_loop->Preheader();
   BB_NODE* precond = LMV_create_alike_block(BB_LOGIF,orig_phdr);
   precond->Set_flag(0);
-  adaptor->Set_precond_blk(precond);
+  adaptor->Set_precond_blk (precond);
 
   // splice into pred/next list and permute the precond right before 
   // original preheader.
@@ -1517,7 +1622,6 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
     pred->Replace_succ (orig_phdr, precond); 
     if (OPT_FEEDBACK* fb = Feedback ()) {
       fb->Add_node (precond->Id ());  
-      fprintf(stderr, "*** precond FB node id = %d\n", precond->Id());
       fb->Move_edge_dest (pred->Id(), orig_phdr->Id(), precond->Id());
     }
 
@@ -1550,13 +1654,6 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   BB_LOOP *parent_loop = src_loop->Parent();
   if (parent_loop && parent_loop->Body() == orig_phdr)
     parent_loop->Set_body(precond);
-
-  // Insert a pragma to mark the orig_phdr as the likely target
-  // of the preconditioning branch
-  //WN *pragma = WN_CreatePragma (WN_PRAGMA_MIPS_FREQUENCY_HINT, (ST*)NULL,
-  //   FREQUENCY_HINT_FREQUENT, 0);
-  //Append_wn_in(orig_phdr,pragma);
-  //orig_phdr->Set_haspragma();
 
   // Append the preconditioning branch 
   
@@ -1613,6 +1710,12 @@ CFG::LMV_gen_precondioning_stuff (LMV_CFG_ADAPTOR* adaptor) {
   orig_merge->Set_prev (adaptor->Cloned_loop_merge ());
   adaptor->Cloned_loop_merge ()->Set_next (orig_merge);
    
+  // step 5: update merge block of cloned BB_LOOP
+  // 
+  if (adaptor->Cloned_loop ()) {
+    adaptor->Cloned_loop ()->Set_merge (adaptor->Cloned_loop_merge ());
+  }
+
   if (adaptor->Trace()) {
     fprintf (TFile, "Preconditioning block is BB:%d\n", precond->Id());
     fprintf (TFile, "New merge for source loop is BB:%d\n", new_merge->Id());
@@ -1695,21 +1798,22 @@ CFG::LMV_clone_frequency (LMV_CFG_ADAPTOR* adaptor) {
     fb->Delete_edge (src_id, dst_id);
     fb->Add_edge (src_id, dst_id, 
                   precond->Next () != succ ? 
-                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, 
-                  precond->Next () != succ ? 
-                  0. : freq);
+                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, freq);
 
     succ = precond->Nth_succ(1);
     dst_id = succ->Id();
     fb->Delete_edge (src_id, dst_id);
     fb->Add_edge (src_id, dst_id, 
                   precond->Next () != succ ? 
-                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, 
-                  precond->Next() != succ ?
-                  0. : freq);
+                  FB_EDGE_BRANCH_TAKEN : FB_EDGE_BRANCH_NOT_TAKEN, freq);
   }
 }
 
+// I don't remember all reasons for not reusing CFG::Clone_bbs(). I recall 
+// that CFG::Clone_bbs() is bit awkward as it requires that the source BBs must
+// be linked with next/prev field. This requirement may not be satisfied 
+// in our case.
+//
 void
 CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
 
@@ -1769,7 +1873,7 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
 
   // step 6: Generate a BB_LOOP structure for the cloned loop.
   //
-  BB_LOOP* dup_BB_LOOP = LMV_clone_BB_LOOP (adaptor);
+  BB_LOOP* dup_BB_LOOP = LMV_clone_BB_LOOPs (adaptor);
   adaptor->Set_cloned_loop (dup_BB_LOOP);
 
   // step 7: update BB_IFINFO associated with block of kind BB_LOGIF 
@@ -1782,8 +1886,5 @@ CFG::LMV_clone_loop (LMV_CFG_ADAPTOR* adaptor) {
   // step 9: copy freq feedback
   if (Feedback ()) {
     LMV_clone_frequency (adaptor);
-    fprintf(stderr, "*************** Feedback after LMV\n");
-    Feedback()->Print(stderr);
-    fprintf(stderr, "*************** End of feedback after LMV\n");
   }  
 }

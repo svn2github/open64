@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /* -*- c++ -*-
@@ -194,7 +194,7 @@ private:
     IPA_CONST_TYPE _type;
     BOOL _addr_of;			// see description in SUMMARY_VALUE
     BOOL _convertible_to_global;	// see description in SUMMARY_VALUE
-    TYPE_ID _target_mtype;		// see description in SUMMARY_VALUE
+    TYPE_ID _target_mtype : 8;		// see description in SUMMARY_VALUE
 
 public:
 
@@ -554,7 +554,7 @@ private:
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
-    void Process_icall (SUMMARY_PROCEDURE *, WN *, INT, float);
+    SUMMARY_CALLSITE * Process_icall (SUMMARY_PROCEDURE *, WN *, INT, float);
 #endif
 /*
     this function is added to enable IPA to apply

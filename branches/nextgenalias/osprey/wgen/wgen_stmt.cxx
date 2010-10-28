@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
- * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ * Copyright (C) 2007, 2008, 2009 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -1482,9 +1482,22 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 
       WN *input_rvalue = WGEN_Expand_Expr (gs_tree_value (tail));
 
+      // bugs 14402, 14799: If there is a conversion operator, we need
+      // to preserve the conversion. If the address of the input needs
+      // to be taken, we should perform any conversion before using its
+      // address (bug 14402). For non-address constraints, load of the
+      // temporary will contain the updated type (bug 14799).
+      BOOL needs_temp = gs_tree_code(gs_tree_value(tail)) == GS_NOP_EXPR;
+      // For constant inputs, CG expects to find the constant as a direct
+      // kid of the asm_input. So it should not be copied to a temporary.
+      BOOL const_input = WN_operator(input_rvalue) == OPR_INTCONST ||
+                         (WN_operator(input_rvalue) == OPR_LDA &&
+                          ST_sym_class(WN_st(input_rvalue)) == CLASS_CONST);
+
       if (constraint_by_address(constraint_string)) {
-	WN *addr_of_rvalue = address_of(input_rvalue);
-	if (addr_of_rvalue != NULL) {
+	WN *addr_of_rvalue;
+	if ((!needs_temp || const_input) &&  // bug 14402
+	    (addr_of_rvalue = address_of(input_rvalue)) != NULL) {
 	  // Pass the address of the input rvalue, because the
 	  // constraint says we pass the operand by its address.
 	  input_rvalue = addr_of_rvalue;
@@ -1510,6 +1523,18 @@ Wgen_Expand_Asm_Operands (gs_t  string,
 				 (UINT) 0);
 	}
       }
+      else if (needs_temp && !const_input) { // bug 14799
+	TY_IDX ty_idx = Get_TY(gs_tree_type(gs_tree_value(tail)));
+	ST *temp_st = Gen_Temp_Symbol(ty_idx, "asm.input");
+	WN *stid_wn = WN_Stid(TY_mtype(ty_idx),
+			      0,
+			      temp_st,
+			      ty_idx,
+			      input_rvalue);
+	WGEN_Stmt_Append (stid_wn, Get_Srcpos ());
+	input_rvalue = WN_Ldid(TY_mtype(ty_idx), 0, temp_st, ty_idx);
+      }
+
 
 #ifdef KEY
       // Get the new operand numbers from map.
@@ -2108,13 +2133,16 @@ WGEN_Expand_Goto (gs_t label)	// KEY VERSION
       	if (*li != *ci) break;
       if (ci!=Current_scope_nest.rend())
       {
+	int scope_cleanup_i_save = scope_cleanup_i;
       	i = scope_cleanup_i;
         Is_True(i != -1, ("WGEN_Expand_Goto: scope_cleanup_stack empty"));
         while ((i >= 0) && (scope_cleanup_stack [i].stmt != *ci))
         {
+	   scope_cleanup_i --;
            Maybe_Emit_Cleanup (i, FALSE);
     	   --i;
         }
+        scope_cleanup_i = scope_cleanup_i_save;
         if (i == -1)
         {
 #ifdef FE_GNU_4_2_0
@@ -2246,6 +2274,7 @@ void
 WGEN_Expand_Return (gs_t stmt, gs_t retval)
 {
   WN *wn = NULL;
+  WN *block = NULL;
 
   if (retval == NULL ||
       gs_tree_code(gs_tree_type(gs_tree_type(Current_Function_Decl()))) == GS_VOID_TYPE) {
@@ -2265,8 +2294,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
     int i = scope_cleanup_i;
+    int scope_cleanup_i_save = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
+      scope_cleanup_i--;
       Maybe_Emit_Cleanup (i, FALSE);
 #else
       if (gs_tree_code(scope_cleanup_stack [i].stmt) == GS_CLEANUP_STMT)
@@ -2275,6 +2306,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
+    scope_cleanup_i = scope_cleanup_i_save;
     if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
@@ -2371,8 +2403,10 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
 #endif
 
     int i = scope_cleanup_i;
+    int scope_cleanup_i_save = scope_cleanup_i;
     while (i != -1) {
 #ifdef KEY
+      scope_cleanup_i--;
       Maybe_Emit_Cleanup (i, FALSE);
 #else
       if (gs_tree_code(scope_cleanup_stack [i].stmt) == GS_CLEANUP_STMT)
@@ -2381,6 +2415,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       --i;
     }
 #ifdef KEY
+    scope_cleanup_i = scope_cleanup_i_save;
     if (emit_exceptions && processing_handler) {
 	HANDLER_INFO hi = handler_stack.top();
 	FmtAssert (hi.scope, ("NULL scope"));
@@ -2433,19 +2468,23 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       }
     }
 
-#ifdef KEY
-    // bug 11660
+    // bug 11660: remove any COMMA if it is unnecessary
+    // Reworked fix extracted from PSC 3.3 beta.
+    // bug 14345: removing the COMMA may cause a C++ call to reside
+    // inside an exception region, and the LDID of its return value
+    // outside. Fix this by grouping all statements from now until
+    // the end inside BLOCK, and appending the BLOCK at the end.
     if (WN_operator(rhs_wn) == OPR_COMMA) {
       WN * comma_block = WN_kid0(rhs_wn);
       if (WN_first(comma_block) &&
           comma_is_not_needed(comma_block, WN_kid1(rhs_wn))) {
         WN * last = WN_last (comma_block);
         WN_EXTRACT_FromBlock (comma_block, last);
-        WGEN_Stmt_Append (comma_block, Get_Srcpos());
+        block = WN_CreateBlock();
+        WN_INSERT_BlockLast (block, comma_block);
         rhs_wn = WN_kid0 (last);
       }
     }
-#endif
 
     if ((!WGEN_Keep_Zero_Length_Structs    &&
          TY_mtype (ret_ty_idx) == MTYPE_M &&
@@ -2468,7 +2507,7 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       // Copy the return value into the return area.  Based on code in
       // lower_return_val().
 
-      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M,
+      FmtAssert (TY_mtype (ret_ty_idx) == MTYPE_M, 
 		 ("WGEN_Expand_Return: return_in_mem type is not MTYPE_M"));
 
       WN *first_formal = WN_formal(Current_Entry_WN(), 0);
@@ -2500,7 +2539,11 @@ WGEN_Expand_Return (gs_t stmt, gs_t retval)
       wn = WN_CreateReturn_Val(OPR_RETURN_VAL, WN_rtype(rhs_wn), MTYPE_V, rhs_wn);
     }
   }
-  if (wn) {
+  if (block) {
+    if (wn)
+      WN_INSERT_BlockLast(block, wn);
+    WGEN_Stmt_Append(block, Get_Srcpos());
+  } else if (wn) {
     WGEN_Stmt_Append(wn, Get_Srcpos());
   }
 } /* WGEN_Expand_Return */

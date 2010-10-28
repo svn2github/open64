@@ -190,8 +190,10 @@ static char *erbe_rcs_id = "$Source: /home/bos/bk/kpro64-pending/be/com/SCCS/s.e
 #define EC_Ptr_Assumed_Global	 EC_BASE_BE+152
 #define EC_Load_Past_Struct	 EC_BASE_BE+153
 #define EC_Shared_Atomic64_Opnd  EC_BASE_BE+154
-#define EC_Memset_Too_Large EC_BASE_BE+155 /* int */
+#define EC_Memset_Too_Large      EC_BASE_BE+155 /* int */
 #endif /* TARG_NVISA */
+
+#define EC_Invalid_Asm_Constrain EC_BASE_BE+156 /* str */
 
 #ifdef __cplusplus
 }
