@@ -165,7 +165,7 @@ private:
                      EdgeDelta &delta, list<IPA_NODE *>&revTopOrder,
                      UINT32 round);
 
-  void updateCallGraph(IPA_CALL_GRAPH *ipaCG,
+  bool updateCallGraph(IPA_CALL_GRAPH *ipaCG,
                        list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                        list<IPAEdge> &edgeList);
 

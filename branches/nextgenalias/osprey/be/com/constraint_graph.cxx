@@ -2840,7 +2840,8 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (!si->checkFlags(CG_ST_FLAGS_PREG)) {
     if (offset != -1 && (si->numOffsets() >= si->maxOffsets())) {
       if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
-        fprintf(stderr, "getCGNode: too many offsets..collapsing %ld!\n", cg_st_idx);
+        fprintf(stderr, "getCGNode: too many offsets..collapsing %llu!\n",
+                cg_st_idx);
         //si->print(stderr,true);
       }
       si->collapse();
@@ -4148,7 +4149,7 @@ ConstraintGraph::print_section_map(FILE* f, sec_blk_elements* blk_elems)
 {
   sec_blk_elements::iterator it1;
   for ( it1=blk_elems->begin() ; it1 != blk_elems->end(); it1++ ) {
-    fprintf(f, "%d, %d\n", it1->st_idx, it1->ofst_in_blk);
+    fprintf(f, "%d, %lld\n", it1->st_idx, it1->ofst_in_blk);
   }
 }
 

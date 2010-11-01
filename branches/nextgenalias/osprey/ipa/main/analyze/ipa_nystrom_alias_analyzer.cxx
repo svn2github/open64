@@ -1221,7 +1221,7 @@ IPA_NystromAliasAnalyzer::validTargetOfVirtualCall(CallSite *cs, ST_IDX stIdx)
   }
 }
 
-void
+bool
 IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
                       list<pair<IPA_NODE *,CallSiteId> > &indCallList,
                       list<IPAEdge> &edgeList)
@@ -1229,6 +1229,7 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
   if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
     fprintf(stderr,"#### start update call graph ####\n");
   }
+  INT numNewTargets = 0;
   // Walk each indirect call site and determine if there exists
   // an edge in the call graph for each CGNode in the points-to
   // set of the indirect call.
@@ -1305,7 +1306,8 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
           if (isNew && cs->checkFlags(CS_FLAGS_VIRTUAL)) {
             if (!validTargetOfVirtualCall(cs,stIdx)) {
               if (Get_Trace(TP_ALIAS,NYSTROM_SOLVER_FLAG))
-                fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d (not valid target)\n",
+                fprintf(stderr,"  CGNode: %d, ST: %s, IPA_NODE: %d "
+                        "(not valid target)\n",
                         nodeId,ST_name(st),callee->Node_Index());
               continue;
             }
@@ -1323,6 +1325,12 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
           if (isNew) {
             _indirectEdgeSet.insert(newEdge);
             edgeList.push_front(newEdge);
+            numNewTargets++;
+            if (numNewTargets > 50000) {
+              fprintf(stderr, "updateCallGraph: too many calls.."
+                      "IPA assumed to be incomplete\n");
+              return false;
+            }
           }
         }
       }
@@ -1331,6 +1339,8 @@ IPA_NystromAliasAnalyzer::updateCallGraph(IPA_CALL_GRAPH *ipaCallGraph,
   if(Get_Trace(TP_ALIAS, NYSTROM_LW_SOLVER_FLAG)) {
     fprintf(stderr,"#### end update call graph ####\n");
   }
+
+  return true;
 }
 
 bool
@@ -1400,7 +1410,8 @@ IPA_NystromAliasAnalyzer::findIncompleteIndirectCalls(
             fprintf(stderr,"  Now calls %s\n",ST_name(st));
           numNewTargets++;
           if (numNewTargets > 75000) {
-            fprintf(stderr, "Too many calls..IPA assumed to be incomplete\n");
+            fprintf(stderr, "findIncompleteIndirectCalls: too many calls.."
+                    "IPA assumed to be incomplete\n");
             return false;
           }
         }
@@ -1467,6 +1478,7 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   // Provide the constraint graph with a handle on the worklist
   // to ensure proper update during edge deletion
   ConstraintGraph::workList(&delta);
+  bool completeIndirect = true;
   do {
     change = false;
     round++;
@@ -1508,7 +1520,11 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
 
       // Determine if there have been any changes to call sites
       // and update the call graph
-      updateCallGraph(IPA_Call_Graph,indirectCallList,edgeList);
+      completeIndirect = 
+        updateCallGraph(ipaCallGraph,indirectCallList,edgeList);
+
+      if (!completeIndirect)
+        break;
 
     } while (1);
 
@@ -1545,38 +1561,43 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
     // Determine if there have been any changes to call sites
     // and update the call graph
     FmtAssert(delta.empty(),("Expect delta empty after solve"));
-    updateCallGraph(ipaCallGraph,indirectCallList,edgeList);
+    if (completeIndirect)
+      completeIndirect = 
+        updateCallGraph(ipaCallGraph,indirectCallList,edgeList);
+
+    if (!completeIndirect)
+      break;
 
   } while (change);
 
-  bool completeIndirect = false;
-  { //Limit scope of escape analysis
+  if (completeIndirect)
+  { 
+    // We perform escape analysis to determine which symbols may point
+    // to memory that is not visible within our scope.
+    IPA_EscapeAnalysis escAnal(_extCallSet,
+                               _ipaConstraintGraphs,
+                               IPA_Enable_Whole_Program_Mode,
+                               EscapeAnalysis::IPAIncomplete,
+                               &_memPool);
+    escAnal.perform();
 
-  // We perform escape analysis to determine which symbols may point
-  // to memory that is not visible within our scope.
-  IPA_EscapeAnalysis escAnal(_extCallSet,
-                             _ipaConstraintGraphs,
-                             IPA_Enable_Whole_Program_Mode,
-                             EscapeAnalysis::IPAIncomplete,
-                             &_memPool);
-  escAnal.perform();
+    if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
+      void *sbrk2 = sbrk(0);
+      fprintf(stderr,"High water: %d after core solver\n",
+              (char *)sbrk2 - (char *)sbrk1);
+      fprintf(TFile,("Memory usage after core solver, before fixup.\n"));
+      MEM_Trace();
+    }
 
-  if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
-    void *sbrk2 = sbrk(0);
-    fprintf(stderr,"High water: %d after core solver\n",
-            (char *)sbrk2 - (char *)sbrk1);
-    fprintf(TFile,("Memory usage after core solver, before fixup.\n"));
-    MEM_Trace();
+    // If at this point we still have incomplete indirect calls, then
+    // we must attach them to possible callee's and perform a final
+    // round of solution.  Initially, this may attempt to connect an
+    // indirect call with all possible callees.
+    completeIndirect = 
+      findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,
+                                  edgeList,escAnal);
   }
-
-  // If at this point we still have incomplete indirect calls, then
-  // we must attach them to possible callee's and perform a final
-  // round of solution.  Initially, this may attempt to connect an
-  // indirect call with all possible callees.
-  completeIndirect = 
-    findIncompleteIndirectCalls(ipaCallGraph,indirectCallList,edgeList,escAnal);
-  } // Limit scope of escape analysis
-  if (!edgeList.empty())  {
+  if (completeIndirect && !edgeList.empty())  {
     callGraphPrep(ipaCallGraph,edgeList,delta,revTopOrder,round);
     if (!delta.empty()) {
       ConstraintGraphSolve cgsolver(delta,NULL,&_memPool);
