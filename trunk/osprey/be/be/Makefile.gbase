@@ -493,6 +493,7 @@ BE_COM_CXX_SRCS = \
   output_func_start_profiler.cxx        \
   wn_cyg_instrument.cxx \
   wn_instrument.cxx \
+  wn_cfg.cxx            \
   tls.cxx               \
   be_memop_annot.cxx
 
