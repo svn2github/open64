@@ -813,7 +813,7 @@ inline void       WN_set_operator (WN* wn, OPERATOR opr) { wn->common.wn_operato
 inline void       WN_change_operator (WN* wn, OPERATOR opr) {
   Is_True((WN_map_id(wn) == -1 ||
         OPERATOR_mapcat(WN_operator(wn)) == OPERATOR_mapcat(opr)),
-      ("WN's new operator belongs to a different mapcat in Create_identity_assignment"));
+      ("WN's new operator belongs to a different mapcat in WN_change_operator"));
   WN_set_operator(wn, opr);
 }
 inline TYPE_ID    WN_rtype (const WN* wn) { return wn->common.rtype; }
