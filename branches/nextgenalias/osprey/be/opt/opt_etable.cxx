@@ -484,7 +484,7 @@ CODEREP::Rvi_home_wn( OPT_STAB *opt_stab ) const
 			      Field_id());
 			      
       if (opt_stab->Bit_size (Aux_id()) > 0) {
-	WN_set_operator (home_wn, OPR_LDBITS);
+	WN_change_operator (home_wn, OPR_LDBITS);
 	WN_set_bit_offset_size (home_wn, Bit_offset (), Bit_size ());
       }
     }
