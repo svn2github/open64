@@ -10,6 +10,7 @@
 #include <list>
 #include <vector>
 #include <bitset>
+#include <algorithm>
 using namespace std;
 
 namespace CFG_UTIL {
