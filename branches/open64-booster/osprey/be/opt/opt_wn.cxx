@@ -1500,10 +1500,10 @@ Create_identity_assignment(AUX_STAB_ENTRY *sym, AUX_ID aux_id, TY_IDX ty)
 
   if (sym->Bit_size () > 0) {
     if (sym->Field_id() == 0) { 
-      WN_set_operator (rhs, OPR_LDBITS);
+      WN_change_operator (rhs, OPR_LDBITS);
       WN_set_bit_offset_size (rhs, sym->Bit_ofst (), sym->Bit_size ());
   
-      WN_set_operator (copy, OPR_STBITS);
+      WN_change_operator (copy, OPR_STBITS);
       WN_set_bit_offset_size (copy, sym->Bit_ofst (), sym->Bit_size ());
     }
     else { // if field id != 0, then it is MTYPE_BS, not LD_BITS

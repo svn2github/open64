@@ -2806,7 +2806,8 @@ DCE::Mark_branch_related_live( STMTREP *stmt ) const
 	  // back out during PRE
 	  // NOTE: this also picks up the Trip_count_stmt().
 	  BB_NODE *dohead = loop->Start();
-	  if ( dohead && dohead->Kind() == BB_DOHEAD ) {
+	  if ( (dohead && loop->Is_flag_set(LOOP_DO) && dohead->Kind() == BB_DOHEAD) ||
+           (dohead && loop->Is_flag_set(LOOP_PRE_DO) && dohead->Kind() == BB_DOSTART) ) {
 	    STMTREP_ITER stmt_iter(dohead->Stmtlist());
 	    STMTREP *dohead_stmt;
 	    FOR_ALL_NODE( dohead_stmt, stmt_iter, Init() ) {
@@ -3775,7 +3776,11 @@ DCE::Check_required_whileend( BB_NODE *bb ) const
     // having a live branch is all that's necessary for a valid loop,
     // but make sure we keep around interesting blocks
     if ( _cfg->Lower_fully() ) {
-      Keep_unreached_bb(bb->Loopstart());
+      if (bb->Loopstart())
+        Keep_unreached_bb(bb->Loopstart());
+      else { 
+        Is_True(bb->Loop()->Is_flag_set(LOOP_PRE_WHILE),("wrong non bottom test loop lowering!\n"));
+      }
       Keep_unreached_bb(bb->Loopbody());
       Keep_unreached_bb(bb->Loopmerge());
 

@@ -4440,8 +4440,9 @@ vho_lower_vector_div ( WN * wn, WN * block )
   WN *arg0[8], *arg1[8];
   split_vector_load ( WN_kid0(wn), block, arg0, orig_type );
   split_vector_load ( WN_kid1(wn), block, arg1, orig_type );
+  TYPE_ID comparison_type = Mtype_comparison(elem_type);
   for ( int i = 0; i < count; i ++ ) {
-    WN* div = WN_Div ( elem_type, arg0[i], arg1[i] );
+    WN* div = WN_Div ( comparison_type, arg0[i], arg1[i] );
     WN* stid = WN_Stid( elem_type, i * MTYPE_byte_size(elem_type),
                         result_st,  MTYPE_To_TY(elem_type), div, 0 );
     WN_INSERT_BlockLast ( block, stid );

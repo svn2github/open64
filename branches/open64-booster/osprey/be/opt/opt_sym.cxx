@@ -1727,7 +1727,10 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
                   OPERATOR_name(opr)));
 	rtype = WN_rtype(twn);
 	desc = WN_desc(twn);
-        WN_set_operator(wn, opr);
+	// reset map_id since OPR_INTCONST is in different mapcat group than OPR_LDID/OPR_LDBITS.
+	if (opr == OPR_INTCONST) 
+	  WN_set_map_id(wn, -1);
+	WN_change_operator(wn, opr);
 	WN_set_rtype(wn, rtype);
 	WN_set_desc(wn, desc);
         if (opr == OPR_INTCONST)
@@ -1760,7 +1763,7 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
 	opr = WN_operator(twn);
 	rtype = WN_rtype(twn);
 	desc = WN_desc(twn);
-        WN_set_operator(wn, opr);
+        WN_change_operator(wn, opr);
 	WN_set_rtype(wn, rtype);
 	WN_set_desc(wn, desc);
         WN_load_offset(wn) = WN_load_offset(twn);
@@ -1791,7 +1794,7 @@ OPT_STAB::Convert_ST_to_AUX(WN *wn, WN *block_wn)
     if (opr == OPR_TRUEBR && WN_const_val(test) != 0 ||
 	opr == OPR_FALSEBR && WN_const_val(test) == 0) {
       WN_Delete(test);
-      WN_set_operator(wn, OPR_GOTO);
+      WN_change_operator(wn, OPR_GOTO);
       WN_set_rtype(wn, MTYPE_V);
       WN_set_desc(wn, MTYPE_V);
       WN_set_kid_count(wn, 0);

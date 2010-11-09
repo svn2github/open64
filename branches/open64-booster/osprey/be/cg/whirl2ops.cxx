@@ -6649,9 +6649,9 @@ Handle_ASM (const WN* asm_wn)
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
 #if defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn);
 #else
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn, 
 				       default_type);
 #endif
 
@@ -6714,9 +6714,9 @@ Handle_ASM (const WN* asm_wn)
     ISA_REGISTER_SUBCLASS subclass = ISA_REGISTER_SUBCLASS_UNDEFINED;
 
 #if defined(TARG_IA64) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass);
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn);
 #else
-    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, 
+    TN* tn = CGTARG_TN_For_Asm_Operand(constraint, load, pref_tn, &subclass, asm_wn,
 				       MTYPE_I4);
 #endif
 

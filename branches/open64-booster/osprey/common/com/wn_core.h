@@ -668,6 +668,7 @@ public:
 
   friend inline OPERATOR    WN_operator (const WN *);
   friend inline void        WN_set_operator (WN *, OPERATOR);
+  friend inline void        WN_change_operator (WN *, OPERATOR);
   friend inline TYPE_ID     WN_rtype (const WN *);
   friend inline void        WN_set_rtype (WN *, TYPE_ID);
   friend inline INT         WN_kid_count (const WN *);
@@ -809,6 +810,12 @@ inline WN_ESIZE& WN_element_size (WN* wn) { return wn->u1u2.element_size; }
 
 inline OPERATOR   WN_operator (const WN* wn) { return wn->common.wn_operator; }
 inline void       WN_set_operator (WN* wn, OPERATOR opr) { wn->common.wn_operator = opr; }
+inline void       WN_change_operator (WN* wn, OPERATOR opr) {
+  Is_True((WN_map_id(wn) == -1 ||
+        OPERATOR_mapcat(WN_operator(wn)) == OPERATOR_mapcat(opr)),
+      ("WN's new operator belongs to a different mapcat in WN_change_operator"));
+  WN_set_operator(wn, opr);
+}
 inline TYPE_ID    WN_rtype (const WN* wn) { return wn->common.rtype; }
 inline void       WN_set_rtype (WN* wn, TYPE_ID ty) { wn->common.rtype = ty; }
 inline INT        WN_kid_count (const WN* wn) { return OPERATOR_nkids(WN_operator(wn)) == -1 ? wn->common.kid_count : OPERATOR_nkids(WN_operator(wn)); }

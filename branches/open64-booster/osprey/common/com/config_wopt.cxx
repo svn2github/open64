@@ -377,6 +377,9 @@ BOOL WOPT_Enable_Estr_Early_Exit = FALSE; // strength reduce early exit loops
 BOOL WOPT_Enable_Aggressive_Iload_CSE = TRUE; // ignore potential iload vsym aliasing
 #endif
 
+BOOL WOPT_Bottom_Test_Loop_Check=FALSE;
+INT32 WOPT_Bottom_Test_Loop_Cond_Limit=3;
+INT32 WOPT_Bottom_Test_Loop_Body_Limit=5;
 /* ====================================================================
  *
  * Descriptor for the -WOPT option group.
@@ -854,5 +857,11 @@ static OPTION_DESC Options_WOPT[] = {
   { OVK_BOOL,   OV_VISIBLE,     TRUE, "aggr_iload_cse",        "",
     0, 0, 0,    &WOPT_Enable_Aggressive_Iload_CSE, NULL },
 #endif
+  { OVK_BOOL,   OV_INTERNAL,    TRUE, "bottom_test_loop_check",    "",
+      0, 0, 0,  &WOPT_Bottom_Test_Loop_Check, NULL},
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "bottom_test_loop_cond",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Bottom_Test_Loop_Cond_Limit, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "bottom_test_loop_body",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Bottom_Test_Loop_Body_Limit, NULL },
   { OVK_COUNT }		/* List terminator -- must be last */
 };

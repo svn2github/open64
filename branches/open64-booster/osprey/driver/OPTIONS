@@ -357,6 +357,8 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 
 % Basic option groups:
 % See opt_actions.c::Process_Ofast if you change the -OPT: item.
+-OPTIONS    ;       ALL be  "-OPTIONS"
+    "print out all be option usage"
 -OPT:%s		Process_Opt_Group(optargs); 	ALL	CMP,ipap "-OPT:%s"
 	"option group to control optimization"
 -OPT:unroll_level=n ;		ALL	be	""
@@ -405,7 +407,8 @@ I-cpp_pic	;		ALL	NONE	"-D_PIC -D__DSO__"
 	"equivalent to -HP:"
 -HUGEPAGE	Process_Hugepage_Default();		ALL	be	""
 	"equivalent to -HP"
-
+-DRIVER:%s ;    ALL be "-DRIVER:%s"
+    "options for internal use in driver"
 #ifndef KEY
 -MP:%s		Process_Mp_Group(optargs);		ALL	NONE	""
 	""

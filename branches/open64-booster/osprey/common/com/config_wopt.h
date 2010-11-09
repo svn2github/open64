@@ -358,5 +358,9 @@ extern BOOL WOPT_Enable_Aggressive_Iload_CSE; // ignore potential iload vsym ali
 
 extern BOOL WOPT_Enable_STR_Short;  // whether to assume 16bit IV can cross 16
 
+extern BOOL WOPT_Bottom_Test_Loop_Check;
+extern INT32 WOPT_Bottom_Test_Loop_Cond_Limit;
+extern INT32 WOPT_Bottom_Test_Loop_Body_Limit;
+
 #endif /* config_wopt_INCLUDED */
 
