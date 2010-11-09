@@ -1,3 +1,7 @@
+/* 
+ * Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+ */
+
 /*
  * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
@@ -159,6 +163,7 @@
 #include "isr.h"
 #endif
 #include "wn_mp.h"    // for Verify_No_MP()
+#include "comp_decl.h"
 
 extern ERROR_DESC EDESC_BE[], EDESC_CG[];
 
@@ -2246,7 +2251,10 @@ main (INT argc, char **argv)
   Set_Error_Phase ( "Back End Driver" );
 
   Preconfigure ();
+  // setup options from the command line to O64_Driver
+  O64_Driver::GetInstance()->SetupOptions(argc, argv);
   Process_Command_Line (argc, argv);
+
   if (Inhibit_EH_opt && Opt_Level > 1) Opt_Level = 1;
   Reset_Timers ();
   Start_Timer(T_BE_Comp);

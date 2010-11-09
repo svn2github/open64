@@ -1,5 +1,7 @@
 /*
 
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -162,6 +164,11 @@
  *	     OVK_UNIMPLEMENTED	Option is unimplemented.
  *	     OVK_REPLACED	Option is obsolete, replaced by another,
  *				named by its ODESC_variable field.
+ *       OVK_ENUM       Options takes string value, which should be 
+ *              one of the names defined for a enum, defaulting to
+ *              the specified default value. It also has a default
+ *              set value, which is used when a "" string is passed
+ *              to the option.
  *	     OVK_COUNT		Dummy value used to mark end of option
  *				descriptor array.
  *	    TODO: 64-bit option values not yet implemented.
@@ -317,7 +324,8 @@ typedef enum {
 		 */
   OVK_REPLACED,	/* Option is obsolete, replaced by another */
   OVK_UNIMPLEMENTED,	/* Option is unimplemented */
-
+  OVK_ENUM,
+  
   OVK_COUNT=63	/* end of list marker */
 } OPTION_KIND;
 
@@ -432,6 +440,47 @@ extern OPTION_GROUP *Get_Command_Line_Group (
 extern void Trace_Command_Line_Group(FILE *, OPTION_GROUP *);
 
 extern void Save_or_restore_options(char *, INT32, BOOL);
+
+typedef enum 
+{       
+    OPT_invalid = -1,                                      
+    OPT_common_first = 0,
+    OPT_enable       = OPT_common_first,
+    OPT_disable,
+    OPT_dump_before,
+    OPT_dump_after,
+    OPT_trace,
+    OPT_stats,
+    OPT_common_last,
+    OPT_component_first = OPT_common_last
+
+} O64_COMMON_OPTION;
+
+typedef enum
+{
+    TRACE_none = 0,
+    TRACE_info,
+    TRACE_minimal,
+    TRACE_medium,
+    TRACE_maximal
+} TRACE_OPTION_KIND;
+
+typedef enum
+{
+    DUMP_none =0,
+    DUMP_ir,
+    DUMP_cfg,
+    DUMP_maximal
+} DUMP_KIND;
+
+typedef enum
+{
+    COMPONENT_invalid = -1,
+    COMPONENT_first   =  0,
+    COMPONENT_driver  = COMPONENT_first,
+    COMPONENT_last
+
+} O64_COMPONENT;
 
 #ifdef __cplusplus
 }

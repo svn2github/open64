@@ -946,6 +946,27 @@ extern void List_Compile_Options (
 #define Is_Target_ISA_I1Plus()	(0)
 #endif
 
+#ifndef STRTOK
+#define STRTOK(a,b)     strtok(a,b)
+#endif
+#ifndef STRDUP
+#define STRDUP(a)       strdup(a)
+#endif
+#ifndef STRCMP
+#define STRCMP(a,b)     strcmp(a,b)
+#endif
+#ifndef STRCASECMP
+#define STRCASECMP(a,b) strcasecmp(a,b)
+#endif
+#ifndef STRLEN
+#define STRLEN(a)       strlen(a)
+#endif
+#ifndef STRTOL
+#define STRTOL(a,b,c)   strtol(a,b,c)
+#endif
+#ifndef STRCHR
+#define STRCHR(a,b)     strchr(a,b)
+#endif
 #ifdef __cplusplus
 }
 #endif
