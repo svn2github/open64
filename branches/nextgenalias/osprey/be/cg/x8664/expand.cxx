@@ -2267,10 +2267,21 @@ void Expand_Logical_Or (TN *dest, TN *src1, TN *src2, VARIANT variant, OPS *ops)
 
 void Expand_Binary_Complement (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 {
-  if( OP_NEED_PAIR(mtype) )
-    Expand_Split_UOP( OPR_BNOT, mtype, dest, src, ops );
-  else
-    Build_OP( MTYPE_is_size_double(mtype) ? TOP_not64 : TOP_not32, dest, src, ops );
+  if (MTYPE_is_vector(mtype)) {
+    TCON then = Host_To_Targ(Mtype_vector_elemtype(mtype), -1);
+    TCON now = Create_Simd_Const(mtype, then);
+    ST *sym = New_Const_Sym(Enter_tcon(now), Be_Type_Tbl(TCON_ty(now)));
+    Allocate_Object(sym);
+    TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+    TN *result_tn = Build_TN_Of_Mtype(mtype);
+    Exp_Load(mtype, mtype, result_tn, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+    Build_OP(TOP_xorps, dest, src, result_tn, ops);
+  } else {
+    if( OP_NEED_PAIR(mtype) )
+      Expand_Split_UOP( OPR_BNOT, mtype, dest, src, ops );
+    else
+      Build_OP( MTYPE_is_size_double(mtype) ? TOP_not64 : TOP_not32, dest, src, ops );
+  }
 }
 
 void Expand_Binary_And (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)

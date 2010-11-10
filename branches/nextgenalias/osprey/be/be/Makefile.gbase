@@ -314,6 +314,7 @@ COMMON_COM_CXX_SRCS = \
   opcode_core.cxx	\
   wutil.cxx		\
   DaVinci.cxx           \
+  comp_decl.cxx
 
 COMMON_COM_PCH_CXX_SRCS = \
   const.cxx		\
@@ -493,8 +494,10 @@ BE_COM_CXX_SRCS = \
   output_func_start_profiler.cxx        \
   wn_cyg_instrument.cxx \
   wn_instrument.cxx \
+  wn_cfg.cxx            \
   tls.cxx               \
-  be_memop_annot.cxx
+  be_memop_annot.cxx    \
+  comp_driver.cxx
 
 ifneq ($(BUILD_SKIP_LNO), TRUE)
 BE_COM_CXX_SRCS += \
@@ -557,7 +560,6 @@ BE_COM_TARG_CXX_SRCS = \
 BE_COM_CXX_SRCS +=	\
   clone.cxx		\
   clone_DST_utils.cxx	\
-
 
 BE_LNO_CXX_SRCS = \
   soe.cxx \
