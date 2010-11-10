@@ -1606,7 +1606,8 @@ IPA_NystromAliasAnalyzer::solver(IPA_CALL_GRAPH *ipaCallGraph)
   }
 
   // Print solver statistics for all iterations
-  ConstraintGraphSolve::printStats();
+  if (Get_Trace(TP_ALIAS,NYSTROM_LW_SOLVER_FLAG))
+    ConstraintGraphSolve::printStats();
 
   if (Get_Trace(TP_ALIAS,NYSTROM_MEMORY_TRACE_FLAG)) {
     void *sbrk2 = sbrk(0);

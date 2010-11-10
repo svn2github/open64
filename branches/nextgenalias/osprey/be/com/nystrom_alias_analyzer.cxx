@@ -515,8 +515,8 @@ NystromAliasAnalyzer::createAliasTags(WN *entryWN)
       //           ("Alias tag %d (from cgnode %d) has empty alias set",
       //               aliasTag,cgNode->id()));
       if (aliasTagInfo->pointsTo().isEmpty()) {
-        fprintf(stderr, "Alias tag %d (from cgnode %d) has empty alias set\n",
-                aliasTag,cgNode->id());
+        // fprintf(stderr, "Alias tag %d (from cgnode %d) has empty alias set\n",
+        //         aliasTag,cgNode->id());
         aliasTagInfo->pointsTo().setBit(ConstraintGraph::notAPointer()->id());
       }
       

@@ -774,7 +774,8 @@ EscapeAnalysis::perform(void)
 
   time_t endTime = time(NULL);
 
-  fprintf(stderr,"EscapeAnalysis required %lds\n", endTime-startTime);
+  if (Get_Trace(TP_ALIAS,NYSTROM_LW_SOLVER_FLAG))
+    fprintf(stderr,"EscapeAnalysis required %lds\n", endTime-startTime);
 }
 
 void

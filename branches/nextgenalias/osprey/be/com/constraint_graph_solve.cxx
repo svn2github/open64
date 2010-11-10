@@ -767,7 +767,7 @@ ConstraintGraphSolve::solveConstraints(UINT32 noMergeMask)
 
   UINT32 endTime = CLOCK_IN_MS();
 
-  //if (trace)
+  if (lw_trace)
     fprintf(stderr,"Solver required %d iter, "
             "processed %d c, %d s, %d l, %d s edges in %.1lfs\n",
             iterCount,copyCount,skewCount,loadCount,storeCount,
