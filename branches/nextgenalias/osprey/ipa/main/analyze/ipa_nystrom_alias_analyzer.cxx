@@ -2231,7 +2231,7 @@ ConstraintGraph::promoteLocals(IPA_NODE *callee) {
     ST_IDX globl_st_idx = iter->second;
 
     // assert orig must be local static.
-    fprintf(stderr, "orig_st_idx: %d globl_st_idx: %d\n",   orig_st_idx, globl_st_idx);
+    // fprintf(stderr, "orig_st_idx: %d globl_st_idx: %d\n",   orig_st_idx, globl_st_idx);
 
         // Clone the StInfo and all its CGNodes
     CG_ST_IDX orig_cg_st_idx = 
