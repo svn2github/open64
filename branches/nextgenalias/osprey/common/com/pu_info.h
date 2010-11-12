@@ -89,9 +89,10 @@
 #define WT_FREQ		0x6		/* obsolete */
 #define WT_AC_INTERNAL	0x7		/* alias classification temporary */
 #define WT_ALIAS_CLASS	0x8		/* alias classification */
-#define WT_ALIAS_CGNODE	0x9		/* constraint graph node */
+#define WT_SSA          0x9		/* WHIRL SSA info */
+#define WT_ALIAS_CGNODE	0xa		/* constraint graph node */
 
-#define WT_SUBSECTIONS	(10) 		/* number of subsection types */
+#define WT_SUBSECTIONS	0xb		/* number of subsection types */
 #define WT_PROC_SYM	-1		/* special value for proc sym state */
 
 /*
@@ -228,6 +229,9 @@ typedef enum subsect_state {
      (INT32 *) PU_Info_subsect_ptr((pu), WT_ALIAS_CGNODE)
 #define PU_Info_ac_internal_ptr(pu) \
      (void *) PU_Info_subsect_ptr((pu), WT_AC_INTERNAL)
+//get WHIRL ssa info to pu_info
+#define PU_Info_ssa_ptr(pu) \
+     (WSSA::WHIRL_SSA_MANAGER *) PU_Info_subsect_ptr((pu), WT_SSA)
 
 #define Set_PU_Info_tree_ptr(pu,x) \
     PU_Info_subsect_ptr((pu), WT_TREE) = (void *)(x)
@@ -247,6 +251,9 @@ typedef enum subsect_state {
     PU_Info_subsect_ptr((pu), WT_ALIAS_CGNODE) = (void *) (x)
 #define Set_PU_Info_ac_internal_ptr(pu,x) \
      PU_Info_subsect_ptr((pu), WT_AC_INTERNAL) = (void *) (x)
+//set WHIRL ssa info to pu_info
+#define Set_PU_Info_ssa_ptr(pu,x) \
+    PU_Info_subsect_ptr((pu), WT_SSA) = (WSSA::WHIRL_SSA_MANAGER *) (x)
 
 #define Set_PU_Info_pu_dst(pu, x) \
 	PU_Info_pu_dst(pu) = x;

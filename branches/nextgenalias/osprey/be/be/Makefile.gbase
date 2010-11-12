@@ -497,6 +497,13 @@ BE_COM_CXX_SRCS = \
   wn_cfg.cxx            \
   tls.cxx               \
   be_memop_annot.cxx    \
+  wssa_utils.cxx        \
+  wssa_defs.cxx         \
+  wssa_sym.cxx          \
+  wssa_mgr.cxx          \
+  wssa_du.cxx           \
+  wssa_wn.cxx           \
+  wssa_io.cxx           \
   comp_driver.cxx
 
 ifneq ($(BUILD_SKIP_LNO), TRUE)
