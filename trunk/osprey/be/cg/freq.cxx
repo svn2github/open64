@@ -1587,6 +1587,7 @@ Find_Freq_LMV_Predecessors(LOOP_DESCR *the_loops,
       BB *pred2 = NULL;
       do {
         n_preds = 0;
+        match_pattern = FALSE;
         FOR_ALL_PRED_EDGES(merge,edge) {
           n_preds++;
         }
