@@ -1032,7 +1032,7 @@ VHO_Lower_Switch ( WN * wn )
   INT32      i;
   INT32      j;
   SRCPOS     srcpos;
-  INT32      count;
+  INT32      count = 0;
   WN       * conv_wn = NULL;
 
   LABEL_IDX  last_label;
