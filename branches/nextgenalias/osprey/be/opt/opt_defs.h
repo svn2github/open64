@@ -158,6 +158,7 @@ Is_fortran(void)
  */
 
 /* TP_ALIAS (phase-number) */
+/* Flags for tracing the Nystrom alias analyzer */
 #define NYSTROM_SOLVER_FLAG       0x00000001 /* trace constraint graph solver */
 #define NYSTROM_CG_PRE_FLAG       0x00000002 /* text dump of constraint graph after build */
 #define NYSTROM_CG_POST_FLAG      0x00000004 /* text dump of constraint graph after solve */
@@ -169,8 +170,6 @@ Is_fortran(void)
                                                 during IPA for BE */
 #define NYSTROM_CG_BUILD_FLAG     0x00000100 /* CG build trace */
 #define NYSTROM_SUMMARY_FLAG      0x00000200 /* IPA-BE summary trace */
-#define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
-                                                Transfer_alias_tag_to_occ_and_aux */
 #define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
                                                 Transfer_alias_tag_to_occ_and_aux */
 #define NYSTROM_LW_SOLVER_FLAG    0x00000800 /* light weight trace constraint graph solver */

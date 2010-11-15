@@ -1,5 +1,23 @@
-#include <sstream>
+/*
+ Copyright (C) 2010, Hewlett-Packard Development Company, L.P.
+ All Rights Reserved.
 
+ Open64 is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ Open64 is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA  02110-1301, USA.
+*/
+#include <sstream>
 #include "constraint_graph.h"
 #include "constraint_graph_solve.h"
 #include "data_layout.h"
@@ -4023,8 +4041,8 @@ ConstraintGraph::promoteCallSiteToDirect(CallSiteId csid, ST_IDX st_idx)
   if (cs) {
     FmtAssert(cs->isIndirect(), ("Expect callsite to be indirect"));
     FmtAssert(!cs->isIntrinsic(), ("Expect callsite to be not an intrinsic"));
-    fprintf(stderr, "Promoting call site: %d to direct call of %s\n",
-            csid, ST_name(St_Table[st_idx]));
+    //fprintf(stderr, "Promoting call site: %d to direct call of %s\n",
+    //        csid, ST_name(St_Table[st_idx]));
     cs->clearFlags(CS_FLAGS_INDIRECT);
     cs->st_idx(st_idx);
   }

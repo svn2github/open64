@@ -1,3 +1,22 @@
+/*
+ Copyright (C) 2010, Hewlett-Packard Development Company, L.P.
+ All Rights Reserved.
+
+ Open64 is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ Open64 is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA  02110-1301, USA.
+*/
 #include <sys/elf_whirl.h>
 #include "cxx_template.h"  // DYN_ARRAY
 #include "pu_info.h"
@@ -443,14 +462,6 @@ IPA_irb_write_nystrom_alias_info(PU_Info* pu_info_tree, Output_File *fl)
   header_addr->SetCGCallsitesSize(cg_callsites.Lastidx() + 1);
   header_addr->SetCGNodeIdsSize(cg_nodeids.Lastidx() + 1);
   header_addr->SetCGModRangesSize(cg_modranges.Lastidx() + 1);
-
-#if 0
-  header_addr->SetCGNodesEntrySize(sizeof(SUMMARY_CONSTRAINT_GRAPH_NODE));
-  header_addr->SetCGStInfosEntrySize(sizeof(SUMMARY_CONSTRAINT_GRAPH_STINFO));
-  header_addr->SetCGCallsitesEntrySize(sizeof(SUMMARY_CONSTRAINT_GRAPH_CALLSITE));
-  header_addr->SetCGNodeIdsEntrySize(sizeof(UINT32));
-  header_addr->SetCGModRangesEntrySize(sizeof(SUMMARY_CONSTRAINT_GRAPH_MODRANGE));
-#endif
 
   if (Get_Trace(TP_ALIAS,NYSTROM_SUMMARY_FLAG))
     fprintf(stderr, "cg_nodes = %d, cg_stinfos = %d, cg_callsites = %d,"

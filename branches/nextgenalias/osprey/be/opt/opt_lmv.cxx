@@ -49,7 +49,6 @@ using idmap::ID_MAP;
 #include "opt_ivr.h"
 
 const INT LMV_HEURISTIC::_low_trip_count = 40; 
-//const INT LMV_HEURISTIC::_max_access_vectors = 16;
 const INT LMV_HEURISTIC::_max_access_vectors = 6;
 const INT LMV_HEURISTIC::_max_write_vectors = 3;
 const INT LMV_HEURISTIC::_min_write_vectors = 1;
@@ -135,7 +134,6 @@ LMV_HEURISTIC::Apply(MEM_GROUP_VECT &groups)
   if (n_write_vect < Min_write_vectors())
     return FALSE;
 
-  //if (n_vect == Max_access_vectors() && n_write_vect == Max_write_vectors())
   if (n_write_vect == Max_write_vectors())
     return TRUE;
 
