@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -4267,6 +4270,9 @@ size_offset_type	stor_bit_size_of(int		 attr_idx,
 |*									      *|
 \******************************************************************************/
 
+
+char compiler_tmp_prefix[] = "t$";
+
 int gen_compiler_tmp (int		tmp_line,
 		      int		tmp_column,
 		      task_scope_type	scope,
@@ -4287,7 +4293,7 @@ int gen_compiler_tmp (int		tmp_line,
    CREATE_ID(name, " ", 1);
 
 # if defined(_HOST_OS_UNICOS) || defined(_HOST_OS_MAX)
-   length = sprintf(name.string, "t$%d", curr_tmp);
+   length = sprintf(name.string, "%s%d", compiler_tmp_prefix, curr_tmp);
 # else
    sprintf(name.string, "t$%d", curr_tmp);
    length = strlen(name.string);
