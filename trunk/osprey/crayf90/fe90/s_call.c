@@ -1,9 +1,8 @@
 /*
  * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
-
 /*
- * Copyright (C) 2007, 2008. PathScale, LLC. All Rights Reserved.
+ * Copyright (C) 2007, 2008, 2009. PathScale, LLC. All Rights Reserved.
  */
 /*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
@@ -2203,7 +2202,10 @@ static void check_for_elementals(int	attr_idx)
 
 # ifdef _DEBUG
    if (ATD_FLD(attr_idx) != IR_Tbl_Idx) {
-      PRINTMSG(line, 626, Internal, col,
+      /* Demoted this assertion, since we haven't seen a situation
+       * where it does not trigger.
+       */
+      PRINTMSG(line, 626, Dev_Warning, col,
                "ATD_FLD(attr_idx) == IR_Tbl_Idx", "check_for_elementals");
    }
 # endif
@@ -2215,8 +2217,10 @@ static void check_for_elementals(int	attr_idx)
    if (IR_FLD_R(asg_idx) != IR_Tbl_Idx ||
        IR_OPR(IR_IDX_R(asg_idx)) != Call_Opr ||
        ! ATP_ELEMENTAL(IR_IDX_L(IR_IDX_R(asg_idx)))) {
-
-      PRINTMSG(line, 626, Internal, col,
+      /* Demoted this assertion, since we haven't seen a situation
+       * where it does not trigger.
+       */
+      PRINTMSG(line, 626, Dev_Warning, col,
                "elemental function", "check_for_elementals");
    }
 # endif
@@ -13211,6 +13215,17 @@ static boolean compare_darg_to_actual_arg(int		gen_idx,
                   same = FALSE;
                }
                else if (aa_rank == 0) {     /* scalar to array */
+#ifdef KEY /* Bug 14150 */
+		  linear_type_type actual_linear_type = (info_idx == NULL_IDX) ?
+		    Err_Res :
+		    arg_info_list[info_idx].ed.linear_type;
+		  int atd_array_idx = ATD_ARRAY_IDX(arg_attr);
+                  bd_array_type dummy_array_class = atd_array_idx ?
+		    BD_ARRAY_CLASS(atd_array_idx) :
+		    Unknown_Array;
+		  linear_type_type dummy_linear_type = 
+		    TYP_TYPE(ATD_TYPE_IDX(arg_attr));
+#endif /* KEY Bug 14150 */
 
                   if (BD_ARRAY_CLASS(ATD_ARRAY_IDX(arg_attr)) == Assumed_Shape){
                      PRINTMSG(opnd_line, 434, Error, opnd_column,
@@ -13225,6 +13240,18 @@ static boolean compare_darg_to_actual_arg(int		gen_idx,
                      /* have an expression.             */
 
                   }
+#ifdef KEY /* Bug 14150 */
+                  else if ((actual_linear_type == Character_1 ||
+		    actual_linear_type == Short_Char_Const) &&
+		    (dummy_array_class == Explicit_Shape ||
+		    dummy_array_class == Assumed_Size) &&
+		    dummy_linear_type == Character) {
+		    /* F2003 section 12.4.1.5 rules of sequence association plus
+		     * note 15.19 on passing strings to bind(c) say that a
+		     * scalar character(n) actual is compatible with an
+		     * explicit- or assumed-size array of type character. */
+		  }
+#endif /* KEY Bug 14150 */
                   else {
                      PRINTMSG(opnd_line, 435, Error, opnd_column,
                               AT_OBJ_NAME_PTR(arg_attr));

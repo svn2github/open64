@@ -3,7 +3,7 @@
  */
 
 /*
- * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
+ * Copyright (C) 2008, 2009. PathScale, LLC. All Rights Reserved.
  */
 /*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
@@ -5751,51 +5751,59 @@ void    lge_intrinsic(opnd_type     *result_opnd,
 
 
 #ifdef KEY /* Bug 14150 */
+/* This area deserves a cleanup some day, to make it mirror in logic and
+ * naming the F2003 standard terminology regarding "interoperable type" vs
+ * "interoperable variable" (the latter encompasses array elements and
+ * substrings) vs interoperable entities. */
+
 /*
- * Check argument of ISO_C_BINDING function c_loc or c_funloc
+ * info_idx	Index into arg_info_list for an actual arg
+ * returns	0 if the arg has character type and we can statically tell that
+ *		its len is not 1
+ */
+static int
+check_interoperable_char(int info_idx) {
+  return arg_info_list[info_idx].ed.type != Character ||
+    OPND_FLD(arg_info_list[info_idx].ed.char_len) != CN_Tbl_Idx ||
+    CN_INT_TO_C(OPND_IDX(arg_info_list[info_idx].ed.char_len)) == 1;
+  }
+
+/*
+ * Check argument of ISO_C_BINDING function c_loc
  *
- * which_intrinsic	C_Funloc_Intrinsic or C_Loc_Iso_Intrinsic
- * attr_idx		AT_Tbl_Idx for argument to c_loc or c_funloc
+ * attr_idx		AT_Tbl_Idx for base attribute of this arg of c_loc
  * info_idx		Index into arg_info_list for this argument
  * return		error message number, or 0 for no error
  */
 static int
-c_loc_iso_arg_check(intrinsic_type which_intrinsic, int attr_idx,
-  int info_idx) {
+c_loc_iso_arg_check(int attr_idx, int info_idx) {
   int found_error = 0;
-  if (which_intrinsic == C_Funloc_Intrinsic &&
-    (AT_OBJ_CLASS(attr_idx) != Pgm_Unit ||
-      (ATP_PGM_UNIT(attr_idx) != Subroutine &&
-       ATP_PGM_UNIT(attr_idx) != Function &&
-       ATP_PGM_UNIT(attr_idx) != Pgm_Unknown) ||
-       !AT_BIND_ATTR(attr_idx))) {
-     found_error = 700;
+  if (AT_OBJ_CLASS(attr_idx) != Data_Obj) {
+    found_error = 700;
   }
-  else if (which_intrinsic == C_Loc_Iso_Intrinsic) {
-    if (AT_OBJ_CLASS(attr_idx) != Data_Obj) {
-      found_error = 700;
+  else {
+    int allocatable = arg_info_list[info_idx].ed.allocatable;
+    int pointer = arg_info_list[info_idx].ed.pointer;
+    int target = arg_info_list[info_idx].ed.target;
+    int rank = arg_info_list[info_idx].ed.rank;
+    found_error = (target || pointer) ? 1692 : 418;
+    /* F2003 15.1.2.5 (1) */
+    if ((target && interoperable_variable(attr_idx) &&
+       check_interoperable_char(info_idx)) || /* (1a) */
+      (allocatable && target &&
+       check_interoperable_type(attr_idx, TRUE, FALSE) &&
+       check_interoperable_char(info_idx)) || /* (1b) */
+      (rank == 0 && pointer &&
+       check_interoperable_type(attr_idx, TRUE, FALSE) &&
+       check_interoperable_char(info_idx))) { /* (1c) */
+      found_error = 0;
     }
-    else {
-      int allocatable = arg_info_list[info_idx].ed.allocatable;
-      int pointer = arg_info_list[info_idx].ed.pointer;
-      int target = arg_info_list[info_idx].ed.target;
-      int rank = arg_info_list[info_idx].ed.rank;
-      found_error = (target || pointer) ? 1692 : 418;
-      /* F2003 15.1.2.5 (1) */
-      if ((target && interoperable_variable(attr_idx)) || /* (1a) */
-	(allocatable && target &&
-	 check_interoperable_type(attr_idx, TRUE, FALSE)) || /* (1b) */
-	(rank == 0 && pointer &&
-	 check_interoperable_type(attr_idx, TRUE, FALSE))) { /* (1c) */
+    /* F2003 15.1.2.5 (2) */
+    if (found_error && rank == 0 && no_length_type_param(attr_idx)) {
+      if (((!allocatable) && (!pointer) && target) || /* (a) */
+	(allocatable && target) || /* (b) */
+	pointer) { /* (c) */
 	found_error = 0;
-      }
-      /* F2003 15.1.2.5 (2) */
-      if (found_error && rank == 0 && no_length_type_param(attr_idx)) {
-	if (((!allocatable) && (!pointer) && target) || /* (a) */
-	  (allocatable && target) || /* (b) */
-	  pointer) { /* (c) */
-	  found_error = 0;
-	}
       }
     }
   }
@@ -5912,7 +5920,7 @@ void    loc_intrinsic(opnd_type     *result_opnd,
       if (which_intrinsic == C_Loc_Iso_Intrinsic ||
 	which_intrinsic == C_Funloc_Intrinsic) {
 	int found_error = (which_intrinsic == C_Loc_Iso_Intrinsic) ?
-	  c_loc_iso_arg_check(which_intrinsic, attr_idx, info_idx1) :
+	  c_loc_iso_arg_check(attr_idx, info_idx1) :
 	  (AT_BIND_ATTR(attr_idx) ? 0 : 1692);
 	if (found_error) {
 	  PRINTMSG(arg_info_list[info_idx1].line, found_error, Error,
