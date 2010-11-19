@@ -1055,8 +1055,20 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
       ref = FALSE;
   }
 
-  if (Rule_enabled(ALIAS_ANALYZER_RULE))
-    _alias_analyzer->aliasedWithCall(st,mem->Alias_tag(),mod,ref);
+  if (Rule_enabled(ALIAS_ANALYZER_RULE)) {
+    // this is to get more precious from _alias_analyzer's IPA analysis result.
+    // TODO: its consertive now, mod_tmp, ref_tmp, always true now.
+    if(mod || ref) {
+      BOOL mod_tmp;
+      BOOL ref_tmp;
+      _alias_analyzer->aliasedWithCall(st,mem->Alias_tag(),mod_tmp,ref_tmp);
+      // if mod is false, don't update mod
+      if(mod)
+        mod = mod_tmp;
+      if(ref)
+        ref = ref_tmp;
+    }
+  }
 
   if (mod && ref)
     return READ_AND_WRITE;
