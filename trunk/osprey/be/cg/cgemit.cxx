@@ -8167,8 +8167,13 @@ Process_Bss_Data (SYMTAB_IDX stab)
 		size = TY_size(ST_type(sym));
 #ifdef KEY
 		// C++ requires empty classes to have unique addresses.
-		if (size == 0)
+                if (size == 0) {
+                  if (base != cur_section) {
+                    fprintf ( Asm_File, "\t%s %s\n", AS_SECTION, ST_name(base));
+                    cur_section = base;
+                  }
 		  Print_Label (Asm_File, sym, 1);
+                }
 		else
 #endif
 		Print_Label (Asm_File, sym, size);
