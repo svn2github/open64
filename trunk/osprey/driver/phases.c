@@ -2315,6 +2315,13 @@ postprocess_ld_args (string_list_t *args)
     }
 
     /*
+     * When building the compiler's libraries, do not append any rpath
+     * options since these would reference the build directory.
+     */
+    if (run_build)
+        return;
+
+    /*
      * For some reason, our cross linker won't find libraries in some
      * directories unless it's told about them with -rpath-link.
      * Here, we scan all -L flags and pass them as -rpath-link flags,
