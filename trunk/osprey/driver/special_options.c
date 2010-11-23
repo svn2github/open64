@@ -309,20 +309,6 @@ add_special_options (void)
 	prepend_option_seen (flag);
 #endif
 
-#ifdef KEY
-	// Pass -fopenmp instead of -mp to GNU 4.2 or later C/C++ front-end.
-	// Bug 12824.
-	if (mpkind == NORMAL_MP &&
-	    gnu_major_version == 4 &&
-	    gnu_minor_version >= 2 &&
-	    (invoked_lang == L_cc ||
-	     invoked_lang == L_CC)) {
-	  set_option_unseen(O_mp);
-	  set_option_unseen(O_openmp);
-	  add_option_seen(O_fopenmp);
-	}
-#endif
-
 #ifndef KEY	// Bug 4406.
 	if (mpkind == CRAY_MP) {
 		Process_Cray_Mp();

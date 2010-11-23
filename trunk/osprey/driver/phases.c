@@ -267,6 +267,10 @@ add_implied_string (string_list_t *list, int iflag, int flag, phases_t phase)
 				add_string(list, iname);
 			}
 		}
+		else if (strcmp(iname, "-mp") == 0
+			 && (phase == P_spin_cc1 || phase == P_spin_cc1plus)) {
+			add_string(list, "-fopenmp");
+		}
 		else
 			add_string(list, iname);
 	}
