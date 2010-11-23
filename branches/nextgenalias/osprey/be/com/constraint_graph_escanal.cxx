@@ -858,6 +858,7 @@ EscapeAnalysis::identifyMallocWrappers()
     }
   }
 
-  fprintf(stderr, "%s is malloc wrapper\n", ST_name(Get_Current_PU_ST()));
+  if (Get_Trace(TP_ALIAS,NYSTROM_LW_SOLVER_FLAG))
+    fprintf(stderr, "%s is malloc wrapper\n", ST_name(Get_Current_PU_ST()));
   Set_PU_has_attr_malloc(Get_Current_PU());
 }
