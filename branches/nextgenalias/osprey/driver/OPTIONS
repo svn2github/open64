@@ -965,8 +965,8 @@ I-xall		;	FTN	ffe	self
 -openmp			;		FTN,Cc	ffe	-mp
         "enable the multiprocessing directives (same as -mp)"
 #ifdef KEY
--fopenmp toggle(&mpkind,NORMAL_MP);	FTN,Cc	ffe,cfe	self
-        "enable the multiprocessing directives"
+-fopenmp			;		FTN,Cc	ffe	-mp
+        "enable the multiprocessing directives (same as -mp)"
 #endif
 #ifndef KEY
 -dsm_clone		;		ALL	ipl,be,d	self

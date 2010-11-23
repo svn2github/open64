@@ -331,9 +331,9 @@ BB_last_OP_computes_got (BB* bb)
 }
 
 static void
-Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
+Extend_Truncate_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
 {
-  // only consider sign comparision
+  BOOL is_sign;
   switch (br_variant) {
     case V_BR_I4EQ:
     case V_BR_I4NE:
@@ -347,9 +347,24 @@ Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
     case V_BR_I8GT: 
     case V_BR_I8LE: 
     case V_BR_I8LT:
-        break;
+      is_sign = TRUE;
+      break;
+    case V_BR_U4EQ:
+    case V_BR_U4NE:
+    case V_BR_U4GT:
+    case V_BR_U4GE:
+    case V_BR_U4LT:
+    case V_BR_U4LE:
+    case V_BR_U8EQ:
+    case V_BR_U8NE:
+    case V_BR_U8GT:
+    case V_BR_U8GE:
+    case V_BR_U8LT:
+    case V_BR_U8LE:
+      is_sign = FALSE;
+      break;
     default:
-        return;
+      return;
   }
 
   // sign extend the constant value
@@ -368,7 +383,10 @@ Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
     case TOP_cmpxi8:
     case TOP_cmpxxi8:
     case TOP_cmpxxxi8:
-      *v = ( (*v) << ( sizeof(INT64) * 8 - 8 ) ) >> ( sizeof(INT64) * 8 - 8 );
+      if(is_sign)
+        *v = ( (*v) << ( sizeof(INT64) * 8 - 8 ) ) >> ( sizeof(INT64) * 8 - 8 );
+      else
+        *v = *v & 0xff;
       return;
     case TOP_test16:
     case TOP_testx16:
@@ -383,8 +401,10 @@ Extend_Short_Cmp_Src(OP* compare_op, VARIANT br_variant, INT64 *v)
     case TOP_cmpxi16:
     case TOP_cmpxxi16:
     case TOP_cmpxxxi16:
-      *v = ( (*v) << ( sizeof(INT64) * 8 - 16 ) ) >> ( sizeof(INT64) * 8 - 16 );
-      return;
+      if(is_sign)
+        *v = ( (*v) << ( sizeof(INT64) * 8 - 16 ) ) >> ( sizeof(INT64) * 8 - 16 );
+      else
+        *v = *v & 0xffff;
   }
 }
 #endif
@@ -2686,12 +2706,12 @@ Convert_If_To_Goto ( BB *bp )
 
   if (!TN_Value_At_Op(tn1, compare_op, &v1)) goto try_identities;
 #ifdef TARG_X8664
-  Extend_Short_Cmp_Src(compare_op, br_variant, &v1);
+  Extend_Truncate_Short_Cmp_Src(compare_op, br_variant, &v1);
 #endif
 
   if (tn2 && !TN_Value_At_Op(tn2, compare_op, &v2)) goto try_identities;
 #ifdef TARG_X8664
-  Extend_Short_Cmp_Src(compare_op, br_variant, &v2);
+  Extend_Truncate_Short_Cmp_Src(compare_op, br_variant, &v2);
 #endif
 
   /* Evaluate the condition.
