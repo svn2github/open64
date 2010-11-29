@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007, 2008. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -746,7 +750,7 @@ static void	attr_link_resolution(void)
          continue;
       }
 
-      host_idx = srch_host_sym_tbl(&name_pool[LN_NAME_IDX(name_idx)].name_char,
+      host_idx = srch_host_sym_tbl(LN_NAME_PTR(name_idx),
                                    LN_NAME_LEN(name_idx),
                                    &host_name_idx,
                                    FALSE);

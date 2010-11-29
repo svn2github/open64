@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -81,28 +85,28 @@ static boolean		no_preprocessing	= FALSE;
 *  The following are needed for validate_O_option.               *
 \******************************************************************/
 
-char		*scalar_lvl_str[]	= {
+char		scalar_lvl_str[][8]	= {
 			"scalar0",
 			"scalar1",
 			"scalar2",
 			"scalar3"
                 };
 
-char		*stream_lvl_str[]	= {
+char		stream_lvl_str[][8]	= {
 			"stream0",
 			"stream1",
 			"stream2",
 			"stream3"
                 };
 
-char		*task_lvl_str[]		= {
+char		task_lvl_str[][6]		= {
 			"task0",
 			"task1",
 			"task2",
 			"task3"
                 };
 
-char		*vector_lvl_str[]	= {
+char		vector_lvl_str[][8]	= {
 			"vector0",
 			"vector1",
 			"vector2",

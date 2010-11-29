@@ -15910,7 +15910,7 @@ void    minval_intrinsic(opnd_type     *result_opnd,
           (opt_flags.set_allfastint_option && 
            arg_info_list[info_idx1].ed.linear_type == Integer_8 &&
            ATP_EXTERNAL_INTRIN(*spec_idx))) {
-         name_ptr = &name_pool[AT_NAME_IDX(*spec_idx)].name_char;
+         name_ptr = AT_OBJ_NAME_PTR(*spec_idx);
 
          j = -1;
          if (name_ptr[6] == 'J') {

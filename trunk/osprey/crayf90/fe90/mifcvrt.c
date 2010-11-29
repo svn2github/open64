@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -453,7 +457,7 @@ PROCESS_SIBLING:
 
    /* Subprogram header information */
    init_subprog_info (pgm_attr_idx);
-   name_ptr = &name_pool[ATP_EXT_NAME_IDX(pgm_attr_idx)].name_char;
+   name_ptr = ATP_EXT_NAME_PTR(pgm_attr_idx);
    msp.name = mnpool(&msp, name_ptr);
 
    /* Allocate scope table entries for this routine. */
@@ -4905,8 +4909,7 @@ static void  cvrt_proc(int		attr_idx,
    }
    if (ATP_EXT_NAME_IDX(attr_idx) != NULL_IDX &&
        ATP_EXT_NAME_IDX(attr_idx) != AT_NAME_IDX(attr_idx)) {
-      msp.func[funcix].extname =
-	 mnpool(&msp, &name_pool[ATP_EXT_NAME_IDX(attr_idx)].name_char);
+      msp.func[funcix].extname = mnpool(&msp, ATP_EXT_NAME_PTR(attr_idx));
    }
 
    if ((ATP_PROC(attr_idx) == Module_Proc) || 
