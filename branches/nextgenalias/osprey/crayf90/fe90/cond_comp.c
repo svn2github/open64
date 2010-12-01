@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -4274,8 +4278,7 @@ static int srch_cc_sym_tbl (char  *name_str,
       TRACE (Func_Exit, "srch_cc_sym_tbl", NULL);
    }
    else {
-      TRACE (Func_Exit, "srch_cc_sym_tbl", 
-             &str_pool[CC_LN_NAME_IDX(idx)].name_char);
+      TRACE (Func_Exit, "srch_cc_sym_tbl", CC_LN_NAME_PTR(idx));
       idx = CC_LN_ATTR_IDX(idx);
    }
    return (idx);

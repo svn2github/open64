@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
+
 /*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
@@ -351,8 +352,7 @@ int srch_sym_tbl (char	*name_str,
       TRACE (Func_Exit, "srch_sym_tbl", NULL);
    }  
    else {
-      TRACE (Func_Exit, "srch_sym_tbl", 
-                        &name_pool[LN_NAME_IDX(*name_idx)].name_char);
+      TRACE (Func_Exit, "srch_sym_tbl", LN_NAME_PTR(*name_idx));
       idx = LN_ATTR_IDX(*name_idx);
    }
    return (idx);
@@ -4833,11 +4833,10 @@ int	make_in_parent_string(int	 name_str_idx,
    }
 
 
-   strcat(&name_pool[new_name_idx].name_char, 
-          &name_pool[name_str_idx].name_char);
+   strcat((char *)&name_pool[new_name_idx], (char *)&name_pool[name_str_idx]);
 
    while (scp_idx != NULL_IDX) {
-      strcat(&name_pool[new_name_idx].name_char, UNIQUE_PROC_CONNECTOR);
+      strcat((char *)&name_pool[new_name_idx], UNIQUE_PROC_CONNECTOR);
 #ifdef KEY /* Bug 5089 */
       int attr_idx = SCP_ATTR_IDX(scp_idx);
       char *appendage;
@@ -4864,10 +4863,10 @@ int	make_in_parent_string(int	 name_str_idx,
         appendage = AT_OBJ_NAME_PTR(attr_idx);
 	appendage_len = AT_NAME_LEN(attr_idx);
       }
-      strcat(&name_pool[new_name_idx].name_char, appendage);
+      strcat((char *)&name_pool[new_name_idx], appendage);
       length += appendage_len + UNIQUE_PROC_LEN;
 #else /* KEY Bug 5089 */
-      strcat(&name_pool[new_name_idx].name_char,
+      strcat((char *)&name_pool[new_name_idx],
              AT_OBJ_NAME_PTR(SCP_ATTR_IDX(scp_idx)));
 
       length	= length + AT_NAME_LEN(SCP_ATTR_IDX(scp_idx)) + UNIQUE_PROC_LEN;
@@ -6407,8 +6406,7 @@ boolean	srch_global_name_tbl(char	*name_str,
    }  
    else {
       found	= TRUE;
-      TRACE (Func_Exit, "srch_global_name_tbl", 
-                         &str_pool[GN_NAME_IDX(idx)].name_char);
+      TRACE (Func_Exit, "srch_global_name_tbl", GN_NAME_PTR(idx));
    }
    return (found);
  
@@ -8823,7 +8821,7 @@ void	make_external_name(int	attr_idx,
    TRACE (Func_Entry, "make_external_name", NULL);
 
    if (!AT_IS_INTRIN(attr_idx)) {
-      name_ptr = &name_pool[name_idx].name_char;
+      name_ptr = (char *)&name_pool[name_idx];
 
       if (!on_off_flags.upper_case_names) {
          for (i = 0;  i < name_len;  i++) {
@@ -8860,7 +8858,7 @@ void	make_external_name(int	attr_idx,
     * namespace as well. */
    else if (Pgm_Unit == AT_OBJ_CLASS(attr_idx) &&
      Module == ATP_PGM_UNIT(attr_idx)) {
-     name_ptr = &name_pool[name_idx].name_char;
+     name_ptr = (char *)&name_pool[name_idx];
      TOKEN_STR(ext_token)[0] = '_';
      TOKEN_STR(ext_token)[1] = toupper(name_ptr[0]);
      for (i = 1; i < name_len; i += 1) {

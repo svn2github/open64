@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -2052,7 +2056,7 @@ void print_sn_list (int 	attr_idx)
    else {
       fprintf(stderr,
               "\n*FE90-ERROR* %s can not have Secondary Name table entries.\n",
-              &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+              AT_OBJ_NAME_PTR(attr_idx));
    }
    return;
 
@@ -2173,8 +2177,7 @@ static void loop_thru_sn_ntries (FILE		*out_file,
    }
 
    fprintf(out_file, "\n  %s %s:\n\n",
-                     "Dummy Arguments for",
-                     &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+                     "Dummy Arguments for", AT_OBJ_NAME_PTR(attr_idx));
 
    for (i = first_idx;
         i < (first_idx + count);
@@ -2261,8 +2264,7 @@ static void chain_thru_sn_ntries (FILE		*out_file,
          return;
       }
       fprintf(out_file, "\n  %s %s:\n\n",
-                        "Component entries for",
-                        &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+                        "Component entries for", AT_OBJ_NAME_PTR(attr_idx));
    }
    else if (AT_OBJ_CLASS(attr_idx) == Interface) {
       first_idx = ATI_FIRST_SPECIFIC_IDX(attr_idx);
@@ -2273,8 +2275,7 @@ static void chain_thru_sn_ntries (FILE		*out_file,
          return;
       }
       fprintf(out_file, "\n  %s %s:\n\n",
-                        "Interface bodies for",
-                        &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+                        "Interface bodies for", AT_OBJ_NAME_PTR(attr_idx));
    }
    else if (AT_OBJ_CLASS(attr_idx) == Namelist_Grp) {
       first_idx = ATN_FIRST_NAMELIST_IDX(attr_idx);
@@ -2285,13 +2286,11 @@ static void chain_thru_sn_ntries (FILE		*out_file,
          return;
       }
       fprintf(out_file, "\n  %s %s:\n\n",
-                        "Namelist objects for",
-                        &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+                        "Namelist objects for", AT_OBJ_NAME_PTR(attr_idx));
    }
    else {
       fprintf(out_file, "\n  %s %s:\n\n",
-                        "Invalid attribute entry ",
-                        &name_pool[AT_NAME_IDX(attr_idx)].name_char);
+                        "Invalid attribute entry ", AT_OBJ_NAME_PTR(attr_idx));
       return;
    }
 
@@ -7055,7 +7054,7 @@ static void dump_hn_ntry(FILE		*out_file,
    if (HN_ATTR_IDX(idx) != NULL_IDX) {
 
       if (HN_NAME_IDX(idx) != NULL_IDX) {
-         fprintf(out_file, "%-32.32s  ",&name_pool[HN_NAME_IDX(idx)].name_char);
+         fprintf(out_file, "%-32.32s  ", HN_NAME_PTR(idx));
       }
       else {
          fprintf(out_file, "%-32.32s  ", "**No name - HN_NAME_IDX is 0**");
@@ -7474,7 +7473,7 @@ static void dump_ln_ntry(FILE		*out_file,
    if (LN_ATTR_IDX(idx) != NULL_IDX) {
 
       if (LN_NAME_IDX(idx) != NULL_IDX) {
-         fprintf(out_file, "%-32.32s  ",&name_pool[LN_NAME_IDX(idx)].name_char);
+         fprintf(out_file, "%-32.32s  ", LN_NAME_PTR(idx));
       }
       else {
          fprintf(out_file, "%-32.32s  ", "**No name - LN_NAME_IDX is 0**");
@@ -8047,7 +8046,7 @@ static void dump_sn_ntry (FILE 	*out_file,
       return;
    }
 
-   fprintf(out_file, "  %-51s", &name_pool[SN_NAME_IDX(sn_idx)].name_char); 
+   fprintf(out_file, "  %-51s", SN_NAME_PTR(sn_idx)); 
 
    fprintf(out_file, " %-16s= %-8d\n", "            IDX", sn_idx);
 

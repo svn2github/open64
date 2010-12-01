@@ -649,8 +649,16 @@ Allocate_Space(ST *base, ST *blk, INT32 lpad, INT32 rpad, INT64 maxsize)
 {
   UINT align = Adjusted_Alignment(blk);
   INT64 old_offset;
-  INT64 size = ST_size(blk);
-
+  INT64 size;
+  INITO_IDX ino_idx;
+  // if blk is variable length struct, its size should be inito size.
+  if (TY_kind(ST_type(blk)) == KIND_STRUCT && (ino_idx = Find_INITO_For_Symbol(blk)) != 0)
+  {
+    size = Get_INITO_Size(ino_idx);
+    Is_True(size >= ST_size(blk),("%s's inito size smaller than ST_size",ST_name(blk)));
+  }
+  else
+    size = ST_size(blk);
 #if defined(TARG_PPC32)
   if ( ST_sclass(blk) == SCLASS_FORMAL && MTYPE_is_m(TY_mtype(ST_type(blk))) ) {
     size = MTYPE_RegisterSize(Spill_Int_Mtype);;

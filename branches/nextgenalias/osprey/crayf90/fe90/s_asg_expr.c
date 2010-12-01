@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2007, 2008. PathScale, LLC.  All Rights Reserved.
  */
 /*
@@ -8806,7 +8810,7 @@ static boolean struct_opr_handler(opnd_type		*result_opnd,
           if (AT_OBJ_CLASS(SN_ATTR_IDX(i)) == Data_Obj &&
               ATD_CLASS(SN_ATTR_IDX(i)) == Struct_Component &&
               SN_ATTR_IDX(i) != IR_OPND_R(ir_idx).idx &&
-              strcmp(AT_OBJ_NAME_PTR(IR_OPND_R(ir_idx).idx),&name_pool[SN_NAME_IDX(i)].name_char)==0)
+              strcmp(AT_OBJ_NAME_PTR(IR_OPND_R(ir_idx).idx), SN_NAME_PTR(i))==0)
               IR_OPND_R(ir_idx).idx = SN_ATTR_IDX(i);
         }
       }

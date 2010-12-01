@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -809,7 +813,7 @@ PROCESS_SIBLING:
 
    cvrt_sytb_to_pdg();
 
-   name_ptr = &name_pool[ATP_EXT_NAME_IDX(pgm_attr_idx)].name_char;
+   name_ptr = ATP_EXT_NAME_PTR(pgm_attr_idx);
 #ifdef KEY /* Bug 14150 */
    /* Imitate kludgy transformation performed by sgi/cwh_stab.cxx */
    const char *ext_name = ATP_EXT_NAME_PTR(pgm_attr_idx);
@@ -9223,8 +9227,8 @@ CONTINUE:
 
            PDG_DBG_PRINT_START    
            PDG_DBG_PRINT_C("fei_name");
-           PDG_DBG_PRINT_S("(1) name_ptr", 
-                    &name_pool[ATP_MOD_PATH_IDX(IR_IDX_L(ir_idx))].name_char);
+           PDG_DBG_PRINT_S("(1) name_ptr",
+                    ATP_MOD_PATH_NAME_PTR(IR_IDX_L(ir_idx)));
            PDG_DBG_PRINT_D("(2) unused", 0);
            PDG_DBG_PRINT_D("(3) unused", 0);
            PDG_DBG_PRINT_D("(4) unused", 0);
@@ -9232,7 +9236,7 @@ CONTINUE:
            PDG_DBG_PRINT_END
 
 # ifdef _ENABLE_FEI
-           fei_name(&name_pool[ATP_MOD_PATH_IDX(IR_IDX_L(ir_idx))].name_char,
+           fei_name(ATP_MOD_PATH_NAME_PTR(IR_IDX_L(ir_idx)),
                     0,
                     0,
                     0,
@@ -11898,7 +11902,7 @@ static void  send_procedure(int			attr_idx,
           ATP_IN_INTERFACE_BLK(attr_idx) &&
           ATP_EXPL_ITRFC(attr_idx) &&
           ATP_PROC(attr_idx) == Extern_Proc) {
-         name_ptr = &name_pool[ATP_EXT_NAME_IDX(attr_idx)].name_char;
+         name_ptr = ATP_EXT_NAME_PTR(attr_idx);
          if (strcmp(AT_OBJ_NAME_PTR(SCP_ATTR_IDX(curr_scp_idx)), 
                     name_ptr) == 0) {
             /*
@@ -11912,7 +11916,7 @@ static void  send_procedure(int			attr_idx,
    }
 
    pgm_unit = ATP_PGM_UNIT(attr_idx);
-   name_ptr = &name_pool[ATP_EXT_NAME_IDX(attr_idx)].name_char;
+   name_ptr = ATP_EXT_NAME_PTR(attr_idx);
    parent_idx = NULL_IDX;
 
 
@@ -12209,7 +12213,7 @@ static void  send_procedure(int			attr_idx,
 
          ATP_SCP_ALIVE(attr_idx) = FALSE;
 
-         name_ptr = &name_pool[ATP_EXT_NAME_IDX(attr_idx)].name_char;
+         name_ptr = ATP_EXT_NAME_PTR(attr_idx);
 
          /* prev_idx is a pdgcs index to the name being entered */
          /* in the pdgcs secondary name table.                  */

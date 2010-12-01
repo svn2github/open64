@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -3128,7 +3132,6 @@ static void validate_O_option (void)
    char		 msg_str[30];
    boolean	 option_conflict	= FALSE;
    int		 scalar;
-   char		*str;
    int		 task;
 
 #  if defined(_ACCEPT_VECTOR)
@@ -3210,10 +3213,8 @@ static void validate_O_option (void)
       }
       else if (opt_flags.task_lvl > Task_Lvl_1 &&
                opt_flags.task_lvl > opt_flags.vector_lvl) {
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]);
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]);
+         COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
       else if (opt_flags.scalar_lvl == Scalar_Lvl_2 &&
@@ -3223,10 +3224,8 @@ static void validate_O_option (void)
          /* Rule exception - scalar2, vector3  */
       }
       else if (opt_flags.scalar_lvl < opt_flags.vector_lvl) {
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]);
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]);
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
    }
@@ -3240,10 +3239,8 @@ static void validate_O_option (void)
          /* If vector3, task can be anything */
       }
       else if (opt_flags.scalar_lvl < opt_flags.vector_lvl) {
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]);
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]);
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
       else if (opt_flags.task_lvl > opt_flags.vector_lvl  &&
@@ -3251,14 +3248,10 @@ static void validate_O_option (void)
          task = (opt_flags.vector_lvl == Vector_Lvl_0) ?
                  Task_Lvl_1 : opt_flags.vector_lvl;
 
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[15], "\n");
-         strcpy(&msg_str[16], task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[21], "\n");
-         strcpy(&msg_str[22], task_lvl_str[task]); 
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(16, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(22, task, task, NULL_CHAR);
 
          ntr_msg_queue(0, 1064, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.task_lvl = task;
@@ -3272,14 +3265,10 @@ static void validate_O_option (void)
          /* Rule exception - Scalar2, Task3 is okay. */
 
          if (opt_flags.vector_lvl != Vector_Lvl_3) {
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-            strcpy(&msg_str[13], "\n");
-            strcpy(&msg_str[14], vector_lvl_str[opt_flags.vector_lvl]); 
-            strcpy(&msg_str[21], "\n");
-            strcpy(&msg_str[22], vector_lvl_str[Vector_Lvl_3]); 
+            COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+            COPY_LVL_STR(14, vector, opt_flags.vector_lvl, NEWLINE);
+            COPY_LVL_STR(22, vector, Vector_Lvl_3, NULL_CHAR);
 
             ntr_msg_queue(0, 1064, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.vector_lvl = Vector_Lvl_3;
@@ -3291,36 +3280,26 @@ static void validate_O_option (void)
 
          if (opt_flags.vector_lvl > opt_flags.scalar_lvl) {
             vector = opt_flags.scalar_lvl;
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-            strcpy(&msg_str[13], "\n");
-            strcpy(&msg_str[14], vector_lvl_str[opt_flags.vector_lvl]); 
-            strcpy(&msg_str[21], "\n");
-            strcpy(&msg_str[22], vector_lvl_str[vector]); 
+            COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+            COPY_LVL_STR(14, vector, opt_flags.vector_lvl, NEWLINE);
+            COPY_LVL_STR(22, vector, vector, NULL_CHAR);
 
             ntr_msg_queue(0, 1064, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.vector_lvl = vector;
          }
       }
       else if (opt_flags.task_lvl > opt_flags.scalar_lvl) {
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]);
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]);
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
       else if (opt_flags.task_lvl > opt_flags.vector_lvl) {
          vector = opt_flags.task_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[13], "\n");
-         strcpy(&msg_str[14], vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[21], "\n");
-         strcpy(&msg_str[22], vector_lvl_str[vector]); 
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(14, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(22, vector, vector, NULL_CHAR);
          ntr_msg_queue(0, 1064, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
 
          opt_flags.vector_lvl = vector;
@@ -3330,10 +3309,8 @@ static void validate_O_option (void)
 
       if (opt_flags.task_lvl > Task_Lvl_1 &&
           opt_flags.task_lvl > opt_flags.vector_lvl) {
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]);
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]);
+         COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
       else if (opt_flags.vector_lvl > opt_flags.scalar_lvl) {
@@ -3346,14 +3323,10 @@ static void validate_O_option (void)
          else {
             scalar = (opt_flags.vector_lvl == Vector_Lvl_3) ?
                      Scalar_Lvl_2 : opt_flags.vector_lvl;
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-            strcpy(&msg_str[13], "\n");
-            strcpy(&msg_str[14], scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[21], "\n");
-            strcpy(&msg_str[22], scalar_lvl_str[scalar]); 
+            COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+            COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+            COPY_LVL_STR(14, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(22, scalar, scalar, NULL_CHAR);
             ntr_msg_queue(0, 1064, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
 
             opt_flags.scalar_lvl = scalar;
@@ -3364,12 +3337,9 @@ static void validate_O_option (void)
 
       if (opt_flags.vector_lvl > opt_flags.scalar_lvl) { 
          vector = opt_flags.scalar_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[15], "\n");
-         strcpy(&msg_str[16], vector_lvl_str[vector]); 
+         COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(16, vector, vector, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.vector_lvl = vector;
@@ -3379,12 +3349,9 @@ static void validate_O_option (void)
           opt_flags.task_lvl > Task_Lvl_1) {
          task = (opt_flags.vector_lvl == Vector_Lvl_0) ?
                  Task_Lvl_1 : opt_flags.vector_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[13], "\n");
-         strcpy(&msg_str[14], task_lvl_str[task]); 
+         COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(14, task, task, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.task_lvl = task;
@@ -3399,12 +3366,9 @@ static void validate_O_option (void)
 
          scalar = (opt_flags.vector_lvl == Vector_Lvl_3) ?
                    Scalar_Lvl_2 : opt_flags.vector_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], scalar_lvl_str[opt_flags.scalar_lvl]); 
-         strcpy(&msg_str[15], "\n");
-         strcpy(&msg_str[16], scalar_lvl_str[scalar]); 
+         COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(8, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(16, scalar, scalar, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.scalar_lvl = scalar;
@@ -3415,12 +3379,9 @@ static void validate_O_option (void)
 
          task = (opt_flags.vector_lvl == Vector_Lvl_0) ?
                  Task_Lvl_1 : opt_flags.vector_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[7], "\n");
-         strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[13], "\n");
-         strcpy(&msg_str[14], task_lvl_str[task]); 
+         COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(14, task, task, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.task_lvl = task;
@@ -3432,12 +3393,9 @@ static void validate_O_option (void)
           opt_flags.scalar_lvl != Scalar_Lvl_2) {
          scalar = (opt_flags.task_lvl == Task_Lvl_3) ?
                    Scalar_Lvl_2 : opt_flags.task_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[5], "\n");
-         strcpy(&msg_str[6], scalar_lvl_str[opt_flags.scalar_lvl]); 
-         strcpy(&msg_str[13], "\n");
-         strcpy(&msg_str[14], scalar_lvl_str[scalar]); 
+         COPY_LVL_STR(0, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(6, scalar, opt_flags.scalar_lvl, NEWLINE);
+         COPY_LVL_STR(14, scalar, scalar, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.scalar_lvl = scalar;
@@ -3445,12 +3403,9 @@ static void validate_O_option (void)
 
       if (opt_flags.task_lvl > opt_flags.vector_lvl) { 
          vector = opt_flags.task_lvl;
-         msg_str[0] = NULL_CHAR;
-         strcpy(msg_str, task_lvl_str[opt_flags.task_lvl]); 
-         strcpy(&msg_str[5], "\n");
-         strcpy(&msg_str[6], vector_lvl_str[opt_flags.vector_lvl]); 
-         strcpy(&msg_str[13], "\n");
-         strcpy(&msg_str[14], vector_lvl_str[vector]); 
+         COPY_LVL_STR(0, task, opt_flags.task_lvl, NEWLINE);
+         COPY_LVL_STR(6, vector, opt_flags.vector_lvl, NEWLINE);
+         COPY_LVL_STR(14, vector, vector, NULL_CHAR);
 
          ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
          opt_flags.vector_lvl = vector;
@@ -3470,10 +3425,8 @@ static void validate_O_option (void)
 
             /* Scalar2, Task3 is an exception and is legal. */
 
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]);
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]);
+            COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(8, task, opt_flags.task_lvl, NULL_CHAR);
             ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
          }
       }
@@ -3482,12 +3435,9 @@ static void validate_O_option (void)
          if (opt_flags.task_lvl > opt_flags.scalar_lvl) { 
             task = (opt_flags.scalar_lvl == Scalar_Lvl_0) ?
                     Task_Lvl_1 : opt_flags.scalar_lvl;
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], task_lvl_str[opt_flags.task_lvl]); 
-            strcpy(&msg_str[13], "\n");
-            strcpy(&msg_str[14], task_lvl_str[task]); 
+            COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(8, task, opt_flags.task_lvl, NEWLINE);
+            COPY_LVL_STR(14, task, task, NULL_CHAR);
 
             ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.task_lvl = task;
@@ -3498,12 +3448,9 @@ static void validate_O_option (void)
          if (opt_flags.task_lvl > opt_flags.scalar_lvl) { 
             scalar = (opt_flags.task_lvl == Task_Lvl_3) ?
                       Scalar_Lvl_2 : opt_flags.task_lvl;
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, task_lvl_str[opt_flags.task_lvl]); 
-            strcpy(&msg_str[5], "\n");
-            strcpy(&msg_str[6], scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[13], "\n");
-            strcpy(&msg_str[14], scalar_lvl_str[scalar]); 
+            COPY_LVL_STR(0, task, opt_flags.task_lvl, NEWLINE);
+            COPY_LVL_STR(6, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(14, scalar, scalar, NULL_CHAR);
 
             ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.scalar_lvl = scalar;
@@ -3518,37 +3465,33 @@ CONTINUE:
    if (opt_flags.scalar_lvl == Scalar_Lvl_0) {
 
       if (set_aggress_option  &&  opt_flags.aggress) {
-         str = (set_scalar_option) ? "scalar0" : "0";
-         strcat(str, "\n");
-         strcat(str, "aggress");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_scalar_option) ? "scalar0" : "0", NEWLINE);
+         COPY_MSG_STR((set_scalar_option) ? 8 : 2, "aggress", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.aggress = FALSE;
 
       if (set_bottom_load_option  &&  opt_flags.bottom_load) { 
-         str = (set_scalar_option) ? "scalar0" : "0";
-         strcat(str, "\n");
-         strcat(str, "bl");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_scalar_option) ? "scalar0" : "0", NEWLINE);
+         COPY_MSG_STR((set_scalar_option) ? 8 : 2, "bl", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.bottom_load = FALSE;
 
       if (set_recurrence_option && opt_flags.recurrence) {
-         str	= (set_scalar_option) ? "scalar0" : "0";
-         strcat(str, "\n");
-         strcat(str, "recurrence");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_scalar_option) ? "scalar0" : "0", NEWLINE);
+         COPY_MSG_STR((set_scalar_option) ? 8 : 2, "recurrence", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.recurrence = FALSE;
 
       if (set_zeroinc_option  &&  opt_flags.zeroinc) {
-         str	= (set_scalar_option) ? "scalar0" : "0";
-         strcat(str, "\n");
-         strcat(str, "zeroinc");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_scalar_option) ? "scalar0" : "0", NEWLINE);
+         COPY_MSG_STR((set_scalar_option) ? 8 : 2, "zeroinc", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.zeroinc = FALSE;
@@ -3565,10 +3508,9 @@ CONTINUE:
    if (opt_flags.vector_lvl == Vector_Lvl_0) {
 
       if (set_vsearch_option  &&  opt_flags.vsearch) { 
-         str = (set_vector_option) ? "vector0" : "0";
-         strcat(str, "\n");
-         strcat(str, "vsearch");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_vector_option) ? "vector0" : "0", NEWLINE);
+         COPY_MSG_STR((set_vector_option) ? 8 : 2, "vsearch", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.vsearch = FALSE;
@@ -3576,10 +3518,9 @@ CONTINUE:
 # if defined(_TARGET_OS_UNICOS)
 
       if (set_pattern_option  &&  opt_flags.pattern) {
-         str = (set_vector_option) ? "vector0" : "0";
-         strcat(str, "\n");
-         strcat(str, "pattern");
-         ntr_msg_queue(0, 99, Log_Error, 0, str, 0, MULT_STR_ARG);
+         COPY_MSG_STR(0, (set_vector_option) ? "vector0" : "0", NEWLINE);
+         COPY_MSG_STR((set_vector_option) ? 8 : 2, "pattern", NULL_CHAR);
+         ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
       opt_flags.pattern = FALSE;
@@ -3591,9 +3532,8 @@ CONTINUE:
    else if (opt_flags.vector_lvl == Vector_Lvl_1) {
 
       if (set_pattern_option  &&  opt_flags.pattern) {
-         str = (set_vector_option) ? "vector1" : "1";
-         strcpy(msg_str, "\n");
-         strcpy(msg_str, "pattern");
+         COPY_MSG_STR(0, (set_vector_option) ? "vector1" : "1", NEWLINE);
+         COPY_MSG_STR((set_vector_option) ? 8 : 2, "pattern", NULL_CHAR);
          ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
       }
 
@@ -3620,10 +3560,8 @@ CONTINUE:
 
             /* The two are set wrong - issue an error */
 
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, stream_lvl_str[opt_flags.stream_lvl]);
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], scalar_lvl_str[opt_flags.scalar_lvl]);
+            COPY_LVL_STR(0, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(8, scalar, opt_flags.scalar_lvl, NULL_CHAR);
             ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
             option_conflict	= TRUE;
          }
@@ -3635,31 +3573,25 @@ CONTINUE:
             opt_flags.stream_lvl = opt_flags.scalar_lvl;
          }
          else if (set_scalar_option) {
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], stream_lvl_str[opt_flags.stream_lvl]); 
-            strcpy(&msg_str[15], "\n");
-            strcpy(&msg_str[16], stream_lvl_str[opt_flags.scalar_lvl]); 
+            COPY_LVL_STR(0, scalar, opt_flags.scalar_lvl, NEWLINE);
+            COPY_LVL_STR(8, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(16, stream, opt_flags.scalar_lvl, NULL_CHAR);
 
             ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.stream_lvl = opt_flags.scalar_lvl;
          }
          else if (set_stream_option) {
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, stream_lvl_str[opt_flags.stream_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], scalar_lvl_str[opt_flags.scalar_lvl]); 
-            strcpy(&msg_str[15], "\n");
+            COPY_LVL_STR(0, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(8, scalar, opt_flags.scalar_lvl, NEWLINE);
 
             if (opt_flags.stream_lvl == Stream_Lvl_3) {
-               strcpy(&msg_str[16], scalar_lvl_str[Stream_Lvl_2]); 
+               COPY_LVL_STR(16, scalar, Stream_Lvl_2, NULL_CHAR);
 
                ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
                opt_flags.scalar_lvl = Stream_Lvl_2;
             }
             else {
-               strcpy(&msg_str[16], scalar_lvl_str[opt_flags.stream_lvl]); 
+               COPY_LVL_STR(16, scalar, opt_flags.stream_lvl, NULL_CHAR);
 
                ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
                opt_flags.scalar_lvl = opt_flags.stream_lvl;
@@ -3679,10 +3611,8 @@ CONTINUE:
 
             /* The two are set wrong - issue an error */
 
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, stream_lvl_str[opt_flags.stream_lvl]);
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]);
+            COPY_LVL_STR(0, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NULL_CHAR);
             ntr_msg_queue(0, 99, Log_Error, 0, msg_str, 0, MULT_STR_ARG);
             option_conflict	= TRUE;
          }
@@ -3694,31 +3624,25 @@ CONTINUE:
             opt_flags.stream_lvl = opt_flags.vector_lvl;
          }
          else if (set_vector_option) {
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, vector_lvl_str[opt_flags.vector_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], stream_lvl_str[opt_flags.stream_lvl]); 
-            strcpy(&msg_str[15], "\n");
-            strcpy(&msg_str[16], stream_lvl_str[opt_flags.vector_lvl]); 
+            COPY_LVL_STR(0, vector, opt_flags.vector_lvl, NEWLINE);
+            COPY_LVL_STR(8, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(16, stream, opt_flags.vector_lvl, NULL_CHAR);
 
             ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
             opt_flags.stream_lvl = opt_flags.vector_lvl;
          }
          else if (set_stream_option) {
-            msg_str[0] = NULL_CHAR;
-            strcpy(msg_str, stream_lvl_str[opt_flags.stream_lvl]); 
-            strcpy(&msg_str[7], "\n");
-            strcpy(&msg_str[8], vector_lvl_str[opt_flags.vector_lvl]); 
-            strcpy(&msg_str[15], "\n");
+            COPY_LVL_STR(0, stream, opt_flags.stream_lvl, NEWLINE);
+            COPY_LVL_STR(8, vector, opt_flags.vector_lvl, NEWLINE);
 
             if (opt_flags.stream_lvl == Stream_Lvl_3) {
-               strcpy(&msg_str[16], vector_lvl_str[Stream_Lvl_2]); 
+               COPY_LVL_STR(16, vector, Stream_Lvl_2, NULL_CHAR);
 
                ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
                opt_flags.vector_lvl = Stream_Lvl_2;
             }
             else {
-               strcpy(&msg_str[16], vector_lvl_str[opt_flags.stream_lvl]); 
+               COPY_LVL_STR(16, vector, opt_flags.stream_lvl, NULL_CHAR);
 
                ntr_msg_queue(0, 1068, Log_Warning, 0, msg_str, 0, MULT_STR_ARG);
                opt_flags.vector_lvl = opt_flags.stream_lvl;
@@ -5438,7 +5362,7 @@ static	void	process_A_option(char	*optargs)
 
       str_pool[str_pool_idx].name_long = 0; /* Zero out last word */
 
-      str_ptr	= &str_pool[FP_NAME_IDX(file_path_tbl_idx)].name_char;
+      str_ptr	= FP_NAME_PTR(file_path_tbl_idx);
 
       for (idx = 0;  idx < length;  idx++) {
          str_ptr[idx] = toupper(module_name[idx]);
@@ -6840,7 +6764,7 @@ static	void	process_reshape_array(char	*optargs)
 
       str_pool[str_pool_idx].name_long	= 0; /* Zero out last word */
 
-      str_ptr	= &str_pool[FP_NAME_IDX(file_path_tbl_idx)].name_char;
+      str_ptr	= FP_NAME_PTR(file_path_tbl_idx);
 
       for (idx = 0;  idx < length;  idx++) {
          str_ptr[idx] = toupper(array_name[idx]);
