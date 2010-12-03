@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -1808,6 +1811,9 @@ extern  intrin_map_type    	 intrin_map[MAX_INTRIN_MAP_SIZE];
 extern	void			 (*intrinsic_semantics[])();
 
 extern	char		        *pgm_unit_str[];
+
+#define COMPILER_TMP_PREFIX_LEN 2
+extern char compiler_tmp_prefix[];
 
 # ifdef _DEBUG
 extern void print_so(size_offset_type);

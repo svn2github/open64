@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -400,15 +404,15 @@
 # define AT_NOT_VISIBLE(IDX)		attr_tbl[IDX].fld.not_visible
 # define AT_OBJ_CLASS(IDX)		attr_tbl[IDX].fld.object_class
 # define AT_OBJ_NAME(IDX)		name_pool[AT_NAME_IDX(IDX)].name_char
-# define AT_OBJ_NAME_LONG(IDX)		&(name_pool[AT_NAME_IDX(IDX)].name_long)
-# define AT_OBJ_NAME_PTR(IDX)		&name_pool[AT_NAME_IDX(IDX)].name_char
+# define AT_OBJ_NAME_LONG(IDX)		((long *)&name_pool[AT_NAME_IDX(IDX)])
+# define AT_OBJ_NAME_PTR(IDX)		((char *)&name_pool[AT_NAME_IDX(IDX)])
 # define AT_OPTIONAL(IDX)		attr_tbl[IDX].fld.optional
 # define AT_ORIG_MODULE_IDX(IDX)	attr_tbl[IDX].fld.orig_module_idx
 # define AT_ORIG_NAME_IDX(IDX)		attr_tbl[IDX].fld.orig_name_idx
 # define AT_ORIG_NAME_LEN(IDX)		attr_tbl[IDX].fld.orig_name_len
-# define AT_ORIG_NAME_PTR(IDX)	   &name_pool[AT_ORIG_NAME_IDX(IDX)].name_char
+# define AT_ORIG_NAME_PTR(IDX)	    ((char *)&name_pool[AT_ORIG_NAME_IDX(IDX)])
 # define AT_ORIG_NAME(IDX)	    name_pool[AT_ORIG_NAME_IDX(IDX)].name_char
-# define AT_ORIG_NAME_LONG(IDX)    &(name_pool[AT_ORIG_NAME_IDX(IDX)].name_long)
+# define AT_ORIG_NAME_LONG(IDX)     ((long *)&name_pool[AT_ORIG_NAME_IDX(IDX)])
 # define AT_PRIVATE(IDX)		attr_tbl[IDX].fld.private_access
 # define AT_REF_IN_CHILD(IDX)		attr_tbl[IDX].fld.ref_in_child
 # define AT_REFERENCED(IDX)		attr_tbl[IDX].fld.referenced
@@ -2242,8 +2246,8 @@
 # endif
 
 # define ATP_EXT_NAME(IDX)	      name_pool[ATP_EXT_NAME_IDX(IDX)].name_char
-# define ATP_EXT_NAME_LONG(IDX)    &(name_pool[ATP_EXT_NAME_IDX(IDX)].name_long)
-# define ATP_EXT_NAME_PTR(IDX)	     &name_pool[ATP_EXT_NAME_IDX(IDX)].name_char
+# define ATP_EXT_NAME_LONG(IDX)	     ((long *)&name_pool[ATP_EXT_NAME_IDX(IDX)])
+# define ATP_EXT_NAME_PTR(IDX)	     ((char *)&name_pool[ATP_EXT_NAME_IDX(IDX)])
 
 # ifdef _DEBUG
 # define ATP_EXT_NAME_LEN(IDX)						       \
@@ -2441,7 +2445,7 @@
 # define ATP_MOD_PATH_IDX(IDX)		attr_tbl[IDX].fld.field4
 # endif
 
-# define ATP_MOD_PATH_NAME_PTR(IDX)  &name_pool[ATP_MOD_PATH_IDX(IDX)].name_char
+# define ATP_MOD_PATH_NAME_PTR(IDX)  ((char *)&name_pool[ATP_MOD_PATH_IDX(IDX)])
 
 # ifdef _DEBUG
 # define ATP_MOD_PATH_LEN(IDX)						       \
@@ -3238,8 +3242,8 @@
 # define FP_NAME_IDX(IDX)		file_path_tbl[IDX].name_idx
 # define FP_NAME_LEN(IDX)		file_path_tbl[IDX].name_len
 # define FP_NAME(IDX)		        (str_pool[FP_NAME_IDX(IDX)].name_char)
-# define FP_NAME_LONG(IDX)	       &(str_pool[FP_NAME_IDX(IDX)].name_long)
-# define FP_NAME_PTR(IDX)	       &str_pool[FP_NAME_IDX(IDX)].name_char
+# define FP_NAME_LONG(IDX)		((long *)&str_pool[FP_NAME_IDX(IDX)])
+# define FP_NAME_PTR(IDX)		((char *)&str_pool[FP_NAME_IDX(IDX)])
 # define FP_NEXT_FILE_IDX(IDX)		file_path_tbl[IDX].next_file_idx
 # define FP_OFFSET(IDX)			file_path_tbl[IDX].offset
 # define FP_OUTPUT_TO_O(IDX)		file_path_tbl[IDX].output_to_o
@@ -3258,13 +3262,13 @@
 # define GA_NAME_IDX(IDX)		global_attr_tbl[IDX].fld.name_idx
 # define GA_NAME_LEN(IDX)		global_attr_tbl[IDX].fld.length
 # define GA_OBJ_CLASS(IDX)		global_attr_tbl[IDX].fld.object_class
-# define GA_OBJ_NAME_LONG(IDX)		&(str_pool[GA_NAME_IDX(IDX)].name_long)
-# define GA_OBJ_NAME_PTR(IDX)		&str_pool[GA_NAME_IDX(IDX)].name_char
+# define GA_OBJ_NAME_LONG(IDX)		((long *)&str_pool[GA_NAME_IDX(IDX)])
+# define GA_OBJ_NAME_PTR(IDX)		((char *)&str_pool[GA_NAME_IDX(IDX)])
 # define GA_OPTIONAL(IDX)		global_attr_tbl[IDX].fld.optional
 # define GA_ORIG_NAME_LEN(IDX)		global_attr_tbl[IDX].fld.orig_name_len
 # define GA_ORIG_NAME_IDX(IDX)		global_attr_tbl[IDX].fld.orig_name_idx
-# define GA_ORIG_NAME_PTR(IDX)	      &str_pool[GA_ORIG_NAME_IDX(IDX)].name_char
-# define GA_ORIG_NAME_LONG(IDX)     &(str_pool[GA_ORIG_NAME_IDX(IDX)].name_long)
+# define GA_ORIG_NAME_PTR(IDX)	      ((char *)&str_pool[GA_ORIG_NAME_IDX(IDX)])
+# define GA_ORIG_NAME_LONG(IDX)	      ((long *)&str_pool[GA_ORIG_NAME_IDX(IDX)])
 # define GA_REFERENCED(IDX)		global_attr_tbl[IDX].fld.referenced
 # define GA_USE_ASSOCIATED(IDX)		global_attr_tbl[IDX].fld.use_associated
 #ifdef KEY /* Bug 14150 */
@@ -3726,11 +3730,11 @@
 # define GL_PATH_NAME_LEN(IDX)		global_line_tbl[IDX].path_name_len
 # define GL_SOURCE_LINES(IDX)		global_line_tbl[IDX].source_lines
 
-# define GL_FILE_NAME_LONG(IDX)   &(str_pool[GL_FILE_NAME_IDX(IDX)].name_long)
-# define GL_FILE_NAME_PTR(IDX)    &str_pool[GL_FILE_NAME_IDX(IDX)].name_char
+# define GL_FILE_NAME_LONG(IDX)	      ((long *)&str_pool[GL_FILE_NAME_IDX(IDX)])
+# define GL_FILE_NAME_PTR(IDX)	      ((char *)&str_pool[GL_FILE_NAME_IDX(IDX)])
 
-# define GL_PATH_NAME_LONG(IDX)   &(str_pool[GL_PATH_NAME_IDX(IDX)].name_long)
-# define GL_PATH_NAME_PTR(IDX)    &str_pool[GL_PATH_NAME_IDX(IDX)].name_char
+# define GL_PATH_NAME_LONG(IDX)	      ((long *)&str_pool[GL_PATH_NAME_IDX(IDX)])
+# define GL_PATH_NAME_PTR(IDX)	      ((char *)&str_pool[GL_PATH_NAME_IDX(IDX)])
 
 
 /* GLOBAL NAME TABLE */
@@ -3738,8 +3742,8 @@
 # define GN_ATTR_IDX(IDX)		global_name_tbl[IDX].attr_idx
 # define GN_NAME_IDX(IDX)		global_name_tbl[IDX].name_idx
 # define GN_NAME_LEN(IDX)		global_name_tbl[IDX].name_len
-# define GN_NAME_LONG(IDX)	       &(str_pool[GN_NAME_IDX(IDX)].name_long)
-# define GN_NAME_PTR(IDX)	       &str_pool[GN_NAME_IDX(IDX)].name_char
+# define GN_NAME_LONG(IDX)		((long *)&str_pool[GN_NAME_IDX(IDX)])
+# define GN_NAME_PTR(IDX)		((char *)&str_pool[GN_NAME_IDX(IDX)])
 
 /* GLOBAL TYPE TABLE */
 
@@ -3760,6 +3764,7 @@
 # define HN_ATTR_IDX(IDX)		hidden_name_tbl[IDX].attr_idx
 # define HN_NAME_IDX(IDX)		hidden_name_tbl[IDX].name_idx
 # define HN_NAME_LEN(IDX)		hidden_name_tbl[IDX].name_len
+# define HN_NAME_PTR(IDX)		((char *)&name_pool[HN_NAME_IDX(IDX)])
 
 
 /* SCOPE TABLE definitions */
@@ -4098,7 +4103,8 @@
 # define LN_IN_ONLY_LIST(IDX)		loc_name_tbl[IDX].in_only_list
 # define LN_NAME_IDX(IDX)		loc_name_tbl[IDX].name_idx
 # define LN_NAME_LEN(IDX)		loc_name_tbl[IDX].name_len
-# define LN_NAME_LONG(IDX)		&(name_pool[LN_NAME_IDX(IDX)].name_long)
+# define LN_NAME_LONG(IDX)		((long *)&name_pool[LN_NAME_IDX(IDX)])
+# define LN_NAME_PTR(IDX)		((char *)&name_pool[LN_NAME_IDX(IDX)])
 # define LN_NEW_NAME(IDX)		loc_name_tbl[IDX].new_name
 # define LN_RENAMED(IDX)		loc_name_tbl[IDX].renamed
 
@@ -4118,8 +4124,8 @@
 # define RO_LINE_NUM(IDX)		rename_only_tbl[IDX].line_num
 # define RO_NAME_IDX(IDX)		rename_only_tbl[IDX].name_idx
 # define RO_NAME_LEN(IDX)		rename_only_tbl[IDX].name_len
-# define RO_NAME_LONG(IDX)		&(name_pool[RO_NAME_IDX(IDX)].name_long)
-# define RO_NAME_PTR(IDX)		&name_pool[RO_NAME_IDX(IDX)].name_char
+# define RO_NAME_LONG(IDX)		((long *)&name_pool[RO_NAME_IDX(IDX)])
+# define RO_NAME_PTR(IDX)		((char *)&name_pool[RO_NAME_IDX(IDX)])
 # define RO_NEXT_IDX(IDX)		rename_only_tbl[IDX].next_idx
 # define RO_RENAME_IDX(IDX)		rename_only_tbl[IDX].rename_idx
 # define RO_RENAME_NAME(IDX)		rename_only_tbl[IDX].rename_name
@@ -4133,6 +4139,7 @@
 # define SN_MATCHED_DARG(IDX)		sec_name_tbl[IDX].matched
 # define SN_NAME_IDX(IDX)		sec_name_tbl[IDX].name_idx
 # define SN_NAME_LEN(IDX)		sec_name_tbl[IDX].length
+# define SN_NAME_PTR(IDX)		((char *)&name_pool[SN_NAME_IDX(IDX)])
 # define SN_SIBLING_LINK(IDX)		sec_name_tbl[IDX].sibling_link
 
 
@@ -4159,7 +4166,7 @@
 # define SB_EXT_NAME_IDX(IDX)		stor_blk_tbl[IDX].fld.ext_name_idx
 # define SB_EXT_NAME_LEN(IDX)		stor_blk_tbl[IDX].fld.ext_name_len
 # define SB_EXT_NAME(IDX)	      name_pool[SB_EXT_NAME_IDX(IDX)].name_char
-# define SB_EXT_NAME_PTR(IDX)	     &name_pool[SB_EXT_NAME_IDX(IDX)].name_char
+# define SB_EXT_NAME_PTR(IDX)	      ((char *)&name_pool[SB_EXT_NAME_IDX(IDX)])
 #endif /* KEY Bug 14150 */
 # define SB_FILL_SYMBOL(IDX)		stor_blk_tbl[IDX].fld.fill_symbol
 # define SB_FIRST_ATTR_IDX(IDX)		stor_blk_tbl[IDX].fld.first_attr_idx
@@ -4176,8 +4183,8 @@
 # define SB_MODULE_IDX(IDX)		stor_blk_tbl[IDX].fld.module_idx
 # define SB_MODULE(IDX)			stor_blk_tbl[IDX].fld.module
 # define SB_NAME_IDX(IDX)		stor_blk_tbl[IDX].fld.name_idx
-# define SB_NAME_PTR(IDX)		&name_pool[SB_NAME_IDX(IDX)].name_char
-# define SB_NAME_LONG(IDX)		&(name_pool[SB_NAME_IDX(IDX)].name_long)
+# define SB_NAME_PTR(IDX)		((char *)&name_pool[SB_NAME_IDX(IDX)])
+# define SB_NAME_LONG(IDX)		((long *)&name_pool[SB_NAME_IDX(IDX)])
 # define SB_NAME(IDX)			name_pool[SB_NAME_IDX(IDX)].name_char
 # define SB_NAME_IN_STONE(IDX)		stor_blk_tbl[IDX].fld.name_in_stone
 # define SB_NAME_LEN(IDX)		stor_blk_tbl[IDX].fld.name_len

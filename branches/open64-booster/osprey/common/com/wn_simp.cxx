@@ -388,10 +388,14 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
       k0 = WN_kid0(t);
 
       if (WN_operator(t) != OPR_CVTL) {
+          if (WN_operator(t) == OPR_EXTRACT_BITS) {
+              r = WN_SimplifyExp1(op,t);
+          } else {
 # if defined (KEY) && defined (Is_True_On)
-        if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
+            if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))
 # endif
-	 r = WN_SimplifyExp1(op, k0);
+        	 r = WN_SimplifyExp1(op, k0);
+          }
       } else {
 # if defined (KEY) && defined (Is_True_On)
         if (Enable_WN_Simp_Expr_Limit == -1 || (Enable_WN_Simp_Expr_Limit != -1 && cur_idx < Enable_WN_Simp_Expr_Limit))

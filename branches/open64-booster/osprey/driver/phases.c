@@ -267,6 +267,10 @@ add_implied_string (string_list_t *list, int iflag, int flag, phases_t phase)
 				add_string(list, iname);
 			}
 		}
+		else if (strcmp(iname, "-mp") == 0
+			 && (phase == P_spin_cc1 || phase == P_spin_cc1plus)) {
+			add_string(list, "-fopenmp");
+		}
 		else
 			add_string(list, iname);
 	}
@@ -2313,6 +2317,13 @@ postprocess_ld_args (string_list_t *args)
 	if (prof_lib_exists("c"))
 	    add_library(args, "c");
     }
+
+    /*
+     * When building the compiler's libraries, do not append any rpath
+     * options since these would reference the build directory.
+     */
+    if (run_build)
+        return;
 
     /*
      * For some reason, our cross linker won't find libraries in some

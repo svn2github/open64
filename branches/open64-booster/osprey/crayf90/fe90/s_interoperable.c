@@ -63,12 +63,13 @@ static void check_interoperable_derived_type(int);
  * whether attr_idx itself is interoperable.) For example, a variable with
  * type integer(c_int) has interoperable type even if the variable itself
  * lacks "bind(c)"; a variable of type integer has interoperable type, but
- * if it also has the ALLOCATABLE attribute or is an assumed-shape array, it
- * cannot itself be interoperable (and cannot have the "bind" attribute.)
+ * if it also has the ALLOCATABLE attribute then the variable is not
+ * itself interoperable. This function cares only about the type.
  *
  * attr_idx	AT_Tbl_Idx for a data object (not its type)
  * quiet	If true, suppress error message
- * ck_arrayness	If true, check constraints on array characteristics
+ * ck_arrayness	If true, check constraints on array characteristics and on
+ *		character length parameter
  * returns	TRUE if type of data object is interoperable
  */
 boolean
@@ -115,7 +116,7 @@ check_interoperable_type(int attr_idx, boolean quiet, boolean ck_arrayness) {
     }
   }
   else if (linear_type == Character_1) {
-    if (!length_type_param_is_one(attr_idx)) {
+    if (ck_arrayness && !length_type_param_is_one(attr_idx)) {
       if (!quiet) {
 	PRINTMSG(AT_DEF_LINE(attr_idx), 1695, Error, AT_DEF_COLUMN(attr_idx),
 	  AT_OBJ_NAME_PTR(attr_idx));

@@ -1,3 +1,43 @@
+/*
+
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
+  Open64 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  Open64 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+*/
+
+//====================================================================
+//
+// Module: wn_cfg.cxx
+//
+// Revision history:
+//  Nov-1 - Original Version
+//
+// Description:
+//  Implementation of WHIRL CFG
+//
+// Exported classes:
+//  CFG_UTIL::WN_CFG
+//  CFG_UTIL::WN_CFG_BUILDER
+//
+// SEE ALSO:
+//  be/com/wn_cfg.h (WN_CFG)
+//
+//====================================================================
+
 #include "wn_cfg.h"
 #include "cfg_util.h"
 #include "ir_reader.h"
@@ -78,6 +118,88 @@ WN_STMT_CONTAINER::Is_empty() const {
 }
 
 void
+WN_STMT_CONTAINER::Insert_before(WN* before, WN* stmt) {
+  Is_True(before != NULL, ("invalid before stmt"));
+  Is_True(stmt != NULL, ("invalid stmt"));
+  Is_True(OPERATOR_is_stmt(WN_operator(stmt)), ("invalid stmt"));
+  FmtAssert(before != _extra_stmt, ("TODO: support insert before extra stmt"));
+  FmtAssert(WN_operator(before) != OPR_LABEL, ("can not insert before label"));
+
+#ifdef Is_True_On
+  WN* wn = NULL;
+  for (wn = _first_stmt; wn != _last_stmt; wn = WN_next(wn)) {
+    if (wn == before)
+      break;
+  }
+  Is_True(before == wn, ("can not find insert position"));
+#endif
+
+  if (before == _first_stmt) {
+    _first_stmt = stmt;
+  }
+}
+
+void
+WN_STMT_CONTAINER::Insert_after(WN* after, WN* stmt) {
+  Is_True(after != NULL, ("invalid after stmt"));
+  Is_True(stmt != NULL, ("invalid stmt"));
+  Is_True(OPERATOR_is_stmt(WN_operator(stmt)), ("invalid stmt"));
+  Is_True(!OPERATOR_is_scf(WN_operator(after)), ("TODO: after is scf"));
+  Is_True(WN_operator(after) != OPR_TRUEBR &&
+          WN_operator(after) != OPR_FALSEBR &&
+          WN_operator(after) != OPR_GOTO &&
+          WN_operator(after) != OPR_AGOTO &&
+          WN_operator(after) != OPR_CASEGOTO &&
+          WN_operator(after) != OPR_COMPGOTO &&
+          WN_operator(after) != OPR_GOTO_OUTER_BLOCK &&
+          WN_operator(after) != OPR_RETURN &&
+          WN_operator(after) != OPR_RETURN_VAL &&
+          WN_operator(after) != OPR_XGOTO, ("TODO: after is jump"));
+  FmtAssert(after != _extra_stmt, ("TODO: support insert after extra stmt"));
+
+#ifdef Is_True_On
+  WN* wn = NULL;
+  for (wn = _first_stmt; wn != _last_stmt; wn = WN_next(wn)) {
+    if (wn == after)
+      break;
+  }
+  Is_True(after == wn, ("can not find insert position"));
+#endif
+
+  if (after == _last_stmt) {
+    _last_stmt = stmt;
+  }
+}
+
+void
+WN_STMT_CONTAINER::Remove_stmt(WN* stmt) {
+  Is_True(stmt != NULL, ("invalid stmt"));
+  FmtAssert(stmt != _extra_stmt, ("TODO: support remove extra stmt"));
+
+#ifdef Is_True_On
+  WN* wn = NULL;
+  for (wn = _first_stmt; wn != _last_stmt; wn = WN_next(wn)) {
+    if (wn == stmt)
+      break;
+  }
+  Is_True(stmt == wn || stmt == _last_stmt, 
+          ("can not find wn"));
+#endif
+
+  if (_first_stmt != _last_stmt) {
+    if (stmt == _first_stmt)
+      _first_stmt = WN_next(_first_stmt);
+    if (stmt == _last_stmt)
+      _last_stmt = WN_prev(_last_stmt);
+  }
+  else {
+    FmtAssert(stmt == _first_stmt, ("can not find wn"));
+    FmtAssert(_extra_stmt == NULL, ("extra stmt is not NULL"));
+    _first_stmt = _last_stmt = NULL;
+  }
+}
+
+void
 WN_STMT_CONTAINER::Print(FILE* fp, INT32 dump_flag) const {
   if (dump_flag & DUMP_AIR) {
     for (WN* wn = First_stmt(); wn != NULL; wn = Next_stmt(wn)) {
@@ -152,19 +274,37 @@ WN_STMT_MAPPER::Get_stmt_node(STMT stmt) const {
 void
 WN_CFG::Set_parent(WN* parent, WN* kid) {
   Is_True(parent != NULL && kid != NULL, ("Parent or kid is NULL"));
-  Is_True(_parent_map.find((INTPTR)kid) == _parent_map.end(), 
-          ("Kid already has a parent"));
+//  Is_True(_parent_map.find((INTPTR)kid) == _parent_map.end(), 
+//          ("Kid already has a parent"));
 #ifdef Is_True_On
   int i;
-  for (i=0; i<WN_kid_count(parent); ++i) {
-    if (WN_kid(parent, i) == kid)
-      break;
+  if (WN_operator(parent) == OPR_BLOCK) {
+    WN* wn;
+    for (wn = WN_first(parent); wn != NULL; wn = WN_next(wn)) {
+      if (wn == kid)
+        break;
+    }
+    FmtAssert(wn == kid, ("Parent and kid mismatch"));
   }
-  FmtAssert(WN_kid_count(parent) == 0 || i != WN_kid_count(parent), 
-            ("Parent and kid mismatch"));
+  else {
+    for (i=0; i<WN_kid_count(parent); ++i) {
+      if (WN_kid(parent, i) == kid)
+        break;
+    }
+    FmtAssert(WN_kid_count(parent) == 0 || i != WN_kid_count(parent), 
+              ("Parent and kid mismatch"));
+  }
 #endif
 
   _parent_map[(INTPTR)kid] = parent;
+}
+
+void
+WN_CFG::Remove_parent(WN* wn) {
+  Is_True(wn != NULL, ("wn is NULL"));
+  Is_True(_parent_map.find((INTPTR)wn) != _parent_map.end(),
+          ("wn does not have a parent"));
+  _parent_map.erase((INTPTR)wn);
 }
 
 void
@@ -172,6 +312,43 @@ WN_CFG::Set_label(INT32 label_num, BB_NODE* node) {
   Is_True(node != NULL, ("node is NULL"));
   Is_True(_label_map.find(label_num) == _label_map.end(), ("label already exists"));
   _label_map[label_num] = node;
+}
+
+void
+WN_CFG::Parentize_tree(WN* tree) {
+  Is_True(tree != NULL, ("tree is NULL"));
+  if (WN_operator(tree) == OPR_BLOCK) {
+    WN* wn;
+    for (wn = WN_first(tree); wn != NULL; wn = WN_next(wn)) {
+      Set_parent(tree, wn);
+      Parentize_tree(wn);
+    }
+  }
+  else {
+    int i;
+    for (i = 0; i < WN_kid_count(tree); ++i) {
+      Set_parent(tree, WN_kid(tree, i));
+      Parentize_tree(WN_kid(tree, i));
+    }
+  }
+}
+
+void
+WN_CFG::Unparentize_tree(WN* tree) {
+  Is_True(tree != NULL, ("tree is NULL"));
+  Remove_parent(tree);
+  if (WN_operator(tree) == OPR_BLOCK) {
+    WN* wn;
+    for (wn = WN_first(tree); wn != NULL; wn = WN_next(wn)) {
+      Unparentize_tree(wn);
+    }
+  }
+  else {
+    int i;
+    for (i = 0; i < WN_kid_count(tree); ++i) {
+      Unparentize_tree(WN_kid(tree, i));
+    }
+  }
 }
 
 WN*
@@ -279,6 +456,8 @@ WN_CFG::Get_label_node(INT32 label_num) const {
 
 WN*
 WN_CFG::Get_branch_stmt(BB_NODE* node) const {
+  Is_True(node != Get_dummy_entry() && node != Get_dummy_exit(),
+          ("node is dummy entry or exit"));
   INT32 succ_count = node->Get_succs_count();
   Is_True(succ_count > 0, ("node does not have successor"));
   WN* last_stmt = node->Last_stmt();
@@ -340,6 +519,11 @@ WN_CFG_BUILDER::Build_CFG() {
     FmtAssert(FALSE, ("TODO: build CFG for region"));
   }
   Is_True(WN_operator(_root) == OPR_FUNC_ENTRY, ("root is not FUNC_ENTRY"));
+
+  // set additional fields
+  _cfg.Set_wn_root(_root);
+  RID *rid = REGION_get_rid(_root);
+  _cfg.Set_rgn_level((REGION_LEVEL)(RID_level(rid) + 1));
 
   // build the CFG
   _current_bb = NULL;
@@ -439,12 +623,15 @@ WN_CFG_BUILDER::Add_entry(WN_CFG& cfg, WN* wn) {
   _current_bb = cfg.Create_node();
   cfg.Add_entry_node(_current_bb);
   Add_block(cfg, WN_func_body(wn));
+
+  // put FUNC_ENTRY into dummy entry
+  Add_stmt(cfg, cfg.Get_dummy_entry(), wn);
 }
 
 //===================================================================
 // Add_altentry: handle ALTENTRY
 //   STMT0 --> BB0 (must be GOTO/RETURN)
-//   FUNC_ENTRY --> BB1 (BB1 don't have other preds than dummy_entry
+//   ALTENTRY --> BB1 (BB1 don't have other preds than dummy_entry
 //     [kid0..n-1] IDNAME --> ignore
 //===================================================================
 void
@@ -454,9 +641,12 @@ WN_CFG_BUILDER::Add_altentry(WN_CFG& cfg, WN* wn) {
   Is_True(_current_bb != NULL, ("Current BB is NULL"));
   Is_True(_current_bb->Get_preds_count() == 0, ("Current BB has predecessors"));
 
-  // put BODY into BB1
+  // create new BB for ALTENTRY, connect new bb with dummy entry
   _current_bb = cfg.Create_node();
   cfg.Add_entry_node(_current_bb);
+
+  // put ALTENTRY into _current_bb
+  Add_stmt(cfg, _current_bb, wn);
 }
 
 //===================================================================
@@ -691,12 +881,12 @@ WN_CFG_BUILDER::Add_label(WN_CFG& cfg, WN* wn) {
   Is_True(WN_operator(wn) == OPR_LABEL, ("WN is not LABEL"));
   Is_True(_current_bb != NULL, ("Current BB is NULL"));
 
-  if (!_current_bb->Is_empty()) {
+  BB_NODE* last_bb = _current_bb;
+  if (! last_bb->Is_empty()) {
     // create new bb if current BB isn't empty
-    BB_NODE* last_bb = _current_bb;
     _current_bb = cfg.Create_node();
-    cfg.Connect_predsucc(last_bb, _current_bb);
   }
+
   Add_stmt(cfg, _current_bb, wn);
   FmtAssert(_label_map.find(WN_label_number(wn)) == _label_map.end(),
             ("found duplicated labels"));
@@ -715,6 +905,10 @@ WN_CFG_BUILDER::Add_label(WN_CFG& cfg, WN* wn) {
     // remove the gotos
     _goto_map.erase(vit);
   }
+
+  // connect last_bb with current_bb
+  if (last_bb != _current_bb)
+    cfg.Connect_predsucc(last_bb, _current_bb);
 }
 
 //===================================================================
@@ -770,6 +964,8 @@ WN_CFG_BUILDER::Add_condgoto(WN_CFG& cfg, WN* wn) {
   // put CONDGOTO into BB0
   Add_stmt(cfg, _current_bb, wn);
   BB_NODE* condgoto_bb = _current_bb;
+
+  // connect the target of CONDGOTO if it's exist or push to list
   LABEL_MAP::iterator lit = _label_map.find(WN_label_number(wn));
   if (lit != _label_map.end()) {
     cfg.Connect_predsucc(_current_bb, lit->second);
@@ -779,7 +975,7 @@ WN_CFG_BUILDER::Add_condgoto(WN_CFG& cfg, WN* wn) {
     gotos.push_back(_current_bb);
   }
 
-  // create BB1
+  // create and connect BB1
   _current_bb = cfg.Create_node();
   cfg.Connect_predsucc(condgoto_bb, _current_bb);
 }
@@ -913,7 +1109,13 @@ WN_CFG_BUILDER::Add_stmt(WN_CFG& cfg, BB_NODE* bb, WN* stmt) {
   Is_True(stmt != NULL, ("wn is NULL"));
 
   OPERATOR opr = WN_operator(stmt);
-  Is_True(opr != OPR_FUNC_ENTRY && opr != OPR_ALTENTRY, ("stmt is ENTRY"));
+  if (opr == OPR_FUNC_ENTRY) {
+    Is_True(bb == cfg.Get_dummy_entry(), ("FUNC_ENTRY can only be in dummy entry"));
+  }
+  if (opr == OPR_ALTENTRY) {
+    Is_True(bb->Get_preds_count() == 1 &&
+            *(bb->Pred_begin()) == cfg.Get_dummy_entry(), ("ALTENTRY can only have the dummy entry as it pred."));
+  }
 
   bb->Add_stmt(stmt);
   cfg.Connect_stmt_node(stmt, bb);

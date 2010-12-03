@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -8206,6 +8209,8 @@ void insert_init_stmt_for_tmp(int		tmp_idx)
    int		list_idx;
    int		save_curr_stmt_sh_idx;
    int		sub_idx;
+   char		*endptr;
+   int		tmpnum;
 
 
    TRACE (Func_Entry, "insert_init_stmt_for_tmp", NULL);
@@ -8322,6 +8327,25 @@ void insert_init_stmt_for_tmp(int		tmp_idx)
    curr_stmt_sh_idx = save_curr_stmt_sh_idx;
 
    ATD_TMP_INIT_NOT_DONE(tmp_idx) = FALSE;
+
+   /* Fix for bug 677, compiler temp names used for data initialization
+    * need to to have their own namespace, since they can be exported
+    * though module files.
+    */
+   if (strncmp(AT_OBJ_NAME_PTR(tmp_idx), compiler_tmp_prefix, COMPILER_TMP_PREFIX_LEN) == 0
+       && strtod(AT_OBJ_NAME_PTR(tmp_idx) + COMPILER_TMP_PREFIX_LEN, &endptr)
+       && *endptr == 0) {
+      char buf[1000];
+      int length;
+      int np_idx;
+
+      sprintf(buf, "%s%s", AT_OBJ_NAME_PTR(tmp_idx),
+              SB_NAME_PTR(ATD_STOR_BLK_IDX(tmp_idx)));
+      length = strlen(buf);
+      NTR_NAME_POOL((long *)buf, length, np_idx);
+      AT_NAME_LEN(tmp_idx) = length;
+      AT_NAME_IDX(tmp_idx) = np_idx;
+   }
 
    TRACE (Func_Exit, "insert_init_stmt_for_tmp", NULL);
 

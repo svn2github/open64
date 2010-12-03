@@ -10522,6 +10522,23 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
         if (CPR()) {	/* C++ */
 	  switch (TREE_CODE(t)) {
 	    case FUNCTION_DECL:
+	      
+	      if (!DECL_LANG_SPECIFIC (t)) {
+	        /* Following C++ snippet necessitates the need of condition 
+	         * "if (!DECL_LANG_SPECIFIC(t))"
+	         * 
+	         *   #pragma weak bar1 = foo1
+	         *   extern "C" void foo1 (void) { }
+	         *
+	         *  The front end creates a decl tree both for bar1() and foo1().
+	         *  The decl.lang_specific field of the decl tree for bar1() is NULL,
+	         *  as evidenced in maybe_apply_pending_pragma_weaks(). 
+	         *  If the <t> being procesed is the decl tree for bar1(), calling 
+	         *  macros like DECL_GLOBAL_CTOR_P will incur segamentation fault.
+	         */
+	        break;
+	      }
+
 	      _gs_bv(cp_decl_flags, GS_DECL_GLOBAL_CTOR_P,
 		     DECL_GLOBAL_CTOR_P(t));
 	      _gs_bv(cp_decl_flags, GS_DECL_GLOBAL_DTOR_P,

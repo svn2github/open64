@@ -1408,6 +1408,34 @@ static simpnode simp_factor_idty (simpnode k0, simpnode k1, OPERATOR op1,
 /**************************************************************************/
 /**************************************************************************/
 /**************************************************************************/
+/*------------------------------------------------ 
+   Simplifications for EXTRACT_BITS:
+   EXTRACT_BITS(INTCONSTANT,size=1,offset=0)
+-------------------------------------------------*/
+simpnode simp_extract_bits (OPCODE opc, simpnode t, simpnode kx, 
+        BOOL tconst, BOOL kxconst) {
+    if (SIMPNODE_operator(t) != OPR_EXTRACT_BITS)
+        return NULL;
+    OPCODE t_op, k0_op;
+    TYPE_ID ttyp, k0typ;
+    simpnode k0 = SIMPNODE_kid0(t);
+
+    t_op = SIMPNODE_opcode(t);
+    k0_op = SIMPNODE_opcode(k0);
+
+    ttyp = OPCODE_rtype(t_op);
+    k0typ = OPCODE_rtype(k0_op);
+
+    if (SIMPNODE_op_bit_offset(t) == 0 && SIMPNODE_op_bit_size(t) == 1) {
+        if (SIMPNODE_operator(k0) == OPR_INTCONST) {
+            if (SIMPNODE_const_val(k0) == 0 || SIMPNODE_const_val(k0) == 1) {
+                // We want to catch booleans 
+                return k0;
+            }
+        }
+    }
+    return NULL;
+}
 
 /*------------------------------------------------ 
    Simplifications for ABS:

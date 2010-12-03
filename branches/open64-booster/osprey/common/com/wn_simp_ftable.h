@@ -185,7 +185,7 @@ NULL,   /* OPR_ASM_INPUT */
 NULL,   /* OPR_RROTATE */
 NULL,   /* OPR_LDA_LABEL */
 NULL,   /* OPR_GOTO_OUTER_BLOCK */
-NULL,   /* OPR_EXTRACT_BITS */
+simp_extract_bits,   /* OPR_EXTRACT_BITS */
 NULL,   /* OPR_COMPOSE_BITS */
 #endif
 #ifdef TARG_X8664

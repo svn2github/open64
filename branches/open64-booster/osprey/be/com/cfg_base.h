@@ -1,3 +1,42 @@
+/*
+
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
+  Open64 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  Open64 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+*/
+
+//====================================================================
+//
+// Module: cfg_base.h
+//
+// Revision history:
+//  Nov-1 - Original Version
+//
+// Description:
+//  Generic base class for Control Flow Graph
+//
+// Exported classes:
+//  CFG_UTIL::BB_NODE_BASE
+//  CFG_UTIL::CFG_BASE
+//
+// SEE ALSO:
+//
+//====================================================================
+
 #ifndef cfg_base_INCLUDED
 #define cfg_base_INCLUDED
 
@@ -23,13 +62,12 @@ template<typename _Tcfg, typename _Twalker, BOOL _Dom> class DOM_WALKER_HELPER;
 template<typename _Tcfg, BOOL _Fwd> class DFS_ITERATOR;
 template<typename _Tsc, typename _Tsm, typename _Tnc> class CFG_BASE;
 
-
 // bitwised options to control the dump content of the bb node
 enum DUMP_OPTIONS {
   // cfg dump flags use the bit 0-7 or more
   DUMP_CFG   = 0x00000001, // dump cfg info, _id, _preds, _succs
-  DUMP_DOM   = 0x00000002, // dump dom info, _idom, _dom_list
-  DUMP_PDOM  = 0x00000004, // dump pdom info, _ipdom, _pdom_list
+  DUMP_DOM   = 0x00000002, // dump dom info, _idom, _dom_set
+  DUMP_PDOM  = 0x00000004, // dump pdom info, _ipdom, _pdom_set
   DUMP_ADOM  = DUMP_DOM | DUMP_PDOM, // all dom related dump
   DUMP_DF    = 0x00000008, // dump dominance frontier
   DUMP_CD    = 0x00000010, // dump control dependency
@@ -41,6 +79,86 @@ enum DUMP_OPTIONS {
   DUMP_AIR   = 0x00FF0000, // all IR related dump
 };
 
+//===================================================================
+// class BB_NODE_SET
+//  wrapper for BS
+//===================================================================
+class BB_NODE_SET {
+private:
+  MEM_POOL* _mpool;
+  BS* _bs;
+
+public:
+  BB_NODE_SET(INT size, MEM_POOL* mpool) : _mpool(mpool) {
+    _bs = BS_Create_Empty(size, _mpool);
+  };
+
+  // set operations
+  BB_NODE_SET& Union1D(BS_ELT x) {
+    Is_True(x >= 0 && x < BS_Alloc_Size(_bs) * CHAR_BIT, ("elem out of bounds"));
+    _bs = BS_Union1D(_bs, x, _mpool);
+    return *this;
+  }
+  BB_NODE_SET& UnionD(const BB_NODE_SET* bb_set) {
+    Is_True(BS_Alloc_Size(_bs) >= BS_Alloc_Size(bb_set->_bs), ("elem out of bounds"));
+    _bs = BS_UnionD(_bs, bb_set->_bs, _mpool);
+    return *this;
+  }
+  BB_NODE_SET& Difference1D(BS_ELT x) {
+    _bs = BS_Difference1D(_bs, x);
+    return *this;
+  }
+  BB_NODE_SET& ClearD() {
+    _bs = BS_ClearD(_bs);
+    return *this;
+  }
+
+  BOOL MemberP(BS_ELT x) {
+    return BS_MemberP(_bs, x);
+  }
+
+  // iteration operations
+  BS_ELT First() const          { return BS_Choose(_bs);           }
+  BS_ELT Next(BS_ELT cur) const { return BS_Choose_Next(_bs, cur); }
+
+public:
+  void Print(FILE* fp, int indent) const;
+};
+
+//===================================================================
+// class BS_ELM_ITERATOR
+//   iterators to traverse the elements in the BB_BODE_SET
+//===================================================================
+class BS_ELM_ITERATOR {
+private:
+  const BB_NODE_SET* _bb_set;
+  BS_ELT _cur;
+
+public:
+  BS_ELM_ITERATOR() : _bb_set(0), _cur(BS_CHOOSE_FAILURE) {
+  }
+  BS_ELM_ITERATOR(const BB_NODE_SET* bb_set, BS_ELT cur)
+    : _bb_set(bb_set), _cur(cur) {
+  }
+  // use default copy constructor and operator =
+
+  BS_ELT operator *() {
+    Is_True(_cur != BS_CHOOSE_FAILURE, ("invalid cur"));
+    Is_True(_bb_set != NULL, ("invalid bb set"));
+    return _cur;
+  }
+  BS_ELM_ITERATOR& operator++() {
+    Is_True(_cur != BS_CHOOSE_FAILURE, ("invalid cur"));
+    Is_True(_bb_set != NULL, ("invalid bb set"));
+    _cur = _bb_set->Next(_cur);
+  }
+  bool operator==(const BS_ELM_ITERATOR& rit) {
+    return _bb_set == rit._bb_set && _cur == rit._cur;
+  }
+  bool operator!=(const BS_ELM_ITERATOR& rit) {
+    return _bb_set != rit._bb_set || _cur != rit._cur;
+  }
+};
 
 //===================================================================
 // class BB_NODE_BASE
@@ -50,12 +168,12 @@ enum DUMP_OPTIONS {
 //     BB_NODE *_prev, *_next;
 //     LIST<BB_NODE*> _preds, _succs;
 //     BB_NODE *_idom, *_ipdom;
-//     LIST<BB_NODE*> _dom_list, _pdom_list;
+//     BB_NODE_SET *_dom_set, *_pdom_set;
 //     UINT32 _id;
 //     _Tstmtcontainer _stmts;
 //   iterators:
 //     stmt_iterator to iterate all stmts in this BB_NODE
-//     bb_iterator to iterate preds/succs, dom_list/pdom_list
+//     bb_iterator to iterate preds/succs, dom_set/pdom_set
 //===================================================================
 template<typename _Tstmtcontainer>
 class BB_NODE_BASE {
@@ -68,6 +186,9 @@ public:
   typedef typename BB_LIST::iterator bb_iterator;
   typedef typename BB_LIST::const_iterator const_bb_iterator;
 
+  typedef BS_ELM_ITERATOR dom_iterator;
+  typedef BS_ELM_ITERATOR const_dom_iterator;
+
   typedef typename _Tstmtcontainer::iterator stmt_iterator;
   typedef typename _Tstmtcontainer::const_iterator const_stmt_iterator;
 
@@ -77,8 +198,8 @@ private:
 
   BB_NODE* _idom;  // immediate dominator on CFG
   BB_NODE* _ipdom; // immediate dominator on RCFG
-  BB_LIST _dom_list;  // bb list dominated by this on CFG
-  BB_LIST _pdom_list; // bb list dominated by this on RCFG
+  BB_NODE_SET* _dom_set;   // bb set dominated by this on CFG
+  BB_NODE_SET* _pdom_set;  // bb set dominated by this on RCFG
   BB_LIST _df_list;   // dominance frontier on CFG
   BB_LIST _cd_list;   // control dependence
 
@@ -88,7 +209,8 @@ private:
 
 public:
   BB_NODE_BASE(UINT32 id) 
-    : _id(id), _idom(NULL), _ipdom(NULL) { }
+    : _id(id), _idom(NULL), _ipdom(NULL), _dom_set(NULL), _pdom_set(NULL) {
+  }
 
 public:
   UINT32 Get_id() const { return _id; }
@@ -98,7 +220,13 @@ public:
   STMT First_stmt() const  { return _stmts.First_stmt(); }
   STMT Last_stmt() const   { return _stmts.Last_stmt();  }
   BOOL Is_empty() const    { return _stmts.Is_empty();   }
-
+  void Insert_before(STMT before, STMT stmt) {
+    _stmts.Insert_before(before, stmt);
+  }
+  void Insert_after(STMT after, STMT stmt) {
+    _stmts.Insert_after(after, stmt);
+  }
+  void Remove_stmt(STMT stmt)   { _stmts.Remove_stmt(stmt); }
 
   // preds/succs related methods
   void Add_pred(BB_NODE* pred)  { _preds.push_back(pred);   }
@@ -121,12 +249,42 @@ public:
   }
   INT32 Get_preds_count() const { return _preds.size(); }
   INT32 Get_succs_count() const { return _succs.size(); }
+  const BB_NODE* Get_pred(INT index) const {
+    Is_True(index >= 0 && index < _preds.size(), ("index out of bounds"));
+    const_bb_iterator it = Pred_begin();
+    for (int i=0; i < index; ++i)
+      ++it;
+    return *it;
+  }
+  const BB_NODE* Get_succ(INT index) const {
+    Is_True(index >= 0 && index < _succs.size(), ("index out of bounds"));
+    const_bb_iterator it = Succ_begin();
+    for (int i=0; i < index; ++i)
+      ++it;
+    return *it;
+  }
 
   // dominator and post-dominator related methods
-  BB_NODE* Get_idom() const     { return _idom;  }
+  BB_NODE* Get_idom() const {
+    Is_True(Get_preds_count() == 0 || _idom != NULL,
+            ("idom is NULL. DOM is not built?"));
+    return _idom;
+  }
   void Set_idom(BB_NODE* node)  { _idom = node;  }
-  BB_NODE* Get_ipdom() const    { return _ipdom; }
+  BB_NODE* Get_ipdom() const {
+    Is_True(Get_succs_count() == 0 || _ipdom != NULL,
+            ("ipdom is NULL. PDOM is not built?"));
+    return _ipdom;
+  }
   void Set_ipdom(BB_NODE* node) { _ipdom = node; }
+  BOOL Dominate(BB_NODE* node)  {
+    Is_True(_dom_set != NULL, ("dom set is NULL"));
+    return _dom_set->MemberP(node->Get_id());
+  }
+  BOOL Post_dominate(BB_NODE* node) {
+    Is_True(_dom_set != NULL, ("pdom set is NULL"));
+    return _pdom_set->MemberP(node->Get_id());
+  }
 
   // iterators for preds/succs
   bb_iterator Pred_begin() { return _preds.begin(); }
@@ -139,14 +297,14 @@ public:
   const_bb_iterator Succ_end() const { return _succs.end(); }
 
   // iterators for dom/pdom
-  bb_iterator Dom_begin()  { return _dom_list.begin(); }
-  bb_iterator Dom_end()    { return _dom_list.end();   }
-  const_bb_iterator Dom_begin() const { return _dom_list.begin(); }
-  const_bb_iterator Dom_end() const   { return _dom_list.end();   }
-  bb_iterator Pdom_begin()  { return _pdom_list.begin(); }
-  bb_iterator Pdom_end()    { return _pdom_list.end();   }
-  const_bb_iterator Pdom_begin() const { return _pdom_list.begin(); }
-  const_bb_iterator Pdom_end() const   { return _pdom_list.end();   }
+  dom_iterator Dom_begin()  { return dom_iterator(_dom_set, _dom_set->First()); }
+  dom_iterator Dom_end()    { return dom_iterator(_dom_set, BS_CHOOSE_FAILURE); }
+  const_dom_iterator Dom_begin() const { return const_dom_iterator(_dom_set, _dom_set->First()); }
+  const_dom_iterator Dom_end() const   { return const_dom_iterator(_dom_set, BS_CHOOSE_FAILURE); }
+  dom_iterator Pdom_begin()  { return dom_iterator(_pdom_set, _pdom_set->First()); }
+  dom_iterator Pdom_end()    { return dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);  }
+  const_dom_iterator Pdom_begin() const { return const_dom_iterator(_pdom_set, _pdom_set->First()); }
+  const_dom_iterator Pdom_end() const   { return const_dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);  }
 
   // iterators for df/cd
   bb_iterator Df_begin()  { return _df_list.begin(); }
@@ -188,20 +346,40 @@ private:
     else
       _ipdom = node;
   }
-  // if dom is TRUE, _dom_list is cleared
-  void clear_dom_list(bool dom) {
-    if (dom)
-      _dom_list.clear();
-    else
-      _pdom_list.clear();
+  // if dom is TRUE, _dom_set is cleared or initialized
+  void clear_dom_set(bool dom, int size, MEM_POOL* mpool) {
+    if (dom) {
+      if (_dom_set)
+        _dom_set->ClearD();
+      else
+        _dom_set = CXX_NEW(BB_NODE_SET(size, mpool), mpool);
+    }
+    else {
+      if (_pdom_set)
+        _pdom_set->ClearD();
+      else
+        _pdom_set = CXX_NEW(BB_NODE_SET(size, mpool), mpool);
+    }
   }
-  // if dom is TRUE, node is added to _dom_list
-  void add_dom_list(BB_NODE* node, bool dom) {
-    Is_True(node != NULL, ("node is NULL"));
+  void get_dom_set(bool dom) {
     if (dom)
-      _dom_list.push_back(node);
+      return _dom_set;
     else
-      _pdom_list.push_back(node);
+      return _pdom_set;
+  }
+  // add the id of node to dom_set/pdom_set
+  void add_node_to_dom_set(BB_NODE* node, bool dom) {
+    if (dom)
+      _dom_set->Union1D(node->Get_id());
+    else
+      _pdom_set->Union1D(node->Get_id());
+  }
+  // propagate the dom_set of node to current node
+  void propagate_dom_set(BB_NODE* node, bool dom) {
+    if (dom)
+      _dom_set->UnionD(node->_dom_set);
+    else
+      _pdom_set->UnionD(node->_pdom_set);
   }
   // if df is TRUE, node is added to _df_list
   void add_df_list(BB_NODE* node, bool df) {
@@ -218,11 +396,47 @@ private:
   const_bb_iterator bb_begin(BOOL fwd) const { return (fwd) ? _succs.begin() : _preds.begin(); }
   const_bb_iterator bb_end(BOOL fwd) const   { return (fwd) ? _succs.end() : _preds.end();     }
 
-  // iterators for dom/pdom, if dom is TRUE, _dom_list is visited
-  bb_iterator dom_begin(BOOL dom) { return (dom) ? _dom_list.begin() : _pdom_list.begin(); }
-  bb_iterator dom_end(BOOL dom)   { return (dom) ? _dom_list.end() : _pdom_list.end();       }
-  const_bb_iterator dom_begin(BOOL dom) const { return (dom) ? _dom_list.begin() : _pdom_list.begin(); }
-  const_bb_iterator dom_end(BOOL dom) const   { return (dom) ? _dom_list.end() : _pdom_list.end();       }
+  // iterators for dom/pdom, if dom is TRUE, _dom_set is visited
+  dom_iterator dom_begin(BOOL dom) { 
+    if (dom) {
+      Is_True(_dom_set != NULL, ("dom set is NULL"));
+      return dom_iterator(_dom_set, _dom_set->First());
+    }
+    else {
+      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
+      return dom_iterator(_pdom_set, _pdom_set->First());
+    }
+  }
+  dom_iterator dom_end(BOOL dom) {
+    if (dom) {
+      Is_True(_dom_set != NULL, ("dom set is NULL"));
+      return dom_iterator(_dom_set, BS_CHOOSE_FAILURE);
+    }
+    else {
+      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
+      return dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);
+    }
+  }
+  const_dom_iterator dom_begin(BOOL dom) const {
+    if (dom) {
+      Is_True(_dom_set != NULL, ("dom set is NULL"));
+      return const_dom_iterator(_dom_set, _dom_set->First());
+    }
+    else {
+      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
+      return const_dom_iterator(_pdom_set, _pdom_set->First());
+    }
+  }
+  const_dom_iterator dom_end(BOOL dom) const {
+    if (dom) {
+      Is_True(_dom_set != NULL, ("dom set is NULL"));
+      return const_dom_iterator(_dom_set, BS_CHOOSE_FAILURE);
+    }
+    else {
+      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
+      return const_dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);
+    }
+  }
 
   // iterators for df/cd, if df is TRUE, _df_list is visited
   bb_iterator df_begin(BOOL df) { return (df) ? _df_list.begin() : _cd_list.begin(); }
@@ -249,12 +463,22 @@ public:
       fprintf(fp, "  Idom: %d\tIpdom: %d\n", 
         _idom ? _idom->_id : (-1), _ipdom ? _ipdom->_id : (-1));
       fprintf(fp, "  Dom list:");
-      for (const_bb_iterator it = Dom_begin(); it != Dom_end(); ++it) {
-        fprintf(fp, " %d", (*it)->_id);
+      if (_dom_set == NULL) {
+        fprintf(fp, " null, unreachable or DOM is not built");
+      }
+      else {
+        for (const_dom_iterator it = Dom_begin(); it != Dom_end(); ++it) {
+          fprintf(fp, " %d", *it);
+        }
       }
       fprintf(fp, "\n  Pdom list:");
-      for (const_bb_iterator it = Pdom_begin(); it != Pdom_end(); ++it) {
-        fprintf(fp, " %d", (*it)->_id);
+      if (_pdom_set == NULL) {
+        fprintf(fp, " null, unreachable or PDOM is not built");
+      }
+      else {
+        for (const_dom_iterator it = Pdom_begin(); it != Pdom_end(); ++it) {
+          fprintf(fp, " %d", *it);
+        }
       }
       fprintf(fp, "\n");
     }
@@ -312,48 +536,6 @@ public:
 
 
 //===================================================================
-// class BB_NODE_SET
-//  wrapper for BS
-//===================================================================
-class BB_NODE_SET {
-private:
-  MEM_POOL* _mpool;
-  BS* _bs;
-
-public:
-  BB_NODE_SET(INT size, MEM_POOL* mpool) : _mpool(mpool) {
-    _bs = BS_Create_Empty(size, _mpool);
-  };
-
-  // set operations
-  BB_NODE_SET& Union1D(BS_ELT x) {
-    Is_True(x >= 0 && x < BS_Alloc_Size(_bs) * CHAR_BIT, ("elem out of bounds"));
-    _bs = BS_Union1D(_bs, x, _mpool);
-    return *this;
-  }
-  BB_NODE_SET& Difference1D(BS_ELT x) {
-    _bs = BS_Difference1D(_bs, x);
-    return *this;
-  }
-  BB_NODE_SET& ClearD() {
-    _bs = BS_ClearD(_bs);
-    return *this;
-  }
-
-  BOOL MemberP(BS_ELT x) {
-    return BS_MemberP(_bs, x);
-  }
-
-  // iteration operations
-  BS_ELT First() const          { return BS_Choose(_bs);           }
-  BS_ELT Next(BS_ELT cur) const { return BS_Choose_Next(_bs, cur); }
-
-public:
-  void Print(FILE* fp, int indent) const;
-};
-
-
-//===================================================================
 // BB_SET_ITERATOR
 //   iterators to traverse the BB_NODE_SET but returns the BB_NODE*
 //   template parameter
@@ -366,40 +548,40 @@ public:
 
 private:
   BS_ELT _cur;
-  BB_NODE_SET* _bb_map;
+  BB_NODE_SET* _bb_set;
   _Tcfg* _cfg;
 
 public:
   BB_SET_ITERATOR()
-    : _cur(BS_CHOOSE_FAILURE), _bb_map(NULL), _cfg(NULL) { }
-  BB_SET_ITERATOR(BS_ELT cur, BB_NODE_SET* map, _Tcfg* cfg)
-    : _cur(cur), _bb_map(map), _cfg(cfg) { }
+    : _cur(BS_CHOOSE_FAILURE), _bb_set(NULL), _cfg(NULL) { }
+  BB_SET_ITERATOR(BS_ELT cur, BB_NODE_SET* bb_set, _Tcfg* cfg)
+    : _cur(cur), _bb_set(bb_set), _cfg(cfg) { }
   BB_SET_ITERATOR(const BB_SET_ITERATOR& rit)
-    : _cur(rit._cur), _bb_map(rit._bb_map), _cfg(rit._cfg) { }
+    : _cur(rit._cur), _bb_set(rit._bb_set), _cfg(rit._cfg) { }
 
 public:
   BB_NODE* operator->() {
     Is_True(_cur != BS_CHOOSE_FAILURE, ("invalid cur"));
-    Is_True(_bb_map != NULL, ("invalid bb map"));
+    Is_True(_bb_set != NULL, ("invalid bb set"));
     Is_True(_cfg != NULL, ("invalid cfg"));
     return _cfg->Get_node((UINT32)_cur);
   }
   BB_NODE& operator*() {
     Is_True(_cur != BS_CHOOSE_FAILURE, ("invalid cur"));
-    Is_True(_bb_map != NULL, ("invalid bb map"));
+    Is_True(_bb_set != NULL, ("invalid bb set"));
     Is_True(_cfg != NULL, ("invalid cfg"));
     return *(_cfg->Get_node((UINT32)_cur));
   }
   BB_SET_ITERATOR& operator++() {
     Is_True(_cur != BS_CHOOSE_FAILURE, ("invalid cur"));
-    Is_True(_bb_map != NULL, ("invalid bb map"));
+    Is_True(_bb_set != NULL, ("invalid bb set"));
     Is_True(_cfg != NULL, ("invalid cfg"));
-    _cur = _bb_map->Next(_cur);
+    _cur = _bb_set->Next(_cur);
     return *this;
   }
   bool operator==(const BB_SET_ITERATOR& rit) const {
     return (_cur == rit._cur) &&
-           (_bb_map == rit._bb_map) &&
+           (_bb_set == rit._bb_set) &&
            (_cfg == rit._cfg);
   }
   bool operator!=(const BB_SET_ITERATOR& rit) const {
@@ -407,7 +589,7 @@ public:
   }
   BB_SET_ITERATOR& operator=(const BB_SET_ITERATOR& rit) {
     _cur = rit._cur;
-    _bb_map = rit._bb_map;
+    _bb_set = rit._bb_set;
     _cfg = rit._cfg;
   }
 };
@@ -613,7 +795,11 @@ public:
 
   // node operations
   BB_NODE* Create_node()           { return _node_container.Create_node(_cfg_pool); }
-  void Delete_node(BB_NODE* node)  { _node_container.Delete_node(node, _cfg_pool);  }
+  void Delete_node(BB_NODE* node)  {
+    Disconnect_node(node);  // remove all edges on the node
+    Disconnect_all_stmt_in_node(node);  // disconnect all stmts in the node
+    _node_container.Delete_node(node, _cfg_pool);  // delete the node
+  }
   UINT32 Get_max_id() const        { return _node_container.Get_max_id(); }
   BB_NODE* Get_node(UINT32 id)     { return _node_container.Get_node(id); }
   BB_NODE* Get_dummy_entry() const { return _dummy_entry; }
@@ -696,6 +882,30 @@ public:
     return bb_set_iterator(BS_CHOOSE_FAILURE, bs, this);
   }
 
+protected:
+  // insert/delete stmt from node
+  void Insert_before(STMT before, STMT stmt) {
+    Is_True(before != NULL && stmt != NULL, ("insert point or stmt is null"));
+    BB_NODE* node = Get_stmt_node(before);
+    Is_True(node != NULL, ("can not find BB for insert point"));
+    node->Insert_before(before, stmt);
+    Connect_stmt_node(stmt, node);
+  }
+  void Insert_after(STMT after, STMT stmt) {
+    Is_True(after != NULL && stmt != NULL, ("insert point or stmt is null"));
+    BB_NODE* node = Get_stmt_node(after);
+    Is_True(node != NULL, ("can not find BB for insert point"));
+    node->Insert_after(after, stmt);
+    Connect_stmt_node(stmt, node);
+  }
+  void Remove_stmt(STMT stmt) {
+    Is_True(stmt != NULL, ("stmt is null"));
+    BB_NODE* node = Get_stmt_node(stmt);
+    Is_True(node != NULL, ("can not find BB for stmt"));
+    node->Remove_stmt(stmt);
+    Disconnect_stmt_node(stmt, node);
+  }
+
 // The following section contains parameterized methods used by CFG utilities to
 //   unify the processing of CFG and RCFG
 private:
@@ -712,14 +922,21 @@ private:
   void clear_dom_info(BB_NODE* node, bool dom) {
     Is_True(node != NULL, ("node is NULL"));
     node->set_idom(NULL, dom);
-    node->clear_dom_list(dom); 
+    node->clear_dom_set(dom, Get_max_id(), _cfg_pool); 
   }
   // if dom is TRUE, set parent to be child's immediate dominator
   void connect_dom_node(BB_NODE* parent, BB_NODE* child, bool dom) {
     Is_True(child != NULL, ("child node is NULL"));
     child->set_idom(parent, dom);
-    if (parent != NULL)
-      parent->add_dom_list(child, dom);
+    if (parent != NULL) {
+      parent->add_node_to_dom_set(child, dom);
+      parent->propagate_dom_set(child, dom);
+      //propagate to its parent
+      while(parent->get_idom(dom) != NULL) {
+        parent->get_idom(dom)->propagate_dom_set(parent, dom);
+        parent = parent->get_idom(dom);
+      }
+    }
   }
 
 public:

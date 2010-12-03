@@ -367,19 +367,16 @@ fi
 # LIBLIST.
 
 if test "${BUILD_TARGET}" = "SL"; then
-LIBLIST="include libelf"
+  LIBLIST="include"
+elif test "${BUILD_TARGET}" = "IA64"; then
+  LIBLIST="include libopenmp libfortran libmv libu"
 else
-  if test "${BUILD_TARGET}" = "IA64"; then
-     LIBLIST="include libelf libopenmp libfortran libmv libu"
-  else
-     LIBLIST="include libelf libopenmp libfortran libhugetlbfs libmv libu"
-  fi
+  LIBLIST="include libopenmp libfortran libhugetlbfs libmv libu"
 fi
 
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
   osprey/targdir_lib/include/Makefile
-  osprey/targdir_lib/libelf/Makefile
   osprey/targdir_lib/libopenmp/Makefile
   osprey/targdir_lib/libfortran/Makefile
   osprey/targdir_lib/libhugetlbfs/Makefile
@@ -400,7 +397,6 @@ if test $BUILD_MULTILIB = "YES"; then
   AC_CONFIG_FILES([
     osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in
     osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in
-    osprey/targdir_lib2/libelf/Makefile:osprey/targdir_lib/libelf/Makefile.in
     osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in
     osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in
     osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in

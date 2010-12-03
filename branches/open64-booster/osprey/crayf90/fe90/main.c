@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1635,16 +1639,16 @@ static void init_release_level (void)
 
       TBL_REALLOC_CK(str_pool, length);
 
-      strcpy(&str_pool[str_idx].name_char, location);
+      strcpy((char *)&str_pool[str_idx], location);
 
-      char_ptr	= strrchr(&str_pool[str_idx].name_char, SLASH);
+      char_ptr	= strrchr((char *)&str_pool[str_idx], SLASH);
 
       if (char_ptr == NULL) {
          release_file_ptr = fopen("version.string", "r");
       }
       else {
          strcpy(++char_ptr, "version.string");
-         release_file_ptr = fopen(&str_pool[str_idx].name_char, "r");
+         release_file_ptr = fopen((char *)&str_pool[str_idx], "r");
       }
 
       /* If not found - default to initial value in release_level #.x.x.x */
