@@ -1,3 +1,44 @@
+/*
+
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
+  Open64 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  Open64 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+*/
+
+//====================================================================
+//
+// Module: cfg_util.h
+//
+// Revision history:
+//  Nov-1 - Original Version
+//
+// Description:
+//  Handle unreachable BB, calculating DOM/PDOM/DF/CD
+//
+// Exported classes:
+//  CFG_UTIL::DOM_BUILDER
+//  CFG_UTIL::DF_BUILDER
+//  CFG_UTIL::CFG_CONNECTIVITY
+//
+// SEE ALSO:
+//  be/com/cfg_base.h (BB_NODE_BASE, CFG_BASE)
+//
+//====================================================================
+
 #ifndef cfg_util_INCLUDED
 #define cfg_util_INCLUDED
 
@@ -330,9 +371,11 @@ private:
   template<bool _Fwd>
   void Compute_DF_rec(BB_NODE* node) {
     // bottom up traversal on dom tree
-    typename BB_NODE::bb_iterator xit;
+    typename BB_NODE::dom_iterator xit;
     for (xit = node->dom_begin(_Fwd); xit != node->dom_end(_Fwd); ++xit) {
-      Compute_DF_rec<_Fwd>(*xit);
+      BB_NODE* dom_kid = _cfg.Get_node(*xit);
+      if (dom_kid->get_idom(_Fwd) == node)
+        Compute_DF_rec<_Fwd>(dom_kid);
     }
 
     // start from empty set
@@ -344,9 +387,11 @@ private:
       }
     }
     // traverse the dominated blocks
-    typename BB_NODE::bb_iterator yit;
+    typename BB_NODE::dom_iterator yit;
     for (yit = node->dom_begin(_Fwd); yit != node->dom_end(_Fwd); ++yit) {
-      BB_NODE_SET* ydf = DF_set((*yit)->Get_id());
+      if (_cfg.Get_node(*yit)->get_idom(_Fwd) != node)
+        continue;
+      BB_NODE_SET* ydf = DF_set(*yit);
       // for each element of Dominance-Frontier of yit
       for (bb_set_iterator zit = _cfg.BB_set_begin(ydf);
            zit != _cfg.BB_set_end(ydf);

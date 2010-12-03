@@ -67,10 +67,10 @@ UINT32 Get_ver_num(VER_IDX idx);
 UINT32 Get_wst_max_ver(WST_IDX idx);
 
 // utility routines for dump WN/tree
-void dump_wn_no_ssa(WN* wn);
-void dump_tree_no_ssa(WN* wn);
-void fdump_wn_no_ssa(FILE* f, WN* wn);
-void fdump_tree_no_ssa(FILE* f, WN* wn);
+void dump_wn_ssa(WN* wn);
+void dump_tree_ssa(WN* wn);
+void fdump_wn_ssa(FILE* f, WN* wn);
+void fdump_tree_ssa(FILE* f, WN* wn);
 
 };
 

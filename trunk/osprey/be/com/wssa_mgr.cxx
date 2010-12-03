@@ -225,6 +225,21 @@ WHIRL_SSA_MANAGER::WN_mu_node(const WN* wn, WST_IDX wst_idx) const {
   return WN_ssa_node<WSSA_MU>(wn, wst_idx);
 }
 
+PHI_NODE*
+WHIRL_SSA_MANAGER::WN_phi_node(const WN* wn, WST_IDX wst_idx) {
+  return WN_ssa_node<WSSA_PHI>(wn, wst_idx);
+}
+
+CHI_NODE*
+WHIRL_SSA_MANAGER::WN_chi_node(const WN* wn, WST_IDX wst_idx) {
+  return WN_ssa_node<WSSA_CHI>(wn, wst_idx);
+}
+
+MU_NODE*
+WHIRL_SSA_MANAGER::WN_mu_node(const WN* wn, WST_IDX wst_idx) {
+  return WN_ssa_node<WSSA_MU>(wn, wst_idx);
+}
+
 //====================================================================
 // WSSA node iterators
 //  phi_iterator, chi_iterator, mu_iterator
@@ -328,11 +343,23 @@ WHIRL_SSA_MANAGER::Mu_count() const {
 
 //====================================================================
 // WN version operations
+//   WN_has_ver: return TRUE if wn already has version
 //   Get_wn_ver: get version info attached to the WN
 //   Set_wn_ver: attach the version into to the WN
 //   Get_wn_ver_wst: get WST index attached to the WN
 //   Get_wn_ver_num: get version number attached to the WN
 //====================================================================
+BOOL
+WHIRL_SSA_MANAGER::WN_has_ver(const WN* wn) const {
+  if (WSSA::WN_has_ver(wn) &&
+      _wn_ver_map.find(WN_idx(wn)) != _wn_ver_map.end()) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
 VER_IDX
 WHIRL_SSA_MANAGER::Get_wn_ver(const WN* wn) const {
   WN_VER_MAP::const_iterator it = _wn_ver_map.find(WN_idx(wn));
@@ -341,9 +368,9 @@ WHIRL_SSA_MANAGER::Get_wn_ver(const WN* wn) const {
 }
 
 void
-WHIRL_SSA_MANAGER::Set_wn_ver(WN* wn, VER_IDX ver) {
+WHIRL_SSA_MANAGER::Set_wn_ver(const WN* wn, VER_IDX ver) {
   WN_VER_MAP::const_iterator it = _wn_ver_map.find( WN_idx(wn) );
-  Is_True(it == _wn_ver_map.end(), ("WN already has a ver"));
+  //Is_True(it == _wn_ver_map.end(), ("WN already has a ver"));
   _wn_ver_map[ WN_idx(wn) ] = ver;
 }
 
@@ -406,10 +433,46 @@ WHIRL_SSA_MANAGER::Clear_wn_map() {
 
 //====================================================================
 // WSSA symbol operations
+//  Find_wst: find the wst for PREG ST
+//  Create_wst_for_wn: find or create wst for whirl node
 //  New_wst: create new WSSA symbol
 //  New_field_info: Create field info for struct field symbol
 //  New_vsym_info: Create vsym info for virtual symbol
 //====================================================================
+WST_IDX
+WHIRL_SSA_MANAGER::Find_wst(ST* st, PREG_NUM preg_num) {
+  Is_True(st != NULL && ST_class(st) == CLASS_PREG,
+          ("st is not PREG"));
+  ST_TO_WST_MAP::iterator it = _st_to_wst_map.find(ST_st_idx(st));
+  if (it != _st_to_wst_map.end()) {
+    WST_IDX idx = it->second;
+    do {
+      const WST_Symbol_Entry& sym = Get_wst(idx);
+      Is_True(sym.St_idx() == ST_st_idx(st), ("ST_idx mismatch"));
+      if (sym.Preg_num() == preg_num) {
+        return idx;
+      }
+      idx = sym.Next_wst();
+    } while (idx != WST_INVALID);
+  }
+  return WST_INVALID;
+}
+
+WST_IDX
+WHIRL_SSA_MANAGER::Create_wst_for_wn(WN* wn) {
+  // so far handle PREG only
+  Is_True(WN_operator(wn) == OPR_LDID || WN_operator(wn) == OPR_STID,
+          ("TODO: only support LDID and STID"));
+  ST* st = WN_st(wn);
+  Is_True(ST_class(st) == CLASS_PREG, ("TODO: only support PREG"));
+  PREG_NUM preg_num = WN_offset(wn);
+  WST_IDX idx = Find_wst(st, preg_num);
+  if (idx == WST_INVALID) {
+    idx = New_wst(ST_st_idx(st), preg_num);
+  }
+  return idx;
+}
+
 WST_IDX
 WHIRL_SSA_MANAGER::New_wst(ST_IDX idx) {
   Is_True(ST_class(idx) == CLASS_VAR, ("Only used for VAR ST"));
@@ -430,6 +493,15 @@ WHIRL_SSA_MANAGER::New_wst(ST_IDX idx, PREG_NUM preg) {
   sym.Set_sym_type(WST_PREG);
   sym.Set_st_idx(idx);
   sym.Set_preg_num(preg);
+  // update ST_to_wst_map
+  ST_TO_WST_MAP::iterator it = _st_to_wst_map.find(idx);
+  if (it != _st_to_wst_map.end()) {
+    sym.Set_next_wst(it->second);
+  }
+  else {
+    Is_True(sym.Next_wst() == WST_INVALID, ("Next_wst is wrong"));
+  }
+  _st_to_wst_map[idx] = wst;
   return wst;
 }
 
@@ -506,6 +578,9 @@ WHIRL_SSA_MANAGER::Get_st(WST_IDX wst_idx) const {
   ST_IDX st_idx = 0;
   switch (sym.Sym_type()) {
   case WST_WHIRL:
+  case WST_PREG:
+  case WST_FIELD:
+  case WST_VSYM:
     st_idx = sym.St_idx();
     break;
   default:
@@ -587,7 +662,32 @@ WHIRL_SSA_MANAGER::New_ver(const WST_Version_Entry& ver) {
   VER_IDX idx = (VER_IDX)_ver_table.size();
   _ver_table.push_back(ver);
 
+  // update def chain
   if (ver.Get_def_wn() != NULL) {
+    VER_IDX last_ver = wst.Last_ver();
+    _ver_table[idx].Set_prev_ver(last_ver);
+    wst.Set_last_ver(idx);
+  }
+
+#ifdef Is_True_On
+  Verify_ver(idx);
+#endif
+
+  return idx;
+}
+
+VER_IDX
+WHIRL_SSA_MANAGER::New_ver(WST_IDX wst_idx, const WN* def_wn, WSSA_NODE_KIND def_type) {
+  // update max_ver for PREG since the max_ver is updated after constructing HSSA
+  WST_Symbol_Entry& wst = _sym_table[wst_idx];
+  VER_IDX idx = (VER_IDX)_ver_table.size();
+  _ver_table.push_back(
+      WST_Version_Entry(wst_idx, Next_ver(wst_idx), def_wn, def_type));
+  if (def_wn != NULL && WN_is_volatile(def_wn))
+    _ver_table[idx].Set_volatile();
+
+  // update def chain
+  if (def_wn != NULL) {
     VER_IDX last_ver = wst.Last_ver();
     _ver_table[idx].Set_prev_ver(last_ver);
     wst.Set_last_ver(idx);
@@ -625,12 +725,13 @@ WHIRL_SSA_MANAGER::Update_ver(VER_IDX idx, WN* def_wn, WSSA_NODE_KIND def_type) 
           ("bad wn and def type"));
   WST_Version_Entry& ver = _ver_table[idx];
   WST_Symbol_Entry& wst = _sym_table[ver.Get_wst()];
-  Is_True(ver.Get_def_wn() == NULL, ("ver already has a def wn"));
-  Is_True(ver.Get_def_type() == WSSA_UNKNOWN, ("ver already has a def type"));
+  Is_True(ver.Is_zero() || ver.Get_def_wn() == NULL, ("ver already has a def wn"));
+  Is_True(ver.Is_zero() || ver.Get_def_type() == WSSA_UNKNOWN, ("ver already has a def type"));
   // update version
   ver.Set_def_wn(def_wn);
   ver.Set_def_type(def_type);
-  // update def-def chain
+
+  // update def chain
   VER_IDX last_ver = wst.Last_ver();
   _ver_table[idx].Set_prev_ver(last_ver);
   wst.Set_last_ver(idx);
@@ -684,6 +785,161 @@ WHIRL_SSA_MANAGER::Ver_end() const {
 UINT32
 WHIRL_SSA_MANAGER::Ver_count() const {
   return _ver_table.size();
+}
+
+//====================================================================
+// Update interface for WHIRL SSA
+// Copy_ssa
+//   copy ssa information from dest to src
+// Create_entry_chi
+//   Create_entry_chi for preg when trying to use an uninited preg
+// Enter_stmt
+//   add new stmt. 
+//   rhs of stmt should have the correct ssa information
+//   if lhs of stmt doesn't have ssa, new version will be created
+// Remove_stmt
+//   remove the ssa info for the stmt
+//====================================================================
+void
+WHIRL_SSA_MANAGER::Copy_ssa(WN* dest, const WN* src) {
+  Is_True(dest != NULL && src != NULL,
+          ("WN_operator does not match, can not copy"));
+  Is_True(WN_operator(dest) == WN_operator(src),
+          ("WN_operator does not match, can not copy"));
+
+  if (WN_operator(src) == OPR_BLOCK) {
+    WN* dest_kid = WN_first(dest);
+    for (WN* src_kid = WN_first(src); 
+         src_kid != NULL; 
+         src_kid = WN_next(src_kid)) {
+      Is_True(dest_kid != NULL, ("dest kid is NULL"));
+      Copy_ssa(dest_kid, src_kid);
+      dest_kid = WN_next(dest_kid);
+    }
+    return;
+  }
+
+  // make sure the dest node has map_id
+  WN_MAP_Set_ID(Current_Map_Tab, dest);
+
+  if (WN_has_phi(src)) {
+    for (phi_iterator it = WN_phi_begin(src);
+         it != WN_phi_end(src);
+         ++it) {
+      PHI_NODE* phi = Create_phi(it->Opnd_count());
+      phi->Set_res(it->Res());
+      for (int i=0; i<it->Opnd_count(); i++) {
+        phi->Set_opnd(i, it->Opnd(i));
+      }
+      Add_phi(dest, phi);
+    }
+  }
+  if (WN_has_chi(src)) {
+    for (chi_iterator it = WN_chi_begin(src);
+          it != WN_chi_end(src);
+          ++it) {
+      CHI_NODE* chi = Create_chi();
+      chi->Set_res(it->Res());
+      chi->Set_opnd(it->Opnd());
+      Add_chi(dest, chi);
+    }
+  }
+  if (WN_has_mu(src)) {
+    for (mu_iterator it = WN_mu_begin(src);
+          it != WN_mu_end(src);
+          ++it) {
+      MU_NODE* mu = Create_mu();
+      mu->Set_opnd(it->Opnd());
+      Add_mu(dest, mu);
+    }
+  }
+  if (WN_has_ver(src) ) {
+    VER_IDX ver = Get_wn_ver(src);
+    Set_wn_ver(dest, ver); 
+  }
+
+  for (INT i = 0; i < WN_kid_count(src); ++i) {
+    Is_True(WN_kid(dest, i) != 0, ("dest kid is NULL"));
+    Copy_ssa(WN_kid(dest, i), WN_kid(src, i));
+  }
+}
+
+VER_IDX
+WHIRL_SSA_MANAGER::Create_entry_chi(ST* preg_st, PREG_NUM preg_num) {
+  Is_True(preg_st != NULL && ST_class(preg_st) == CLASS_PREG,
+          ("st is not a preg st"));
+  WST_IDX idx = Find_wst(preg_st, preg_num);
+  Is_True(idx == WST_INVALID, ("preg already used before"));
+  idx = New_wst(ST_st_idx(preg_st), preg_num);
+  VER_IDX opnd_ver = New_ver(idx, NULL, WSSA_UNKNOWN);
+  VER_IDX res_ver = New_ver(idx, _root, WSSA_CHI);
+  CHI_NODE* chi = Create_chi();
+  chi->Set_opnd(opnd_ver);
+  chi->Set_res(res_ver);
+  Add_chi(_root, chi);
+  return res_ver;
+}
+
+void
+WHIRL_SSA_MANAGER::Enter_stmt(WN* tree, RENAME_MAP* rename_map) {
+  OPERATOR opr = WN_operator(tree);
+  Is_True(tree != NULL && (opr == OPR_STID || opr == OPR_ISTORE),
+          ("only support STID or ISTORE"));
+
+  if (opr == OPR_STID) {
+    WN_VER_MAP::const_iterator it = _wn_ver_map.find(WN_idx(tree));
+    if (it == _wn_ver_map.end()) {
+      WST_IDX wst_idx = Create_wst_for_wn(tree);
+      VER_IDX def_ver = New_ver(wst_idx, tree, WSSA_OCC);
+      // make sure the dest node has map_id
+      WN_MAP_Set_ID(Current_Map_Tab, tree);
+      Set_wn_ver(tree, def_ver);
+      return;
+    }
+    else {
+      // rename existing version
+      VER_IDX old_ver = it->second;
+      WST_IDX wst_idx = Get_ver_wst(old_ver);
+      VER_IDX new_ver = New_ver(wst_idx, tree, WSSA_OCC);
+      _wn_ver_map[WN_idx(tree)] = new_ver;
+      if (rename_map != NULL)
+        (*rename_map)[old_ver] = new_ver;
+      // fall through since it may have chi node
+    }
+  }
+  // rename the chi node
+  if (WN_has_chi(tree)) {
+    for (chi_iterator it = WN_chi_begin(tree);
+          it != WN_chi_end(tree);
+          ++it) {
+      VER_IDX old_ver = it->Res();
+      WST_IDX wst_idx = Get_ver_wst(old_ver);
+      VER_IDX new_ver = New_ver(wst_idx, tree, WSSA_CHI);
+      it->Set_res(new_ver);
+      if (rename_map != NULL)
+        (*rename_map)[old_ver] = new_ver;
+    }
+  }
+  // TODO: verify the tree/rename map/ssa
+}
+
+void
+WHIRL_SSA_MANAGER::Remove_stmt(WN* tree) {
+  OPERATOR opr = WN_operator(tree);
+  Is_True(opr == OPR_STID || opr == OPR_ISTORE,
+          ("unsupported OP: %s", OPCODE_name(WN_opcode(tree))));
+
+  // reset ssa related entries
+  if (WN_has_chi(tree)) {
+    Clear_list<WSSA_CHI>(tree);
+  }
+  if (WN_has_mu(tree)) {
+    Clear_list<WSSA_MU>(tree);
+  }
+  if (WN_has_ver(tree)) {
+    //Set_wn_ver(tree, VER_INVALID);
+    _wn_ver_map.erase(WN_idx(tree));
+  }
 }
 
 //====================================================================
