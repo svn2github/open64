@@ -28,13 +28,15 @@ IPA/inlining		Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Wenguang Chen		cwg(AT)tsinghua.edu.cn
 wgen, WOPT, CG		Jian-Xin Lai		jianxin.lai(AT)hp.com
-IPA/inlining		Michael Lai		michael.lai(AT)amd.com
+IPA/inlining, Fortran	Michael Lai		michael.lai(AT)amd.com
 Cuda/NVISA		Mike Murphy		mmurphy(AT)nvidia.com  	
 Driver, build system	Mike Murphy		mmurphy(AT)nvidia.com  	
 Common infrastructure  	Mike Murphy		mmurphy(AT)nvidia.com  	
 CG infrastructure  	Mike Murphy		mmurphy(AT)nvidia.com  	
 IPA, WOPT 		Tianwei Sheng		tianwei.sheng(AT)gmail.com
 WOPT, LNO		Mei Ye			mei.ye(AT)amd.com
+Driver, build system    David Coakley		dcoakley(AT)gmail.com
+Libraries               David Coakley		dcoakley(AT)gmail.com
 
 
 Maintainers (in alphabetical order by last name - please keep it this way)
