@@ -233,6 +233,17 @@ IP_WRITE_pu_internal (PU_Info* pu, Output_File *outfile)
   if (PU_Info_state (pu, WT_FEEDBACK) == Subsect_InMem)
       WN_write_feedback (pu, outfile);
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+  if (PU_Info_state (pu, WT_SSA) == Subsect_InMem) {
+      // We should call
+      //    WN_write_SSA (pu, outfile);
+      // But since WSSA doesn't support IPA so far. Only set the status
+      Set_PU_Info_state(pu, WT_SSA, Subsect_Missing);
+      PU_Info_subsect_size(pu, WT_SSA) = 0;
+      PU_Info_subsect_offset(pu, WT_SSA) = 0;
+  }
+#endif
+
   WN_write_tree (pu, off_map, outfile);
 
   if (Write_ALIAS_CLASS_Map || Write_AC_INTERNAL_Map) {

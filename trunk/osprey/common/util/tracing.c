@@ -222,6 +222,8 @@ static PDESC Phases[] = {
   { TP_TEMP,		"TMP",	"Temporary use" },
   { TP_IPISR,		"ISR",	"Interprocedural ISR register allocation" },
 
+  { TP_WSSA,		"WSA",	"WHIRL SSA" },
+
   /* This one must be last: */
   { TP_COUNT,		NULL,  NULL }
 };

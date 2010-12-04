@@ -1158,7 +1158,7 @@ public:
                              *fp=stderr);  // print the local attributes
   void         Validate(FILE *fp = stderr) // validate assumptions in bb
                const;
-  void         Gen_wn(EMITTER *);          // generate the WHIRL stmt
+  void         Gen_wn(EMITTER *, BOOL copy_phi=TRUE); // generate the WHIRL stmt
 		                           // list from the stmtlist
   void	       Gen_insertions(MAIN_EMITTER *); // process inserts at end of BB
   WN          *Find_outermost_loopstmt     // Find the outermost
@@ -1623,6 +1623,8 @@ public:
   PHI_LIST    *Phi_list(void)    const  { return _phi_list; }
   void         Set_phi_list(PHI_LIST *p){ _phi_list = p; }
   void         Remove_phi_reference( INT32 whichpred );
+  BOOL         Has_valid_phi();
+  BOOL         Only_fall_through_phi();
 
   EXP_PHI_LIST
               *Iphi_list(void)   const  { return _iphi_list; }
