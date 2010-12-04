@@ -326,7 +326,7 @@ BOOL Early_Goto_Conversion_Set = FALSE;
 #endif	// KEY
 
 
-BOOL OPT_Enable_WHIRL_SSA = TRUE;  // SSA on WHIRL, disabled by default
+BOOL OPT_Enable_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 BOOL OPT_Enable_BUILD_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 
 /***** Obsolete options *****/
