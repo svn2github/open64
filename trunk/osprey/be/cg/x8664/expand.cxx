@@ -1710,7 +1710,22 @@ Expand_Neg (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
     }
 
   } else if (!MTYPE_is_float(mtype)) {
-    if( OP_NEED_PAIR(mtype) ){
+    if (MTYPE_is_mmx_vector(mtype)) {
+      TYPE_ID host_type;
+      if(mtype == MTYPE_M8I1) host_type = MTYPE_I1;
+      else if(mtype == MTYPE_M8I2) host_type = MTYPE_I2;
+      else if(mtype == MTYPE_M8I4) host_type = MTYPE_I4;
+      else host_type = MTYPE_I8;
+      TCON then = Host_To_Targ (host_type, 0x0);
+      TCON now  = Create_Simd_Const (mtype, then);
+      ST *sym = New_Const_Sym (Enter_tcon (now), Be_Type_Tbl(TCON_ty(now)));
+      Allocate_Object(sym);
+      TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
+      TN *tmp = Build_TN_Like(result);
+      Exp_Load(mtype, mtype, tmp, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
+      Expand_Sub (result, tmp, src, mtype, ops);
+    }
+    else if( OP_NEED_PAIR(mtype) ){
       Expand_Split_UOP( OPR_NEG, mtype, result, src, ops );
 
     } else {
@@ -2275,7 +2290,10 @@ void Expand_Binary_Complement (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
     TN *sym_tn = Gen_Symbol_TN(sym, 0, 0);
     TN *result_tn = Build_TN_Of_Mtype(mtype);
     Exp_Load(mtype, mtype, result_tn, TN_var(sym_tn), TN_offset(sym_tn), ops, 0);
-    Build_OP(TOP_xorps, dest, src, result_tn, ops);
+    if (MTYPE_is_mmx_vector(mtype))
+      Build_OP(TOP_pxor_mmx, dest, src, result_tn, ops);
+    else
+      Build_OP(TOP_xorps, dest, src, result_tn, ops);
   } else {
     if( OP_NEED_PAIR(mtype) )
       Expand_Split_UOP( OPR_BNOT, mtype, dest, src, ops );
@@ -2343,12 +2361,19 @@ void Expand_Binary_And (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       Build_OP(TOP_and128v32, dest, src1, src2, ops); break;
     case MTYPE_V16I8: 
       Build_OP(TOP_and128v64, dest, src1, src2, ops); break;
+    case MTYPE_V8F4:
+      Build_OP(TOP_andps, dest, src1, src2, ops); break;
     case MTYPE_V32F4: 
     case MTYPE_V16F4:
       Build_OP(TOP_fand128v32, dest, src1, src2, ops); break;
     case MTYPE_V32F8:
     case MTYPE_V16F8: 
       Build_OP(TOP_fand128v64, dest, src1, src2, ops); break;
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
+      Build_OP(TOP_pand_mmx,dest, src1, src2, ops); break;
     default:
       if( OP_NEED_PAIR(mtype) ){
 	Expand_Split_BOP( OPR_BAND, mtype, dest, src1, src2, ops );
@@ -2399,6 +2424,13 @@ void Expand_Binary_Or (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       Build_OP(TOP_or128v32, dest, src1, src2, ops); break;
     case MTYPE_V16I8: 
       Build_OP(TOP_or128v64, dest, src1, src2, ops); break;
+    case MTYPE_V8F4:
+      Build_OP(TOP_orps, dest, src1, src2, ops); break;
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
+      Build_OP(TOP_por_mmx,dest, src1, src2, ops); break;
     default:
       if( OP_NEED_PAIR(mtype) ){
 	Expand_Split_BOP( OPR_BIOR, mtype, dest, src1, src2, ops );
@@ -2449,6 +2481,13 @@ void Expand_Binary_Xor (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
       Build_OP(TOP_xor128v32, dest, src1, src2, ops); break;
     case MTYPE_V16I8: 
       Build_OP(TOP_xor128v64, dest, src1, src2, ops); break;
+    case MTYPE_V8F4:
+      Build_OP(TOP_xorps, dest, src1, src2, ops); break;
+    case MTYPE_M8I1:
+    case MTYPE_M8I2:
+    case MTYPE_M8I4:
+    case MTYPE_M8F4:
+      Build_OP(TOP_pxor_mmx, dest, src1, src2, ops); break;
     default:
       if( OP_NEED_PAIR(mtype) ){
 	Expand_Split_BOP( OPR_BXOR, mtype, dest, src1, src2, ops );
