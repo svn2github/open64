@@ -418,6 +418,50 @@ BB_NODE::Remove_phi_reference( INT32 whichpred )
 }
 
 // ====================================================================
+// Has_valid_phi - if bb has valid phi node
+// ====================================================================
+BOOL
+BB_NODE::Has_valid_phi()
+{
+  PHI_LIST_ITER phi_iter;
+  PHI_NODE *pnode;
+
+  if (_phi_list == NULL) {
+    return FALSE;
+  }
+
+  FOR_ALL_NODE(pnode, phi_iter, Init(_phi_list)){
+    if (pnode->Live()) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+// ====================================================================
+// Only_fall_through_phi - all BB's valid phi node has only one opnd
+// ====================================================================
+BOOL         
+BB_NODE::Only_fall_through_phi()
+{
+  PHI_LIST_ITER phi_iter;
+  PHI_NODE *pnode;
+  BOOL all_one_opnd = TRUE;
+
+  if (_phi_list == NULL) {
+    return FALSE;
+  }
+
+  FOR_ALL_NODE(pnode, phi_iter, Init(_phi_list)){
+    if (pnode->Live() && pnode->Size() > 1) {
+      all_one_opnd = FALSE;
+      break;
+    }
+  }
+  return all_one_opnd;
+}
+
+// ====================================================================
 // Clear all of the fields
 // ====================================================================
 
@@ -689,6 +733,7 @@ BB_NODE::Remove_stmtrep( STMTREP *stmt )
   }
 
   _stmtlist.Remove(stmt);
+  stmt->Reset_live_stmt();  // mark stmt dead
 }
 
 //====================================================================

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -844,7 +848,6 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, "%s = %s\n\n", executable_macro_name, executable);
     fprintf(makefile, ".PHONY: default\n");
     fprintf(makefile, "default: %s\n\n", executable_macro);
-    fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
 #ifdef KEY
     // bug 2487
     // bug 3594: emit backslash if there is only symtab.o

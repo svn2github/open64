@@ -82,6 +82,7 @@
 #include "opt_cvtl_rule.h"
 #include "wn_util.h"            // for WN_COPY_Tree_With_Map
 
+extern BOOL OPT_Enable_WHIRL_SSA;
 
 template < class EMITTER >WN*
 Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
@@ -1313,10 +1314,16 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       OPCODE opcode = OPCODE_make_op(OPR_STID, MTYPE_V, srep->Rhs()->Dtyp());
       rwn = WN_CreateStid(opcode,preg,preg_st,ST_type(preg_st),rhs_wn);
       emitter->Alias_Mgr()->Gen_alias_id(rwn, NULL);
+      // WHIRL SSA
+      if(OPT_Enable_WHIRL_SSA)
+        emitter->WSSA_Emitter()->WSSA_Set_Ver(rwn, WSSA::VER_IDX_ZERO);
       opcode = OPCODE_make_op(OPR_LDID, srep->Rhs()->Dtyp(), srep->Rhs()->Dtyp());
       WN *lwn = WN_CreateLdid(opcode,preg,preg_st,ST_type(preg_st));
       emitter->Alias_Mgr()->Gen_alias_id(lwn, NULL);
       srep->Bb()->Loop()->Set_wn_trip_count(lwn);
+      // WHIRL SSA
+      if(OPT_Enable_WHIRL_SSA)
+        emitter->WSSA_Emitter()->WSSA_Set_Ver(lwn,  WSSA::VER_IDX_ZERO);
     } else
       rwn = WN_CreateEval(rhs_wn);
     break;

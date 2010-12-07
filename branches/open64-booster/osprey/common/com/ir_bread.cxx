@@ -85,6 +85,7 @@
 #include "wn_core.h"		    /* for WN */
 #include "wn.h"		            /* for max_region_id */
 #include "wn_map.h"		    /* for WN maps */
+
 #define USE_DST_INTERNALS
 #include "dwarf_DST_mem.h"	    /* for dst */
 #include "pu_info.h"
@@ -92,12 +93,17 @@
 #include "ir_bwrite.h"
 #include "ir_bcom.h"
 #include "ir_bread.h"
+#include "config_opt.h"
 
 #if defined(BACK_END)
 #include "xstats.h"
 #endif
 #if defined(BACK_END) || defined(BUILD_WHIRL2C) || defined(BUILD_WHIRL2F)
 #include "pf_cg.h"
+#endif
+
+#if defined(BACK_END) || defined(IR_TOOLS) || defined(BUILD_WHIRL2C) || defined(BUILD_WHIRL2F)
+#include "wssa_io.h"
 #endif
 
 #ifdef BACK_END
@@ -403,6 +409,56 @@ WN_get_strtab (void *handle)
     return 0;
 } // WN_get_strtab
 
+/*
+ *  Note: get SSA info from file into memory 
+ */
+#ifdef Is_True_On
+WSSA::WHIRL_SSA_MANAGER* G_ssa;
+#endif
+
+INT
+WN_get_SSA (void *handle, PU_Info *pu, MEM_POOL* pool)
+{
+  WSSA::WHIRL_SSA_MANAGER* wssa_mgr;
+  Subsect_State st = PU_Info_state(pu, WT_SSA);
+  if (st == Subsect_InMem) {
+    Is_True(PU_Info_ssa_ptr(pu) != NULL, ("WSSA manager is null"));
+    return 0;
+  }
+  else if (st == Subsect_Written) {
+    return ERROR_RETURN;
+  }
+  else if (st != Subsect_Exists) {
+    wssa_mgr = new WSSA::WHIRL_SSA_MANAGER(pool);
+#ifdef Is_True_On
+    G_ssa = wssa_mgr;
+    Is_True(PU_Info_ssa_ptr(pu) == NULL, ("WSSA manager is not null"));
+#endif
+    Set_PU_Info_ssa_ptr(pu, wssa_mgr);
+    Set_PU_Info_state(pu, WT_SSA, Subsect_InMem);
+    return 0;
+  }
+
+  OFFSET_AND_SIZE shdr = get_section (handle, SHT_MIPS_WHIRL, WT_PU_SECTION);
+  if (shdr.offset == 0)
+    return ERROR_RETURN;
+
+  char *base = (char *) handle + shdr.offset +
+  PU_Info_subsect_offset (pu, WT_SSA);
+
+  wssa_mgr = PU_Info_ssa_ptr(pu);
+  FmtAssert(wssa_mgr != NULL, ("WSSA manager is null"));
+
+#ifdef Is_True_On
+  G_ssa = wssa_mgr;
+#endif
+
+  //read PHI,CHI,MU tables into memory
+  WSSA::WHIRL_SSA_IO wssa_io(wssa_mgr);
+  wssa_io.Read_SSA_From_File(base);
+  
+  Set_PU_Info_state(pu, WT_SSA, Subsect_InMem);
+}
 
 /*
  *  Note: fix_tree is a hot spot for the binary reader, so be very careful
@@ -410,7 +466,7 @@ WN_get_strtab (void *handle)
  */
 
 static INT
-fix_tree (WN *node, char *base, Elf64_Word size)
+fix_tree (PU_Info* pu, WN *node, char *base, Elf64_Word size)
 {
     OPCODE opcode = (OPCODE) WN_opcode (node);
     WN *wn;
@@ -446,7 +502,7 @@ fix_tree (WN *node, char *base, Elf64_Word size)
 	    CONVERT_OFFSET(WN*, WN_last(node));
 
 	    do {
-		if (fix_tree (wn, base, size) == ERROR_VALUE)
+		if (fix_tree (pu, wn, base, size) == ERROR_VALUE)
 		    return ERROR_VALUE;
 		wn = WN_next(wn);
 	    } while (wn);
@@ -464,7 +520,7 @@ fix_tree (WN *node, char *base, Elf64_Word size)
 	    } else {
 		CONVERT_OFFSET(WN*, wn);
 		*wn_ptr = wn;
-		if (fix_tree (wn, base, size) == ERROR_VALUE)
+		if (fix_tree (pu, wn, base, size) == ERROR_VALUE)
     	            return ERROR_VALUE;
 	    }
 	}
@@ -498,6 +554,14 @@ fix_tree (WN *node, char *base, Elf64_Word size)
 	    *last_id_ptr = map_id;
 	}
     }
+
+#if defined(BACK_END) || defined(IR_TOOLS)
+    WSSA::WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(pu);
+    if (WN_map_id(node) != -1 && mgr != NULL) {
+        // create the map between WN* and map_id
+        mgr->Add_wn(node);
+    }
+#endif
 
     return 0;
 } /* fix_tree */
@@ -928,7 +992,7 @@ WN_get_tree (void *handle, PU_Info *pu)
        map table */
 
     Current_Map_Tab = PU_Info_maptab(pu);
-    if (fix_tree (wn, tree_base, size) == ERROR_VALUE)
+    if (fix_tree (pu, wn, tree_base, size) == ERROR_VALUE)
 	return (WN *)ERROR_VALUE;
 
     WN_next(wn) = NULL;
@@ -1526,6 +1590,12 @@ Read_Local_Info (MEM_POOL *pool, PU_Info *pu)
     else
 	Current_pu = &Pu_Table[ST_pu (Scope_tab[CURRENT_SYMTAB].st)];
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (PU_Info_state(pu, WT_SSA) == Subsect_Exists) {
+        // having WSSA in the IR file, create the SSA manager
+        Set_PU_Info_ssa_ptr(pu, new WSSA::WHIRL_SSA_MANAGER(pool));
+    }
+#endif
 
     if (WN_get_tree (local_fhandle, pu) == (WN*) -1) {
 	ErrMsg ( EC_IR_Scn_Read, "tree", local_ir_file);
@@ -1549,6 +1619,11 @@ Read_Local_Info (MEM_POOL *pool, PU_Info *pu)
     }
 #endif
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (WN_get_SSA (local_fhandle, pu, pool) == -1) {
+	ErrMsg ( EC_IR_Scn_Read, "WHIRL SSA", local_ir_file);
+    }
+#endif
 
     if (WN_get_INT32_map(local_fhandle, pu,
 			 WT_ALIAS_CLASS, WN_MAP_ALIAS_CLASS) == -1) {

@@ -236,6 +236,7 @@ BE_OPT_CXX_SRCS = \
   opt_misc.cxx          \
   opt_lmv.cxx           \
   opt_lmv_helper.cxx   \
+  wssa_emitter.cxx     \
   opt_peel_unroll.cxx
 
 ifeq ($(BUILD_PCH), USE_PCH)

@@ -251,13 +251,15 @@ extern char *Sharps;	/* Sharps w/NL, full page width */
 #define TP_A_CANA	73	/* ACA "Ipfec cache analysis and opt" */
 
 #define TP_EH		74	/* EH "Enable trace infos of EH range and EH entry" */
-#define TP_IPISR        75  /* Interprocedural interrupt service routine RA*/
+#define TP_IPISR        75      /* Interprocedural interrupt service routine RA*/
 	
+#define TP_WSSA         76      /* "WSA", "Enable tracing WHIRL SSA" */
+
 /* WARNING: TP_LAST must be at least as large as the largest phase
  * number above, and TP_COUNT must be at least one larger.
  */
-#define TP_LAST		75	/* Largest valid phase number */
-#define TP_COUNT	76	/* Number of valid phase numbers */
+#define TP_LAST		76	/* Largest valid phase number */
+#define TP_COUNT	77	/* Number of valid phase numbers */
 	
 /* Extract the phase number from a trace option: */
 extern INT32 Get_Trace_Phase_Number ( char **cp, char *arg );
