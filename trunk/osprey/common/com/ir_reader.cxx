@@ -1289,7 +1289,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	USRCPOS srcpos;
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
-	fprintf(ir_ofile, " {line: %d}", USRCPOS_linenum(srcpos));
+	fprintf(ir_ofile, " {line: %d/%d}", USRCPOS_filenum(srcpos), USRCPOS_linenum(srcpos));
     }
 
 #ifdef BACK_END
@@ -2947,6 +2947,8 @@ help_image_wn(stringstream &ss, WN *wn, INT indent)
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
 	ss <<  " {line: ";
+        ss << USRCPOS_filenum(srcpos); 
+        ss <<  "/";
         ss << USRCPOS_linenum(srcpos); 
         ss << "}"; 
     }

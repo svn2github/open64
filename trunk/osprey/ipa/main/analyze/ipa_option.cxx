@@ -164,6 +164,8 @@ Process_IPA_Options ( INT argc, char **argv )
 	}
     }
 
+    Configure_IPA();
+    
     if (LNO_Prompl)
 	ProMP_Listing = TRUE;
 
