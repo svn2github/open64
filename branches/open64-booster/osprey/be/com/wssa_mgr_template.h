@@ -121,6 +121,8 @@ const _Tnode* WHIRL_SSA_MANAGER::WN_next_node(_Tnode* node) const {
 
 template<WSSA_NODE_KIND _Tkind>
 BOOL WHIRL_SSA_MANAGER::WN_has_node(const WN* wn) const {
+  if (WN_map_id(wn) == -1)
+    return FALSE;
   if (WSSA::WN_has_node(wn, _Tkind) &&
       WN_first_node_idx<_Tkind>(wn) != INVALID_IDX)
     return TRUE;
@@ -167,7 +169,6 @@ WSSA_NODE_IDX WHIRL_SSA_MANAGER::Add_node(const WN* wn, _Tnode* node) {
 #ifdef Is_True_On
   Is_True(node != NULL, ("node is NULL"));
   Is_True(WSSA::WN_has_node(wn, _Tnode::NODE_KIND), ("WN can not have this kind of node"));
-  Verify_node(wn, node);
 #endif
 
   typedef typename NODE_TO_TYPES<_Tnode::NODE_KIND>::TABLE_TYPE TABLE_TYPE;

@@ -518,18 +518,8 @@ ML_WHIRL_EMITTER::Emit(void)
           else if (stmt_opr != OPR_OPT_CHI &&
                    bb->Has_valid_phi() &&
                    bb->Only_fall_through_phi()) {
-            // create a label to keep phi info
-            // avoid allow all kinds of opr has phi node.
-            char *name;
-            LABEL_IDX labx;
-            LABEL &label = New_LABEL(CURRENT_SYMTAB, labx);
-            name = (char *)alloca(64);
-            snprintf(name, 64, ".L__ssa_fake_label_%d_%d", Current_PU_Count(), labx);
-            LABEL_Init (label, Save_Str(name), LKIND_DEFAULT);
-            WN *ssa_label = WN_CreateLabel(labx, 0, NULL);
-            WN_MAP_Set_ID(Current_Map_Tab, ssa_label);
-            _wn_list.Append(ssa_label);
-            copy_phi = TRUE;
+            _wssa_emitter->WSSA_Copy_Fallthrough_PHI(bb, &_wn_list);
+            copy_phi = FALSE;
           }
           else if (stmt_opr != OPR_OPT_CHI) {
             // assert no valid phi node on this bb, because this bb has no label.
@@ -559,6 +549,14 @@ ML_WHIRL_EMITTER::Emit(void)
 	  Insert_wn( comment_wn );
 	  comment_wn = NULL;
 	}
+      }
+
+      // emit phi for bb with single pred without stmt
+      if (OPT_Enable_WHIRL_SSA &&
+          bb->Stmtlist()->Is_Empty() &&
+          bb->Has_valid_phi() &&
+          bb->Only_fall_through_phi()) {
+        _wssa_emitter->WSSA_Copy_Fallthrough_PHI(bb, &_wn_list);
       }
 
       bb->Set_wngend();

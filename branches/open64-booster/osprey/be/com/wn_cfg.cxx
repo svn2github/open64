@@ -454,6 +454,13 @@ WN_CFG::Get_label_node(INT32 label_num) const {
   }
 }
 
+void
+WN_CFG::Remove_label(INT32 label_num) {
+  LABEL_MAP::const_iterator it = _label_map.find(label_num);
+  Is_True(it != _label_map.end(), ("can not find label"));
+  _label_map.erase(label_num);
+}
+
 WN*
 WN_CFG::Get_branch_stmt(BB_NODE* node) const {
   Is_True(node != Get_dummy_entry() && node != Get_dummy_exit(),

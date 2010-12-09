@@ -255,6 +255,7 @@ public:
 
   // get BB_NODE from the label number
   BB_NODE* Get_label_node(INT32 label_num) const;
+  void Remove_label(INT32 label_num);
 
   // get the branch WN for BB has more than one successors
   WN* Get_branch_stmt(BB_NODE* node) const;

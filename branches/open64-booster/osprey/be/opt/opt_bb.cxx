@@ -726,6 +726,9 @@ BB_NODE::Remove_stmtrep( STMTREP *stmt )
     // should end up with a usecnt of 0 when all of its uses have
     // been removed (or never existed)
     stmt->Lhs()->DecKidsUsecnt_rec();
+    // WHIRL SSA: we remove the def of the var, set its version to 0
+    if (stmt->Lhs()->Kind() == CK_VAR)
+      stmt->Lhs()->Set_version(0);
   }
 
   if ( stmt->Rhs() != NULL ) {
@@ -733,7 +736,7 @@ BB_NODE::Remove_stmtrep( STMTREP *stmt )
   }
 
   _stmtlist.Remove(stmt);
-  stmt->Reset_live_stmt();  // mark stmt dead
+  stmt->Reset_live_stmt();  // WHIRL SSA: mark stmt dead
 }
 
 //====================================================================

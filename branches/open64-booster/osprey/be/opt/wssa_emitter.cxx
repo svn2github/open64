@@ -40,6 +40,7 @@
 #include "opt_mu_chi.h"
 #include "wssa_wn.h"
 #include "timing.h"
+extern INT32 Current_PU_Count();
 
 WHIRL_SSA_EMITTER::WHIRL_SSA_EMITTER(WSSA::WHIRL_SSA_MANAGER* wssa_mgr,
          OPT_STAB* opt_stab, WN_MAP map)
@@ -117,10 +118,16 @@ WHIRL_SSA_EMITTER::New_def_ver(CODEREP* cr, WN* def_wn, WSSA::WSSA_NODE_KIND def
   WSSA::WST_Version_Entry ver_info(wst_idx, cr->Version(), def_wn, def_kind);
   if (WOPT_Enable_Zero_Version && cr->Is_flag_set(CF_IS_ZERO_VERSION))
     ver_info.Set_zero();
-  if (WSSA::WN_is_volatile(def_wn))
-    ver_info.Set_volatile();
   WSSA::VER_IDX ver_idx = _wssa_mgr->New_ver(ver_info);
   _cr_to_ver[(INTPTR)cr] = ver_idx;
+
+if (def_wn != NULL && WN_operator(def_wn) == OPR_STID) {
+  if (ST_class(WN_st(def_wn)) == CLASS_PREG) {
+    const WSSA::WST_Symbol_Entry& sym = _wssa_mgr->Get_wst(wst_idx);
+    Is_True(sym.Sym_type() == WSSA::WST_PREG, ("sym is not preg"));
+  }
+}
+
   return ver_idx;
 }
 
@@ -132,7 +139,7 @@ WHIRL_SSA_EMITTER::New_use_ver(CODEREP* cr, WN* use_wn) {
   WSSA::WST_Version_Entry ver_info(wst_idx, cr->Version(), NULL, WSSA::WSSA_UNKNOWN);
   if (WOPT_Enable_Zero_Version && cr->Is_flag_set(CF_IS_ZERO_VERSION))
     ver_info.Set_zero();
-  if (WSSA::WN_is_volatile(use_wn))
+  if (use_wn != NULL && WSSA::WN_is_volatile(use_wn))
     ver_info.Set_volatile();
   WSSA::VER_IDX ver_idx = _wssa_mgr->New_ver(ver_info);
   _cr_to_ver[(INTPTR)cr] = ver_idx;
@@ -175,12 +182,51 @@ WHIRL_SSA_EMITTER::Is_cr_def_live(const CODEREP* cr) const {
 }
 
 //===================================================================
+// Combine_res_opnd
+//   Combine res and opnd to the same version
+//   This function is called by WSSA_Copy_Fallthrough_PHI and
+//   WSSA_Copy_Equivalent_CHI to make the result and operand of the
+//   phi and chi node sharing the same version entry in WHIRL SSA
+//===================================================================
+WSSA::VER_IDX
+WHIRL_SSA_EMITTER::Combine_res_opnd_ver(CODEREP* res, CODEREP* opnd) {
+  Is_True(res != NULL && opnd != NULL, ("res or opnd is NULL"));
+  if (opnd->Is_flag_set(CF_DONT_PROP)) {
+    return WSSA::VER_INVALID;
+  }
+
+  WSSA::VER_IDX res_idx = Get_cr_ver(res);
+  WSSA::VER_IDX opnd_idx = Get_cr_ver(opnd);
+  if (res_idx != WSSA::VER_INVALID &&
+      opnd_idx != WSSA::VER_INVALID)
+    return (res_idx == opnd_idx) ? res_idx : WSSA::VER_INVALID;
+
+  // mapping two CR to one Version Entry
+  if (res_idx != WSSA::VER_INVALID) {
+    Is_True(_cr_to_ver[(INTPTR)res] == res_idx, ("invalid ver idx for res"));
+    _cr_to_ver[(INTPTR)opnd] = res_idx;
+    return res_idx;
+  }
+  else if (opnd_idx != WSSA::VER_INVALID) {
+    Is_True(_cr_to_ver[(INTPTR)opnd] == opnd_idx, ("invalid ver idx for opnd"));
+    _cr_to_ver[(INTPTR)res] = opnd_idx;
+    return opnd_idx;
+  }
+  else {
+    WSSA::VER_IDX new_ver = New_use_ver(opnd, NULL);
+    Is_True(new_ver != WSSA::VER_INVALID, ("invalid new ver idx"));
+    _cr_to_ver[(INTPTR)res] = new_ver;
+    return new_ver;
+  }
+}
+
+//===================================================================
 // WSSA_Convert_OPT_Symbol
-// 	convert opt_stable symbol into WSSA_ST symbol, including vsym
-// 	record opt_symbol's max version in each WSSA_ST
+//   convert opt_stable symbol into WSSA_ST symbol, including vsym
+//   record opt_symbol's max version in each WSSA_ST
 //  
-//  There may be multiple WSSA_ST share same WN ST, when WN ST has
-//  multiple coressponding opt_stable symbol.
+//   There may be multiple WSSA_ST share same WN ST, when WN ST has
+//   multiple coressponding opt_stable symbol.
 //===================================================================
 void
 WHIRL_SSA_EMITTER::WSSA_Convert_OPT_Symbol() {
@@ -525,6 +571,7 @@ WHIRL_SSA_EMITTER::WSSA_Copy_PHI_Node(PHI_NODE* phi_node, WN* wn) {
   if (opnd_cr_live == FALSE) {
     CODEREP* res_cr = phi_node->RESULT();
     Is_True(res_cr->Usecnt() == 0, ("res is used but all opnd is dead"));
+    Reset_CR_version(phi_node->RESULT(), 0);
     phi_node->Reset_live();
     return;
   }
@@ -596,9 +643,104 @@ WHIRL_SSA_EMITTER::WSSA_Copy_PHI(BB_NODE* bb, WN* wn) {
   }
 }
 
+//===================================================================
+// WHIRL_SSA_EMITTER::WSSA_Copy_Fallthrough_PHI
+//   copy fall through phi node
+//   the node only have one operand
+//===================================================================
+void
+WHIRL_SSA_EMITTER::WSSA_Copy_Fallthrough_PHI(BB_NODE* bb, STMT_CONTAINER* wn_list) {
+  Is_True(bb != NULL && wn_list != NULL, ("bb or wn list is NULL"));
+  Is_True(bb->Pred()->Len() == 1, ("not a fall through bb"));
+  PHI_LIST *opt_phi_list = bb->Phi_list();
+  PHI_LIST_ITER phi_iter;
+  PHI_NODE *pnode;
+  WN* fake_label = NULL;
+  if (_trace) {
+    fprintf(TFile, "copying phi nodes for BB %d\n", bb->Id());
+  }
+  FOR_ALL_NODE (pnode, phi_iter, Init(opt_phi_list)) {
+    Is_True(pnode->Size() == 1, ("not a fall through phi node"));
+    if (!pnode->Live()) {
+      if (_trace)
+        fprintf(TFile, "skip convert for non-live phi node\n");
+      continue;
+    }
+    CODEREP* res = pnode->RESULT();
+    CODEREP* opnd = pnode->OPND(0);
+    if (Combine_res_opnd_ver(res, opnd) == WSSA::VER_INVALID) {
+      // fail to combine the res with opnd, create a label to place the phi
+      if (fake_label == NULL) {
+        char *name;
+        LABEL_IDX labx;
+        LABEL &label = New_LABEL(CURRENT_SYMTAB, labx);
+        name = (char *)alloca(64);
+        snprintf(name, 64, ".L__ssa_fake_label_%d_%d", Current_PU_Count(), labx);
+        LABEL_Init (label, Save_Str(name), LKIND_DEFAULT);
+        fake_label = WN_CreateLabel(labx, 0, NULL);
+        WN_MAP_Set_ID(Current_Map_Tab, fake_label);
+        wn_list->Append(fake_label);
+      }
+      WSSA_Copy_PHI_Node(pnode, fake_label);
+    }
+  }
+}
+
+//===================================================================
+// WHIRL_SSA_EMITTER::WSSA_Copy_Equivalent_CHI
+//   if stmtrep is ISTORE like *p = *p, the chi attached on the 
+//   stmtrep is equivalent
+//   if possible, the result and opnd of chi will share the same
+//   version entry in WHIRL SSA
+//===================================================================
+WN*
+WHIRL_SSA_EMITTER::WSSA_Copy_Equivalent_CHI(STMTREP* stmtrep) {
+  Is_True(stmtrep != NULL &&
+          (stmtrep->Opr() == OPR_ISTORE ||
+           stmtrep->Opr() == OPR_ISTBITS), ("stmtrep is not ISTORE/ISTBITS"));
+  Is_True(stmtrep->Rhs()->Kind() == CK_IVAR, ("rhs of stmtrep is not IVAR"));
+  Is_True(stmtrep->Rhs()->Ilod_base() == stmtrep->Lhs()->Istr_base() &&
+          stmtrep->Rhs()->Offset() == stmtrep->Lhs()->Offset(),
+          ("stmtrep base or offset mismatch"));
+  Is_True(MTYPE_size_min(stmtrep->Rhs()->Dsctyp()) == 
+            MTYPE_size_min(stmtrep->Lhs()->Dsctyp()),
+          ("stmtrep rhs and lhs size mismatch"));
+  Is_True(!stmtrep->Rhs()->Is_ivar_volatile() &&
+          !stmtrep->Lhs()->Is_ivar_volatile(), ("rhs or lhs is volatime"));
+
+  WN* rwn = NULL;
+  CHI_NODE *cnode;
+  CHI_LIST_ITER chi_iter;
+  FOR_ALL_NODE(cnode, chi_iter, Init(stmtrep->Chi_list())) {
+    if (cnode->Live()) {
+      CODEREP* res = cnode->RESULT();
+      CODEREP* opnd = cnode->OPND();
+      if (Combine_res_opnd_ver(res, opnd) == WSSA::VER_INVALID) {
+        // fail to combine the res with opnd, crate OPT_CHI to place the chi
+        if (rwn == NULL) {
+          OPCODE opc = OPCODE_make_op(OPR_OPT_CHI, MTYPE_V, MTYPE_V );
+          rwn = WN_Create(opc, 0);
+          WN_MAP_Set_ID(Current_Map_Tab, rwn);
+        }
+        WSSA_Copy_CHI_Node(cnode, rwn);
+      }
+    }
+  }
+  return rwn;
+}
+
 void 
 WHIRL_SSA_EMITTER::WSSA_Set_Ver(WN* wn, WSSA::VER_IDX ver_idx) {
   WN_MAP_Set_ID(Current_Map_Tab, wn);
   _wssa_mgr->Set_wn_ver(wn, ver_idx);
+}
+
+void
+WHIRL_SSA_EMITTER::Reset_CR_version(CODEREP* cr, UINT32 ver_num) {
+  Is_True(cr != NULL, ("cr is NULL"));
+  WSSA::VER_IDX res_idx = Get_cr_ver(cr);
+  cr->Set_version(ver_num);
+  if (res_idx != WSSA::VER_INVALID)
+    _wssa_mgr->Update_ver_num(res_idx, ver_num);
 }
 

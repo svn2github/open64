@@ -39,6 +39,8 @@
 //====================================================================
 
 #include "wssa_sym.h"
+#include "wssa_wn.h"
+#include "wn.h"
 
 namespace WSSA {
 
@@ -113,6 +115,19 @@ WST_Version_Entry::WST_Version_Entry()
 WST_Version_Entry::WST_Version_Entry(WST_IDX wst_idx, UINT32 ver, const WN* wn, WSSA_NODE_KIND type)
   : _wst_idx(wst_idx), _version(ver), _prev_ver(VER_INVALID),
     _def_wn(wn), _def_type(type), _ver_flags(0) {
+  Set_wn_flag();
+}
+
+void
+WST_Version_Entry::Set_wn_flag() {
+  if (_def_wn != NULL && WSSA::WN_is_volatile(_def_wn))
+    Set_volatile();
+  else
+    Reset_volatile();
+  if (_def_wn != NULL && WN_operator(_def_wn) == OPR_OPT_CHI)
+    Set_opt_chi();
+  else
+    Reset_opt_chi();
 }
 
 void 

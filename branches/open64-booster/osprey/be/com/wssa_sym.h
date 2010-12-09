@@ -216,6 +216,7 @@ public:
 enum VER_FLAG {
   VER_IS_ZERO = 0x1,     // zero version
   VER_IS_VOLATILE = 0x2, // def or use is volatile
+  VER_BY_OPT_CHI = 0x4,  // def by OPT_CHI
 };
 
 // WSSA version entry
@@ -238,6 +239,7 @@ private:
   void Set_flag(VER_FLAG flag)    { _ver_flags |= flag; }
   void Reset_flag(VER_FLAG flag)  { _ver_flags &= !flag; }
   BOOL Is_flag_set(VER_FLAG flag) const { return (_ver_flags & flag) == flag; }
+  void Set_wn_flag();
 
 public:
   // these routines are for IO only
@@ -257,7 +259,10 @@ public:
   void Set_ver(UINT32 ver) { _version = ver;  }
 
   const WN* Get_def_wn() const  { return _def_wn; }
-  void Set_def_wn(const WN* wn) { _def_wn = wn;   }
+  void Set_def_wn(const WN* wn) { 
+    _def_wn = wn;   
+    Set_wn_flag();
+  }
 
   VER_IDX Prev_ver() const       { return _prev_ver; }
   void Set_prev_ver(VER_IDX ver) { _prev_ver = ver;  }
@@ -272,6 +277,10 @@ public:
   void Set_volatile()      { Set_flag(VER_IS_VOLATILE);   }
   void Reset_volatile()    { Reset_flag(VER_IS_VOLATILE); }
   BOOL Is_volatile() const { return Is_flag_set(VER_IS_VOLATILE); }
+
+  void Set_opt_chi()       { Set_flag(VER_BY_OPT_CHI);   }
+  void Reset_opt_chi()    { Reset_flag(VER_BY_OPT_CHI); }
+  BOOL Is_opt_chi() const { return Is_flag_set(VER_BY_OPT_CHI); }
 
 public:
   void Print(FILE* fp = stdout) const;

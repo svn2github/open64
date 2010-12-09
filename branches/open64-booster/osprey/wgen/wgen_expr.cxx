@@ -5699,6 +5699,65 @@ get_wrapper_value (gs_t stmt)
 #endif // FE_GNU_4_2_0
 #endif // KEY
 
+
+// Following function is a quick kludge to bug# 586 reported in bugs.open64.net.
+// The problem is that open64's backend currently does not fold 
+// __builtin_object_size() into constant, causing "unresolved symbol" problem 
+// at link time.
+//
+// This function is part of GCC extension; gcc tries to fold this function in 
+// many places (see fold_builtin_object_size()@builtins.c for details), and it 
+// has a pass called "objsz" dedicated to that purpose (see tree-object-size.c for 
+// details).
+//
+// fold_builtin_object_size() is called prior to the generic -> gspin conversion;
+// it is able to fold some simple cases; but in general, most cases have to handled
+// by the "objsz" pass which relies on SSA. 
+//
+//   The value the function "__builtin_object_size(void* p, int type)" evaluated to 
+// depends on the capability of compiler data flow analysis. Basically, if compiler
+// reveals that pointer <p> points to object O with type T, it will return sizeof(T);
+// otherwise it returns "type < 2 ? -1 : 0".
+//
+//  This function simply substitute the "__builtin_object_size(p, ty)" with 
+//  "ty < 2 ? -1 : 0".
+//  
+static WN*
+Fold_Object_Size (WN* intrinsic_op) {
+
+    Is_True (WN_operator (intrinsic_op) == OPR_INTRINSIC_OP && 
+             WN_intrinsic (intrinsic_op) ==  INTRN_OBJECT_SIZE,
+             ("Invalid intrisic op"));
+    
+    // the rtype should be the type corresponing to high level type size_t
+    //
+    TYPE_ID rtype = WN_rtype (intrinsic_op);
+
+    // step 1: Get the 2nd actual of __builtin_object_size()
+    //
+    WN* arg1 = WN_kid0(WN_kid1(intrinsic_op));
+    arg1 = WN_COPY_Tree (arg1);
+    WN_DELETE_Tree (intrinsic_op);
+
+    // step 2: construct expression : "<arg1> < 2 ? -1 : 0"
+    // 
+
+    // step 2.1 create condition "<arg1> < 2".
+    //
+    WN* cond = WN_CreateExp2 (OPC_BI4LT,
+                              WN_Type_Conversion (arg1, MTYPE_I4),
+                              WN_CreateIntconst (OPC_I4INTCONST, 2));
+    
+    // step 2.2 create the selection exp
+    WN* res = WN_CreateExp3 (OPR_SELECT, MTYPE_I4, MTYPE_V, 
+                             cond,
+                             WN_CreateIntconst (OPC_I4INTCONST, -1),
+                             WN_CreateIntconst (OPC_I4INTCONST, 0));
+
+    res = WN_Type_Conversion (res, rtype);
+    return res;
+}
+
 WN * 
 WGEN_Expand_Expr (gs_t exp,
 		  bool need_result,
@@ -9002,6 +9061,11 @@ WGEN_Expand_Expr (gs_t exp,
 		whirl_generated = TRUE;
 	        break;
 	
+	      case GSBI_BUILT_IN_OBJECT_SIZE:
+	        iopc = INTRN_OBJECT_SIZE;
+	        intrinsic_op = TRUE;
+	        break;
+               
 	      case GSBI_BUILT_IN_POPCOUNT:
 	        iopc = INTRN_I4POPCNT;
 	        intrinsic_op = TRUE;
@@ -9438,6 +9502,12 @@ WGEN_Expand_Expr (gs_t exp,
 	    wn = WN_Create_Intrinsic (OPR_INTRINSIC_OP, ret_mtype, MTYPE_V,
 				      iopc, num_args, ikids);
             WN_Set_Deref_If_Needed(wn);
+
+        if (iopc == INTRN_OBJECT_SIZE) {
+            // kludge to the undefined __builtin_object_size() problem (bug #586).  
+            //
+            wn = Fold_Object_Size (wn);
+        }
 
 #ifdef KEY
 	    if (cvt_to != MTYPE_UNKNOWN) // bug 8251

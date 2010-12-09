@@ -7671,6 +7671,11 @@ DEF_INTRN_ENTRY(INTRN_CTYPE_TOLOWER_LOC, "CTYPE_TOLOWER_LOC", NOT_BYVAL, PURE, N
                 DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE, 
                 IRETURN_PPI4, "__ctype_tolower_loc", "CTYPE_TOLOWER_LOC", "__ctype_tolower_loc")
 
+/* corresponding to gcc extension __builtin_object_size()*/
+DEF_INTRN_ENTRY(INTRN_OBJECT_SIZE, "BUILTIN_OBJECT_SIZE", BYVAL, PURE, NO_SIDEEFFECTS, 
+                DOES_RETURN, ACTUAL, NOT_CGINTRINSIC, NOT_SLAVE, 
+                IRETURN_SZT, NULL, NULL, "dummy_name")
+
 /* END of DEF_INTRN_ENTRY */
 
 #if defined (DEF_INTRN_ENTRY)

@@ -1107,8 +1107,18 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	  srep->Rhs()->Offset() == srep->Lhs()->Offset() &&
 	  MTYPE_size_min(srep->Rhs()->Dsctyp()) == MTYPE_size_min(srep->Lhs()->Dsctyp()) &&
 	  !srep->Rhs()->Is_ivar_volatile() &&
-	  !srep->Lhs()->Is_ivar_volatile()) 
-	return FALSE;	// omit generating this istore
+	  !srep->Lhs()->Is_ivar_volatile()) {
+        WN* rwn = NULL;
+        if (OPT_Enable_WHIRL_SSA) {
+          // WHIRL SSA: process chi list
+          rwn = emitter->WSSA_Emitter()->WSSA_Copy_Equivalent_CHI(srep);
+          if (rwn != NULL) {
+            WN_Set_Linenum(rwn, srep->Linenum());
+            stmt_container->Append(rwn);
+          }
+        }
+        return rwn;
+      }
 
       CODEREP *rhs_cr = srep->Rhs();
       CODEREP *lhs = srep->Lhs();

@@ -69,6 +69,7 @@ private:
 
   // check if the def of cr is live
   BOOL Is_cr_def_live(const CODEREP* cr) const;
+  WSSA::VER_IDX Combine_res_opnd_ver(CODEREP* res, CODEREP* opnd);
 
   // copy a MU/CHI/PHI_NODE to WN
   void WSSA_Copy_MU_Node(MU_NODE*, WN*);
@@ -104,7 +105,12 @@ public:
 
   // Copy Phi node from BB to WN node
   void WSSA_Copy_PHI(BB_NODE*, WN*);
+  void WSSA_Copy_Fallthrough_PHI(BB_NODE*, STMT_CONTAINER*);
+  WN*  WSSA_Copy_Equivalent_CHI(STMTREP*);
   void WSSA_Set_Ver(WN*, WSSA::VER_IDX);
+
+  // Reset version number for undef CODEREP
+  void Reset_CR_version(CODEREP* cr, UINT32 ver_num);
 };
 
 #endif  /* wssa_emitter_INCLUDED */
