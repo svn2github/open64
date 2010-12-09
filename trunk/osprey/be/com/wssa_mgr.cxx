@@ -351,6 +351,8 @@ WHIRL_SSA_MANAGER::Mu_count() const {
 //====================================================================
 BOOL
 WHIRL_SSA_MANAGER::WN_has_ver(const WN* wn) const {
+  if (WN_map_id(wn) == -1)
+    return FALSE;
   if (WSSA::WN_has_ver(wn) &&
       _wn_ver_map.find(WN_idx(wn)) != _wn_ver_map.end()) {
     return TRUE;
@@ -648,6 +650,7 @@ WHIRL_SSA_MANAGER::WST_count() const {
 // Version operations
 //   New_ver: create new WST_Version_Entry
 //   Update_ver: update the existing WST_Version_Entry
+//   Update_ver_num: update the number of existing WST_Version_Entry
 //   Get_ver: get the version info by ver_idx
 //   Get_ver_wst: get the wst_idx for the ver_idx
 //   Get_ver_num: get the version number for the ver_idx
@@ -683,8 +686,6 @@ WHIRL_SSA_MANAGER::New_ver(WST_IDX wst_idx, const WN* def_wn, WSSA_NODE_KIND def
   VER_IDX idx = (VER_IDX)_ver_table.size();
   _ver_table.push_back(
       WST_Version_Entry(wst_idx, Next_ver(wst_idx), def_wn, def_type));
-  if (def_wn != NULL && WN_is_volatile(def_wn))
-    _ver_table[idx].Set_volatile();
 
   // update def chain
   if (def_wn != NULL) {
@@ -742,6 +743,19 @@ WHIRL_SSA_MANAGER::Update_ver(VER_IDX idx, WN* def_wn, WSSA_NODE_KIND def_type) 
 #endif
 }
 
+void
+WHIRL_SSA_MANAGER::Update_ver_num(VER_IDX idx, UINT32 ver_num) {
+  Is_True(idx >= 0 && idx < _ver_table.size(), ("ver_idx out of bounds"));
+  WST_Version_Entry& ver = _ver_table[idx];
+#ifdef Is_True_On 
+  if (ver_num == 0) {
+    Is_True(ver.Get_def_wn() == NULL, ("ver 0 can not have a def"));
+    Is_True(ver.Get_def_type() == WSSA_UNKNOWN, ("ver 0 def type wrong"));
+  }
+#endif
+  ver.Set_ver(ver_num);
+}
+
 //====================================================================
 // Manage the version numbers for the wst
 //   Get_max_ver: get the max version number for the wst
@@ -789,10 +803,14 @@ WHIRL_SSA_MANAGER::Ver_count() const {
 
 //====================================================================
 // Update interface for WHIRL SSA
-// Copy_ssa
+// Copy_wn_ssa
+//   copy ssa information for wn node from dest to src.
+//   the operator of two WN must be the same
+// Copy_tree_ssa
 //   copy ssa information from dest to src
+//   the structure of two wn trees must be the same
 // Create_entry_chi
-//   Create_entry_chi for preg when trying to use an uninited preg
+//   create_entry_chi for preg when trying to use an uninited preg
 // Enter_stmt
 //   add new stmt. 
 //   rhs of stmt should have the correct ssa information
@@ -801,27 +819,14 @@ WHIRL_SSA_MANAGER::Ver_count() const {
 //   remove the ssa info for the stmt
 //====================================================================
 void
-WHIRL_SSA_MANAGER::Copy_ssa(WN* dest, const WN* src) {
+WHIRL_SSA_MANAGER::Copy_wn_ssa(WN* dest, const WN* src) {
   Is_True(dest != NULL && src != NULL,
           ("WN_operator does not match, can not copy"));
   Is_True(WN_operator(dest) == WN_operator(src),
           ("WN_operator does not match, can not copy"));
 
-  if (WN_operator(src) == OPR_BLOCK) {
-    WN* dest_kid = WN_first(dest);
-    for (WN* src_kid = WN_first(src); 
-         src_kid != NULL; 
-         src_kid = WN_next(src_kid)) {
-      Is_True(dest_kid != NULL, ("dest kid is NULL"));
-      Copy_ssa(dest_kid, src_kid);
-      dest_kid = WN_next(dest_kid);
-    }
-    return;
-  }
-
   // make sure the dest node has map_id
   WN_MAP_Set_ID(Current_Map_Tab, dest);
-
   if (WN_has_phi(src)) {
     for (phi_iterator it = WN_phi_begin(src);
          it != WN_phi_end(src);
@@ -857,10 +862,32 @@ WHIRL_SSA_MANAGER::Copy_ssa(WN* dest, const WN* src) {
     VER_IDX ver = Get_wn_ver(src);
     Set_wn_ver(dest, ver); 
   }
+}
+  
+void
+WHIRL_SSA_MANAGER::Copy_tree_ssa(WN* dest, const WN* src) {
+  Is_True(dest != NULL && src != NULL,
+          ("WN_operator does not match, can not copy"));
+  Is_True(WN_operator(dest) == WN_operator(src),
+          ("WN_operator does not match, can not copy"));
+
+  if (WN_operator(src) == OPR_BLOCK) {
+    WN* dest_kid = WN_first(dest);
+    for (WN* src_kid = WN_first(src); 
+         src_kid != NULL; 
+         src_kid = WN_next(src_kid)) {
+      Is_True(dest_kid != NULL, ("dest kid is NULL"));
+      Copy_tree_ssa(dest_kid, src_kid);
+      dest_kid = WN_next(dest_kid);
+    }
+    return;
+  }
+
+  Copy_wn_ssa(dest, src);
 
   for (INT i = 0; i < WN_kid_count(src); ++i) {
     Is_True(WN_kid(dest, i) != 0, ("dest kid is NULL"));
-    Copy_ssa(WN_kid(dest, i), WN_kid(src, i));
+    Copy_tree_ssa(WN_kid(dest, i), WN_kid(src, i));
   }
 }
 
@@ -881,7 +908,7 @@ WHIRL_SSA_MANAGER::Create_entry_chi(ST* preg_st, PREG_NUM preg_num) {
 }
 
 void
-WHIRL_SSA_MANAGER::Enter_stmt(WN* tree, RENAME_MAP* rename_map) {
+WHIRL_SSA_MANAGER::Enter_stmt(WN* tree) {
   OPERATOR opr = WN_operator(tree);
   Is_True(tree != NULL && (opr == OPR_STID || opr == OPR_ISTORE),
           ("only support STID or ISTORE"));
@@ -902,8 +929,6 @@ WHIRL_SSA_MANAGER::Enter_stmt(WN* tree, RENAME_MAP* rename_map) {
       WST_IDX wst_idx = Get_ver_wst(old_ver);
       VER_IDX new_ver = New_ver(wst_idx, tree, WSSA_OCC);
       _wn_ver_map[WN_idx(tree)] = new_ver;
-      if (rename_map != NULL)
-        (*rename_map)[old_ver] = new_ver;
       // fall through since it may have chi node
     }
   }
@@ -916,10 +941,9 @@ WHIRL_SSA_MANAGER::Enter_stmt(WN* tree, RENAME_MAP* rename_map) {
       WST_IDX wst_idx = Get_ver_wst(old_ver);
       VER_IDX new_ver = New_ver(wst_idx, tree, WSSA_CHI);
       it->Set_res(new_ver);
-      if (rename_map != NULL)
-        (*rename_map)[old_ver] = new_ver;
     }
   }
+  // TODO: maintain def-def chain
   // TODO: verify the tree/rename map/ssa
 }
 
@@ -940,6 +964,7 @@ WHIRL_SSA_MANAGER::Remove_stmt(WN* tree) {
     //Set_wn_ver(tree, VER_INVALID);
     _wn_ver_map.erase(WN_idx(tree));
   }
+  // TODO: maintain def-def chain
 }
 
 //====================================================================

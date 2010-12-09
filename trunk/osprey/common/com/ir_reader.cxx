@@ -1091,10 +1091,15 @@ static void ir_put_wn(WN * wn, INT indent)
         if (OPT_Enable_WHIRL_SSA) {
             WSSA::WHIRL_SSA_MANAGER * wsm = PU_Info_ssa_ptr(Current_PU_Info);
             Is_True( wsm != NULL, ("WHIRL SSA MANAGER is NULL") );
-            if (wsm->Stat() == WSSA::STAT_DUMP && WSSA::WN_has_ver(wn)) {
-                WSSA::VER_IDX ver = wsm->Get_wn_ver(wn);
-                WSSA::WST_IDX wst = wsm->Get_ver_wst(ver);
-                fprintf(ir_ofile, " %sv%d", wsm->WST_name(wst), wsm->Get_ver_num(ver));
+            if (wsm->Stat() == WSSA::STAT_DUMP) {
+                if (wsm->WN_has_ver(wn)) {
+                    WSSA::VER_IDX ver = wsm->Get_wn_ver(wn);
+                    WSSA::WST_IDX wst = wsm->Get_ver_wst(ver);
+                    fprintf(ir_ofile, " %sv%d", wsm->WST_name(wst), wsm->Get_ver_num(ver));
+                }
+                else {
+                    fprintf(ir_ofile, " INV_VER");
+                }
             }
         }
 #endif

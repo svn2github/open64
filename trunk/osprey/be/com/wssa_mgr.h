@@ -55,8 +55,6 @@ namespace WSSA {
 
 struct Input_Buffer;
 class  WSSA_UD_ITERATOR;
-typedef hash_map<UINT32 /* VER_IDX, old ver */, 
-                 UINT32 /* VER_IDX, new ver */> RENAME_MAP;
 typedef hash_map<ST_IDX, WST_IDX> ST_TO_WST_MAP;
 
 //===================================================================
@@ -306,6 +304,7 @@ public:
   WST_IDX Get_ver_wst(VER_IDX ver) const;
   UINT32  Get_ver_num(VER_IDX ver) const;
   void Update_ver(VER_IDX ver_idx, WN* def_wn, WSSA_NODE_KIND def_type);
+  void Update_ver_num(VER_IDX ver_idx, UINT32 ver_num);
 
   UINT32 Get_max_ver(WST_IDX wst_idx) const;
   void Set_max_ver(WST_IDX wst_idx, UINT32 max_ver);
@@ -317,11 +316,12 @@ public:
 
 protected:
   // for update
-  void Copy_ssa(WN* dest, const WN* src);
-  void Enter_stmt(WN* tree, RENAME_MAP* rename_map = NULL);
+  void Enter_stmt(WN* tree);
   void Remove_stmt(WN* tree);
 
 public:
+  void Copy_wn_ssa(WN* dest, const WN* src);
+  void Copy_tree_ssa(WN* dest, const WN* src);
   VER_IDX Create_entry_chi(ST* preg_st, PREG_NUM preg_num);
 
 private:

@@ -518,36 +518,29 @@ private:
   }
 
   // if node can not reach exit, connect it with the dummy exit
-  void Connect_noexit(BB_NODE* node, VISITED_ARRAY& visited, VISITED_ARRAY& instack) {
+  void Connect_noexit(BB_NODE* node, VISITED_ARRAY& visited, VISITED_ARRAY& instack, VISITED_ARRAY& will_exit) {
     Is_True(node != NULL, ("node is NULL"));
     Is_True(node->Get_id() <= _cfg.Get_max_id(), ("node id out of bounds"));
+    int succ_visited = 0;
     if (visited[node->Get_id()] == false) {
-      int succ_visited = 0;
-      instack[node->Get_id()] = true;
       visited[node->Get_id()] = true;
+      instack[node->Get_id()] = true;
       for (typename BB_NODE::const_bb_iterator it = node->Succ_begin();
            it != node->Succ_end();
            ++it) {
         if (instack[(*it)->Get_id()] == false) {
-          Connect_noexit(*it, visited, instack);
+          Connect_noexit(*it, visited, instack, will_exit);
           ++succ_visited;
         }
       }
       instack[node->Get_id()] = false;
-      if (succ_visited == 0 && node != _cfg.Get_dummy_exit()) {
+      if (succ_visited == 0 && will_exit[node->Get_id()] == false &&
+          node != _cfg.Get_dummy_exit()) {
         if (_trace) {
           fprintf(TFile, "WCFG: BB:%d has no exit, connect to dummy exit\n", node->Get_id());
         }
         _cfg.Add_exit_node(node);
-      }
-    }
-    else {
-      for (typename BB_NODE::bb_iterator it = node->Succ_begin();
-           it != node->Succ_end();
-           ++it) {
-        if (visited[(*it)->Get_id()] == false) {
-          Connect_noexit(*it, visited, instack);
-        }
+        will_exit[node->Get_id()] = true;
       }
     }
   }
@@ -562,12 +555,14 @@ private:
 
   // handle not exit node
   void Process_not_exit() {
-    VISITED_ARRAY visited;
-    Init(visited);
-    Mark_node_exit(_cfg.Get_dummy_exit(), visited);
+    VISITED_ARRAY will_exit;
+    Init(will_exit);
+    Mark_node_exit(_cfg.Get_dummy_exit(), will_exit);
     VISITED_ARRAY instack;
+    VISITED_ARRAY visited;
     Init(instack);
-    Connect_noexit(_cfg.Get_dummy_entry(), visited, instack); 
+    Init(visited);
+    Connect_noexit(_cfg.Get_dummy_entry(), visited, instack, will_exit); 
   }
 
 public:

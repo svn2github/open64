@@ -97,11 +97,9 @@ void dump_tree_ssa(WN* wn) {
   if (mgr) {
     mgr_stat = mgr->Stat();
     if (mgr_stat != STAT_OK) {
-      fprintf(stdout, "Warning: WHIRL SSA information is unavailable\n");
+      fprintf(stdout, "Warning: WHIRL SSA information may not be correct\n");
     }
-    else {
-      mgr->Set_stat(STAT_DUMP); // dump SSA info
-    }
+    mgr->Set_stat(STAT_DUMP); // dump SSA info
   }
 
   dump_tree(wn);
@@ -116,11 +114,9 @@ void fdump_wn_ssa(FILE* f, WN* wn) {
   if (mgr) {
     mgr_stat = mgr->Stat();
     if (mgr_stat != STAT_OK) {
-      fprintf(f, "Warning: WHIRL SSA information is unavailable\n");
+      fprintf(f, "Warning: WHIRL SSA information may not be correct\n");
     }
-    else {
-      mgr->Set_stat(STAT_DUMP); // dump SSA info
-    }
+    mgr->Set_stat(STAT_DUMP); // dump SSA info
   }
 
   fdump_wn(f, wn);
