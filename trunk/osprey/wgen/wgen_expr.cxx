@@ -5726,7 +5726,7 @@ static WN*
 Fold_Object_Size (WN* intrinsic_op) {
 
     Is_True (WN_operator (intrinsic_op) == OPR_INTRINSIC_OP && 
-             WN_intrinsic (intrinsic_op) ==  INTRN_OBJ_SZ,
+             WN_intrinsic (intrinsic_op) ==  INTRN_OBJECT_SIZE,
              ("Invalid intrisic op"));
     
     // the rtype should be the type corresponing to high level type size_t
@@ -9062,7 +9062,7 @@ WGEN_Expand_Expr (gs_t exp,
 	        break;
 	
 	      case GSBI_BUILT_IN_OBJECT_SIZE:
-	        iopc = INTRN_OBJ_SZ;
+	        iopc = INTRN_OBJECT_SIZE;
 	        intrinsic_op = TRUE;
 	        break;
                
@@ -9503,7 +9503,7 @@ WGEN_Expand_Expr (gs_t exp,
 				      iopc, num_args, ikids);
             WN_Set_Deref_If_Needed(wn);
 
-        if (iopc == INTRN_OBJ_SZ) {
+        if (iopc == INTRN_OBJECT_SIZE) {
             // kludge to the undefined __builtin_object_size() problem (bug #586).  
             //
             wn = Fold_Object_Size (wn);
