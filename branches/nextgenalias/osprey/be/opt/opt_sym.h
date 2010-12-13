@@ -116,6 +116,7 @@
 #include "opt_bb.h"
 #include "be_symtab.h"
 #include "id_map.h"
+#include "wssa_defs.h"
 
 extern "C" {
 #include "bitset.h"
@@ -285,6 +286,7 @@ class AUX_STAB_ENTRY
   friend class OPT_STAB;  // allow OPT_STAB to access this fields directly.
   friend class SSU;	  // SSU needs to get at St_group
   friend class WOVP;	  // WOVP needs to modify Aux_stab_entry
+  friend class WHIRL_SSA_EMITTER; // need access ST,Version in emitter 
   // Alias information
 
 private:
@@ -295,7 +297,7 @@ private:
   mINT32  _flags;                     // flags field (AUXF_FLAGS)
   ST      *st;                        // ST *
   mINT64  _st_ofst;                   // Offset from ST.
-
+  WSSA::WST_IDX wst_idx;              // wssa_st_idx.used in wssa
   AUX_ID    st_chain;                 // chain of aux_sym pointing to
 				      // the same ST. used at OPT_STAB
 				      // build time to search for the
@@ -420,6 +422,8 @@ private:
   void     Set_synonym(AUX_ID i)      { u.synonym = i; }
   void     Set_aux_id_list(AUX_ID_LIST *a) 
     { _aux_id_list = a; }
+  void     Set_wst_idx(WSSA::WST_IDX idx) { wst_idx = idx;  }
+  WSSA::WST_IDX    Get_wst_idx() const    { return wst_idx; }
 
   // various flags
   void     Clear_flags(void)          { _flags = 0; _more_flags = 0; }

@@ -108,6 +108,7 @@ extern char * Targ_Print (const char *fmt, TCON c );
 #include "dwarf_DST_mem.h"
 #include "ir_reader.h"
 #include "tracing.h"
+#include "config_opt.h"
 
 #ifdef BACK_END
 #include "opt_alias_mgr.h"
@@ -125,6 +126,13 @@ extern char * Targ_Print (const char *fmt, TCON c );
 #include "region_util.h"
 #include "dvector.h"
 #endif /* BACK_END */
+
+#if defined(BACK_END) || defined(IR_TOOLS)
+/*for whirl ssa*/
+#include "wssa_mgr.h"
+#include "wssa_wn.h"
+#include "pu_info.h"
+#endif
 
 #include <sstream> 
 using namespace std; 
@@ -892,6 +900,59 @@ ir_put_ty(TY_IDX ty)
    fprintf(ir_ofile, ">");
 }
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+static void ir_put_phi_list(WN* wn, INT indent)
+{
+   const WSSA::WHIRL_SSA_MANAGER * wsm = PU_Info_ssa_ptr(Current_PU_Info);
+   if (wsm->Stat() != WSSA::STAT_DUMP)
+      return;
+
+   if (! wsm->WN_has_phi(wn))
+      return;
+
+   ir_put_marker("PHI NODES",indent);
+   for (WSSA::WHIRL_SSA_MANAGER::const_phi_iterator phi_iter = wsm->WN_phi_begin(wn);
+        phi_iter != wsm->WN_phi_end(wn);
+        ++phi_iter) {
+      phi_iter->Print(ir_ofile, indent);
+   }
+} 
+
+static void ir_put_chi_list(WN* wn, INT indent)
+{
+   const WSSA::WHIRL_SSA_MANAGER * wsm = PU_Info_ssa_ptr(Current_PU_Info);
+   if (wsm->Stat() != WSSA::STAT_DUMP)
+      return;
+
+   if (! wsm->WN_has_chi(wn))
+      return;
+
+   ir_put_marker("CHI NODES",indent);
+   for (WSSA::WHIRL_SSA_MANAGER::const_chi_iterator chi_iter = wsm->WN_chi_begin(wn);
+        chi_iter != wsm->WN_chi_end(wn);
+        ++chi_iter) {
+      chi_iter->Print(ir_ofile, indent);
+   }
+}
+
+static void ir_put_mu_list(WN* wn, INT indent)
+{
+   const WSSA::WHIRL_SSA_MANAGER * wsm = PU_Info_ssa_ptr(Current_PU_Info);
+   if (wsm->Stat() != WSSA::STAT_DUMP)
+       return;
+
+   if (! wsm->WN_has_mu(wn))
+      return;
+
+   ir_put_marker("MU NODES",indent);
+   for (WSSA::WHIRL_SSA_MANAGER::const_mu_iterator mu_iter = wsm->WN_mu_begin(wn);
+        mu_iter != wsm->WN_mu_end(wn);
+        ++mu_iter) {
+      mu_iter->Print(ir_ofile, indent);
+   }
+}
+#endif
+
 /*
  *  Write an WN * in ascii form on an individual line.
  */ 
@@ -926,6 +987,12 @@ static void ir_put_wn(WN * wn, INT indent)
 	}
 	fprintf(ir_ofile, "[%5d]", handle);
     }
+
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (OPT_Enable_WHIRL_SSA && WSSA::WN_has_mu(wn)) {
+        ir_put_mu_list(wn, indent);
+    }
+#endif
 
     if (indent > 0 && opcode == OPC_LABEL)
 	fprintf(ir_ofile, "%*s", indent-1, "");
@@ -1004,7 +1071,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	    Is_True(OPCODE_operator(opcode) == OPR_INTRINSIC_OP ||
 		    OPCODE_operator(opcode) == OPR_INTRINSIC_CALL,
 		    ("ir_put_wn, expected an intrinsic"));
-#if defined(BACK_END) || defined(IR_TOOLS) || defined(TARG_NVISA)
+#if defined(BACK_END) || defined(IR_TOOLS)
 	    fprintf(ir_ofile, " <%d,%s>", WN_intrinsic(wn),
 		    INTRINSIC_name((INTRINSIC) WN_intrinsic(wn)));
 #endif
@@ -1019,7 +1086,23 @@ static void ir_put_wn(WN * wn, INT indent)
     if (OPCODE_has_flags(opcode)) 
 	fprintf(ir_ofile, " %d", WN_flag(wn));
     if (OPCODE_has_sym(opcode)) {
-	ir_put_st (WN_st_idx(wn));
+        ir_put_st (WN_st_idx(wn));
+#if defined(BACK_END) || defined(IR_TOOLS)
+        if (OPT_Enable_WHIRL_SSA) {
+            WSSA::WHIRL_SSA_MANAGER * wsm = PU_Info_ssa_ptr(Current_PU_Info);
+            Is_True( wsm != NULL, ("WHIRL SSA MANAGER is NULL") );
+            if (wsm->Stat() == WSSA::STAT_DUMP) {
+                if (wsm->WN_has_ver(wn)) {
+                    WSSA::VER_IDX ver = wsm->Get_wn_ver(wn);
+                    WSSA::WST_IDX wst = wsm->Get_ver_wst(ver);
+                    fprintf(ir_ofile, " %sv%d", wsm->WST_name(wst), wsm->Get_ver_num(ver));
+                }
+                else {
+                    fprintf(ir_ofile, " INV_VER");
+                }
+            }
+        }
+#endif
     }
 
     if (OPCODE_has_1ty(opcode)) {
@@ -1206,7 +1289,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	USRCPOS srcpos;
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
-	fprintf(ir_ofile, " {line: %d}", USRCPOS_linenum(srcpos));
+	fprintf(ir_ofile, " {line: %d/%d}", USRCPOS_filenum(srcpos), USRCPOS_linenum(srcpos));
     }
 
 #ifdef BACK_END
@@ -1251,8 +1334,12 @@ static void ir_put_wn(WN * wn, INT indent)
 #endif
 
     fprintf(ir_ofile, "\n");
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (OPT_Enable_WHIRL_SSA && WSSA::WN_has_chi(wn)) {
+        ir_put_chi_list(wn, indent);
+    }
+#endif
 }
-
 
 /*
  *  Write an expression and its children in postfix order.
@@ -1366,6 +1453,10 @@ static void ir_put_stmt(WN * wn, INT indent)
       if ( WN_label_loop_info(wn) != NULL ) {
 	ir_put_stmt(WN_label_loop_info(wn), indent+1);
       }
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA)
+        ir_put_phi_list(wn, indent);
+#endif
       already_dumped_wn = TRUE;
       break;
 
@@ -1380,12 +1471,21 @@ static void ir_put_stmt(WN * wn, INT indent)
 	ir_put_stmt(WN_else(wn), indent+1);
       }
       ir_put_marker("END_IF", indent);
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA)
+        ir_put_phi_list(wn, indent);
+#endif
       break;
 
     case OPC_DO_LOOP:
       ir_put_expr(WN_index(wn), indent+1);
       ir_put_marker("INIT",indent);
       ir_put_stmt(WN_start(wn), indent+1);
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA) {
+        ir_put_phi_list(wn, indent+1);
+      }
+#endif
       ir_put_marker("COMP", indent);
       ir_put_expr(WN_end(wn), indent+1);
       ir_put_marker("INCR", indent);
@@ -1396,6 +1496,30 @@ static void ir_put_stmt(WN * wn, INT indent)
       }
       ir_put_marker("BODY", indent);
       ir_put_stmt(WN_do_body(wn), indent+1);
+      break;
+
+    case OPC_WHILE_DO:
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA) {
+        ir_put_phi_list(wn, indent+1);
+      }
+#endif
+      ir_put_marker("COMP",indent);
+      ir_put_expr(WN_kid(wn, 0), indent+1);
+      ir_put_marker("BODY", indent);
+      ir_put_stmt(WN_kid(wn, 1), indent+1);
+      break;
+
+    case OPC_DO_WHILE:
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA) {
+        ir_put_phi_list(wn, indent+1);
+      }
+#endif
+      ir_put_marker("BODY", indent);
+      ir_put_stmt(WN_kid(wn, 1), indent+1);
+      ir_put_marker("COMP",indent);
+      ir_put_expr(WN_kid(wn, 0), indent+1);
       break;
 
     case OPC_LOOP_INFO:
@@ -1427,6 +1551,11 @@ static void ir_put_stmt(WN * wn, INT indent)
       if (WN_kid_count(wn) > 2)
 	ir_put_stmt(WN_kid(wn,2), indent+1);
       ir_put_marker("END_SWITCH", indent);
+#if defined(BACK_END) || defined(IR_TOOLS)
+      if (OPT_Enable_WHIRL_SSA) {
+        ir_put_phi_list(wn, indent+1);
+      }
+#endif
       already_dumped_wn = TRUE;
       break;
 
@@ -2836,6 +2965,8 @@ help_image_wn(stringstream &ss, WN *wn, INT indent)
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
 	ss <<  " {line: ";
+        ss << USRCPOS_filenum(srcpos); 
+        ss <<  "/";
         ss << USRCPOS_linenum(srcpos); 
         ss << "}"; 
     }

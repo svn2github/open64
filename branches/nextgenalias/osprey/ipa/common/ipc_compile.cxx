@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2003, 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -844,7 +848,6 @@ void ipacom_doit (const char* ipaa_filename)
     fprintf(makefile, "%s = %s\n\n", executable_macro_name, executable);
     fprintf(makefile, ".PHONY: default\n");
     fprintf(makefile, "default: %s\n\n", executable_macro);
-    fprintf(makefile, ".IGNORE: %s\n\n", executable_macro);
 #ifdef KEY
     // bug 2487
     // bug 3594: emit backslash if there is only symtab.o
@@ -1046,16 +1049,24 @@ void ipacom_doit (const char* ipaa_filename)
     bool t_enabled = TFile != stdout;
 
     if (tlogs_enabled) {
-      fprintf(makefile, "\tif [ -f %s/*.tlog ] ; then ",
+      fprintf(makefile, "\tif 'ls' -f %s/*.tlog > /dev/null 2>&1 ; then ",
               tmpdir);
-      fprintf(makefile, "'cat' %s/*.tlog >> %s.tlog ; true ; fi\n",
-              tmpdir, executable);
+      // Beforehand the output of cat was appended to
+      // <executable>.<log>, but this requires the user to remove
+      // <executable>.t before invocation when there is no
+      // <executable>.<suffix> source file.  But we don't want to just
+      // truncate <executable>.<log> before writing, since
+      // <executable>.<log> might be created during input WHIRL
+      // generation.  So we truncate and write to <tmpdir>.log
+      // instead.
+      fprintf(makefile, "'cat' %s/*.tlog > %s.tlog ; true ; fi\n",
+              tmpdir, tmpdir);
     }
     if (t_enabled) {
-      fprintf(makefile, "\tif [ -f %s/*.t ] ; then ",
+      fprintf(makefile, "\tif 'ls' -f %s/*.t > /dev/null 2>&1 ; then ",
               tmpdir);
-      fprintf(makefile, "'cat' %s/*.t >> %s.t ; true ; fi\n",
-              tmpdir, executable);
+      fprintf(makefile, "'cat' %s/*.t > %s.t ; true ; fi\n",
+              tmpdir, tmpdir);
     }
   }
   else {

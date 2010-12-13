@@ -50,8 +50,7 @@ namespace WSSA {
 //===================================================================
 
 BOOL
-WN_has_node(const WN* wn, WSSA_NODE_KIND nkind)
-{
+WN_has_node(const WN* wn, WSSA_NODE_KIND nkind) {
   switch (nkind) {
     case WSSA_PHI:
       return WN_has_phi(wn);
@@ -68,8 +67,7 @@ WN_has_node(const WN* wn, WSSA_NODE_KIND nkind)
 }
 
 BOOL
-WN_has_phi(const WN* wn) 
-{
+WN_has_phi(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_IF:
@@ -84,8 +82,7 @@ WN_has_phi(const WN* wn)
 }
 
 BOOL
-WN_has_chi(const WN* wn) 
-{
+WN_has_chi(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_FUNC_ENTRY:  // entry chi
@@ -118,8 +115,7 @@ WN_has_chi(const WN* wn)
 }
 
 BOOL
-WN_has_mu(const WN* wn) 
-{
+WN_has_mu(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_ASM_STMT:
@@ -145,8 +141,7 @@ WN_has_mu(const WN* wn)
 }
 
 BOOL
-WN_has_ver(const WN* wn) 
-{
+WN_has_ver(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_LDID:
@@ -160,8 +155,7 @@ WN_has_ver(const WN* wn)
 }
 
 BOOL
-WN_def_ver(const WN* wn)
-{
+WN_def_ver(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_STID:
@@ -173,8 +167,7 @@ WN_def_ver(const WN* wn)
 }
 
 BOOL
-WN_use_ver(const WN* wn)
-{
+WN_use_ver(const WN* wn) {
   OPERATOR opr = WN_operator(wn);
   switch (opr) {
     case OPR_LDID:
@@ -183,6 +176,35 @@ WN_use_ver(const WN* wn)
     default:
       return FALSE;
   }
+}
+
+BOOL
+WN_is_volatile(const WN* wn) {
+  if (WN_ty(wn) != 0 && TY_is_volatile(WN_ty(wn)))
+    return TRUE;
+  else if (WN_has_sym(wn) &&
+           WN_st(wn) != NULL &&
+           ST_class(WN_st(wn)) == CLASS_VAR &&
+           TY_is_volatile(ST_type(WN_st(wn))))
+    return TRUE;
+  else
+    return FALSE;
+}
+
+BOOL
+Tree_is_volatile(const WN* tree) {
+  OPCODE opc = WN_opcode(tree);
+  Is_True(OPCODE_is_stmt(opc) || OPCODE_is_expression(opc),
+          ("opcode %s is not stmt or expr", OPCODE_name(opc)));
+
+  if (WN_is_volatile(tree)) {
+    return TRUE;
+  }
+  for (int i=0; i < WN_kid_count(tree); ++i) {
+    if (Tree_is_volatile(WN_kid(tree, i)))
+      return TRUE;
+  }
+  return FALSE;
 }
 
 } /* namespace WSSA */

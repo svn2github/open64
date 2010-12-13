@@ -83,6 +83,11 @@ WSSA_DU_MANAGER::Build_rec(const WN* wn) {
   Is_True(_wssa_mgr != NULL && _wssa_mgr->Is_stat_OK(), ("WHIRL SSA info is unavailable"));
 
   OPERATOR opr = WN_operator(wn);
+  // ignore LOOP_INFO
+  if (opr == OPR_LOOP_INFO) {
+    return;
+  }
+
   if (_wssa_mgr->WN_has_phi(wn)) {
     for (WHIRL_SSA_MANAGER::const_phi_iterator it = _wssa_mgr->WN_phi_begin(wn);
          it != _wssa_mgr->WN_phi_end(wn);

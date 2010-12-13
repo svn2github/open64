@@ -63,6 +63,13 @@ BOOL WN_def_ver(const WN* wn);
 // return TRUE if the version can be used by the WN (LDID/LDBITS)
 BOOL WN_use_ver(const WN* wn);
 
+// return TRUE if WN or ST used in WN node is volatile
+BOOL WN_is_volatile(const WN* wn);
+
+// return TRUE if WN or ST used in WN tree is volatile
+// tree must be statement or expression
+BOOL Tree_is_volatile(const WN* tree);
+
 } /* namespace WSSA */
 
 #endif  /* wssa_wn_INCLUDED */

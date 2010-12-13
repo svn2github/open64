@@ -156,6 +156,7 @@ ir_b2a_process_PUs (PU_Info *pu_tree, BOOL stflag, BOOL fbflag)
 	wn = PU_Info_tree_ptr(pu);
 	if (simplify_tree) wn = WN_Simplify_Tree(wn);
 
+	Current_PU_Info = pu;
 	IR_put_func (wn, NULL);
 
 	if (PU_Info_child(pu)) {

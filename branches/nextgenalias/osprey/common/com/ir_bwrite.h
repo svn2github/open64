@@ -156,6 +156,7 @@ extern void WN_write_voidptr_map(PU_Info     *pu,
 				 INT32        subsection_type,
 				 WN_MAP       value_map,
 				 const char  *subsection_name);
+extern void WN_write_SSA(PU_Info *pu, Output_File *fl);
 #ifndef OWN_ERROR_PACKAGE
 
 /*

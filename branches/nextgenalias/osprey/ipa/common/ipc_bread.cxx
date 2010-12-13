@@ -61,6 +61,10 @@
 #include "ipc_symtab_merge.h"		// for idx_map
 #include "ipl_summary.h"		// for SUMMARY_PROCEDURE, etc.
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+#include "wssa_mgr.h"
+#endif
+
 BOOL IPA_Has_Feedback = FALSE;      /* set if ANY input file contains
                                        feedback information */
 
@@ -416,7 +420,7 @@ Count_WN (WN * wn, INT32& bbs, INT32& stmts, INT32& calls)
 // ipa, we need to remap ST_IDX's while walking the tree.
 
 INT
-IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
+IP_READ_fix_tree (PU_Info* pu, WN *node, char *base, Elf64_Word size,
                   const IPC_GLOBAL_IDX_MAP* idx_map)
 {
     OPCODE opcode = (OPCODE) WN_opcode (node);
@@ -479,7 +483,7 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
             WN_last(node) = convert_offset(WN_last(node), base);
 
             do {
-                if (IP_READ_fix_tree (wn, base, size, idx_map) == ERROR_VALUE)
+                if (IP_READ_fix_tree (pu, wn, base, size, idx_map) == ERROR_VALUE)
                     return ERROR_VALUE;
                 wn = WN_next(wn);
             } while (wn);
@@ -496,7 +500,7 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
             else {
                 wn = convert_offset(wn, base);
                 *wn_ptr = wn;
-                if (IP_READ_fix_tree (wn, base, size, idx_map) == ERROR_VALUE)
+                if (IP_READ_fix_tree (pu, wn, base, size, idx_map) == ERROR_VALUE)
                     return ERROR_VALUE;
             }
         }
@@ -530,6 +534,14 @@ IP_READ_fix_tree (WN *node, char *base, Elf64_Word size,
             *last_id_ptr = map_id;
         }
     }
+
+#if defined(BACK_END) || defined(IR_TOOLS)
+    WSSA::WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(pu);
+    if (WN_map_id(node) != -1 && mgr != NULL) {
+        // create the map between WN* and map_id
+        mgr->Add_wn(node);
+    }
+#endif
 
     return 0;
 } // IP_READ_fix_tree 
@@ -570,7 +582,7 @@ IP_READ_get_tree (void *handle, PU_Info *pu,
     // Fix up the pointers in the WNs, and remap symbol table indices.
 
     Current_Map_Tab = PU_Info_maptab(pu);
-    if (IP_READ_fix_tree (wn, tree_base, size, idx_map) == ERROR_VALUE)
+    if (IP_READ_fix_tree (pu, wn, tree_base, size, idx_map) == ERROR_VALUE)
       return reinterpret_cast<WN*>(ERROR_VALUE);
 
     WN_next(wn) = NULL;
@@ -770,6 +782,13 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
     else
       Current_pu = &Pu_Table[ST_pu (Scope_tab[CURRENT_SYMTAB].st)];
 
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (PU_Info_state(pu, WT_SSA) == Subsect_Exists) {
+        // having WSSA in the IR file, create the SSA manager
+        Set_PU_Info_ssa_ptr(pu, new WSSA::WHIRL_SSA_MANAGER(pool));
+    }
+#endif
+
     if (IP_READ_get_tree (fhandle, pu, IP_FILE_HDR_idx_maps(s)) == (WN*) -1) {
       ErrMsg ( EC_IR_Scn_Read, "tree", IP_FILE_HDR_file_name(s));
     }
@@ -792,6 +811,15 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
 #if defined(BACK_END) || defined(BUILD_WHIRL2C) || defined(BUILD_WHIRL2F)
     if (WN_get_prefetch (fhandle, pu) == -1) {
       ErrMsg ( EC_IR_Scn_Read, "prefetch map", IP_FILE_HDR_file_name(s));
+    }
+#endif
+
+#if defined(BACK_END) || defined(IR_TOOLS)
+    if (PU_Info_state(pu, WT_SSA) == Subsect_Exists) {
+      // We should call
+      //    WN_get_SSA (fhandle, pu, pool);
+      // But WSSA doesn't support IPA so far, onlu set the state
+      Set_PU_Info_state(pu, WT_SSA, Subsect_InMem);
     }
 #endif
 

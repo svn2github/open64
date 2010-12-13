@@ -55,6 +55,7 @@ namespace WSSA {
 
 struct Input_Buffer;
 class  WSSA_UD_ITERATOR;
+typedef hash_map<ST_IDX, WST_IDX> ST_TO_WST_MAP;
 
 //===================================================================
 // MGR_STAT: WHIRL_SSA_MANAGER internal status
@@ -66,6 +67,7 @@ enum MGR_STAT {
   STAT_UPDATE,  // in the SSA Updater
   STAT_VERIFY,  // in the SSA verifier
   STAT_DUMP,    // in dump_tree/wn without ssa
+  STAT_DIRTY,   // SSA information is dirty
   STAT_OK,      // OK, ready for normal operations
 };
 
@@ -78,6 +80,7 @@ enum MGR_STAT {
 class WHIRL_SSA_MANAGER {
 public:
   friend class WHIRL_SSA_IO;
+  friend class WSSA_UPDATER;
   template<typename _Tmgr, typename _Tnode> friend class WSSA_NODE_ITERATOR;
   template<typename _Tnode> friend void read_from_buffer(Input_Buffer *ib, _Tnode*& node);
   typedef hash_map<WSSA_WN_IDX, WN*> WN_IDX_MAP;
@@ -159,6 +162,9 @@ protected:
   WSSA_NODE_IDX Add_node(const WN* wn, _Tnode* node);
 
   template<WSSA_NODE_KIND _Tkind>
+  void Clear_list(WN* wn);
+
+  template<WSSA_NODE_KIND _Tkind>
   typename NODE_TO_TYPES<_Tkind>::NODE_TYPE* WN_ssa_node(const WN* wn, WST_IDX wst);
 
   template<WSSA_NODE_KIND _Tkind>
@@ -171,7 +177,7 @@ protected:
   WSSA_NODE_ITERATOR<const WHIRL_SSA_MANAGER, const _Tnode> WN_node_begin(const WN* wn) const;
 
 protected:
-  // for I/O
+  // for I/O and updater
   PHI_TABLE& PHI_table()         { return _phi_table;     }
   CHI_TABLE& CHI_table()         { return _chi_table;     }
   MU_TABLE&  MU_table()          { return _mu_table;      }
@@ -218,6 +224,9 @@ public:
   const PHI_NODE* WN_phi_node(const WN* wn, WST_IDX wst) const;
   const CHI_NODE* WN_chi_node(const WN* wn, WST_IDX wst) const;
   const MU_NODE*  WN_mu_node (const WN* wn, WST_IDX wst) const;
+  PHI_NODE* WN_phi_node(const WN* wn, WST_IDX wst);
+  CHI_NODE* WN_chi_node(const WN* wn, WST_IDX wst);
+  MU_NODE*  WN_mu_node (const WN* wn, WST_IDX wst);
 
   phi_iterator WN_phi_begin(const WN* wn);
   phi_iterator WN_phi_end(const WN* wn);
@@ -243,8 +252,9 @@ public:
 
 public:
   // interfaces for version of WHIRL node
+  BOOL WN_has_ver(const WN* wn) const;
   VER_IDX Get_wn_ver(const WN* wn) const;
-  void Set_wn_ver(WN* wn, VER_IDX ver);
+  void Set_wn_ver(const WN* wn, VER_IDX ver);
   WST_IDX Get_wn_ver_wst(const WN* wn) const;
   UINT32 Get_wn_ver_num(const WN* wn) const;
 
@@ -255,6 +265,10 @@ public:
   WN*  Get_wn(WSSA_WN_IDX wn_idx) const;
   void Clear_wn_map();
 
+private:
+  ST_TO_WST_MAP _st_to_wst_map;
+  WST_IDX Find_wst(ST* st, PREG_NUM preg);
+
 public:
   // manage symbols and max version of the symbol
   WST_IDX New_wst(ST_IDX idx);
@@ -263,6 +277,7 @@ public:
   WST_IDX New_wst(ST* st, const WST_Vsym_Info& vsym);
   FIELD_INFO_IDX New_field(const WST_Field_Info& field_info);
   VSYM_INFO_IDX New_vsym(const WST_Vsym_Info& vsym_info);
+  WST_IDX Create_wst_for_wn(WN* wn);
 
   const WST_Symbol_Entry& Get_wst(WST_IDX wst_idx) const;
   WSSA_SYM_TYPE Get_wst_type(WST_IDX wst_idx) const;
@@ -284,10 +299,12 @@ public:
 public:
   // manage the versions
   VER_IDX New_ver(const WST_Version_Entry& ver);
+  VER_IDX New_ver(WST_IDX wst_idx, const WN* def_wn, WSSA_NODE_KIND def_type);
   const WST_Version_Entry& Get_ver(VER_IDX ver_idx) const;
   WST_IDX Get_ver_wst(VER_IDX ver) const;
   UINT32  Get_ver_num(VER_IDX ver) const;
   void Update_ver(VER_IDX ver_idx, WN* def_wn, WSSA_NODE_KIND def_type);
+  void Update_ver_num(VER_IDX ver_idx, UINT32 ver_num);
 
   UINT32 Get_max_ver(WST_IDX wst_idx) const;
   void Set_max_ver(WST_IDX wst_idx, UINT32 max_ver);
@@ -296,6 +313,16 @@ public:
   const_ver_iterator Ver_begin() const;
   const_ver_iterator Ver_end() const;
   UINT32 Ver_count() const;
+
+protected:
+  // for update
+  void Enter_stmt(WN* tree);
+  void Remove_stmt(WN* tree);
+
+public:
+  void Copy_wn_ssa(WN* dest, const WN* src);
+  void Copy_tree_ssa(WN* dest, const WN* src);
+  VER_IDX Create_entry_chi(ST* preg_st, PREG_NUM preg_num);
 
 private:
   // helper functions for dump
@@ -353,6 +380,17 @@ private:
       const WST_Version_Entry& ver = _mgr->Get_ver(_cur_ver);
       _def_type = ver.Get_def_type();
       _def_wn = ver.Get_def_wn();
+      if (_def_wn == NULL) {
+        Is_True(_def_type == WSSA_UNKNOWN, ("invalid def type"));
+        // volatile use does not have def
+        // if the previous def is volatile, there is no def for current use
+        VER_IDX prev_ver = ver.Prev_ver();
+        Is_True(ver.Is_volatile() == TRUE ||
+                (prev_ver != VER_INVALID && 
+                 _mgr->Get_ver(prev_ver).Is_volatile() == TRUE), 
+                ("cur use or prev def is not volatile"));
+        continue;
+      }
       Is_True(_def_wn != NULL && _def_type != WSSA_UNKNOWN, ("invalid def wn"));
 
       if (_wn_visited[(INTPTR)_def_wn] == true)

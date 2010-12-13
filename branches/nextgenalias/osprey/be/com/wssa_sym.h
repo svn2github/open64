@@ -136,6 +136,7 @@ class WST_Symbol_Entry {
 private:
   WSSA_SYM_TYPE _sym_type;
   ST_IDX _st_idx;                // Related ST in WHIRL SYMTAB
+  WST_IDX _next_wst;             // Next WST related to the same ST
   union {
     PREG_NUM   _preg_num;        // PREG number
     FIELD_INFO_IDX  _field_idx;  // WHIRL Field
@@ -165,6 +166,12 @@ public:
   }
   void Set_st_idx(ST_IDX idx) {
     _st_idx = idx;
+  }
+  WST_IDX Next_wst() const {
+    return _next_wst;
+  }
+  void Set_next_wst(WST_IDX idx) {
+    _next_wst = idx;
   }
   PREG_NUM Preg_num() const {
     Is_True(Sym_type() == WST_PREG, ("Bad sym type"));
@@ -202,12 +209,14 @@ public:
   void Set_last_ver(VER_IDX ver) { _last_ver = ver; }
 
 public:
-  void Print(FILE* fp = stdout);
+  void Print(FILE* fp = stdout) const;
 };
 
 // Version flag
 enum VER_FLAG {
-  VER_IS_ZERO = 0x1,   // zero version
+  VER_IS_ZERO = 0x1,     // zero version
+  VER_IS_VOLATILE = 0x2, // def or use is volatile
+  VER_BY_OPT_CHI = 0x4,  // def by OPT_CHI
 };
 
 // WSSA version entry
@@ -226,6 +235,12 @@ private:
   };
   // TODO: FSA, POINTS_TO
 
+private:
+  void Set_flag(VER_FLAG flag)    { _ver_flags |= flag; }
+  void Reset_flag(VER_FLAG flag)  { _ver_flags &= !flag; }
+  BOOL Is_flag_set(VER_FLAG flag) const { return (_ver_flags & flag) == flag; }
+  void Set_wn_flag();
+
 public:
   // these routines are for IO only
   void Set_flags(INT32 flags)     { _flags = flags; }
@@ -233,8 +248,8 @@ public:
 
 public:
   WST_Version_Entry();
-  WST_Version_Entry(const WN* def_wn, WST_IDX wst_idx, UINT32 ver,
-                    WSSA_NODE_KIND def_type, BOOL zero_ver);
+  WST_Version_Entry(WST_IDX wst_idx, UINT32 ver,
+                    const WN* def_wn, WSSA_NODE_KIND def_type);
 
 public:
   WST_IDX Get_wst() const   { return _wst_idx; }
@@ -244,7 +259,10 @@ public:
   void Set_ver(UINT32 ver) { _version = ver;  }
 
   const WN* Get_def_wn() const  { return _def_wn; }
-  void Set_def_wn(const WN* wn) { _def_wn = wn;   }
+  void Set_def_wn(const WN* wn) { 
+    _def_wn = wn;   
+    Set_wn_flag();
+  }
 
   VER_IDX Prev_ver() const       { return _prev_ver; }
   void Set_prev_ver(VER_IDX ver) { _prev_ver = ver;  }
@@ -252,9 +270,17 @@ public:
   WSSA_NODE_KIND Get_def_type() const    { return (WSSA_NODE_KIND)_def_type; }
   void Set_def_type(WSSA_NODE_KIND type) { _def_type = type; }
 
-  void Set_flag(VER_FLAG flag)    { _ver_flags |= flag; }
-  void Reset_flag(VER_FLAG flag)  { _ver_flags &= !flag; }
-  BOOL Is_flag_set(VER_FLAG flag) const { return (_ver_flags & flag) == flag; }
+  void Set_zero()      { Set_flag(VER_IS_ZERO);   }
+  void Reset_zero()    { Reset_flag(VER_IS_ZERO); }
+  BOOL Is_zero() const { return Is_flag_set(VER_IS_ZERO); }
+
+  void Set_volatile()      { Set_flag(VER_IS_VOLATILE);   }
+  void Reset_volatile()    { Reset_flag(VER_IS_VOLATILE); }
+  BOOL Is_volatile() const { return Is_flag_set(VER_IS_VOLATILE); }
+
+  void Set_opt_chi()       { Set_flag(VER_BY_OPT_CHI);   }
+  void Reset_opt_chi()    { Reset_flag(VER_BY_OPT_CHI); }
+  BOOL Is_opt_chi() const { return Is_flag_set(VER_BY_OPT_CHI); }
 
 public:
   void Print(FILE* fp = stdout) const;

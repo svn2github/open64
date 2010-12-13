@@ -71,12 +71,17 @@ UINT32 Get_wst_max_ver(WST_IDX idx) {
   return mgr->Get_max_ver(idx);
 }
 
-void dump_wn_no_ssa(WN* wn) {
+void dump_wn_ssa(WN* wn) {
   WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
   MGR_STAT mgr_stat;
   if (mgr) {
     mgr_stat = mgr->Stat();
-    mgr->Set_stat(STAT_DUMP); // disable SSA info
+    if (mgr_stat != STAT_OK) {
+      fprintf(stdout, "Warning: WHIRL SSA information is unavailable\n");
+    }
+    else {
+      mgr->Set_stat(STAT_DUMP); // dump SSA info
+    }
   }
 
   dump_wn(wn);
@@ -86,12 +91,15 @@ void dump_wn_no_ssa(WN* wn) {
 }
 
 
-void dump_tree_no_ssa(WN* wn) {
+void dump_tree_ssa(WN* wn) {
   WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
   MGR_STAT mgr_stat;
   if (mgr) {
     mgr_stat = mgr->Stat();
-    mgr->Set_stat(STAT_DUMP); // disable SSA info
+    if (mgr_stat != STAT_OK) {
+      fprintf(stdout, "Warning: WHIRL SSA information may not be correct\n");
+    }
+    mgr->Set_stat(STAT_DUMP); // dump SSA info
   }
 
   dump_tree(wn);
@@ -100,12 +108,15 @@ void dump_tree_no_ssa(WN* wn) {
     mgr->Set_stat(mgr_stat);
 }
 
-void fdump_wn_no_ssa(FILE* f, WN* wn) {
+void fdump_wn_ssa(FILE* f, WN* wn) {
   WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
   MGR_STAT mgr_stat;
   if (mgr) {
     mgr_stat = mgr->Stat();
-    mgr->Set_stat(STAT_DUMP); // disable SSA info
+    if (mgr_stat != STAT_OK) {
+      fprintf(f, "Warning: WHIRL SSA information may not be correct\n");
+    }
+    mgr->Set_stat(STAT_DUMP); // dump SSA info
   }
 
   fdump_wn(f, wn);
@@ -114,12 +125,17 @@ void fdump_wn_no_ssa(FILE* f, WN* wn) {
     mgr->Set_stat(mgr_stat);
 }
 
-void fdump_tree_no_ssa(FILE* f, WN* wn) {
+void fdump_tree_ssa(FILE* f, WN* wn) {
   WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
   MGR_STAT mgr_stat;
   if (mgr) {
     mgr_stat = mgr->Stat();
-    mgr->Set_stat(STAT_DUMP); // disable SSA info
+    if (mgr_stat != STAT_OK) {
+      fprintf(f, "Warning: WHIRL SSA information is unavailable\n");
+    }
+    else {
+      mgr->Set_stat(STAT_DUMP); // dump SSA info
+    }
   }
 
   fdump_tree(f, wn);

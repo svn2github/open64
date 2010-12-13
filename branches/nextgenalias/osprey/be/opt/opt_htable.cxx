@@ -5442,7 +5442,9 @@ CODEMAP::Print(FILE *fp) const
   AUX_STAB_ITER aux_stab_iter(Sym());
   FOR_ALL_NODE(i, aux_stab_iter, Init()) {
     AUX_STAB_ENTRY *aux = Sym()->Aux_stab_entry(i);
-    fprintf(fp, "----aux_id %d\n", i);
+    fprintf(fp, "----aux_id %d Type:%d ST:%s\n", i,
+            aux->Stype(),
+            aux->St() == NULL ? "" : ST_name(aux->St()) );
     FOR_ALL_NODE(cr, cr_iter, Init(aux->Cr_list())) {
       Print_CR(cr, fp);
       count++;

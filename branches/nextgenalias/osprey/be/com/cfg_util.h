@@ -1,3 +1,44 @@
+/*
+
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
+  Open64 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  Open64 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+*/
+
+//====================================================================
+//
+// Module: cfg_util.h
+//
+// Revision history:
+//  Nov-1 - Original Version
+//
+// Description:
+//  Handle unreachable BB, calculating DOM/PDOM/DF/CD
+//
+// Exported classes:
+//  CFG_UTIL::DOM_BUILDER
+//  CFG_UTIL::DF_BUILDER
+//  CFG_UTIL::CFG_CONNECTIVITY
+//
+// SEE ALSO:
+//  be/com/cfg_base.h (BB_NODE_BASE, CFG_BASE)
+//
+//====================================================================
+
 #ifndef cfg_util_INCLUDED
 #define cfg_util_INCLUDED
 
@@ -330,9 +371,11 @@ private:
   template<bool _Fwd>
   void Compute_DF_rec(BB_NODE* node) {
     // bottom up traversal on dom tree
-    typename BB_NODE::bb_iterator xit;
+    typename BB_NODE::dom_iterator xit;
     for (xit = node->dom_begin(_Fwd); xit != node->dom_end(_Fwd); ++xit) {
-      Compute_DF_rec<_Fwd>(*xit);
+      BB_NODE* dom_kid = _cfg.Get_node(*xit);
+      if (dom_kid->get_idom(_Fwd) == node)
+        Compute_DF_rec<_Fwd>(dom_kid);
     }
 
     // start from empty set
@@ -344,9 +387,11 @@ private:
       }
     }
     // traverse the dominated blocks
-    typename BB_NODE::bb_iterator yit;
+    typename BB_NODE::dom_iterator yit;
     for (yit = node->dom_begin(_Fwd); yit != node->dom_end(_Fwd); ++yit) {
-      BB_NODE_SET* ydf = DF_set((*yit)->Get_id());
+      if (_cfg.Get_node(*yit)->get_idom(_Fwd) != node)
+        continue;
+      BB_NODE_SET* ydf = DF_set(*yit);
       // for each element of Dominance-Frontier of yit
       for (bb_set_iterator zit = _cfg.BB_set_begin(ydf);
            zit != _cfg.BB_set_end(ydf);
@@ -473,36 +518,29 @@ private:
   }
 
   // if node can not reach exit, connect it with the dummy exit
-  void Connect_noexit(BB_NODE* node, VISITED_ARRAY& visited, VISITED_ARRAY& instack) {
+  void Connect_noexit(BB_NODE* node, VISITED_ARRAY& visited, VISITED_ARRAY& instack, VISITED_ARRAY& will_exit) {
     Is_True(node != NULL, ("node is NULL"));
     Is_True(node->Get_id() <= _cfg.Get_max_id(), ("node id out of bounds"));
+    int succ_visited = 0;
     if (visited[node->Get_id()] == false) {
-      int succ_visited = 0;
-      instack[node->Get_id()] = true;
       visited[node->Get_id()] = true;
+      instack[node->Get_id()] = true;
       for (typename BB_NODE::const_bb_iterator it = node->Succ_begin();
            it != node->Succ_end();
            ++it) {
         if (instack[(*it)->Get_id()] == false) {
-          Connect_noexit(*it, visited, instack);
+          Connect_noexit(*it, visited, instack, will_exit);
           ++succ_visited;
         }
       }
       instack[node->Get_id()] = false;
-      if (succ_visited == 0 && node != _cfg.Get_dummy_exit()) {
+      if (succ_visited == 0 && will_exit[node->Get_id()] == false &&
+          node != _cfg.Get_dummy_exit()) {
         if (_trace) {
           fprintf(TFile, "WCFG: BB:%d has no exit, connect to dummy exit\n", node->Get_id());
         }
         _cfg.Add_exit_node(node);
-      }
-    }
-    else {
-      for (typename BB_NODE::bb_iterator it = node->Succ_begin();
-           it != node->Succ_end();
-           ++it) {
-        if (visited[(*it)->Get_id()] == false) {
-          Connect_noexit(*it, visited, instack);
-        }
+        will_exit[node->Get_id()] = true;
       }
     }
   }
@@ -517,12 +555,14 @@ private:
 
   // handle not exit node
   void Process_not_exit() {
-    VISITED_ARRAY visited;
-    Init(visited);
-    Mark_node_exit(_cfg.Get_dummy_exit(), visited);
+    VISITED_ARRAY will_exit;
+    Init(will_exit);
+    Mark_node_exit(_cfg.Get_dummy_exit(), will_exit);
     VISITED_ARRAY instack;
+    VISITED_ARRAY visited;
     Init(instack);
-    Connect_noexit(_cfg.Get_dummy_entry(), visited, instack); 
+    Init(visited);
+    Connect_noexit(_cfg.Get_dummy_entry(), visited, instack, will_exit); 
   }
 
 public:

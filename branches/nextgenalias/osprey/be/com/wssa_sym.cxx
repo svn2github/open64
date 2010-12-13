@@ -39,6 +39,8 @@
 //====================================================================
 
 #include "wssa_sym.h"
+#include "wssa_wn.h"
+#include "wn.h"
 
 namespace WSSA {
 
@@ -87,17 +89,19 @@ WST_Vsym_Info::Print(FILE* fp) const{
 // WST_Symbol_Entry, attributes fro WSSA symbols
 //====================================================================
 WST_Symbol_Entry::WST_Symbol_Entry()
-  : _sym_type(WST_UNKNOWN), _max_ver(WSSA_ZERO_VER), _last_ver(VER_INVALID) { 
+  : _sym_type(WST_UNKNOWN), _next_wst(WST_INVALID), 
+    _max_ver(WSSA_ZERO_VER), _last_ver(VER_INVALID) { 
 }
 
 WST_Symbol_Entry::WST_Symbol_Entry(WSSA_SYM_TYPE type)
-  : _sym_type(type), _max_ver(WSSA_ZERO_VER), _last_ver(VER_INVALID) { 
+  : _sym_type(type), _next_wst(WST_INVALID),
+    _max_ver(WSSA_ZERO_VER), _last_ver(VER_INVALID) { 
 }
 
 void
-WST_Symbol_Entry::Print(FILE* fp) {
-  fprintf(fp, "Type: %s, st_idx: %d, index: %d, max_ver: %d",
-              WSSA_sym_type_name(_sym_type), _st_idx, _sym._value, _max_ver);
+WST_Symbol_Entry::Print(FILE* fp) const {
+  fprintf(fp, "Type: %s, st_idx: %d, index: %d, max_ver: %d, last_def: %d",
+              WSSA_sym_type_name(_sym_type), _st_idx, _sym._value, _max_ver, _last_ver);
 }
 
 //====================================================================
@@ -108,17 +112,28 @@ WST_Version_Entry::WST_Version_Entry()
     _def_wn(NULL), _def_type(WSSA_UNKNOWN), _ver_flags(0) {
 }
 
-WST_Version_Entry::WST_Version_Entry(const WN* wn, WST_IDX wst_idx, UINT32 ver, WSSA_NODE_KIND type, BOOL zero_ver)
+WST_Version_Entry::WST_Version_Entry(WST_IDX wst_idx, UINT32 ver, const WN* wn, WSSA_NODE_KIND type)
   : _wst_idx(wst_idx), _version(ver), _prev_ver(VER_INVALID),
     _def_wn(wn), _def_type(type), _ver_flags(0) {
-  if (zero_ver)
-    Set_flag(VER_IS_ZERO);
+  Set_wn_flag();
+}
+
+void
+WST_Version_Entry::Set_wn_flag() {
+  if (_def_wn != NULL && WSSA::WN_is_volatile(_def_wn))
+    Set_volatile();
+  else
+    Reset_volatile();
+  if (_def_wn != NULL && WN_operator(_def_wn) == OPR_OPT_CHI)
+    Set_opt_chi();
+  else
+    Reset_opt_chi();
 }
 
 void 
 WST_Version_Entry::Print(FILE* fp) const {
-  fprintf(fp, "WST_IDX: %d, Ver: %d, Def: %s:%p, Flag: %x\n",
-    _wst_idx, _version, WSSA_node_name(_def_type), _def_wn, _ver_flags);
+  fprintf(fp, "WST_IDX: %d, Ver: %d, Prev Ver: %d, Def: %s:%p, Flag: %x\n",
+    _wst_idx, _version, _prev_ver, WSSA_node_name(_def_type), _def_wn, _ver_flags);
 }
 
 } /* namespace WSSA */

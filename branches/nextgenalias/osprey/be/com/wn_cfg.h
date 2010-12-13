@@ -1,3 +1,42 @@
+/*
+
+  Copyright (C) 2010, Hewlett-Packard Development Company, L.P. All Rights Reserved.
+
+  Open64 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  Open64 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+*/
+
+//====================================================================
+//
+// Module: wn_cfg.h
+//
+// Revision history:
+//  Nov-1 - Original Version
+//
+// Description:
+//  Interface for WHIRL CFG
+//
+// Exported classes:
+//  CFG_UTIL::WN_CFG
+//
+// SEE ALSO:
+//  be/com/cfg_base.h (BB_NODE_BASE, CFG_BASE)
+//
+//====================================================================
+
 #ifndef wn_cfg_INCLUDED
 #define wn_cfg_INCLUDED
 
@@ -26,16 +65,17 @@ public:
   typedef _Tnode& _Tnoderef;
 
 private:
+  BOOL _fwd;
   _Tnodeptr _cur_stmt;
   _Tcontainer* _container;
 
 public:
   WN_STMT_ITERATOR()
-    : _cur_stmt(NULL), _container(NULL) { }
-  WN_STMT_ITERATOR(_Tnodeptr cur, _Tcontainer* container)
-    : _cur_stmt(cur), _container(container) { }
+    : _fwd(FALSE), _cur_stmt(NULL), _container(NULL) { }
+  WN_STMT_ITERATOR(BOOL fwd, _Tnodeptr cur, _Tcontainer* container)
+    : _fwd(fwd), _cur_stmt(cur), _container(container) { }
   WN_STMT_ITERATOR(const WN_STMT_ITERATOR<_Tcontainer, _Tnode>& rhs)
-    : _cur_stmt(rhs._cur_stmt), _container(rhs._container) { }
+    : _fwd(rhs._fwd), _cur_stmt(rhs._cur_stmt), _container(rhs._container) { }
 
 public:
   _Tnodeptr operator->() {
@@ -49,24 +89,32 @@ public:
 
   WN_STMT_ITERATOR<_Tcontainer, _Tnode>& operator++() {
     Is_True(_cur_stmt != NULL, ("current stmt is NULL"));
-    _cur_stmt = _container->Next_stmt(_cur_stmt);
+    if (_fwd)
+      _cur_stmt = _container->Next_stmt(_cur_stmt);
+    else
+      _cur_stmt = _container->Prev_stmt(_cur_stmt);
     return *this;
   }
 
   WN_STMT_ITERATOR<_Tcontainer, _Tnode>& operator--() {
     Is_True(_cur_stmt != NULL, ("current stmt is NULL"));
-    _cur_stmt = _container->Prev_stmt(_cur_stmt);
+    if (_fwd)
+      _cur_stmt = _container->Prev_stmt(_cur_stmt);
+    else
+      _cur_stmt = _container->Next_stmt(_cur_stmt);
     return *this;
   }
 
   bool operator==(const WN_STMT_ITERATOR<_Tcontainer, _Tnode>& rit) {
-    return (_cur_stmt == rit._cur_stmt) &&
+    return (_fwd == rit._fwd) &&
+           (_cur_stmt == rit._cur_stmt) &&
            (_container == rit._container);
   }
   bool operator!=(const WN_STMT_ITERATOR<_Tcontainer, _Tnode>& rit) {
-    return !(operator==(rit));
+    return ! (operator==(rit));
   }
   WN_STMT_ITERATOR<_Tcontainer, _Tnode>& operator=(const WN_STMT_ITERATOR<_Tcontainer, _Tnode>& rit) {
+    _fwd = rit._fwd;
     _cur_stmt = rit._cur_stmt;
     _container = rit._container;
   }
@@ -102,15 +150,20 @@ public:
   WN* Last_stmt() const;
   BOOL Is_empty() const;
 
+  // update the stmt inside the Container
+  void Insert_before(WN* before, WN* stmt);
+  void Insert_after(WN* after, WN* stmt);
+  void Remove_stmt(WN* stmt);
+
   // iterators to traverse the statements
-  iterator begin() { return iterator(First_stmt(), this); }
-  iterator end()   { return iterator(NULL, this);        }
-  const_iterator begin() const { return const_iterator(First_stmt(), this); }
-  const_iterator end() const   { return const_iterator(NULL, this);        }
-  iterator rbegin() { return iterator(Last_stmt(), this); }
-  iterator rend()   { return iterator(NULL, this);        }
-  const_iterator rbegin() const { return const_iterator(Last_stmt(), this); }
-  const_iterator rend() const   { return const_iterator(NULL, this);        }
+  iterator begin() { return iterator(TRUE, First_stmt(), this); }
+  iterator end()   { return iterator(TRUE, NULL, this);        }
+  const_iterator begin() const { return const_iterator(TRUE, First_stmt(), this); }
+  const_iterator end() const   { return const_iterator(TRUE, NULL, this);        }
+  iterator rbegin() { return iterator(FALSE, Last_stmt(), this); }
+  iterator rend()   { return iterator(FALSE, NULL, this);        }
+  const_iterator rbegin() const { return const_iterator(FALSE, Last_stmt(), this); }
+  const_iterator rend() const   { return const_iterator(FALSE, NULL, this);        }
 
 public:
   // print and VCG dump methods
@@ -169,7 +222,10 @@ private:
   friend class WN_CFG_BUILDER;
   // only accessable for WN_CFG_BUILDER
   void Set_parent(WN* parent, WN* kid);
+  void Remove_parent(WN* wn);
   void Set_label(INT32 label_num, BB_NODE* node);
+  void Parentize_tree(WN* tree);
+  void Unparentize_tree(WN* tree);
 
 public:
   WN_CFG(MEM_POOL* mpool)
@@ -199,9 +255,33 @@ public:
 
   // get BB_NODE from the label number
   BB_NODE* Get_label_node(INT32 label_num) const;
+  void Remove_label(INT32 label_num);
 
   // get the branch WN for BB has more than one successors
   WN* Get_branch_stmt(BB_NODE* node) const;
+
+public:
+  // update interface
+  void Insert_before(WN* before, WN* stmt) {
+    CFG::Insert_before(before, stmt);
+
+    // maintain the parent map
+    Parentize_tree(stmt);
+    Set_parent(Get_parent(before), stmt);
+  }
+  void Insert_after(WN* after, WN* stmt) {
+    CFG::Insert_after(after, stmt);
+
+    // maintain the parent map
+    Parentize_tree(stmt);
+    Set_parent(Get_parent(after), stmt);
+  }
+  void Remove_stmt(STMT stmt) {
+    CFG::Remove_stmt(stmt); 
+
+    // maintain the parent map
+    //Unparentize_tree(stmt);
+  }
 };
 
 //===================================================================

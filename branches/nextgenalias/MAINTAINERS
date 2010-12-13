@@ -27,8 +27,11 @@ C/C++ front ends 	Gautam Chakrabarti 	gchakrabarti(AT)nvidia.com
 IPA/inlining		Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Gautam Chakrabarti	gchakrabarti(AT)nvidia.com
 OpenMP			Wenguang Chen		cwg(AT)tsinghua.edu.cn
+Driver, build system    David Coakley		dcoakley(AT)gmail.com
+Libraries               David Coakley		dcoakley(AT)gmail.com
 wgen, WOPT, CG		Jian-Xin Lai		jianxin.lai(AT)hp.com
-IPA/inlining		Michael Lai		michael.lai(AT)amd.com
+IPA/inlining    	Michael Lai		michael.lai(AT)amd.com
+Fortran	                Michael Lai		michael.lai(AT)amd.com
 Cuda/NVISA		Mike Murphy		mmurphy(AT)nvidia.com  	
 Driver, build system	Mike Murphy		mmurphy(AT)nvidia.com  	
 Common infrastructure  	Mike Murphy		mmurphy(AT)nvidia.com  	
@@ -75,6 +78,7 @@ Chunhua Liao			liaoch(AT)cs.uh.edu
 Lianjie Luo			luolianjie(AT)gmail.com
 Lin Ma				lin.ma(AT)simplnano.com
 Mike Murphy			mmurphy(AT)nvidia.com
+Ram Ramanarayanan               ramshankar.ramanarayanan@amd.com
 Jürgen Ributzka			ributzka(AT)gmail.com
 Akella V.S. Sastry              akella.sastry(AT)hp.com
 Robert Scollard			robert.scollard(AT)amd.com

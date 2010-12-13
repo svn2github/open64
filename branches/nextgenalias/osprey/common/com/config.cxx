@@ -1321,6 +1321,31 @@ Configure (void)
     Vcast_Complex = TRUE;
 #endif
 }
+
+/* ====================================================================
+ *
+ * Configure_IPA
+ *
+ * Configure IPA options based on flag values.
+ *
+ * ====================================================================
+ */
+
+void
+Configure_IPA (void)
+{
+  if ( Get_Trace( TP_MISC, 0x40 ) && ! DevWarn_Enabled()) {
+    DevWarn_Toggle();
+  }
+
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+}
+
 
 /* ====================================================================
  *

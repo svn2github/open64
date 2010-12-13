@@ -872,6 +872,9 @@ extern void Configure_Olegacy (BOOL in_FE);
 /***** Perform configuration functions after flag processing *****/
 extern void Configure (void);
 
+/***** Perform configuration functions after flag processing for IPA *****/
+extern void Configure_IPA (void);
+
 /***** Perform configuration functions for each source file *****/
 extern void Configure_Source ( char *filename );
 

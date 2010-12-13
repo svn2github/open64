@@ -365,6 +365,8 @@
 #include "opt_lclsc.h"
 #endif
 
+#include "wssa_utils.h"   // WHIRL SSA
+
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,
@@ -526,6 +528,7 @@ private:
   BOOL  _vsym_unique;
   BOOL  _while_loop;	/* cvt while-do to do-loop			*/
   BOOL  _wn_simp;	/* WHIRL node simplifier			*/
+  BOOL  _whirl_ssa;     /* emit WHIRL SSA in WOPT emitter               */
   BOOL  _wovp; /* Write-once variable promotion   */
   BOOL  _zero_version;
   BOOL  _epre_before_ivr; // For running epre early
@@ -582,6 +585,7 @@ private:
       WOPT_Enable_Store_PRE =
       WOPT_Enable_SSA_PRE =
       WOPT_Enable_Vsym_Unique =
+      OPT_Enable_WHIRL_SSA =
       WOPT_Enable_WOVP =
       Enable_WN_Simp =			// disable WHIRL simplifier
       // WOPT_Enable_Zero_Version =
@@ -597,6 +601,7 @@ private:
       WOPT_Enable_Call_Zero_Version = FALSE;
       WOPT_Enable_Combine_Operations = FALSE;
       WOPT_Enable_Goto = FALSE;
+      OPT_Enable_WHIRL_SSA = FALSE;
       WOPT_Enable_WOVP = FALSE;
       WOPT_Enable_Tail_Recur = FALSE;
       break;
@@ -661,7 +666,9 @@ private:
       if ( ! WOPT_Enable_Copy_Prop_Ops_Into_Array_Set )
 	WOPT_Enable_Copy_Prop_Ops_Into_Array = TRUE;
 
-      if (WOPT_Enable_Feedback_LPRE || WOPT_Enable_Feedback_EPRE)
+      if (WOPT_Enable_Feedback_LPRE || 
+          WOPT_Enable_Feedback_EPRE ||
+          OPT_Enable_WHIRL_SSA)
 	WOPT_Enable_Zero_Version = FALSE;
 
       break; // end MAINOPT_PHASE
@@ -689,6 +696,7 @@ private:
       WOPT_Enable_Bool_Simp = FALSE;
       WOPT_Enable_Fold_Lda_Iload_Istore = FALSE;
       WOPT_Enable_Input_Prop = FALSE;
+      OPT_Enable_WHIRL_SSA = FALSE;
   
     case PREOPT_LNO_PHASE: 
       if (Run_autopar && Current_LNO->IPA_Enabled
@@ -715,6 +723,7 @@ private:
       }
       WOPT_Enable_Combine_Operations = FALSE;
       WOPT_Enable_SLT = FALSE;
+      OPT_Enable_WHIRL_SSA = FALSE;
       break;
     } // switch
     WOPT_Enable_Ldx = Indexed_Loads_Allowed;
@@ -782,6 +791,7 @@ private:
       WOPT_Enable_SSA_PRE        = _ssa_pre;
       WOPT_Enable_Verify         = _verify;
       WOPT_Enable_Vsym_Unique    = _vsym_unique;
+      OPT_Enable_WHIRL_SSA       = _whirl_ssa;
       WOPT_Enable_WOVP           = _wovp;
       WOPT_Enable_Zero_Version   = _zero_version;
       WOPT_Enable_Epre_Before_Ivr = _epre_before_ivr;
@@ -791,6 +801,7 @@ private:
       WOPT_Enable_Compare_Simp = _compare_simp;
       WOPT_Enable_IVR            = _ivr;
       WOPT_Enable_SLT            = _slt;
+      OPT_Enable_WHIRL_SSA       = _whirl_ssa;
       WOPT_Enable_WOVP           = _wovp;
       break;
     case MAINOPT_PHASE:
@@ -829,6 +840,7 @@ private:
       } 
     default:
       WOPT_Enable_SLT = _slt;
+      OPT_Enable_WHIRL_SSA = _whirl_ssa;
       break;
     }
 
@@ -916,6 +928,7 @@ public:
     _verify = WOPT_Enable_Verify;	/* verify data structures */
     _while_loop = WOPT_Enable_While_Loop;/*cvt while-do to do-loop */
     _wn_simp = Enable_WN_Simp;
+    _whirl_ssa = OPT_Enable_WHIRL_SSA;
     _wovp = WOPT_Enable_WOVP; /* Write-once variable promotion  */
     _zero_version = WOPT_Enable_Zero_Version;
     _vsym_unique = WOPT_Enable_Vsym_Unique;
@@ -1932,6 +1945,16 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       }
 #endif
 
+      if (OPT_Enable_WHIRL_SSA) {
+        // remove dead ssa nodes before emit WHIRL
+        comp_unit->Do_dead_code_elim(TRUE, TRUE, TRUE, TRUE,
+                                     TRUE,
+                                     FALSE,
+                                     NULL);
+        Is_True(comp_unit->Verify_IR(comp_unit->Cfg(),comp_unit->Htable(),7),
+                ("Verify CFG wrong after creating RVI instance"));
+      }
+
       if (WOPT_Enable_RVI) {
 	// Hacky invocation of new PRE RVI hooks for testing. TODO:
 	// Clean this up.
@@ -2022,9 +2045,40 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
     if (This_preopt_renumbers_pregs(phase)) {
       comp_unit->Emitter()->Preg_renumbering_map().Init();
     }
+
+    if (OPT_Enable_WHIRL_SSA) {
+#ifdef Is_True_On
+      // WSSA, verify CODEREP before emitter
+      comp_unit->Htable()->Verify_var_phi_hash();
+      comp_unit->Verify_version();
+      comp_unit->Verify_CODEMAP();
+#endif
+    }
+    {
+      // trace CODEREP before WSSA emitter
+      if ( Get_Trace(TP_WSSA, TT_WSSA_EMT) ) {
+        fprintf( TFile, "%sCODEREP before WSSA Emitter\n%s", DBar, DBar );
+        comp_unit->Htable()->Print(TFile);
+        comp_unit->Cfg()->Print(TFile);
+      }
+    }
+
     opt_wn = comp_unit->Emitter()->Emit(comp_unit, du_mgr, alias_mgr);
     if (Cur_PU_Feedback)
       Cur_PU_Feedback->Reset_Root_WN(opt_wn);
+
+    if (OPT_Enable_WHIRL_SSA) {
+#ifdef Is_True_On
+      // Verify WHIRL SSA here
+#endif
+    }
+    {
+      // trace WHIRL SSA after WSSA emitter
+      if ( Get_Trace(TP_WSSA, TT_WSSA_EMT) ) {
+        fprintf( TFile, "%sWHIRL after WSSA Emitter\n%s", DBar, DBar );
+        fdump_tree( TFile, opt_wn );
+      }
+    }
 
     // *****************************************************************
     //    Invoke IPA summary phase

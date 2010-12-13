@@ -121,6 +121,8 @@ const _Tnode* WHIRL_SSA_MANAGER::WN_next_node(_Tnode* node) const {
 
 template<WSSA_NODE_KIND _Tkind>
 BOOL WHIRL_SSA_MANAGER::WN_has_node(const WN* wn) const {
+  if (WN_map_id(wn) == -1)
+    return FALSE;
   if (WSSA::WN_has_node(wn, _Tkind) &&
       WN_first_node_idx<_Tkind>(wn) != INVALID_IDX)
     return TRUE;
@@ -137,6 +139,10 @@ BOOL WHIRL_SSA_MANAGER::WN_has_node(const WN* wn) const {
 //   attach node to wn
 //   template parameter:
 //     _Tnode: type of node
+// Clear_list
+//   clear the whole list attached to wn
+//   template parameter:
+//     WSSA_NODE_KIND: WSSA_PHI, WSSA_CHI or WSSA_MU
 //===================================================================
 template<WSSA_NODE_KIND _Tkind>
 typename NODE_TO_TYPES<_Tkind>::NODE_TYPE* WHIRL_SSA_MANAGER::Create_node(INT32 opnd_num) {
@@ -163,7 +169,6 @@ WSSA_NODE_IDX WHIRL_SSA_MANAGER::Add_node(const WN* wn, _Tnode* node) {
 #ifdef Is_True_On
   Is_True(node != NULL, ("node is NULL"));
   Is_True(WSSA::WN_has_node(wn, _Tnode::NODE_KIND), ("WN can not have this kind of node"));
-  Verify_node(wn, node);
 #endif
 
   typedef typename NODE_TO_TYPES<_Tnode::NODE_KIND>::TABLE_TYPE TABLE_TYPE;
@@ -177,6 +182,20 @@ WSSA_NODE_IDX WHIRL_SSA_MANAGER::Add_node(const WN* wn, _Tnode* node) {
   node->Set_next(first_idx);
   map[wn_idx] = node_idx;
   return node_idx;
+}
+
+template<WSSA_NODE_KIND _Tkind>
+void WHIRL_SSA_MANAGER::Clear_list(WN* wn) {
+#ifdef Is_True_On
+  Is_True(wn != NULL, ("wn is NULL"));
+  Is_True(WSSA::WN_has_node(wn, _Tkind), ("WN can not have this kind of node"));
+#endif
+
+  // TODO: add node to free list
+  // TODO: add entry in vector to free list
+  typedef typename NODE_TO_TYPES<_Tkind>::WN_MAP_TYPE WN_MAP_TYPE;
+  WN_MAP_TYPE& map = Get_map<_Tkind>();
+  map.erase(WN_idx(wn));
 }
 
 //===================================================================
@@ -256,8 +275,8 @@ void WHIRL_SSA_MANAGER::Verify_node(const WN* wn, const _Tnode* node) const {
     const WST_Version_Entry& ver_info = Get_ver(node->Get_opnd(i));
     FmtAssert(ver_info.Get_wst() == wst_idx, ("WST idx mismatch"));
     FmtAssert(ver_info.Get_ver() <= max_ver, ("Ver num out of bounds"));
-    FmtAssert(/*ver_info.Is_flag_set(VER_IS_ZERO) ||*/ ver_info.Get_def_wn() != wn, 
-              ("operand def WN mismatch"));
+    //FmtAssert(ver_info.Is_flag_set(VER_IS_ZERO) || ver_info.Get_def_wn() != wn, 
+    //          ("operand def WN mismatch"));
   }
 }
 

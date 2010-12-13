@@ -3590,6 +3590,18 @@ CHI_NODE::Print(FILE *fp) const
 #endif
 }
 
+void     
+CHI_NODE::Print_Deref(FILE *fp) const
+{
+  if (Live())
+    fprintf(fp, "sym%dv%d <- chi( sym%dv%d )\n",
+                Aux_id(), RESULT()->Version(), 
+                Aux_id(), OPND()->Version());
+  else
+    fprintf(fp, "(not live) sym%dv%d <- chi( sym%dv%d )\n",
+                Aux_id(), Result(), 
+                Aux_id(), Opnd());
+}
 
 void
 CHI_LIST::Print(FILE *fp)
@@ -3615,6 +3627,11 @@ MU_NODE::Print(FILE *fp) const
 #endif
 }
 
+void
+MU_NODE::Print_Deref(FILE *fp) const
+{
+  fprintf(fp, " sym%dv%d ", Aux_id(), OPND()->Version());
+}
 
 void
 MU_LIST::Print(FILE *fp)

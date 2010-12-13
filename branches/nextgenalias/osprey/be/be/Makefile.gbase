@@ -497,6 +497,7 @@ BE_COM_CXX_SRCS = \
   wn_cfg.cxx            \
   tls.cxx               \
   be_memop_annot.cxx    \
+  wssa_update.cxx       \
   wssa_utils.cxx        \
   wssa_defs.cxx         \
   wssa_sym.cxx          \

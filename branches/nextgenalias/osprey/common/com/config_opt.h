@@ -206,6 +206,10 @@ extern BOOL OPT_Malloc_Alg_Set;
 extern BOOL Early_Goto_Conversion;
 extern BOOL Early_Goto_Conversion_Set;
 extern INT32 OPT_Madd_Height;
+
+extern BOOL OPT_Enable_WHIRL_SSA;  // enable SSA on WHIRL
+extern BOOL OPT_Enable_BUILD_WHIRL_SSA; // enable build WSSA driect from WHIRL
+
 #endif
 #ifdef __cplusplus
 }
