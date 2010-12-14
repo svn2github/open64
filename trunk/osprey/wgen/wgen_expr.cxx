@@ -2605,7 +2605,8 @@ WGEN_Address_Of(gs_t arg0)
   case GS_FUNCTION_DECL:
     {
       st = Get_ST (arg0);
-      ST *real_st = gs_decl_alias_target(arg0)? Get_ST(gs_decl_alias_target(arg0)):st;
+      gs_t alias_target = gs_decl_alias_target(arg0);
+      ST *real_st = (alias_target && DECL_ST(alias_target))? DECL_ST(alias_target):st;
       ty_idx = ST_type (st);
 #ifdef KEY
       // Arg0 is the virtual function table (vtable) for a class.  Initialize
