@@ -862,5 +862,11 @@ IP_READ_pu (IPA_NODE* node, IP_FILE_HDR& s, INT p_index, MEM_POOL *pool)
     } else {
 	Cur_PU_Feedback = NULL;
     }
+
+    // Read in the constraint graph summary for Nystrom Alias Analyzer
+    if (WN_get_INT32_map(fhandle, pu,
+                         WT_ALIAS_CGNODE, WN_MAP_ALIAS_CGNODE) == -1) {
+      ErrMsg(EC_IR_Scn_Read, "alias cgnode map", IP_FILE_HDR_file_name(s));
+    }
   }
 }

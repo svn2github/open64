@@ -87,6 +87,7 @@ static char *opt_alias_mgrrcs_id = 	opt_alias_mgr_INCLUDED"$Revision: 1.2 $";
 #include "tracing.h"			// for TFile
 
 class ALIAS_CLASSIFICATION;
+class AliasAnalyzer;
 
 class ALIAS_MANAGER {
 
@@ -109,7 +110,7 @@ private:
   vector<IDTYPE, mempool_allocator<IDTYPE> > *_invalid_ip_alias_classes;
 
 public:
-  ALIAS_MANAGER(void);
+  ALIAS_MANAGER(WN *entryWN);
   ~ALIAS_MANAGER(void);
 
   IDTYPE     Id(const WN *wn) const;

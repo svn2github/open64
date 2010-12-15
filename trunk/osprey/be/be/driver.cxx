@@ -135,6 +135,7 @@
 #include "dra_export.h"             /* for DRA routines */
 #include "ti_init.h"		    /* for targ_info */
 #include "opt_alias_interface.h"    /* for Create_Alias_Manager */
+#include "alias_analyzer.h"         /* for AliasAnalyzer */
 #include "omp_lower.h"              /* for OMP pre-lowering interface */
 #include "cxx_memory.h"		    /* CXX_NEW */
 #include "options_stack.h"	    /* for Options_Stack */
@@ -896,7 +897,7 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
 
     if (Run_preopt) {
 	du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
-	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+	al_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr, pu);
 	Check_for_IR_Dump_Before_Phase(TP_IPL, pu, "Pre_Optimizer");
 	pu = Pre_Optimizer(PREOPT_IPA0_PHASE, pu, du_mgr, al_mgr);
 	Check_for_IR_Dump(TP_IPL, pu, "Pre_Optimizer");
@@ -913,6 +914,8 @@ Ipl_Processing (PU_Info *current_pu, WN *pu)
 	Set_Error_Phase ( "IPA Summary" );
 	Perform_Procedure_Summary_Phase (pu, du_mgr, al_mgr, 0);
     }
+
+    AliasAnalyzer::Delete_Alias_Analyzer();
 
     /* Write out the current proc */
     Set_PU_Info_tree_ptr(current_pu, pu);
@@ -1109,7 +1112,7 @@ Do_WOPT_and_CG_with_Regions (PU_Info *current_pu, WN *pu)
     // MainOpt and CG. Preopt uses it's own local alias manager,
     // one for each region. Deleted by Post_Process_PU.
     if ((Run_wopt || Run_region_bounds) && alias_mgr == 0)
-      alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+      alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr, pu);
 
     // Create the region boundary sets, be/region/region_bounds.cxx
     if (Run_region_bounds) {
@@ -1342,6 +1345,8 @@ Post_Process_Backend (PU_Info *current_pu, WN *pu)
     Delete_Alias_Manager(alias_mgr, MEM_pu_nz_pool_ptr);
     alias_mgr = NULL;
   }
+
+  AliasAnalyzer::Delete_Alias_Analyzer();
 } /* Post_Process_Backend */
 
 

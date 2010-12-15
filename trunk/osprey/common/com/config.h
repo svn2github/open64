@@ -879,7 +879,7 @@ extern void Configure_IPA (void);
 extern void Configure_Source ( char *filename );
 
 /***** Perform configuration functions for the alias analysis options *****/
-extern void Configure_Alias_Options (struct option_list *);
+extern void Configure_Alias_Options (void);
 
 extern void Configure_Feedback_Options (struct option_list *);
 

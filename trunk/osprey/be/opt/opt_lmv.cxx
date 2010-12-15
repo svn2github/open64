@@ -48,7 +48,7 @@ using idmap::ID_MAP;
 #include "opt_ivr.h"
 
 const INT LMV_HEURISTIC::_low_trip_count = 40; 
-const INT LMV_HEURISTIC::_max_access_vectors = 16;
+const INT LMV_HEURISTIC::_max_access_vectors = 6;
 const INT LMV_HEURISTIC::_max_write_vectors = 3;
 const INT LMV_HEURISTIC::_min_write_vectors = 1;
 
@@ -133,7 +133,7 @@ LMV_HEURISTIC::Apply(MEM_GROUP_VECT &groups)
   if (n_write_vect < Min_write_vectors())
     return FALSE;
 
-  if (n_vect == Max_access_vectors() && n_write_vect == Max_write_vectors())
+  if (n_write_vect == Max_write_vectors())
     return TRUE;
 
   return FALSE;
@@ -500,6 +500,12 @@ LOOP_MULTIVER::Gen_test_cond (LMV_CANDIDATE* cand) {
       for (MEM_GROUP_VECT_CITER iter2 = mem_groups.begin();
           iter2 != mem_groups.end(); iter2++) {
         MEM_GROUP *grp2 = *iter2;
+        if (!_alias_rule->Aliased_Memop
+            ((grp1->Mem_accesses())[0]->Points_to(_opt_stab),
+             (grp2->Mem_accesses())[0]->Points_to(_opt_stab),
+             (TY_IDX)0, (TY_IDX)0))
+          continue;
+
         if(grp1 != grp2 && write_checked.Lookup(grp2) == 0) {
           const MEM_RANGE& r1 = *grp1->Mem_range();
           const MEM_RANGE& r2 = *grp2->Mem_range();

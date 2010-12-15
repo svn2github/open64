@@ -84,6 +84,10 @@ static BOOL Identify_Partial_Inline_Candiate(IPA_NODE *, WN *,
 extern DST_IDX
 get_abstract_origin(DST_IDX concrete_instance);
 
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+extern BOOL Alias_Nystrom_Analyzer;
+#endif
+
 // ======================================================================
 // For easy switching of Scope_tab
 // ======================================================================
@@ -3119,6 +3123,11 @@ IPO_INLINE::Process_Copy_In (PARM_ITER parm, WN* copy_in_block)
 
 	parm->Set_formal_preg (wn_offset);
 	parm->Set_replace_st (ST_st_idx (copy_st));
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+        if (Alias_Nystrom_Analyzer)
+          ConstraintGraph::updateCloneStIdxMap(ST_st_idx(formal_st),
+                                               ST_st_idx(copy_st));
+#endif
 
     } else {
 	
@@ -3235,6 +3244,12 @@ IPO_INLINE::Process_Copy_In_Copy_Out (PARM_ITER p, IPO_INLINE_AUX& aux)
 
     p->Set_formal_preg (wn_offset);
     p->Set_replace_st (ST_st_idx (copy_st));
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+    if (Alias_Nystrom_Analyzer)
+      ConstraintGraph::updateCloneStIdxMap(ST_st_idx(formal_st),
+                                           ST_st_idx(copy_st));
+#endif
     
     
 } // Process_Copy_In_Copy_Out
@@ -3283,6 +3298,12 @@ IPO_INLINE::Process_Barriers (PARM_ITER parm, WN* copy_in_block)
 
     parm->Set_replace_st (ST_st_idx (copy_st));
     Set_PU_smart_addr_analysis (*Current_pu);
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+    if (Alias_Nystrom_Analyzer)
+      ConstraintGraph::updateCloneStIdxMap(ST_st_idx(formal_st),
+                                           ST_st_idx(copy_st));
+#endif
 }
 
 
@@ -3475,6 +3496,13 @@ IPO_INLINE::Process_Formals (IPO_INLINE_AUX& aux)
 #endif
     {
         ST* ste = get_formal(Callee_Scope(), WN_formal(callee,j));
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+        if (Alias_Nystrom_Analyzer)
+          ConstraintGraph::updateOrigToCloneStIdxMap(
+                              ST_st_idx(ste), ST_st_idx(Symtab()->Get_ST(ste)));
+#endif
+
 	ste = Symtab()->Get_ST(ste);	// Get the ST version in the caller side
 	Is_True (ST_sclass (ste) == SCLASS_FORMAL ||
 		 ST_sclass (ste) == SCLASS_FORMAL_REF,
@@ -4427,7 +4455,15 @@ IPO_INLINE::Process_Callee (IPO_INLINE_AUX& aux, BOOL same_file)
     }
 #endif // !KEY
     Walk_and_Update_Callee (aux);
-    
+
+#if (!defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER))
+    // Clone Constraint Graph nodes and StInfos into caller
+    if (Alias_Nystrom_Analyzer) {
+      ConstraintGraph::promoteLocals(Callee_node());
+      ConstraintGraph::cloneConstraintGraphMaps(Caller_node(), Callee_node());
+    }
+#endif
+
     // This walk involves:
     // EH Processing in the callee 
     // a. Process_Callee_EH(callee_block);

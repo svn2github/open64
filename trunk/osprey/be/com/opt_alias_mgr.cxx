@@ -94,6 +94,7 @@ static char *rcs_id = 	opt_alias_mgr_CXX"$Revision: 1.7 $";
 #include "targ_sim.h"
 #include "glob.h"
 #include "pu_info.h"
+#include "nystrom_alias_analyzer.h"
 
 static BOOL in_ipa_pu_list(char *function_name);
 static BOOL in_pure_call_list(char *function_name);
@@ -368,7 +369,7 @@ void Note_Invalid_Based_Symbol(const ST *st)
 // ALIAS MANAGER constructor.
 // It set up its own memory pool.
 //
-ALIAS_MANAGER::ALIAS_MANAGER(void)
+ALIAS_MANAGER::ALIAS_MANAGER(WN *entryWN)
 {
   MEM_POOL_Initialize(&_mem_pool, "ALIAS_pool", FALSE);
   MEM_POOL_Push(&_mem_pool);
@@ -434,8 +435,12 @@ ALIAS_MANAGER::ALIAS_MANAGER(void)
     Is_True(FALSE, ("Language is unknown; mixed-language inlining illegal."));
   }
 
+  // Here we create the AliasAnalyzer object, which serves as the
+  // interface to the selected alias analysis algorithm.
+  AliasAnalyzer::Create_Alias_Analyzer(ac,entryWN);
+
   Set_pu_context(ac);
-  _rule = CXX_NEW(ALIAS_RULE(ac), &_mem_pool);
+  _rule = CXX_NEW(ALIAS_RULE(ac,AliasAnalyzer::aliasAnalyzer()), &_mem_pool);
 
   // Setup the trace flags.
   _trace = Get_Trace(TP_GLOBOPT, ALIAS_DUMP_FLAG);
@@ -561,6 +566,37 @@ ALIAS_MANAGER::Gen_alias_id(WN *wn, POINTS_TO *pt)
 {
   if (pt != NULL) {
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn, pt->Ip_alias_class());
+ 
+    // Restore the WN to CGNodeId map
+    NystromAliasAnalyzer *naa = static_cast<NystromAliasAnalyzer *>
+                                (AliasAnalyzer::aliasAnalyzer());
+    if (naa) 
+    {
+      AliasTag tag = pt->Alias_tag();
+      // If the WN is not mapped to a CGNodeId, use the AliasTag from
+      // the POINTS_TO to get the CGNodeId using the NystromAliasAnalyzers's
+      // AliasTag to CGNodeId map that was constructed during createAliasTags
+      if (WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) == 0) {
+        OPERATOR opr = WN_operator(wn);
+        if (OPERATOR_is_scalar_istore(opr) ||
+            OPERATOR_is_scalar_iload(opr) ||
+            OPERATOR_is_scalar_load(opr) ||
+            OPERATOR_is_scalar_store(opr) ||
+            opr == OPR_MSTORE ||
+            opr == OPR_MLOAD) {
+          CGNodeId id = naa->cgNodeId(tag);
+          if (id != 0) {
+            if (opr == OPR_ILDBITS || opr == OPR_MLOAD || opr == OPR_ILOAD)
+              WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, WN_kid0(wn), id);
+            else
+              WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, wn, id);
+          }
+        }
+      }
+      // Set the WNs alias tag from the POINTS_TO
+      if (tag >= InitialAliasTag)
+        naa->setAliasTag(wn,pt->Alias_tag());
+    }
   }
 
   if (!WOPT_Enable_CG_Alias) {
@@ -652,6 +688,10 @@ ALIAS_MANAGER::Dup_tree_alias_id( const WN *old_wn, WN *new_wn )
     WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
   }
 
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa)
+    aa->transferAliasTag(new_wn,old_wn);
+
   // now travel down the tree
   if ( opc == OPC_BLOCK ) {
     WN *old_bwn, *new_bwn;
@@ -725,9 +765,9 @@ ALIAS_MANAGER::Cross_dso_set_id(WN *wn, IDTYPE id) const
 // ************************************************************************
 
 //  Create an alias manager
-ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *pu_pool)
+ALIAS_MANAGER *Create_Alias_Manager(MEM_POOL *pu_pool, WN *entryWN)
 {
-  return CXX_NEW(ALIAS_MANAGER(), pu_pool);
+  return CXX_NEW(ALIAS_MANAGER(entryWN), pu_pool);
 }
 
 //  Delete the alias manager
@@ -1326,6 +1366,10 @@ void Copy_alias_info(const ALIAS_MANAGER *am, WN *wn1, WN *wn2)
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
 
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa)
+    aa->transferAliasTag(wn2,wn1);
+
   IDTYPE id = am->Id(wn1);
   if (id == 0) {
     OPERATOR opr = OPCODE_operator(opc1);
@@ -1364,6 +1408,10 @@ void Duplicate_alias_info(ALIAS_MANAGER *am, WN *wn1, WN *wn2)
 
   WN_MAP32_Set(WN_MAP_ALIAS_CLASS, wn2,
 	       WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn1));
+
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa)
+    aa->transferAliasTag(wn2,wn1);
 
   // copy homing information
   if ( OPCODE_is_load(opc1) && OPCODE_is_load(opc2) ) {
