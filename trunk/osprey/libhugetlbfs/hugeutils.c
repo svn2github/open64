@@ -225,7 +225,7 @@ const char *hugetlbfs_find_path(void)
 	int fd;
 	char line[LINE_MAXLEN + 1];
 	char *eol;
-	int bytes, err;
+	int bytes, err, dummy;
 	off_t offset;
 
 	/* Have we already located a mount? */
@@ -258,9 +258,16 @@ const char *hugetlbfs_find_path(void)
 		offset = bytes - (eol + 1 - line);
 		lseek(fd, -offset, SEEK_CUR);
 
-		err = sscanf(line, "%*s %" stringify(PATH_MAX) "s hugetlbfs ",
-			htlb_mount);
-		if ((err == 1) && (hugetlbfs_test_path(htlb_mount) == 1)) {
+		/*
+		 * Match only hugetlbfs filesystems.
+		 * Subtle: sscanf returns the number of input items matched
+		 * and assigned.  To force sscanf to match the literal
+		 * "hugetlbfs" string we include a 'dummy' input item
+		 * following that string.
+		 */
+		err = sscanf(line, "%*s %" stringify(PATH_MAX) "s hugetlbfs "
+			"%*s %d", htlb_mount, &dummy);
+		if ((err == 2) && (hugetlbfs_test_path(htlb_mount) == 1)) {
 			close(fd);
 			return htlb_mount;
 		}
