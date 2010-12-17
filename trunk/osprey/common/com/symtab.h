@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -49,7 +49,7 @@
 // This file should contain only inlined functions for accessing various
 // fields in the symbol table classes.
 
-#include <ext/slist>
+#include <iosfwd>
 
 #ifndef segmented_array_INCLUDED
 #include "segmented_array.h"
