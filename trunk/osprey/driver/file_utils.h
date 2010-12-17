@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2002, 2003, 2004, 2005 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -56,9 +60,6 @@ extern boolean is_executable (char *path);
 
 /* check whether is a directory */
 extern boolean is_directory (char *path);
-
-/* check whether is a directory */
-extern boolean want_directory (char *path);
 
 /* check whether directory is writable */
 extern boolean directory_is_writable (char *path);

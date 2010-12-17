@@ -244,15 +244,9 @@ main (int argc, char *argv[])
 				      unrecognized_dashdash_option_name =
 				        option_name;
 				    }
-				    else if (option_was_seen(O_compat_gcc) ||
-					#ifdef PSC_TO_OPEN64
-					     getenv("OPEN64_STRICT_GCC")) {
-					#endif
-				      /* leave this env var undocumented */
+				    else {
+				      /* warn about unknown single-dash options */
 				      warning("unknown flag: %s", option_name);
-				    } else {
-				      /* print as error or not at all? */
-				      parse_error(option_name, "unknown flag");
 				    }
 				}
 			}
@@ -1003,8 +997,6 @@ prescan_options (int argc, char *argv[])
       keep_flag = TRUE;
     } else if (!strcmp(argv[i], "-save_temps")) {
       keep_flag = TRUE;
-    } else if (!strcmp(argv[i], "-compat-gcc")) {
-      compat_gcc = TRUE;
     } else if (!strcmp(argv[i], "-S")) {
       ipa_conflict_option = argv[i];
     } else if (!strcmp(argv[i], "-fbgen")) {
@@ -1504,12 +1496,7 @@ display_version(boolean dump_version_only)
 		   gnu_major_version);
 
   if (dump_version_only == TRUE) {
-  #ifdef PSC_TO_OPEN64
-    if (option_was_seen(O_compat_gcc))
-      puts(open64_gcc_version);
-    else
-      puts(OPEN64_FULL_VERSION);
-  #endif
+    puts(OPEN64_FULL_VERSION);
     return;
   }
 

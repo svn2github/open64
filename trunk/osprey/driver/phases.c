@@ -2034,12 +2034,6 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #ifdef TARG_X8664 
         extern boolean link_with_mathlib;
 	if (option_was_seen(O_nodefaultlibs) || option_was_seen(O_nostdlib)) {
-	    // If -compat-gcc, link with open64rt even if -nostdlib.  Bug 4551.
-	    if (option_was_seen(O_compat_gcc) &&
-		!option_was_seen(O_fno_fast_stdlib) &&
-		!option_was_seen(O_nolibopen64rt)) {	// bug 9611
-	      // add_library(args, "open64rt");
-	    }
 	    return;
 	}
 #endif
