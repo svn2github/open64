@@ -409,10 +409,10 @@ ALIAS_CLASSIFICATION::New_base_id(const ST *st, TY_IDX ty)
 
   // If this base_id is a local variable or parameter, it gets its
   // own class.
-  if ((storage_class == SCLASS_AUTO &&
+  if (((storage_class == SCLASS_AUTO ||
+        storage_class == SCLASS_FORMAL ||
+        storage_class == SCLASS_FORMAL_REF) &&
        ST_IDX_level(ST_st_idx(st)) == CURRENT_SYMTAB) ||
-      storage_class == SCLASS_FORMAL                  ||
-      storage_class == SCLASS_FORMAL_REF              ||
       storage_class == SCLASS_REG) {
     // Set up the LDA and LDID classes for this variable...
     ALIAS_CLASS_MEMBER *ldid_item = New_alias_class_member(id);
@@ -490,7 +490,8 @@ ALIAS_CLASSIFICATION::New_base_id(const ST *st, TY_IDX ty)
 	   // uplevel reference and therefore must be treated as
 	   // global because its address can be stored into a global,
 	   // and it may contain the address of a global. Non-uplevel
-	   // references with SCLASS_AUTO are handled as locals above.
+	   // references with SCLASS_AUTO, SCLASS_FORMAL or
+           // SCLASS_FORMAL_REF are handled as locals above.
 	   // Including uplevel references here is the fix for 555533.
 	   // 634200 was a milder case of the same problem, and only
 	   // part of the fix was required to get that one right; that
@@ -498,6 +499,8 @@ ALIAS_CLASSIFICATION::New_base_id(const ST *st, TY_IDX ty)
 	   // parameters; 555533 makes clear that we have to go
 	   // all the way and treat them as globals.
 	   storage_class == SCLASS_AUTO    ||
+           storage_class == SCLASS_FORMAL  ||
+           storage_class == SCLASS_FORMAL_REF  ||
 	   // storage class can be UNKNOWN for constant data because CG may
 	   // already have run for an earlier PU and in the process lowered
 	   // string (and maybe other) constants to .rodata. Unfortunately,
