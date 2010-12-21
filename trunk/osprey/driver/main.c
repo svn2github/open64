@@ -404,7 +404,8 @@ main (int argc, char *argv[])
 			} else {
 				char *obj_name;
 				source_kind = get_source_kind(source_file);
-				source_lang = invoked_lang;
+				if (source_lang == L_NONE)
+				    source_lang = invoked_lang;
 				obj_name = get_object_file(
 				    fix_name_by_lang(source_file));
 				add_object (O_object, obj_name);
