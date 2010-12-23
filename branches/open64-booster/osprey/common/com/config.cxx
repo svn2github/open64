@@ -1257,7 +1257,7 @@ Configure (void)
   /* Configure the alias options first so the list is processed and
    * we can tell for -OPT:Ofast below what overrides have occurred:
    */
-  Configure_Alias_Options ( Alias_Option );
+  Configure_Alias_Options ();
 
   /* Check the -TARG:platform option (subordinate to Ofast): */
   if ( Platform_Name != NULL && *Platform_Name != 0 ) {
@@ -1321,6 +1321,31 @@ Configure (void)
     Vcast_Complex = TRUE;
 #endif
 }
+
+/* ====================================================================
+ *
+ * Configure_IPA
+ *
+ * Configure IPA options based on flag values.
+ *
+ * ====================================================================
+ */
+
+void
+Configure_IPA (void)
+{
+  if ( Get_Trace( TP_MISC, 0x40 ) && ! DevWarn_Enabled()) {
+    DevWarn_Toggle();
+  }
+
+  if ( Get_Trace( TP_MISC, 0x200 ) ) {
+     IR_dump_wn_addr = TRUE;
+  }
+  if ( Get_Trace( TP_MISC, 0x400 ) ) {
+     IR_dump_wn_id = TRUE;
+  }
+}
+
 
 /* ====================================================================
  *
@@ -1736,10 +1761,12 @@ Configure_Source ( char	*filename )
  */
 
 void
-Configure_Alias_Options( OPTION_LIST *olist )
+Configure_Alias_Options()
 {
+  if (!Alias_Option) return;
+
   OPTION_LIST *ol;
-  for (ol = olist; ol != NULL; ol = OLIST_next(ol)) {
+  for (ol = Alias_Option; ol != NULL; ol = OLIST_next(ol)) {
     char *val = OLIST_val(ol);
     INT len = strlen (val);
     if (strncasecmp( val, "any", len) == 0) {
@@ -1801,6 +1828,8 @@ Configure_Alias_Options( OPTION_LIST *olist )
       Alias_F90_Pointer_Unaliased = TRUE;
     } else if (strncasecmp( val, "f90_pointer_alias", len) == 0) {
       Alias_F90_Pointer_Unaliased = FALSE;
+    } else if (strncasecmp( val, "nystrom", len) == 0) {
+      Alias_Nystrom_Analyzer = TRUE;
     } else {
       ErrMsg ( EC_Inv_OPT, "alias", val );
     }

@@ -89,6 +89,7 @@
 #define INIT_TMP_MAPPED_SIZE    MAPPED_SIZE
 
 #ifdef BACK_END
+
 #define DEFAULT_NUM_OF_PREFETCHES 64
 WN **prefetch_ldsts;
 INT num_prefetch_ldsts;
@@ -99,11 +100,17 @@ WN **alias_classes;
 INT num_alias_class_nodes;
 INT max_alias_class_nodes;
 
+#define DEFAULT_NUM_ALIAS_CGNODES 128
+WN **alias_cgnodes;
+INT num_alias_cgnode_nodes;
+INT max_alias_cgnode_nodes;
+
 #define DEFAULT_NUM_AC_INTERNALS 128
 WN **ac_internals;
 INT num_ac_internal_nodes;
 INT max_ac_internal_nodes;
-#endif
+
+#endif // BACK_END
 
 #ifndef __GNUC__
 #define __ALIGNOF(x) __builtin_alignof(x)
@@ -353,6 +360,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
     if (off_map != WN_MAP_UNDEFINED &&
 	(Write_BE_Maps ||
 	 Write_ALIAS_CLASS_Map ||
+	 Write_ALIAS_CGNODE_Map ||
 	 Write_AC_INTERNAL_Map)) {
 	/* save node_offset for use when writing maps */
 	BOOL set_offset = FALSE;
@@ -408,6 +416,28 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
 		    FmtAssert(alias_classes != NULL, ("No more memory."));
 		}
 		alias_classes[num_alias_class_nodes++] = node;
+	    }
+	}
+
+        // To dump the WN to CGNodeId map for the Nystrom Alias Analyzer
+	if (Write_ALIAS_CGNODE_Map) {
+
+	    if (WN_MAP32_Get (WN_MAP_ALIAS_CGNODE, node) != 0) {
+                set_offset = TRUE;
+		if (alias_cgnodes == NULL) {
+		    max_alias_cgnode_nodes = DEFAULT_NUM_ALIAS_CGNODES;
+		    alias_cgnodes = (WN **) malloc (max_alias_cgnode_nodes *
+						    sizeof(WN *));
+		    FmtAssert (alias_cgnodes != NULL, ("No more memory."));
+		} else if (max_alias_cgnode_nodes == 
+                           num_alias_cgnode_nodes + 1) {
+		    max_alias_cgnode_nodes *= 2;
+		    alias_cgnodes = (WN **) realloc(alias_cgnodes,
+						    max_alias_cgnode_nodes *
+						    sizeof(WN **));
+		    FmtAssert(alias_cgnodes != NULL, ("No more memory."));
+		}
+		alias_cgnodes[num_alias_cgnode_nodes++] = node;
 	    }
 	}
 	
@@ -831,3 +861,4 @@ IPA_irb_write_mod_ref_info(Output_File *fl)
     header_addr->entsize = sizeof(pu_mod_ref_info);
 }
 #endif
+

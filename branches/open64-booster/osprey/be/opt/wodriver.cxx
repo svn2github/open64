@@ -180,7 +180,7 @@ Perform_Preopt_Optimization(WN *pu_wn, WN *region_wn)
 
     du_mgr = Create_Du_Manager(MEM_pu_nz_pool_ptr);
 
-    alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr);
+    alias_mgr = Create_Alias_Manager(MEM_pu_nz_pool_ptr,pu_wn);
     opt_pu = Pre_Optimizer(PREOPT_PHASE, region_wn, du_mgr, alias_mgr);
 
     Delete_Du_Manager(du_mgr,MEM_pu_nz_pool_ptr);

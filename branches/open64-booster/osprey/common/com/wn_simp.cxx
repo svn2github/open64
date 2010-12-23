@@ -362,6 +362,7 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 	    Copy_alias_info(alias_manager,t,r);
 	 }
 # endif
+        WN_CopyMap(r, WN_MAP_ALIAS_CGNODE, t);
 	 WN_Delete(t);
 	 result = r;
 # if defined (KEY) && defined (Is_True_On)
@@ -376,6 +377,7 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 # endif
       r = WN_SimplifyIntrinsic(op, WN_intrinsic(t), numkids, &WN_kid0(t));
       if (r) {
+        WN_CopyMap(r, WN_MAP_ALIAS_CGNODE, t);
 	 WN_Delete(t);
 	 result = r;
 # if defined (KEY) && defined (Is_True_On)
@@ -403,6 +405,7 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 	 r = WN_SimplifyCvtl(op, WN_cvtl_bits(t),k0);
       }
       if (r) {
+        WN_CopyMap(r, WN_MAP_ALIAS_CGNODE, t);
 	 WN_Delete(t);
 	 result = r;
 # if defined (KEY) && defined (Is_True_On)
@@ -423,6 +426,7 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 #endif
       r = WN_SimplifyExp2(op, k0, k1);
       if (r) {
+        WN_CopyMap(r, WN_MAP_ALIAS_CGNODE, t);
 	 WN_Delete(t);
 	 result = r;
 # if defined (KEY) && defined (Is_True_On)
@@ -440,6 +444,7 @@ WN *WN_Simplify_Rebuild_Expr_Tree(WN *t,ALIAS_MANAGER *alias_manager)
 # endif
       r = WN_SimplifyExp3(op, k0, k1, k2);
       if (r) {
+        WN_CopyMap(r, WN_MAP_ALIAS_CGNODE, t);
 	 WN_Delete(t);
 	 result = r;
 # if defined (KEY) && defined (Is_True_On)

@@ -268,7 +268,9 @@ public:
     void Print(FILE *f, BOOL verbose = TRUE) const;
     
     BOOL operator==(ST &st) const;
-    
+
+    friend std::ostream& operator<<(std::ostream &os, const ST& st);
+
 }; // ST
 
 

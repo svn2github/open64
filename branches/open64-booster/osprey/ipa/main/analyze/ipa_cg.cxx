@@ -99,6 +99,7 @@
 #include "ipo_clone.h"                  // IPO_Clone
 #include "ipo_defs.h"                   // IPA_NODE_CONTEXT
 #include "ipaa.h"			// IPAA_NODE_INFO
+#include "ipa_be_summary.h"             // SUMMARY_CONSTRAINT_GRAPH_*
 
 #include "ipa_nested_pu.h"
 #include "ipa_cg.h"
@@ -107,7 +108,12 @@
 #include "symtab_idx.h"         //for make_TY_IDX()-- in reorder
 #include "ipa_reorder.h"        //for merged_access --reorder
 #include "ipa_option.h"         // for IPA_Enable_Reorder and Merge_struct_access();
+#include "opt_defs.h"           // -ttALI tracing options
 #include "ir_reader.h"
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+#include "ipa_nystrom_alias_analyzer.h"
+#endif
 
 IPA_CALL_GRAPH* IPA_Call_Graph;     // "The" call graph of IPA
 #ifdef KEY
@@ -278,6 +284,55 @@ IPA_update_summary_st_idx (const IP_FILE_HDR& hdr)
     }
   }
 #endif
+
+  // Process all constraint graph nodes. Remap the global st indices
+  INT32 num_cg_nodes;
+  SUMMARY_CONSTRAINT_GRAPH_NODE *cg_nodes = 
+                    IPA_get_constraint_graph_nodes_array(hdr, num_cg_nodes);
+  for (i = 0; i < num_cg_nodes; ++i) {
+    ST_IDX old_st_idx = SYM_ST_IDX(cg_nodes[i].cg_st_idx());
+    if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+      cg_nodes[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
+    }
+    TY_IDX old_ty_idx = cg_nodes[i].ty_idx();
+    cg_nodes[i].ty_idx(idx_maps->ty[old_ty_idx]);
+  }
+  INT32 num_cg_stinfos;
+  SUMMARY_CONSTRAINT_GRAPH_STINFO *cg_stinfos = 
+                    IPA_get_constraint_graph_stinfos_array(hdr, num_cg_stinfos);
+  for (i = 0; i < num_cg_stinfos; ++i) {
+    ST_IDX old_st_idx = SYM_ST_IDX(cg_stinfos[i].cg_st_idx());
+    if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+      cg_stinfos[i].cg_st_idx(idx_maps->st[old_st_idx] & 0x00000000ffffffffLL);
+    }
+    TY_IDX old_ty_idx = cg_stinfos[i].ty_idx();
+    cg_stinfos[i].ty_idx(idx_maps->ty[old_ty_idx]);
+  }
+#if Is_True_On
+  INT32 num_cg_modranges;
+  SUMMARY_CONSTRAINT_GRAPH_MODRANGE *cg_modranges = 
+                IPA_get_constraint_graph_modranges_array(hdr, num_cg_modranges);
+  for (i = 0; i < num_cg_modranges; ++i) {
+    TY_IDX old_ty_idx = cg_modranges[i].ty_idx();
+    cg_modranges[i].ty_idx(idx_maps->ty[old_ty_idx]);
+  }
+#endif
+  INT32 num_cg_callsites;
+  SUMMARY_CONSTRAINT_GRAPH_CALLSITE *cg_callsites = 
+                IPA_get_constraint_graph_callsites_array(hdr, num_cg_callsites);
+  for (i = 0; i < num_cg_callsites; ++i) {
+    if ((cg_callsites[i].flags() & (CS_FLAGS_UNKNOWN | CS_FLAGS_INDIRECT |
+                                    CS_FLAGS_INTRN)) == 0) {
+      ST_IDX old_st_idx = cg_callsites[i].st_idx();
+      if (ST_IDX_level(old_st_idx) == GLOBAL_SYMTAB) {
+        cg_callsites[i].st_idx(idx_maps->st[old_st_idx]);
+      }
+    }
+    if (cg_callsites[i].flags() & CS_FLAGS_VIRTUAL) {
+      TY_IDX old_ty_idx = cg_callsites[i].virtualClass();
+      cg_callsites[i].virtualClass(idx_maps->ty[old_ty_idx]);
+    }
+  }
 
   // process all ty_idxs found in SUMMARY_STRUCT_ACCESS, and sum them up!
   if(IPA_Enable_Reorder){
@@ -794,6 +849,16 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     // Mark overrides for externally visible routines
 
     Mark_inline_overrides(ipa_node, st);
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+
+    IPA_NystromAliasAnalyzer *ipa_naa = 
+                              IPA_NystromAliasAnalyzer::aliasAnalyzer();
+    if (ipa_naa) {
+        ipa_naa->buildIPAConstraintGraph(ipa_node);
+    }
+
+#endif
 #ifdef KEY
     } // else of '(REORDER_BY_EDGE_FREQ && IPA_Call_Graph_Tmp)'
 #endif
@@ -814,6 +879,9 @@ Add_One_Node (IP_FILE_HDR& s, INT32 file_idx, INT i, NODE_INDEX& orig_entry_inde
     const UINT64 runtime_addr = ipa_node->Get_func_runtime_addr ();
     if (runtime_addr) addr_node_map[runtime_addr] = ipa_node;
 #endif // KEY && !_STANDALONE_INLINER && !_LIGHTWEIGHT_INLINER
+
+
+
     return ipa_node;
 	
 }
@@ -910,7 +978,6 @@ Add_Edges_For_Node (IP_FILE_HDR& s, INT i, SUMMARY_PROCEDURE* proc_array, SUMMAR
                      ST_name(caller_st), callsite_count, callsite_index);
     }
     for (INT j = 0; j < callsite_count; ++j, ++callsite_index) {
-
 #ifdef KEY
       if (IPA_Enable_Pure_Call_Opt &&
 	  (callsite_array[callsite_index].Is_func_ptr() ||
@@ -1606,6 +1673,14 @@ Build_Call_Graph ()
   }
 #endif
 
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (Alias_Nystrom_Analyzer && Get_Trace(TP_ALIAS,NYSTROM_CG_PRE_FLAG))
+    {
+      fprintf(stderr, "Printing initial ConstraintGraphs...\n");
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->print(stderr);
+    }
+#endif
+
   IPA_Call_Graph_Built = TRUE;
 
   if (Get_Trace(TP_IPA, IPA_TRACE_TUNING)) {
@@ -1913,6 +1988,12 @@ Delete_Function (NODE_INDEX node, BOOL update_modref_count, mUINT8 *visited)
     if (Trace_IPA || Trace_Perf)
 	fprintf (TFile, "%s deleted (unused)\n",
 		 ipa_node->Name ());
+
+#if !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
+    if (Alias_Nystrom_Analyzer)
+      IPA_NystromAliasAnalyzer::aliasAnalyzer()->
+                                deleteConstraintGraph(ipa_node);
+#endif
 
 #ifndef _LIGHTWEIGHT_INLINER
 

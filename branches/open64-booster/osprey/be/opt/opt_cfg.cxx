@@ -1315,6 +1315,9 @@ static WN *Copy_addr_expr(WN *wn, ALIAS_CLASSIFICATION *ac)
     IDTYPE ip_alias_class = WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn);
     if (ip_alias_class != OPTIMISTIC_AC_ID)
       WN_MAP32_Set(WN_MAP_ALIAS_CLASS, new_wn, ip_alias_class);
+    AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+    if (aa)
+      aa->transferAliasTag(new_wn,wn);
   }
   for (INT i = 0; i < WN_kid_count(wn); i++) {
     WN *kid = WN_kid(wn, i);

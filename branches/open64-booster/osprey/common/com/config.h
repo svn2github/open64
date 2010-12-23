@@ -872,11 +872,14 @@ extern void Configure_Olegacy (BOOL in_FE);
 /***** Perform configuration functions after flag processing *****/
 extern void Configure (void);
 
+/***** Perform configuration functions after flag processing for IPA *****/
+extern void Configure_IPA (void);
+
 /***** Perform configuration functions for each source file *****/
 extern void Configure_Source ( char *filename );
 
 /***** Perform configuration functions for the alias analysis options *****/
-extern void Configure_Alias_Options (struct option_list *);
+extern void Configure_Alias_Options (void);
 
 extern void Configure_Feedback_Options (struct option_list *);
 

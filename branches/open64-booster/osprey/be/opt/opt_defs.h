@@ -157,6 +157,23 @@ Is_fortran(void)
  * Tracing flags:  -ttPHASE-NUMBER:FLAG
  */
 
+/* TP_ALIAS (phase-number) */
+/* Flags for tracing the Nystrom alias analyzer */
+#define NYSTROM_SOLVER_FLAG       0x00000001 /* trace constraint graph solver */
+#define NYSTROM_CG_PRE_FLAG       0x00000002 /* text dump of constraint graph after build */
+#define NYSTROM_CG_POST_FLAG      0x00000004 /* text dump of constraint graph after solve */
+#define NYSTROM_CG_VCG_FLAG       0x00000008 /* dump vcg before/after solve */
+#define NYSTROM_QUERY_TRACE_FLAG  0x00000010 /* emit trace of all "aliased()" queries */
+#define NYSTROM_CG_OPT_FLAG       0x00000020 /* emit trace of optimized nodes */
+#define NYSTROM_MEMORY_TRACE_FLAG 0x00000040 /* collect emit memory tracing */
+#define NYSTROM_CG_BE_MAP_FLAG    0x00000080 /* CG clone and map updates 
+                                                during IPA for BE */
+#define NYSTROM_CG_BUILD_FLAG     0x00000100 /* CG build trace */
+#define NYSTROM_SUMMARY_FLAG      0x00000200 /* IPA-BE summary trace */
+#define NYSTROM_ALIAS_TAG_FLAG    0x00000400 /* be alias tag after 
+                                                Transfer_alias_tag_to_occ_and_aux */
+#define NYSTROM_LW_SOLVER_FLAG    0x00000800 /* light weight trace constraint graph solver */
+
 /* TP_GLOBOPT (phase-number) */
 #define DOM_DUMP_FLAG	     0x0001 /* print dominator tree */
 #define SSA_DUMP_FLAG	     0x0002 /* trace construction of phi functions */

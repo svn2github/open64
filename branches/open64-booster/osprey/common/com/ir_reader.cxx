@@ -1289,7 +1289,7 @@ static void ir_put_wn(WN * wn, INT indent)
 	USRCPOS srcpos;
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
-	fprintf(ir_ofile, " {line: %d}", USRCPOS_linenum(srcpos));
+	fprintf(ir_ofile, " {line: %d/%d}", USRCPOS_filenum(srcpos), USRCPOS_linenum(srcpos));
     }
 
 #ifdef BACK_END
@@ -1315,6 +1315,24 @@ static void ir_put_wn(WN * wn, INT indent)
       fprintf(ir_ofile, " {class %d}",
 	      WN_MAP32_Get(WN_MAP_ALIAS_CLASS, wn));
     }
+
+    if (Current_Map_Tab != NULL &&
+        WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn) != 0) 
+    {
+      if (OPERATOR_is_call(WN_operator(wn)))
+        fprintf(ir_ofile, " {callsite %d}",
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn));
+      else
+        fprintf(ir_ofile, " {cgnode %d}",
+                WN_MAP32_Get(WN_MAP_ALIAS_CGNODE, wn));
+    }
+
+#ifdef BACK_END
+    AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+    if (Current_Map_Tab != NULL && aa != NULL && aa->getAliasTag(wn) != 0)
+      fprintf(ir_ofile," {alias_tag %d}", aa->getAliasTag(wn));
+#endif
+
     fprintf(ir_ofile, "\n");
 #if defined(BACK_END) || defined(IR_TOOLS)
     if (OPT_Enable_WHIRL_SSA && WSSA::WN_has_chi(wn)) {
@@ -2947,6 +2965,8 @@ help_image_wn(stringstream &ss, WN *wn, INT indent)
 	USRCPOS_srcpos(srcpos) = WN_Get_Linenum(wn);
 
 	ss <<  " {line: ";
+        ss << USRCPOS_filenum(srcpos); 
+        ss <<  "/";
         ss << USRCPOS_linenum(srcpos); 
         ss << "}"; 
     }

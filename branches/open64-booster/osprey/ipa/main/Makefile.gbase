@@ -134,6 +134,9 @@ HEADER_DIRS += $(TARGDIR)/include/libelf
 endif
 endif
 
+HEADER_DIRS += $(BUILD_TOT)/include/gnu
+
+
 #----------------------------------------------------------------------
 #  List of source files.  Please keep them in alphabetical order.
 #----------------------------------------------------------------------
@@ -202,7 +205,9 @@ IPA_ANALYZE_CXX_SRCS = \
         ipa_cost.cxx \
 	ipa_reorder.cxx \
 	ipa_builtins.cxx \
-	ipa_struct_opt.cxx
+	ipa_struct_opt.cxx \
+	ipa_nystrom_alias_analyzer.cxx \
+	ipa_be_write.cxx
 
 IPA_OPTIMIZE_SRCS = \
 #	ipo_parent.c \

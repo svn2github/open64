@@ -2605,6 +2605,8 @@ WGEN_Address_Of(gs_t arg0)
   case GS_FUNCTION_DECL:
     {
       st = Get_ST (arg0);
+      gs_t alias_target = gs_decl_alias_target(arg0);
+      ST *real_st = (alias_target && DECL_ST(alias_target))? DECL_ST(alias_target):st;
       ty_idx = ST_type (st);
 #ifdef KEY
       // Arg0 is the virtual function table (vtable) for a class.  Initialize
@@ -2632,7 +2634,7 @@ WGEN_Address_Of(gs_t arg0)
 #endif
       // for VLAs, use the base_st instead of st
       if (code0 == GS_VAR_DECL &&
-          st != ST_base(st)) {
+          real_st != ST_base(st)) {
         FmtAssert (ST_ofst (st) == 0,
                    ("Variable Length Arrays within struct not currently implemented"));
         wn = WN_Ldid (Pointer_Mtype, 0, ST_base(st), ST_type(ST_base(st)));

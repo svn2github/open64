@@ -109,7 +109,6 @@ class DSE {
     vector <WN *> *_injury_aux_intrnop;
 #endif
     vector <WN *> *_last_store_vec;
-    vector <IDX_32_SET *> * _alias_aux_vec;
 
     //
     // access methods
@@ -158,13 +157,6 @@ class DSE {
               { return (*_last_store_vec)[aid]; }
     void Set_last_store( AUX_ID aid, WN *store) const 
               { (*_last_store_vec)[aid] = store; }
-    BOOL Aliased_aux( AUX_ID id1, AUX_ID id2) const
-              {
-                if((*_alias_aux_vec)[id1]->MemberP(id2))
-                  return TRUE;
-                else
-                  return FALSE;
-              }
     //OSP_468, remove all Set_Required_Imp_VSE()
     //void Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const;
     BOOL Mem_WN_equiv_rec(WN *wn1, WN *wn2) const;
@@ -191,22 +183,6 @@ class DSE {
         _last_store_vec = CXX_NEW(vector<WN *>, pool);
         _last_store_vec->insert(_last_store_vec->end(), asym_count, (WN*)NULL);
 
-        //init _alias_set_vec
-        _alias_aux_vec = CXX_NEW(vector<IDX_32_SET*>, pool);
-        for( INT aid = 0; aid < asym_count; aid++) {
-          IDX_32_SET *alias_set = CXX_NEW( IDX_32_SET(asym_count,  pool, OPTS_FALSE), pool);
-          _alias_aux_vec->push_back(alias_set);
-        }
-        for(INT aid = 1; aid<asym_count; aid++) {
-          (*_alias_aux_vec)[aid]->Union1D(aid);
-          POINTS_TO *apt = Opt_stab()->Points_to(aid);
-          for(INT nid = aid +1; nid<asym_count; nid++) {
-            if(Opt_stab()->Rule()->Aliased_Memop( Opt_stab()->Points_to(nid), apt)) {
-              (*_alias_aux_vec)[aid]->Union1D(nid);
-              (*_alias_aux_vec)[nid]->Union1D(aid);
-            }
-          }
-        }       
       }
 
     ~DSE( void )

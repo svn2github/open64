@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -827,7 +827,7 @@ write_get_option (void)
 				   || options[i].syntax == needs_directory_or_null
 #endif
 				   ) {
-				fprintf(f, "\tif (want_directory(next_string(argv,argi))) {\n");
+				fprintf(f, "\tif (is_directory(next_string(argv,argi))) {\n");
 			}
 			fprintf(f, "\t\toptargs = get_optarg(argv, argi);\n");
 			if (options[i].syntax == needs_decimal) {

@@ -173,10 +173,10 @@ INT32 Total_M_Count=0;
  *			 Imported Declarations
  * ====================================================================
  */
-extern WN *emulate(WN *, WN *);
+extern WN *emulate(WN *, WN *, struct ALIAS_MANAGER *);
 
 #ifdef KEY // bug 6938
-extern WN *emulate_fast_exp(WN *, WN *);
+extern WN *emulate_fast_exp(WN *, WN *, struct ALIAS_MANAGER *);
 #endif
 
 extern WN *intrinsic_runtime(WN *, WN *);
@@ -3245,7 +3245,9 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
 
   result = lower_expr(block, result, actions);
 
-  WN_Delete(tree);	    /* ARRAY node not used */
+  // We should not be deleting this array tree as this
+  // leaves the consumer hanging with an invalid kid.
+  //WN_Delete(tree);	    /* ARRAY node not used */
 
   return result;
 }
@@ -10526,12 +10528,12 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
     Is_True((INTRN_is_nary(WN_intrinsic(tree))==FALSE),("nary slipped by"));
     if (Action(LOWER_INLINE_INTRINSIC) || Action(LOWER_INL_STACK_INTRINSIC))
     {
-      wn = emulate(emBlock , tree);
+      wn = emulate(emBlock , tree, alias_manager);
     }
 #ifdef KEY // bug 6938
     else if (Action(LOWER_FAST_EXP) && OPCODE_is_intrinsic(WN_opcode(tree)))
     {
-      wn = emulate_fast_exp(emBlock , tree);
+      wn = emulate_fast_exp(emBlock , tree, alias_manager);
     }
 #endif
     if (wn == NULL && NotAction(LOWER_INTRINSIC))
@@ -10545,7 +10547,7 @@ static WN *lower_emulation(WN *block, WN *tree, LOWER_ACTIONS actions,
   */
   else
   {
-    wn = emulate(emBlock , tree);
+    wn = emulate(emBlock , tree, alias_manager);
   }
 
 

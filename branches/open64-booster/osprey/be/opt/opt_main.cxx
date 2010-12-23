@@ -1552,6 +1552,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
 			      comp_unit->Opt_stab());
   // redundancy elimination with reassociation 
 
+  if (Get_Trace(TP_GLOBOPT, SSA_DUMP_FLAG)) {
+    fprintf(TFile, "\nAfter SSA Construction...\n");
+    comp_unit->Ssa()->Print();
+  }
+
   // Why do we wait until now to free the alias class resources? It
   // seems to me we could do it after
   // comp_unit->Opt_stab()->Compute_FFA()

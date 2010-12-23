@@ -1875,6 +1875,10 @@ private:
   BB_NODE  *bb;               // the BB that it belongs to
   SRCPOS    _linenum;         // source position information
 
+  // Store the constraint graph call site id for the Nystrom alias analyzer
+  // so as to restore it during CODEMAP -> WHIRL translation
+  mUINT32 _constraint_graph_callsite_id;
+
   union {
     UINT32     _label_flags;  // the label flags
 #ifndef KEY
@@ -1935,6 +1939,7 @@ private:
 #if defined(TARG_SL)
 				  _sl2_internal_mem_ofst = 0;
 #endif
+                                  _constraint_graph_callsite_id = 0;
 				}
 
   STMTREP (const STMTREP&);
@@ -2268,6 +2273,16 @@ public:
   BOOL	    Has_zero_version_chi(void) const;
 
   void      Clone(STMTREP *, CODEMAP *, MEM_POOL *pool);
+
+  // For the Nystrom alias analyzer
+  mUINT32   Get_constraint_graph_callsite_id() const 
+  {
+    return _constraint_graph_callsite_id;
+  }
+  void      Set_constraint_graph_callsite_id(mUINT32 c)
+  {
+    _constraint_graph_callsite_id = c;
+  }
 
 }; // end of class STMTREP
 

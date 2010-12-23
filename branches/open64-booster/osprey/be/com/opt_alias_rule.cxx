@@ -73,6 +73,7 @@
 static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #endif /* _KEEP_RCS_ID */
 
+#include "be_util.h"
 #include "defs.h"
 #include "stab.h"
 #include "tracing.h"
@@ -80,6 +81,7 @@ static char *rcs_id = 	opt_alias_rule_CXX"$Revision: 1.8 $";
 #include "opt_points_to.h"
 #include "opt_alias_class.h"
 #include "opt_alias_rule.h"
+#include "alias_analyzer.h"
 #ifdef KEY
 #include "config_opt.h"
 #endif
@@ -149,6 +151,35 @@ ALIAS_RULE::Aliased_Ip_Classification_Rule(const POINTS_TO *const mem1,
                   mem1->Ip_alias_class() == OPTIMISTIC_AC_ID       ||
                   mem2->Ip_alias_class() == OPTIMISTIC_AC_ID);
 
+  return aliased;
+}
+
+BOOL
+ALIAS_RULE::Aliased_Alias_Analyzer_Rule(const POINTS_TO *const mem1,
+                                        const POINTS_TO *const mem2,
+                                        bool acResult) const
+{
+  FmtAssert(_alias_analyzer,("Invoking Alias Analyzer Rule with NULL AliasAnalyzer"));
+
+  BOOL aliased;
+  INT32 count = _alias_analyzer->aliasQueryCount();
+  if (count == 0 && Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG)) {
+    extern char *Current_PU_Name();
+    fprintf(TFile, "pu_name %s\n", Current_PU_Name());
+  }
+  if (count < Alias_Query_Limit ) {
+    aliased = _alias_analyzer->aliased(mem1->Alias_tag(),mem2->Alias_tag());
+    if (aliased)
+      _alias_analyzer->incrAliasedCount();
+    if(Get_Trace(TP_ALIAS,NYSTROM_QUERY_TRACE_FLAG))
+      fprintf(TFile,"Query %d,%d: aliased memop %d %d: %-3s Alias (ac %-3s)\n",
+              Current_PU_Count(),count,
+              mem1->Alias_tag(),mem2->Alias_tag(),
+              aliased?"May":"No",
+              acResult?"No":"May");
+  }
+  else
+    aliased = true;
   return aliased;
 }
 
@@ -842,15 +873,22 @@ ALIAS_KIND ALIAS_RULE::Aliased_Memop_By_Analysis
   if (Rule_enabled(NEST_RULE) && !Aliased_Static_Nest_Rule(p1, p2))
     return ALIAS_KIND (AR_NOT_ALIAS);
 
-  if (Rule_enabled(CLAS_RULE) && !Aliased_Classification_Rule(p1, p2)
+  bool localACResult = !Aliased_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias()))
+      && (!p2->Default_vsym() || p1->No_alias());
+  if (Rule_enabled(CLAS_RULE) && localACResult)
     return ALIAS_KIND (AR_NOT_ALIAS);
 
-  if (Rule_enabled(IP_CLAS_RULE) && !Aliased_Ip_Classification_Rule(p1, p2)
+  bool ipACResult = !Aliased_Ip_Classification_Rule(p1, p2)
       && (!p1->Default_vsym() || p2->No_alias())
-      && (!p2->Default_vsym() || p1->No_alias()))
+      && (!p2->Default_vsym() || p1->No_alias());
+  if (Rule_enabled(IP_CLAS_RULE) && ipACResult)
     return ALIAS_KIND (AR_NOT_ALIAS);
+
+  if (Rule_enabled(ALIAS_ANALYZER_RULE) &&
+      !Aliased_Alias_Analyzer_Rule(p1,p2,(localACResult||ipACResult))) {
+    return ALIAS_KIND (AR_NOT_ALIAS);
+  }
 
   return ALIAS_KIND (AR_POSSIBLE_ALIAS);
 }
@@ -1015,6 +1053,21 @@ READ_WRITE ALIAS_RULE::Aliased_with_Call(ST *st, INT32 flags, const POINTS_TO *m
       mod = FALSE;
     if ((flags & WN_CALL_NON_PARM_REF) == 0)
       ref = FALSE;
+  }
+
+  if (Rule_enabled(ALIAS_ANALYZER_RULE)) {
+    // this is to get more precious from _alias_analyzer's IPA analysis result.
+    // TODO: its consertive now, mod_tmp, ref_tmp, always true now.
+    if(mod || ref) {
+      BOOL mod_tmp;
+      BOOL ref_tmp;
+      _alias_analyzer->aliasedWithCall(st,mem->Alias_tag(),mod_tmp,ref_tmp);
+      // if mod is false, don't update mod
+      if(mod)
+        mod = mod_tmp;
+      if(ref)
+        ref = ref_tmp;
+    }
   }
 
   if (mod && ref)

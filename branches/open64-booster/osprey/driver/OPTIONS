@@ -2324,8 +2324,6 @@ I-u%s		;		Cc	ld	"-u %s"
 -pthread	;	ALL	NONE	""
 	"Compile with pthreads support"
 % gcc compatibility flags
--compat-gcc	toggle(&compat_gcc,TRUE);	ALL	NONE	""
-	""
 -Wabi		warn_ignored(option_name);	ALL	cfe	self	""
 	""
 -###		{show_version++; show_but_not_run = TRUE;}	ALL	NONE	"-###"

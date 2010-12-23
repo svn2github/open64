@@ -119,7 +119,9 @@
 #include "ipo_alias_class.h"
 #include "ir_bread.h"			// For second-pass WHIRL file
 #include "ir_bwrite.h"			// I/O for alias class
+#include "ipa_be_write.h"               // for nystrom alias summary
 #include "be_symtab.h" 
+#include "ipa_nystrom_alias_analyzer.h"
 
 #include "ipc_option.h"
 
@@ -647,6 +649,13 @@ IPO_Process_node (IPA_NODE* node, IPA_CALL_GRAPH* cg)
 
   IPA_NODE_CONTEXT context (node);	// switch to this node's context
 
+  // Map WN to its new unique CGNodeId for the Nystrom alias analyzer
+  if (Alias_Nystrom_Analyzer) {
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->updateLocalSyms(node);
+    IPA_NystromAliasAnalyzer::aliasAnalyzer()->
+                              mapWNToUniqCallSiteCGNodeId(node);
+  }
+
 #ifdef KEY
   if (PU_src_lang (node->Get_PU()) & PU_CXX_LANG)
     IPA_update_ehinfo_in_pu (node);
@@ -1160,6 +1169,12 @@ Perform_Alias_Class_Annotation(void)
     // Write the PU_Info's and DST to the output file.
     WN_write_PU_Infos(pu_info_tree, output_file);
     WN_write_dst(Current_DST, output_file);
+    
+    if (Alias_Nystrom_Analyzer)
+    {
+      IPA_write_alias_summary(pu_info_tree, output_file);
+    }
+    
 
 #if defined(TARG_SL)
     if (ld_ipa_opt[LD_IPA_IPISR].flag)
@@ -2311,6 +2326,8 @@ Perform_Interprocedural_Optimization (void)
 
   Ip_alias_class->Release_resources();
   Ip_alias_class = NULL;
+
+  IPA_NystromAliasAnalyzer::clean();
 
 #if Is_True_On
   {

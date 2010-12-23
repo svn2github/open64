@@ -1586,6 +1586,16 @@ Print_type_attributes (FILE *f, TY_IDX ty)
 	fputs ("restrict ", f);
 } // Print_type_attributes
 
+static void
+Print_type_attributes (std::ostream& os, TY_IDX ty)
+{
+    if (TY_is_const (ty))
+	os << "const ";
+    if (TY_is_volatile (ty))
+	os << "volatile ";
+    if (TY_is_restrict (ty))
+	os << "restrict ";
+} // Print_type_attributes
 
 static void
 Print_TY_IDX_verbose (FILE *f, TY_IDX idx)
@@ -1763,6 +1773,7 @@ ST::Print (FILE *f, BOOL verbose) const
 	    if (flags & PU_IS_EXTERN_INLINE) fprintf (f, " extern_inline");
 	    if (flags & PU_IS_MARKED_INLINE) fprintf (f, " inline_keyword");
 	    if (flags & PU_NO_INSTRUMENT) fprintf (f, " no_instrument");
+	    if (flags & PU_HAS_ATTR_MALLOC) fprintf (f, " attr_malloc");
 	    if (flags & PU_NEED_TRAMPOLINE) fprintf (f, " need_trampoline");
 #endif
 #ifdef TARG_X8664
@@ -1927,6 +1938,332 @@ ST::Print (FILE *f, BOOL verbose) const
     }
 } // ST::Print
 
+std::ostream& operator<<(std::ostream &os, const ST &st )
+{
+    BOOL verbose = TRUE;
+
+    const char *name_str = (st.sym_class == CLASS_CONST) ?
+	"<constant>" : &Str_Table[st.u1.name_idx];
+
+    int level = ST_IDX_level(st.st_idx);
+    os << name_str << " \t<" << level << "," 
+       << ST_IDX_index (st.st_idx) << "> ";
+
+    if (strlen (name_str) > 20)
+        os << "\t\t" << std::endl;
+
+    TY_IDX ty_idx = 0;
+
+    switch (st.sym_class) {
+
+    case CLASS_UNK:
+        os << "Class unknown";
+	break;
+
+    case CLASS_VAR:
+        os << "Variable";
+	ty_idx = st.u2.type;
+	break;
+
+    case CLASS_FUNC:
+        os << "Subprogram";
+	ty_idx = PU_prototype (Pu_Table[st.u2.pu]);
+	break;
+
+    case CLASS_CONST:
+        os << "Constant";
+	ty_idx = st.u2.type;
+	break;
+
+    case CLASS_PREG:
+        os << "Pseudo-Register";
+	ty_idx = st.u2.type;
+	break;
+
+    case CLASS_BLOCK:
+        os << "Block" << " (#" << st.u2.blk << ")";
+	break;
+
+    case CLASS_NAME:
+        os << "Name-only";
+	break;
+	
+    default:
+        os << "INVALID CLASS (" << st.sym_class << ")";
+	break;
+    }
+
+    const TY& ty = Ty_Table [ty_idx];
+
+    if (ty_idx != 0) {
+
+	name_str = TY_name_idx (ty) == 0 ? NULL : TY_name (ty);
+
+	if (!(st.sym_class == CLASS_FUNC) || name_str != NULL) {
+            os << " of type ";
+
+	    Print_type_attributes (os, ty_idx);
+
+            os << (name_str ? name_str : "(anon)");
+	    
+	    const TY *pty = &ty;
+	    INT pcount = 0;
+	    while (TY_kind (*pty) == KIND_POINTER) {
+		pty = &Ty_Table[TY_pointed (*pty)];
+		++pcount;
+	    }
+	    
+	    if (verbose) {
+		name_str = TY_kind_name (*pty);
+                os << " (#" << TY_IDX_index (ty_idx) << ", " << name_str;
+		while (pcount-- > 0)
+                    os << '*';
+                os << ')';
+	    } else
+                os << " (#" << TY_IDX_index (ty_idx) << ")";
+	}
+    }
+
+    if (!verbose) {
+	/* quick address */
+        os << " @ 0x" << std::hex << st.offset << std::dec;
+	if (st.base_idx != 0)
+            os << "(" << ST_name (st.base_idx) << ")";
+    }
+    os << std::endl;
+    
+
+    if (st.sym_class == CLASS_FUNC && verbose) {
+	/* Give info about the type being returned, which is different
+	 * than the type of the function.
+	 */
+	if (ty_idx != 0 && TY_tylist (ty) != 0) {
+	    TY_IDX rettype_idx = Tylist_Table[TY_tylist (ty)];
+	    const TY& rettype = Ty_Table[rettype_idx];
+            os << "\t\tReturning ";
+	    Print_type_attributes (os, rettype_idx);
+            os << TY_name(rettype);
+	    name_str = TY_kind_name (rettype);
+            os << " (#" << TY_IDX_index (rettype_idx) << ", " << name_str;
+
+            os << "PU[" << st.u2.pu << "] ";
+
+	    if (Pu_Table[st.u2.pu].src_lang & PU_C_LANG)	os <<  "C  ";
+	    if (Pu_Table[st.u2.pu].src_lang & PU_CXX_LANG)	os << "C++  ";
+	    if (Pu_Table[st.u2.pu].src_lang & PU_F77_LANG)	os << "F77  ";
+	    if (Pu_Table[st.u2.pu].src_lang & PU_F90_LANG)	os << "F90  ";
+
+	    mUINT64 flags = Pu_Table[st.u2.pu].flags;
+            os << "flags:";
+	    if (flags & PU_IS_PURE)		os << " pure";
+	    if (flags & PU_NO_SIDE_EFFECTS)	os << " no_side_effects";
+	    if (flags & PU_IS_INLINE_FUNCTION)	os << " inline";
+	    if (flags & PU_NO_INLINE)		os << " no_inline";
+	    if (flags & PU_MUST_INLINE)		os << " must_inline";
+	    if (flags & PU_NO_DELETE)		os << " no_delete";
+	    if (flags & PU_HAS_EXC_SCOPES)	os << " exc_scopes";
+	    if (flags & PU_IS_NESTED_FUNC)	os << " nested_func";
+	    if (flags & PU_HAS_NON_MANGLED_CALL)os << " non_mangled_call";
+	    if (flags & PU_ARGS_ALIASED)	os << " args_aliased";
+	    if (flags & PU_NEEDS_FILL_ALIGN_LOWERING)os << " fill_align";
+	    if (flags & PU_NEEDS_T9)		os << " t9";
+	    if (flags & PU_HAS_VERY_HIGH_WHIRL)	os << " very_high_whirl";
+	    if (flags & PU_HAS_ALTENTRY)	os << " altentry";
+	    if (flags & PU_RECURSIVE)		os << " recursive";
+	    if (flags & PU_IS_MAINPU)		os << " main";
+	    if (flags & PU_UPLEVEL)		os << " uplevel";
+	    if (flags & PU_MP_NEEDS_LNO)	os << " mp_needs_lno";
+	    if (flags & PU_HAS_ALLOCA)		os << " alloca";
+	    if (flags & PU_IN_ELF_SECTION)	os << " in_elf_section";
+	    if (flags & PU_HAS_MP)		os << " has_mp";
+	    if (flags & PU_MP)			os << " mp";
+	    if (flags & PU_HAS_NAMELIST)	os << " namelist";
+	    if (flags & PU_HAS_RETURN_ADDRESS)	os << " return_address";
+	    if (flags & PU_HAS_REGION)		os << " has_region";
+	    if (flags & PU_HAS_INLINES)		os << " has_inlines";
+	    if (flags & PU_CALLS_SETJMP)	os << " calls_setjmp";
+	    if (flags & PU_CALLS_LONGJMP)	os << " calls_longjmp";
+	    if (flags & PU_IPA_ADDR_ANALYSIS)	os << " ipa_addr";
+	    if (flags & PU_SMART_ADDR_ANALYSIS)	os << " smart_addr";
+	    if (flags & PU_HAS_GLOBAL_PRAGMAS)	os << " global_pragmas";
+	    if (flags & PU_HAS_USER_ALLOCA)	os << " user_alloca";
+	    if (flags & PU_HAS_UNKNOWN_CONTROL_FLOW)	os << " unknown_control_flow";
+	    if (flags & PU_IS_THUNK)		os << " thunk";
+#ifdef KEY
+	    if (flags & PU_NEEDS_MANUAL_UNWINDING) os << " needs_manual_unwinding";
+	    if (flags & PU_IS_EXTERN_INLINE) os << " extern_inline";
+	    if (flags & PU_IS_MARKED_INLINE) os << " inline_keyword";
+	    if (flags & PU_NO_INSTRUMENT) os << " no_instrument";
+	    if (flags & PU_NEED_TRAMPOLINE) os << " need_trampoline";
+#endif
+#ifdef TARG_X8664
+	    if (flags & PU_FF2C_ABI) os << " ff2c_abi";
+#endif
+	    if (flags & PU_IS_CDECL) os << " cdecl";
+	    if (TY_return_to_param(ty_idx))	os << " return_to_param";
+	    if (TY_is_varargs(ty_idx))		os << " varargs";
+	    if (TY_has_prototype(ty_idx))	os << " prototype";
+#ifdef TARG_X8664
+	    if (TY_has_sseregister_parm(ty_idx)) os << " sseregisterparm";
+	    INT register_parms = TY_register_parm(ty_idx);
+	    if (register_parms) os << " " << register_parms << "-registerparm";
+            if (TY_has_stdcall(ty_idx))    os << " stdcall";
+            if (TY_has_fastcall(ty_idx))   os << " fastcall";
+#endif
+	    os << std::endl;
+	}
+    }
+	
+    if (st.sym_class == CLASS_CONST)
+        os << "\t\tvalue: " 
+           << Targ_Print (NULL, Tcon_Table[st.u1.tcon]) << std::endl;
+
+    if (verbose) {
+	// Print address
+	if (st.base_idx != 0) {
+	    const ST& base_st = St_Table[st.base_idx];
+            int level = ST_IDX_level(st.base_idx);
+            os << "\t\tAddress: " << st.offset << "("
+               << (ST_class (base_st) == CLASS_CONST ? ""
+                                                     : ST_name(st.base_idx))
+               << "<" << level << "," 
+               << ST_IDX_index (st.base_idx) << ">) ";
+	}
+
+	if (ty_idx != 0) {
+	    if (st.base_idx == 0 && st.offset == 0)
+                os << "\t\t";
+            os << "Alignment: " <<  TY_align (ty_idx) << "bytes";
+
+	}
+        os << std::endl;
+
+	mUINT64 flags = st.flags;
+        os << "\t\tFlags:\t0x" << std::hex << flags << std::dec;
+	if (flags) {
+	    if (flags & ST_IS_WEAK_SYMBOL)	os << " weak";
+	    if (flags & ST_IS_SPLIT_COMMON)	os << " split_common";
+	    if (flags & ST_IS_NOT_USED)		os << " not_used";
+	    if (flags & ST_IS_INITIALIZED)	os << " initialized";
+	    if (flags & ST_IS_RETURN_VAR)	os << " return_var";
+	    if (flags & ST_IS_VALUE_PARM)	os << " value_parm";
+	    if (flags & ST_PROMOTE_PARM)	os << " promote_parm";
+	    if (flags & ST_KEEP_NAME_W2F)	os << " keep_name_w2f";
+	    if (flags & ST_IS_DATAPOOL)		os << " datapool";
+	    if (flags & ST_IS_RESHAPED)		os << " reshaped";
+	    if (flags & ST_EMIT_SYMBOL)		os << " emit_symbol";
+	    if (flags & ST_HAS_NESTED_REF)	os << " has_nested_ref";
+	    if (flags & ST_INIT_VALUE_ZERO)	os << " init_value_zero";
+	    if (flags & ST_GPREL)		os << " gprel";
+	    if (flags & ST_NOT_GPREL)		os << " not_gprel";
+	    if (flags & ST_IS_NAMELIST)		os << " namelist";
+	    if (flags & ST_IS_F90_TARGET)	os << " f90_target";
+	    if (flags & ST_DECLARED_STATIC)	os << " static";
+	    if (flags & ST_IS_EQUIVALENCED)	os << " equivalenced";
+	    if (flags & ST_IS_FILL_ALIGN)	os << " fill_align";
+	    if (flags & ST_IS_OPTIONAL_ARGUMENT)os << " optional";
+	    if (flags & ST_PT_TO_UNIQUE_MEM)	os << " pt_to_unique_mem";
+	    if (flags & ST_IS_TEMP_VAR)		os << " temp";
+	    if (flags & ST_IS_CONST_VAR)	os << " const";
+	    if (flags & ST_ADDR_SAVED)		os << " addr_saved";
+	    if (flags & ST_ADDR_PASSED)		os << " addr_passed";
+	    if (flags & ST_IS_THREAD_PRIVATE)	os << " thread_private";
+	    if (flags & ST_ASSIGNED_TO_DEDICATED_PREG)
+		os << " assigned_to_dedicated_preg";
+	}
+
+#ifdef KEY
+	mUINT64 flags_ext = st.flags_ext;
+	if (flags_ext) {
+            os << "\t\tFlags_ext:\t0x" << std::hex << flags_ext << std::dec;
+	    if (flags_ext & ST_ONE_PER_PU)
+		os << " one_per_pu";
+	    if (flags_ext & ST_COPY_CONSTRUCTOR_ST)
+		os << " copy_constructor_st";
+            if (flags_ext & ST_INITV_IN_OTHER_ST)
+                os << " st_used_as_initialization";
+            if (flags_ext & ST_IS_THREAD_LOCAL)
+                os << " thread_local";
+	}
+#endif
+#ifdef TARG_NVISA
+	    if (memory_space == MEMORY_GLOBAL)
+		os << " __global__";
+	    if (memory_space == MEMORY_SHARED)
+		os << " __shared__";
+	    if (memory_space == MEMORY_CONSTANT)
+                os << " __constant__";
+	    if (memory_space == MEMORY_LOCAL)
+                os << " __local__";
+	    if (memory_space == MEMORY_TEXTURE)
+                os << " __texture__";
+	    if (memory_space == MEMORY_PARAM)
+                os << " __param__";
+#else
+        // tls-model
+	if (flags_ext & ST_IS_THREAD_LOCAL) {
+            switch (st.tls_model) {
+            case TLS_NONE:
+                os << ", TLS:none";
+                break;
+            case TLS_EMULATED:
+                os << ", TLS:emulated";
+                break;
+            case TLS_GLOBAL_DYNAMIC:
+                os << ", TLS:global-dynamic";
+                break;
+            case TLS_LOCAL_DYNAMIC:
+                os << ", TLS:local-dynamic";
+                break;
+            case TLS_INITIAL_EXEC:
+                os << ", TLS:initial-exec";
+                break;
+            case TLS_LOCAL_EXEC:
+                os << ", TLS:local-exec";
+                break;
+            }
+        }
+#endif /* TARG_NVISA */
+
+	switch (st.export_class) {
+
+	case EXPORT_LOCAL:
+	    os << ", XLOCAL";
+	    break;
+
+	case EXPORT_LOCAL_INTERNAL:
+	    os << ", XLOCAL(INTERNAL)";
+	    break;
+
+	case EXPORT_INTERNAL:
+	    os << ", XINTERNAL";
+	    break;
+
+	case EXPORT_HIDDEN:
+	    os << ", XHIDDEN";
+	    break;
+
+	case EXPORT_PROTECTED:
+	    os << ", XPROTECTED";
+	    break;
+
+	case EXPORT_PREEMPTIBLE:
+	    os << ", XPREEMPTIBLE";
+	    break;
+
+	case EXPORT_OPTIONAL:
+	    os << ", XOPTIONAL";
+	    break;
+
+	default:
+	    os << ", Export class unknown";
+	    break;
+	}
+
+        os << std::endl << "\t\tSclass: "
+           << Sclass_Name(st.storage_class) << std::endl;
+    }
+} // ST::Print
 
 void
 FLD::Print (FILE *f) const

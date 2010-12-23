@@ -77,6 +77,9 @@
 
 #include "clone.h"                      // IPO_CLONE, IPO_SYMTAB, 
 #include "targ_sim.h"
+#include "constraint_graph.h"
+
+extern BOOL Alias_Nystrom_Analyzer;
 
 // ======================================================================
 // For easy switching of Scope_tab
@@ -213,9 +216,13 @@ IPO_CLONE::Fix_ST (WN* cloned_wn, WN* wn)
 
   cloned_st = _sym->Get_Cloned_ST (st);
 
-  if ((cloned_st != NULL) && (ST_level(cloned_st) == GLOBAL_SYMTAB))
+  if ((cloned_st != NULL) && (ST_level(cloned_st) == GLOBAL_SYMTAB)) {
 						// Promoted as global
+      if (Alias_Nystrom_Analyzer) {
+        ConstraintGraph::updatePromoteStIdxMap(WN_st_idx(wn) , ST_st_idx(cloned_st));
+      }
       WN_st_idx(wn) = ST_st_idx(cloned_st);	// So fix up the orig tree also
+  }
   else 
       cloned_st = _sym->Get_ST(st);
 
@@ -352,6 +359,10 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
 
   ret_wn = Copy_Node (wn);
 
+  // Clone the WN to CGNodeId mapping for the cloned node into the caller
+  if (Alias_Nystrom_Analyzer)
+    ConstraintGraph::cloneWNtoCallSiteCGNodeIdMap(wn, ret_wn, this);
+
   op = WN_opcode(wn);
 
   if (_sym) {
@@ -375,6 +386,14 @@ IPO_CLONE::Clone_Tree (WN *wn, ST *clone_st)
 	else if (OPCODE_has_sym(op) || OPCODE_has_label(op))
             Fix_ST (ret_wn, wn);
 
+       // Nystrom alias analyzer:
+       if (Alias_Nystrom_Analyzer) {
+         // Map the original st_idx to its clone for non globals
+         if (OPCODE_has_sym(op) && !OPCODE_is_call(WN_opcode(wn)) && 
+             WN_st(wn) && (ST_IDX_level(WN_st_idx(wn)) != GLOBAL_SYMTAB))
+           ConstraintGraph::updateOrigToCloneStIdxMap(WN_st_idx(wn),
+                                                      WN_st_idx(ret_wn));
+       }
   }
 
           

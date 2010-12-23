@@ -77,6 +77,7 @@
 #include "fb_whirl.h"
 #include "be_symtab.h"
 #include "intrn_info.h"
+#include "alias_analyzer.h"
 
 
 #if (__GNUC__ == 2)
@@ -587,7 +588,7 @@ static TY_IDX aux_compute_alignment(WN *tree);
  * ====================================================================
  */
 static INT32 em_exp_int_max = 256;
-
+static struct ALIAS_MANAGER *alias_manager = NULL;
 #define MAX_INTRINSIC_ARGS      20
 
 
@@ -3686,7 +3687,14 @@ static WN *aux_memset(WN *var, WN *con, WN *size)
 
   TY_IDX ptr_ty = Make_Pointer_Type (align);
   mstore = aux_CreateMstore(0, ptr_ty, newcon, var, size);
-
+  // Attempts to call Copy_alias_info() lead to problems when 'src'
+  // has Id() == preg_id().  This seems to lead to a segfault during
+  // CG emit.  However, both Copy_alias_info() and Duplicate_alias_info()
+  // happily propagate the Id() to the target WN.  For now I copy
+  // the AliasTag directly to make forward progress.
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa)
+    aa->transferAliasTag(mstore,var);
   return mstore;
 }
 
@@ -3712,11 +3720,23 @@ static WN *aux_memcpy(WN *src, WN *dst, WN *size)
   else srcTY_ptr = Make_Pointer_Type(srcTY);
 
   mload = WN_CreateMload(0, srcTY_ptr, src, size);
+  // Attempts to call Copy_alias_info() lead to problems when 'src'
+  // has Id() == preg_id().  This seems to lead to a segfault during
+  // CG emit.  However, both Copy_alias_info() and Duplicate_alias_info()
+  // happily propagate the Id() to the target WN.  For now I copy
+  // the AliasTag directly to make forward progress.
+  //if (alias_manager)
+    //Copy_alias_info(alias_manager,src,mload);
+  AliasAnalyzer *aa = AliasAnalyzer::aliasAnalyzer();
+  if (aa)
+    aa->transferAliasTag(mload,src);
 
   dstTY = aux_compute_alignment(dst);
 
   dstTY_ptr = Make_Pointer_Type(dstTY);
   mstore = aux_CreateMstore(0, dstTY_ptr, mload, dst, WN_COPY_Tree(size));
+  if (aa)
+    aa->transferAliasTag(mstore,dst);
   return mstore;
 }
 
@@ -5292,9 +5312,10 @@ static WN *emulate_intrinsic_op(WN *block, WN *tree)
 }
 
 
-extern WN *emulate(WN *block, WN *tree)
+extern WN *emulate(WN *block, WN *tree, struct ALIAS_MANAGER *alias)
 {
   WN		*wn = NULL;
+  alias_manager = alias;
 
   if (OPCODE_is_intrinsic(WN_opcode(tree)))
   {
@@ -5342,11 +5363,12 @@ extern WN *emulate(WN *block, WN *tree)
     }
   }
  
+  alias_manager = NULL;
   return wn;
 }
 
 #ifdef KEY // bug 6938
-extern WN *emulate_fast_exp(WN *block, WN *tree)
+extern WN *emulate_fast_exp(WN *block, WN *tree, struct ALIAS_MANAGER *alias)
 {
   if (! Inline_Intrinsics_Allowed)
     return NULL;

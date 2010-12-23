@@ -82,6 +82,8 @@
 #include "opt_cvtl_rule.h"
 #include "wn_util.h"            // for WN_COPY_Tree_With_Map
 
+#include "nystrom_alias_analyzer.h"
+
 extern BOOL OPT_Enable_WHIRL_SSA;
 
 template < class EMITTER >WN*
@@ -931,6 +933,11 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
       OPCODE opc = srep->Op();
       OPERATOR opr = OPCODE_operator(opc);
       rwn = Gen_exp_wn( srep->Rhs(), emitter );
+
+      // Restore the callsite id for the Nystrom alias analyzer
+      if (srep->Get_constraint_graph_callsite_id() != 0)
+        WN_MAP32_Set(WN_MAP_ALIAS_CGNODE, rwn, 
+                     srep->Get_constraint_graph_callsite_id());
 #ifdef KEY
       // bug 8941: If possible replace ICALL with a CALL.
       if (WN_operator (rwn) == OPR_ICALL)
@@ -950,6 +957,13 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	  WN_call_flag (rwn) = srep->Call_flags();
 	  WN_set_kid_count (rwn, kidcount - 1);
 	  WN_Delete (kid);
+          // Since we are promoting the ICALL to a CALL, fix the CallSite
+          // information in the Nystrom alias analyzer accordingly
+          NystromAliasAnalyzer *naa = static_cast<NystromAliasAnalyzer *>
+                                      (AliasAnalyzer::aliasAnalyzer());
+          if (naa && !naa->isPostIPA() && naa->constraintGraph())
+            naa->constraintGraph()->promoteCallSiteToDirect(
+                           WN_MAP_CallSiteId_Get(rwn), WN_st_idx(rwn));
 	  break;
 	}
       }
@@ -964,6 +978,7 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
 	  opr == OPR_BACKWARD_BARRIER ||
 	  opr == OPR_DEALLOCA) 
 	emitter->Alias_Mgr()->Gen_alias_id_list(rwn, srep->Pt_list());
+
     }
     break;
 

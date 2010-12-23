@@ -69,6 +69,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/ipa/main/analy
 #define USE_STANDARD_TYPES
 #include "defs.h"
 #include "config.h"
+#include "config_opt.h"
 #include "erglob.h"		/* Include the error tables */
 #include "file_util.h"		/* for creating trace filename */
 #include "flags.h"		/* for OPTION_LIST, etc. */
@@ -164,6 +165,8 @@ Process_IPA_Options ( INT argc, char **argv )
 	}
     }
 
+    Configure_IPA();
+    
     if (LNO_Prompl)
 	ProMP_Listing = TRUE;
 
@@ -177,6 +180,9 @@ Process_IPA_Options ( INT argc, char **argv )
     /* Specfile- and post-processing of GP partition options: */
     Process_IPA_Specfile_Options ();
 #endif
+
+    // for -OPT:alias=nystrom
+    Configure_Alias_Options();
 
     /* check consistency for Hard/Soft PU Limits */
     if (IPA_PU_Limit_Set) {

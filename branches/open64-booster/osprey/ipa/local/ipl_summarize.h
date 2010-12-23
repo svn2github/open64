@@ -106,6 +106,10 @@
 #include "ipl_reorder.h"
 #endif
 
+// Constraint graph summary for Nystrom Alias Analyzer
+#include "ipa_be_summary.h"
+#include "constraint_graph.h"
+
 //---------------------------------------------------------------
 // alternate entry point array
 // contain all the alternate entry points encountered in the
@@ -329,6 +333,18 @@ private:
 #ifdef KEY
     DYN_ARRAY<SUMMARY_TY_INFO> _ty_info;
 #endif
+
+    // Constraint graph specific data for Nystrom Alias Analuzer
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_NODE> _constraint_graph_nodes;
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_EDGE> _constraint_graph_edges;
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_STINFO> _constraint_graph_stinfos;
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_CALLSITE> _constraint_graph_callsites;
+    // The above summary information may contain a variable list of
+    // CGnode ids. They are stored in a separate array with the start index
+    // and count stored in the corresponding SUMMARY_CONSTRAINT_GRAPH_*
+    DYN_ARRAY<UINT32> _constraint_graph_node_ids;
+    DYN_ARRAY<SUMMARY_CONSTRAINT_GRAPH_MODRANGE> _constraint_graph_modranges;
+
     BOOL Trace_Modref;			// trace mod/ref analysis
 
     /* used as cache to keep track of which global symbols have been
@@ -498,6 +514,43 @@ private:
     }
 #endif
 
+    // Constraint graph specific data for Nystrom Alias Analyzer
+
+    SUMMARY_CONSTRAINT_GRAPH_NODE *New_constraint_graph_node () 
+    {
+      INT new_idx = _constraint_graph_nodes.Newidx();
+      _constraint_graph_nodes[new_idx].Init();
+      return &(_constraint_graph_nodes[new_idx]);
+    }
+
+    SUMMARY_CONSTRAINT_GRAPH_EDGE *New_constraint_graph_edge () 
+    {
+      INT new_idx = _constraint_graph_edges.Newidx();
+      _constraint_graph_edges[new_idx].Init();
+      return &(_constraint_graph_edges[new_idx]);
+    }
+
+    SUMMARY_CONSTRAINT_GRAPH_STINFO *New_constraint_graph_stinfo () 
+    {
+      INT new_idx = _constraint_graph_stinfos.Newidx();
+      _constraint_graph_stinfos[new_idx].Init();
+      return &(_constraint_graph_stinfos[new_idx]);
+    }
+
+    SUMMARY_CONSTRAINT_GRAPH_CALLSITE *New_constraint_graph_callsite () 
+    {
+      INT new_idx = _constraint_graph_callsites.Newidx();
+      _constraint_graph_callsites[new_idx].Init();
+      return &(_constraint_graph_callsites[new_idx]);
+    }
+
+    SUMMARY_CONSTRAINT_GRAPH_MODRANGE *New_constraint_graph_modrange () 
+    {
+      INT new_idx = _constraint_graph_modranges.Newidx();
+      _constraint_graph_modranges[new_idx].Init();
+      return &(_constraint_graph_modranges[new_idx]);
+    }
+
     void Process_alt_procedure (WN *w, INT formal_index, INT formal_count);
     void Process_callsite (WN *w, INT id, INT loopnest, float =-1);
 #if defined(KEY) && !defined(_STANDALONE_INLINER) && !defined(_LIGHTWEIGHT_INLINER)
@@ -573,6 +626,15 @@ private:
 #ifdef KEY
     void Record_ty_info_for_type (TY_IDX ty, TY_FLAGS flags);
 #endif
+
+    // Constraint graph specific data for Nystrom Alias Analyzer
+    void generateConstraintGraphSummary(WN *w);
+    void processPointsToSet(SUMMARY_CONSTRAINT_GRAPH_NODE *sumCGNode,
+                            const PointsTo &gbl,
+                            const PointsTo &hz,
+                            const PointsTo &dn,
+                            mUINT32 &numNodeIds);
+    UINT32 processModRange(ModulusRange *mr);
 
     // Functions needed for execution cost analysis
     INT IPL_GEN_Value(WN* wn_value, DYN_ARRAY<SUMMARY_VALUE>* sv,
@@ -658,6 +720,33 @@ public:
 #ifdef KEY
     SUMMARY_TY_INFO *Get_ty_info (INT idx) const      { return &(_ty_info[idx]); }
 #endif
+    // Constraint graph summary for Nystrom Alias Analyzer
+    SUMMARY_CONSTRAINT_GRAPH_NODE *Get_constraint_graph_node(INT idx) const 
+    {
+      return &(_constraint_graph_nodes[idx]);
+    }
+    SUMMARY_CONSTRAINT_GRAPH_EDGE *Get_constraint_graph_edge(INT idx) const 
+    {
+      return &(_constraint_graph_edges[idx]);
+    }
+    SUMMARY_CONSTRAINT_GRAPH_STINFO *Get_constraint_graph_stinfo(INT idx) const 
+    {
+      return &(_constraint_graph_stinfos[idx]);
+    }
+    SUMMARY_CONSTRAINT_GRAPH_CALLSITE *
+    Get_constraint_graph_callsite(INT idx) const 
+    {
+      return &(_constraint_graph_callsites[idx]);
+    }
+    UINT32 *Get_constraint_graph_node_id(INT idx) const 
+    {
+      return &(_constraint_graph_node_ids[idx]);
+    }
+    SUMMARY_CONSTRAINT_GRAPH_MODRANGE *
+    Get_constraint_graph_modrange(INT idx) const 
+    {
+      return &(_constraint_graph_modranges[idx]);
+    }
     
     BOOL Has_procedure_entry () const	{ return _procedure.Lastidx () != -1; }
     BOOL Has_proc_info_entry () const	{ return _proc_info.Lastidx () != -1; }
@@ -684,6 +773,13 @@ public:
 #ifdef KEY
     BOOL Has_ty_info_entry() const      { return _ty_info.Lastidx () != -1; }
 #endif
+    // Constraint graph summary for Nystrom Alias Analyzer
+    BOOL Has_constraint_graph_nodes() const { return _constraint_graph_nodes.Lastidx () != -1; }
+    BOOL Has_constraint_graph_edges() const { return _constraint_graph_edges.Lastidx () != -1; }
+    BOOL Has_constraint_graph_stinfos() const { return _constraint_graph_stinfos.Lastidx () != -1; }
+    BOOL Has_constraint_graph_callsites() const { return _constraint_graph_callsites.Lastidx () != -1; }
+    BOOL Has_constraint_graph_node_ids() const { return _constraint_graph_node_ids.Lastidx () != -1; }
+    BOOL Has_constraint_graph_modranges() const { return _constraint_graph_modranges.Lastidx () != -1; }
 
     INT Get_procedure_idx () const	{ return _procedure.Lastidx (); }
     INT Get_proc_info_idx () const	{ return _proc_info.Lastidx (); }
@@ -709,6 +805,13 @@ public:
 #ifdef KEY
     INT Get_ty_info_idx () const        { return _ty_info.Lastidx (); }
 #endif
+    // Constraint graph summary for Nystrom Alias Analyzer
+    INT Get_constraint_graph_nodes_idx() const { return _constraint_graph_nodes.Lastidx(); }
+    INT Get_constraint_graph_edges_idx() const { return _constraint_graph_edges.Lastidx(); }
+    INT Get_constraint_graph_stinfos_idx() const { return _constraint_graph_stinfos.Lastidx(); }
+    INT Get_constraint_graph_callsites_idx() const { return _constraint_graph_callsites.Lastidx(); }
+    INT Get_constraint_graph_node_ids_idx() const { return _constraint_graph_node_ids.Lastidx(); }
+    INT Get_constraint_graph_modranges_idx() const { return _constraint_graph_modranges.Lastidx(); }
 
     // constructor
 
@@ -740,6 +843,15 @@ public:
 #ifdef KEY
 	_ty_info.Set_Mem_Pool (m);
 #endif
+
+        // Constraint graph specific data for Nystrom Alias Analyzer
+        _constraint_graph_nodes.Set_Mem_Pool(m);
+        _constraint_graph_edges.Set_Mem_Pool(m);
+        _constraint_graph_stinfos.Set_Mem_Pool(m);
+        _constraint_graph_callsites.Set_Mem_Pool(m);
+        _constraint_graph_node_ids.Set_Mem_Pool(m);
+        _constraint_graph_modranges.Set_Mem_Pool(m);
+
 	Trace_Modref = FALSE;
 	entry_point = NULL;
 	File_Pragmas = FALSE;

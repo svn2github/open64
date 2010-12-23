@@ -515,13 +515,20 @@ BE_COM_CXX_SRCS += \
 endif
 
 BE_COM_PCH_CXX_SRCS = \
+  alias_analyzer.cxx    \
   be_symtab.cxx		\
+  constraint_graph.cxx	\
+  constraint_graph_solve.cxx \
+  constraint_graph_escanal.cxx \
+  cse_table.cxx         \
   data_layout.cxx	\
   dep_graph.cxx		\
   dvector.cxx		\
   emulate.cxx		\
   fb_cfg.cxx		\
   fb_whirl.cxx		\
+  ipa_be_read.cxx       \
+  nystrom_alias_analyzer.cxx \
   opt_alias_mgr.cxx	\
   opt_alias_rule.cxx	\
   opt_goto.cxx		\
