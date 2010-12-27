@@ -902,9 +902,12 @@ void ipacom_doit (const char* ipaa_filename)
       const char *p;
 #ifndef TARG_SL // jczhang: use slcc specific crt*.o
       if (((p = strstr(*i, "/crt1.o")) && p[7] == '\0') ||
+          ((p = strstr(*i, "/Scrt1.o")) && p[8] == '\0') ||
 	  ((p = strstr(*i, "/crti.o")) && p[7] == '\0') ||
 	  ((p = strstr(*i, "/crtbegin.o")) && p[11] == '\0') ||
+          ((p = strstr(*i, "/crtbeginS.o")) && p[12] == '\0') ||
 	  ((p = strstr(*i, "/crtend.o")) && p[9] == '\0') ||
+          ((p = strstr(*i, "/crtendS.o")) && p[10] == '\0') ||
 	  ((p = strstr(*i, "/crtn.o")) && p[7] == '\0')) {
 	continue;
       }

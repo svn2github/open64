@@ -1796,9 +1796,15 @@ add_file_args (string_list_t *args, phases_t index)
 		if ((shared != DSO_SHARED) && (shared != RELOCATABLE)
 		    && ! option_was_seen(O_nostartfiles)) 
 		{
-			add_string(args, find_crt_path("crt1.o"));
+			if (option_was_seen(O_pie)) {
+			  add_string(args, find_crt_path("Scrt1.o"));
+			  add_string(args, find_crt_path("crtbeginS.o"));
+			}
+			else {
+			  add_string(args, find_crt_path("crt1.o"));
+			  add_string(args, find_crt_path("crtbegin.o"));
+			}
 			add_string(args, find_crt_path("crti.o"));
-			add_string(args, find_crt_path("crtbegin.o"));
 			if (ftz_crt) {
 				add_string(args, find_obj_path("ftz.o"));
 			}
@@ -2246,7 +2252,10 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 #else
 	if (ipa == TRUE) {
 	  if (shared != DSO_SHARED && shared != RELOCATABLE) {
-	    add_string(args, find_crt_path("crtend.o"));
+	    if (option_was_seen(O_pie))
+	      add_string(args, find_crt_path("crtendS.o"));
+	    else
+	      add_string(args, find_crt_path("crtend.o"));
 #ifndef TARG_SL
 	    add_string(args, find_crt_path("crtn.o"));
 #endif
