@@ -2256,8 +2256,6 @@ main (INT argc, char **argv)
   Set_Error_Phase ( "Back End Driver" );
 
   Preconfigure ();
-  // setup options from the command line to O64_Driver
-  O64_Driver::GetInstance()->SetupOptions(argc, argv);
   Process_Command_Line (argc, argv);
 
   if (Inhibit_EH_opt && Opt_Level > 1) Opt_Level = 1;

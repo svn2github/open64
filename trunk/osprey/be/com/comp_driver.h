@@ -151,7 +151,7 @@ public:
     MEM_POOL *          GetLocalMemPool()   { return &_LocalPool; };
     WN*                 GetCurrentWN()      { return _CurrentWN; };
     void                SetCurrentWN(WN* wn){ _CurrentWN = wn; };
-    void                SetupOptions(INT32 argc, char ** argv);
+    bool                ProcessComponentOption(char *argv);
     TRACE_OPTION_KIND   GetTraceKind();
     BOOL                TimeStats();
     BOOL                MemStats();
