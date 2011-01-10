@@ -2557,6 +2557,7 @@ Mark_Scopes_And_Labels (gs_t stmt)
 #ifdef KEY
     case GS_STATEMENT_LIST: {
 	gs_t stmt_list = gs_statement_list_elts(stmt);
+	gs_t list;
 	BOOL new_scope = FALSE;
 	// bug 11869: This example shows there may be a label statement
 	// without an explicit scope. In such a scenario, a jump to such
@@ -2570,14 +2571,10 @@ Mark_Scopes_And_Labels (gs_t stmt)
 	  Push_Scope(stmt);
 	  new_scope = TRUE;
 	}
-#ifdef FE_GNU_4_2_0
-        for (int i=0; i < gs_length(stmt_list); i++)
-          Mark_Scopes_And_Labels(gs_index(stmt_list, i));
-#else
-        gs_t list;
+
 	for (list = stmt_list; gs_code(list)!=EMPTY; list = gs_operand(list,1))
 	  Mark_Scopes_And_Labels(gs_operand(list,0));
-#endif
+
 	if (new_scope) // End scope
 	  --scope_i;
       }
@@ -4293,14 +4290,9 @@ WGEN_Expand_Stmt(gs_t stmt, WN* target_wn)
 
     case GS_STATEMENT_LIST: {
 	gs_t stmt_list = gs_statement_list_elts(stmt);
-#ifdef FE_GNU_4_2_0
-        for (int i=0; i < gs_length(stmt_list); i++)
-          WGEN_Expand_Stmt(gs_index(stmt_list, i), target_wn);
-#else
 	gs_t list;
 	for (list = stmt_list; gs_code(list)!=EMPTY; list = gs_operand(list,1))
 	  WGEN_Expand_Stmt(gs_operand(list,0), target_wn);
-#endif
       }
       break;
 
