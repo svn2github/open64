@@ -2893,7 +2893,10 @@ SUMMARIZE<program>::Get_symbol_index (const ST *st)
     
   SUMMARY_SYMBOL* sym = New_symbol();
     
-  if (Get_Trace(TKIND_IR, TP_IPL)) {
+  // Using Get_Trace(TKIND_IR, TP_IPL) as the condition in the
+  // if statement below is incorrect, since symbol
+  // names may not be extracted when -tf<n> is supplied.
+  if (Tracing_Enabled) {
     Save_Symbol_Name(st);
   }
     
