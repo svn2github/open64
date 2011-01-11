@@ -170,7 +170,7 @@
 -show-defaults	{show_defaults = TRUE; execute_flag = FALSE;} ALL	NONE	""
 	"Show the default compiler options being used"
 % gcc has -v show version as well as phases, so take that meaning
--v	{show_flag = TRUE; show_version++;} ALL	CPP,as,ld	self "-show"
+-v	{v_flag = TRUE; show_version++;} ALL	CPP,as,ld	self "-show"
 	"show phases and version as they are being invoked"
 -fullwarn toggle(&msglevel,2);		FTN  CPP	"-m2"
 	"give more warnings, especially about missing prototypes"

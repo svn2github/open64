@@ -388,7 +388,7 @@ main (int argc, char *argv[])
 	{
 		print_help_msg();
 	}
-	if ( ! show_version && ! execute_flag && ! show_flag && ! dump_version) {
+	if ( ! show_version && ! execute_flag && ! show_flag && ! v_flag && ! dump_version) {
 		do_exit(RC_OKAY);	/* just exit */
 	}
 	if (source_kind == S_NONE || read_stdin) {

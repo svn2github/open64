@@ -87,6 +87,7 @@
 #include "lib_phase_dir.h"
 
 boolean show_flag = FALSE;
+boolean v_flag = FALSE;
 boolean show_but_not_run = FALSE;
 boolean execute_flag = TRUE;
 boolean time_flag = FALSE;
@@ -314,6 +315,18 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 		fprintf(stderr, "%s ", name);
 		print_string_list(stderr, args);
 	}
+
+	/* When using -v (and not -show), do not echo out the gcc call
+	   that does the link phase.  libtool uses the -v option and greps
+	   for lines with -L to determine the link method when building
+	   shared libraries.  Echoing both the gcc call and the collect2/ld
+	   call that gcc generates confuses libtool.  */
+
+	if (v_flag && !show_flag && phase != P_ld && phase != P_ldplus) {
+		fprintf(stderr, "%s ", name);
+		print_string_list(stderr, args);
+	}
+
 	if (!execute_flag) return;
 
 	if (time_flag) init_time();
@@ -672,7 +685,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				   ) {
 					nomsg_error(RC_INTERNAL_ERROR);
 				}
-				else if (!show_flag || save_stderr) {
+				else if (!(show_flag || v_flag) || save_stderr) {
 					nomsg_error(RC_USER_ERROR);
 				} else {
 					error("%s returned non-zero status %d",
@@ -947,7 +960,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
     }
     else if (user_err) {
       /* assume phase will print diagnostics */
-      if (!show_flag || save_stderr)
+      if (!(show_flag || v_flag) || save_stderr)
 	nomsg_error(RC_USER_ERROR);
       else
         error("%s returned non-zero status %d", name, status);
