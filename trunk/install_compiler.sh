@@ -50,6 +50,12 @@ else
     ARCH=$1
 fi
 
+if [ -z "$2" ]; then
+    INSTALL_FORTRAN="YES"
+else
+    INSTALL_FORTRAN=$2
+fi
+
 # set the build host
 case $ARCH in 
 ia64 )
@@ -175,12 +181,12 @@ INSTALL_DRIVER () {
     [ ! -d ${BIN_DIR}       ] && mkdir -p ${BIN_DIR}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/opencc-${VERSION}
     INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openCC-${VERSION}
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
-    INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf90-${VERSION}
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB ${AREA}/driver/driver  ${BIN_DIR}/openf95-${VERSION}
 
     if [ "$TARG_HOST" = "ia64" ] || [ "$TARG_HOST" = "x8664" ]; then
       INSTALL_EXEC_SUB ${TOP_SRCDIR}/osprey/targdir/driver/kdriver ${BIN_DIR}/kopencc
@@ -293,12 +299,12 @@ INSTALL_CG () {
 INSTALL_WHIRL_STUFF () {
 
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c    ${PHASEPATH}/whirl2c
-    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f    ${PHASEPATH}/whirl2f
     INSTALL_EXEC_SUB  ${AREA}/whirl2c/whirl2c.so ${PHASEPATH}/whirl2c.so
-    INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_EXEC_SUB  ${AREA}/whirl2f/whirl2f.so ${PHASEPATH}/whirl2f.so
 
     (cd ${PHASEPATH}; ln -sf be whirl2c_be) 
-    (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
+    [ "$INSTALL_FORTRAN" = "YES" ] && (cd ${PHASEPATH}; ln -sf be whirl2f_be) 
 
     INSTALL_EXEC_SUB  ${AREA}/ir_tools/ir_b2a    ${BIN_DIR}/ir_b2a
     INSTALL_EXEC_SUB  ${AREA}/libspin_4_2_0/gspin42 ${BIN_DIR}/gspin42
@@ -318,8 +324,8 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 	LIBAREA="osprey/targdir_lib"
 
         # f90 related archieves 
-        INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
-        INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.cat  ${PHASEPATH}/lib.cat
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${AREA}/temp_f90libs/lib.exp  ${PHASEPATH}/lib.exp
 
         # instrument archieves.
         INSTALL_DATA_SUB ${LIBAREA}/libcginstr/libcginstr.a  ${PHASEPATH}/libcginstr.a  
@@ -331,14 +337,14 @@ INSTALL_PHASE_SPECIFIC_ARCHIVES () {
 	LIBAREA="osprey/targdir_lib"
 	LIB32AREA="osprey/targdir_lib2"
         # 64bit libraries
-        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
-        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
 	    INSTALL_DATA_SUB ${LIBAREA}/libopenmp/libopenmp.a      ${PHASEPATH}/libopenmp.a
         # 32bit libraries
-        INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
         INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
     else
@@ -399,8 +405,8 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 
     if [ "$TARG_HOST" = "ia64" ] ; then
 	LIBAREA="osprey/targdir_lib"
-        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
-        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a 
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
         # libmsgi.a is no longer needed
         #INSTALL_DATA_SUB ${LIBAREA}/libmsgi/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
@@ -413,15 +419,15 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
 	LIBAREA="osprey/targdir_lib2"
         LIB32AREA="osprey/targdir_lib"
         # 64bit libraries
-        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
-        INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.so ${PHASEPATH}/libfortran.so
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.a ${PHASEPATH}/libfortran.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libfortran/libfortran.so ${PHASEPATH}/libfortran.so
         # FMODS="IEEE_ARITHMETIC.mod IEEE_EXCEPTIONS.mod IEEE_FEATURES.mod ISO_C_BINDING.mod ISO_FORTRAN_ENV.mod"
 	FMODS="ISO_C_BINDING.mod"
         for i in $FMODS ; do
-            INSTALL_DATA_SUB ${LIBAREA}/libfortran/$i ${PHASEPATH}/$i
+            [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libfortran/$i ${PHASEPATH}/$i
         done
-        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
-        INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so          ${PHASEPATH}/libffio.so
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.a          ${PHASEPATH}/libffio.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIBAREA}/libu/libffio.so          ${PHASEPATH}/libffio.so
         #INSTALL_DATA_SUB ${LIBAREA}/libm/libmsgi.a       ${PHASEPATH}/libmsgi.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.a           ${PHASEPATH}/libmv.a
         INSTALL_DATA_SUB ${LIBAREA}/libmv/libmv.so.1           ${PHASEPATH}/libmv.so.1
@@ -430,13 +436,13 @@ INSTALL_GENERAL_PURPOSE_NATIVE_ARCHIVES () {
         INSTALL_DATA_SUB ${LIBAREA}/libacml_mv/libacml_mv.a ${PHASEPATH}/libacml_mv.a
         INSTALL_DATA_SUB ${LIBAREA}/libacml_mv/libacml_mv.so.1 ${PHASEPATH}/libacml_mv.so.1
         # 32bit libraries
-        INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.so ${PHASEPATH}/32/libfortran.so
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.a ${PHASEPATH}/32/libfortran.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libfortran/libfortran.so ${PHASEPATH}/32/libfortran.so
         for i in $FMODS ; do
-            INSTALL_DATA_SUB ${LIB32AREA}/libfortran/$i ${PHASEPATH}/32/$i
+            [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libfortran/$i ${PHASEPATH}/32/$i
         done
-        INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
-        INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.so          ${PHASEPATH}/32/libffio.so
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.a          ${PHASEPATH}/32/libffio.a
+        [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${LIB32AREA}/libu/libffio.so          ${PHASEPATH}/32/libffio.so
         #INSTALL_DATA_SUB ${LIB32AREA}/libm/libmsgi.a       ${PHASEPATH}/32/libmsgi.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.a           ${PHASEPATH}/32/libmv.a
         INSTALL_DATA_SUB ${LIB32AREA}/libmv/libmv.so.1           ${PHASEPATH}/32/libmv.so.1
@@ -551,7 +557,7 @@ INSTALL_NATIVE_HEADER () {
     #INSTALL_DATA_SUB osprey/include/nue/va-ia64.h  ${PHASEPATH}/include/va-ia64.h 
     #cp -f -a osprey/include ${PHASEPATH}/ 
     INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/whirl2c.h  ${ROOT}/include/${VERSION}/whirl2c.h
-    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/whirl2f.h  ${ROOT}/include/${VERSION}/whirl2f.h
 
     INSTALL_DATA_SUB ${AREA}/include/dwarf.h  ${ROOT}/include/${VERSION}/dwarf.h
     INSTALL_DATA_SUB ${AREA}/include/libdwarf.h  ${ROOT}/include/${VERSION}/libdwarf.h
@@ -561,7 +567,7 @@ INSTALL_NATIVE_HEADER () {
 
     INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp.h  ${ROOT}/include/${VERSION}/omp.h
     INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp_lib.h  ${ROOT}/include/${VERSION}/omp_lib.h
-    INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp_lib.f  ${ROOT}/include/${VERSION}/omp_lib.f
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB ${TOP_SRCDIR}/osprey/include/omp/omp_lib.f  ${ROOT}/include/${VERSION}/omp_lib.f
 
     return 0
 }
@@ -572,7 +578,7 @@ INSTALL_MAN_PAGE () {
     d2=$ROOT/usr/man/man1
 
     INSTALL_DATA_SUB $d1/sgicc.1 $d2 
-    INSTALL_DATA_SUB $d1/sgif90.1 $d2
+    [ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_DATA_SUB $d1/sgif90.1 $d2
 
     (cd $d2; ln -sf sgicc.1 sgiCC.1)
 
@@ -666,7 +672,7 @@ INSTALL_PREBUILD_OPEN64_NATIVE_LIB
 INSTALL_PREBUILD_GNU_NATIVE_CRT_STARTUP 
 [ "$INSTALL_TYPE" = "ia64-cross" ] && INSTALL_CROSS_UTIL
 INSTALL_PREBUILD_PHASE 
-INSTALL_MODULES
+[ "$INSTALL_FORTRAN" = "YES" ] && INSTALL_MODULES
 
 exit 0
 
