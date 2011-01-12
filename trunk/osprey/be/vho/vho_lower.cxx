@@ -173,36 +173,9 @@ static WN * vho_lower_expr ( WN * expr, WN * block, BOOL_INFO * bool_info, BOOL 
 
 /* Table used to promote integers less than 4 bytes into their
  * 4 byte counterparts in order to get the right type for OPCODE_make_op
+ * See definitions in wn_lower.cxx
  */
-
-TYPE_ID Promoted_Mtype [MTYPE_LAST + 1] = {
-  MTYPE_UNKNOWN,  /* MTYPE_UNKNOWN */
-  MTYPE_UNKNOWN,  /* MTYPE_B */
-  MTYPE_I4,       /* MTYPE_I1 */
-  MTYPE_I4,       /* MTYPE_I2 */
-  MTYPE_I4,       /* MTYPE_I4 */
-  MTYPE_I8,       /* MTYPE_I8 */
-  MTYPE_U4,       /* MTYPE_U1 */
-  MTYPE_U4,       /* MTYPE_U2 */
-  MTYPE_U4,       /* MTYPE_U4 */
-  MTYPE_U8,       /* MTYPE_U8 */
-  MTYPE_F4,       /* MTYPE_F4 */
-  MTYPE_F8,       /* MTYPE_F8 */
-  MTYPE_F10,      /* MTYPE_F10 */
-  MTYPE_UNKNOWN,  /* MTYPE_F16 */
-  MTYPE_UNKNOWN,  /* MTYPE_STR */
-  MTYPE_FQ,       /* MTYPE_FQ */
-  MTYPE_M,        /* MTYPE_M */
-  MTYPE_C4,       /* MTYPE_C4 */
-  MTYPE_C8,       /* MTYPE_C8 */
-  MTYPE_CQ,       /* MTYPE_CQ */
-  MTYPE_V,        /* MTYPE_V */
-  MTYPE_UNKNOWN,  /* MTYPE_BS */
-  MTYPE_UNKNOWN,  /* MTYPE_A4 */
-  MTYPE_UNKNOWN,  /* MTYPE_A8 */
-  MTYPE_C10,      /* MTYPE_C10 */
-  MTYPE_C16,      /* MTYPE_C16 */
-};
+extern TYPE_ID Promoted_Mtype [MTYPE_LAST + 1];
 
 #ifdef VHO_DEBUG
 static BOOL      VHO_Switch_Debug = TRUE;

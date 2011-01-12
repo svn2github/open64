@@ -371,7 +371,7 @@ typedef struct inode {
 
 static const char * MSTORE_ACTIONS_name(MSTORE_ACTIONS);
 
-static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
+TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_UNKNOWN,  /* MTYPE_UNKNOWN */
   MTYPE_UNKNOWN,  /* MTYPE_B */
   MTYPE_I4,       /* MTYPE_I1 */
