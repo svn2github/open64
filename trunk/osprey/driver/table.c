@@ -827,7 +827,10 @@ write_get_option (void)
 				   || options[i].syntax == needs_directory_or_null
 #endif
 				   ) {
-				fprintf(f, "\tif (is_directory(next_string(argv,argi))) {\n");
+			  fprintf(f, "\tif (!is_directory(next_string(argv,argi)) && fullwarn)\n");
+			  fprintf(f, "\t\twarning(\"%%s is not a directory\", next_string(argv,argi));\n");
+			  fprintf(f, "\tif (strcmp(next_string(argv,argi),\"-default_options\")) {\n" );
+
 			}
 			fprintf(f, "\t\toptargs = get_optarg(argv, argi);\n");
 			if (options[i].syntax == needs_decimal) {
@@ -846,36 +849,6 @@ write_get_option (void)
 			  fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
 				  options[i].flag);
 			fprintf(f, "\t\t/* NOTREACHED */\n");
-			if (options[i].syntax == needs_directory
-#ifdef KEY
-			    || options[i].syntax == needs_directory_or_null
-#endif
-			    ) {
-				fprintf(f, "\t} else if (!is_last_char(argv,argi)) {\n");
-				fprintf(f, "\t\tif (fullwarn) {\n");
-				fprintf(f, "\t\t\twarning(\"%%s does not refer to a valid directory\", option_name);\n");
-				fprintf(f, "\t\t}\n");
-				fprintf(f, "\t\toptargs = get_optarg(argv,argi);\n");
-				fprintf(f, "\t\tget_next_arg(argi);\n");
-#ifdef KEY
-				fprintf(f, "\t\treturn add_any_string_option(%s,optargs);\n", 
-					options[i].flag);
-#else
-				fprintf(f, "\t\treturn add_string_option(%s,optargs);\n", 
-					options[i].flag);
-#endif
-				fprintf(f, "\t\t/* NOTREACHED */\n");
-			}
-#ifdef KEY
-			// Ignore %D? option if no dir arg is found by changing
-			// them into -dummy.
-			if (options[i].syntax == needs_directory_or_null) {
-				fprintf(f, "\t} else {\n");
-				fprintf(f, "\t  optargs = current_string(argv,argi);\n");
-				fprintf(f, "\t  get_next_arg(argi);\n");
-				fprintf(f, "\t  return O_dummy;\n");
-			}
-#endif
 			if (options[i].syntax != needs_string
 			    && options[i].syntax != needs_string_or_dash
 					) {
