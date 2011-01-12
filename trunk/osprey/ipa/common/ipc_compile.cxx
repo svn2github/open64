@@ -208,7 +208,7 @@ static const char*ipa_basename(char *name){
     */
 static char* proper_name(char *name){
     for(char *i = name; *i; i++) {
-      if ( *i == '-' ) *i = '_';
+      if ( !isalnum(*i) ) *i = '_';
     }
     return name;
 }
