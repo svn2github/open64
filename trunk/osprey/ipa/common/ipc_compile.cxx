@@ -1112,7 +1112,7 @@ void ipacom_doit (const char* ipaa_filename)
     strcpy (tmpname, outfilename);
     if (Feedback_Filename) {
             fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on -fb_create %s %s -Wb,-CG:enable_feedback=off -TENV:object_name=_%s\n\n",
-                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args, proper_name((const string)ipa_basename(outfilename)));
+                tmpdir_macro, symtab_command_line, Feedback_Filename, symtab_extra_args, proper_name((const string)ipa_basename(tmpname)));
     } else if (Annotation_Filename) {
       fprintf (makefile, "\t"
 #ifdef KEY
@@ -1126,10 +1126,10 @@ void ipacom_doit (const char* ipaa_filename)
 #endif
 	       tmpdir_macro, symtab_command_line, 
 	       Get_Annotation_Filename_With_Path (),
-	       symtab_extra_args, proper_name((const string)ipa_basename(outfilename)));
+	       symtab_extra_args, proper_name((const string)ipa_basename(tmpname)));
     } else {
              fprintf(makefile, "\tcd %s; %s -Wb,-OPT:procedure_reorder=on %s -Wb,-CG:enable_feedback=off -TENV:object_name=_%s\n\n",
-                     tmpdir_macro, symtab_command_line, symtab_extra_args, proper_name((const string)ipa_basename(outfilename)));
+                     tmpdir_macro, symtab_command_line, symtab_extra_args, proper_name((const string)ipa_basename(tmpname)));
     }                                                                                                                    
     fprintf(makefile, "%s/%s" TARGET_DELIMITER "%s/%s %s/%s\n\n",
             tmpdir_macro, elf_symtab_name,
