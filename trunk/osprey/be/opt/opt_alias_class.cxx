@@ -1117,9 +1117,7 @@ ALIAS_CLASSIFICATION::Classify_deref_of_expr(WN  *const expr,
   // PARM, since we want our return value to describe all the
   // information available to the callee.
   else if (OPCODE_is_load(opc) ||
-#if defined (TARG_SL)
  	   (opr == OPR_PARM && WN_Parm_Dereference(expr)) ||
-#endif
 	   Is_fortran_reference_parm(expr)) {
     FmtAssert(OPERATOR_is_scalar_iload (opr) ||
 	      opr == OPR_MLOAD ||
@@ -2182,9 +2180,7 @@ ALIAS_CLASSIFICATION::Finalize_ac_map_wn(WN *wn)
   }
   else if (OPCODE_is_load(opc) ||
 	   OPCODE_is_store(opc) ||
-#if defined (TARG_SL)
 	   (opr==OPR_PARM && WN_Parm_Dereference(wn)) ||
-#endif
 	   Is_fortran_reference_parm(wn) ||
 	   ((opr == OPR_LDA || opr == OPR_LDMA) &&
 	    Is_LDA_of_variable(wn))) {
