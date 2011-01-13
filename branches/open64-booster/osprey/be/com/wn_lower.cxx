@@ -371,7 +371,7 @@ typedef struct inode {
 
 static const char * MSTORE_ACTIONS_name(MSTORE_ACTIONS);
 
-static TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
+TYPE_ID Promoted_Mtype[MTYPE_LAST + 1] = {
   MTYPE_UNKNOWN,  /* MTYPE_UNKNOWN */
   MTYPE_UNKNOWN,  /* MTYPE_B */
   MTYPE_I4,       /* MTYPE_I1 */
@@ -8189,7 +8189,6 @@ static WN *lower_store(WN *block, WN *tree, LOWER_ACTIONS actions)
         WN_Set_Linenum (stid, WN_Get_Linenum(tree));
         WN_INSERT_BlockLast(block, stid);
 
-        WN_Delete(WN_kid0(tree));
 	WN_Delete( tree );
 
 	ldid = WN_Ldid( mtype, 4, c4temp_st, MTYPE_To_TY(mtype) );

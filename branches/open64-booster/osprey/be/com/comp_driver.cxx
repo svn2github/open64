@@ -124,27 +124,22 @@ O64_Driver::RegisterComponent(O64_COMPONENT component, const O64_ComponentDescri
     _NumRegisteredComponents++;
 }
 
-// Setup O64_Option class to store option values from the command line.
+// Process O64_Option class to store option values from the command line.
 // The new option handling mechnisam co-exists with the old option handling
-// mechnisam. The option is changed to " ", if it is handled by new mechnisam. 
-void
-O64_Driver::SetupOptions(INT32 argc, char ** argv)
+// mechnisam.
+bool
+O64_Driver::ProcessComponentOption(char * argv)
 {
-    FmtAssert(_NumRegisteredComponents == COMPONENT_last, 
+    FmtAssert(_NumRegisteredComponents == COMPONENT_last,
         ("[O64_Driver] Component Registration Error"));
 
-    _CurrentOption = CXX_NEW(O64_Option, &_DriverPool);
+    if (_CurrentOption == NULL) {
+        _CurrentOption = CXX_NEW(O64_Option, &_DriverPool);
+        Is_True(_CurrentOption, ("[O64_Driver] Null CurrentOption"));
+    }
 
-    Is_True(_CurrentOption, ("[O64_Driver] Null CurrentOption"));
-
-    for (INT32 i = 1; i < argc; i++) {
-        if (argv[i] != NULL) {
-            if (_CurrentOption->ProcessComponentOption_(argv[i]))
-                argv[i] = " ";
-        }    
-    }        
+    return (_CurrentOption->ProcessComponentOption_(argv));
 }
-
 
 TRACE_OPTION_KIND
 O64_Driver::GetTraceKind()
@@ -280,24 +275,30 @@ O64_Option::ProcessComponentOption_(char * component_options)
     if (!component_options) return true;
 
     char * option_dup, * option_start;
-    option_dup = STRDUP(component_options);
-    option_start = STRTOK(option_dup, "-:");
-    if (!STRCMP("OPTIONS", option_start)) {
+
+    // the first char should be '-'
+    option_start = component_options;
+    if (*option_start != '-') return false;
+
+    option_start++;
+    if (*option_start == '\0') return false;
+
+    option_dup = STRDUP(option_start);
+
+    if (!STRCMP("OPTIONS", option_dup)) {
         PrintOptionsUsage_();
         return true;
     }
-    
-    while (option_start != NULL) {
-        bool component_found = false;
-        for (INT32 component = 0; component <= GetNumOfComponents_(); ++component)
-            if (!STRCASECMP(GetComponentName_(component), option_start)) {
-                option_start = STRTOK(NULL, "-:");
-                if (ProcessOptionList_(component, option_start))
-                    component_found = true;
-            }
 
-        if (component_found) return true;    
-        option_start = STRTOK(NULL, "-:");
+    option_start = STRTOK(option_dup, ":");
+    if (option_start == NULL) return false;
+
+    for (INT32 component = 0; component <= GetNumOfComponents_(); ++component) {
+        if (!STRCASECMP(GetComponentName_(component), option_start)) {
+            option_start = STRTOK(NULL, ":");
+            if (ProcessOptionList_(component, option_start))
+                return true;
+        }
     }
 
     return false;

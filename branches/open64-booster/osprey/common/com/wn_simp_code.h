@@ -530,6 +530,16 @@ inline TCON SIMP_Str_ConstVal (simpnode x)
 }
 #endif // KEY
 
+inline INT64 SIMP_Int_Str_ConstVal(simpnode x) 
+{ 
+    if (SIMP_Is_Int_Constant (x))
+        return SIMP_Int_ConstVal(x);
+    else if (SIMP_Is_Str_Constant (x))
+        return Targ_To_Host(SIMP_Str_ConstVal(x));
+    else    
+        Fail_FmtAssertion("Not a int/str constant");
+} 
+
 #define IS_POWER_OF_2(x) (((x)!=0) && ((x) & ((x)-1))==0)
 
 /* Utility routine to create a 64 bit number with from 0 to 64 bits in it.
@@ -3644,7 +3654,7 @@ static simpnode  simp_band( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+      c1 = SIMP_Int_Str_ConstVal(k1); 
       if (c1 == 0) {
 	 SHOW_RULE("j&0");
 	 r = SIMP_INTCONST(ty,0);
@@ -3803,18 +3813,8 @@ static simpnode  simp_bior( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-#ifdef TARG_IA64
-      if (SIMP_Is_Int_Constant (k1)) {
-         c1 = SIMP_Int_ConstVal(k1); 
-      } else if (SIMP_Is_Str_Constant (k1)) {
-         c1 = Targ_To_Host (SIMP_Str_ConstVal (k1)); 
-      } else {
-         Fail_FmtAssertion ("Not a int/str constant");
-      }
-#else
-       c1 = SIMP_Int_ConstVal(k1); 
-#endif
-      if (c1 == 0) {
+     c1 = SIMP_Int_Str_ConstVal(k1);
+     if (c1 == 0) {
 	 SHOW_RULE("j|0");
 	 r = k0;
 	 SIMP_DELETE(k1);
@@ -4038,7 +4038,7 @@ static simpnode  simp_bxor( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+      c1 = SIMP_Int_Str_ConstVal(k1); 
       if (c1 == 0) {
 	 SHOW_RULE("j^0");
 	 r = k0;
@@ -4123,7 +4123,7 @@ static simpnode  simp_land( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+      c1 = SIMP_Int_Str_ConstVal(k1); 
       if (c1 == 0) {
 	 SHOW_RULE(" j&&0");
 	 r = SIMP_INTCONST(ty,0);
@@ -4195,7 +4195,7 @@ static simpnode  simp_lior( OPCODE opc,
    ty = OPCODE_rtype(opc);
 
    if (k1const) {
-      c1 = SIMP_Int_ConstVal(k1); 
+      c1 = SIMP_Int_Str_ConstVal(k1); 
       if (c1 == 0) {
 	 SHOW_RULE("j||0");
 	 r = k0;
@@ -4253,7 +4253,7 @@ static simpnode  simp_cand( OPCODE opc,
    INT64   c1;
 
    if (k0const) {
-     c1 = SIMP_Int_ConstVal(k0); 
+     c1 = SIMP_Int_Str_ConstVal(k0); 
      if (c1 == 0) {
        SHOW_RULE(" 0 c&& j");
        r = SIMP_INTCONST(OPCODE_rtype(opc),0);
@@ -4265,7 +4265,7 @@ static simpnode  simp_cand( OPCODE opc,
 	SIMP_DELETE(k0);
       }
    } else if (k1const) {
-     c1 = SIMP_Int_ConstVal(k1); 
+     c1 = SIMP_Int_Str_ConstVal(k1); 
      if (c1 != 0) {
        SHOW_RULE(" j c&& 1");
        r = k0;
@@ -4311,7 +4311,7 @@ static simpnode  simp_cior( OPCODE opc,
 #endif
 
    if (k0const) {
-     c1 = SIMP_Int_ConstVal(k0); 
+     c1 = SIMP_Int_Str_ConstVal(k0); 
      if (c1 == 0) {
        SHOW_RULE("0 c|| j");
        r = k1;
@@ -4323,7 +4323,7 @@ static simpnode  simp_cior( OPCODE opc,
        SIMP_DELETE_TREE(k1);
      }
    } else if (k1const) {
-     c1 = SIMP_Int_ConstVal(k1); 
+     c1 = SIMP_Int_Str_ConstVal(k1); 
       if (c1 == 0) {
 	SHOW_RULE("j c|| 0");
 	r = k0;

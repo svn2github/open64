@@ -79,6 +79,7 @@
 #include "wn_fio.h"
 #include "wn_instrument.h"
 #include "driver_util.h"
+#include "comp_decl.h"
 
 BOOL warnings_are_errors = FALSE;
 
@@ -204,6 +205,11 @@ Process_Command_Line (INT argc, char **argv)
 	    /* process as command-line option group */
 	    if (Process_Command_Line_Group (cp, Common_Option_Groups))
 		continue;
+
+        /* process a command-line option group using componentization-based
+        new approach */
+        if (O64_Driver::GetInstance()->ProcessComponentOption(argv[i]))
+        continue;
 
 	    switch ( *cp++ ) {
               

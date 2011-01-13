@@ -2350,7 +2350,11 @@ ConstraintGraph::handleCall(WN *callWN)
       for (INT i = First_Int_Preg_Param_Offset;
           i < First_Int_Preg_Param_Offset+MAX_NUMBER_OF_REGISTER_PARAMETERS;
           ++i) {
+#if defined(TARG_X8664) || defined(TARG_IA32)
         PLOC ploc = { i,0,0,0,0 };
+#else
+        PLOC ploc = { i,0,0,0 };
+#endif
         ST *st = Get_Vararg_Symbol(ploc);
         if (st) {
           _cgStInfoMap[CG_ST_st_idx(st)] = vaStInfo;

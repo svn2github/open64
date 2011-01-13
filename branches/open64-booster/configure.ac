@@ -119,8 +119,21 @@ BUILD_MULTILIB=NO
 # BUILD_BOTH is (only) used in osprey/Makefile.gsetup.in for setting -fPIC.
 BUILD_BOTH=
 
-# Set BUILD_GNU3 to "YES" to build the GCC 3.3 C/C++ front-end.
-BUILD_GNU3=NO
+# Set whether to build the GCC 3.3 C/C++ front-end.
+AC_ARG_ENABLE([gnu3],
+  AS_HELP_STRING([--enable-gnu3], [Enable GNU3-based C/C++ frontend]))
+
+AS_IF([test "x$enable_gnu3" = "xyes"], [
+  BUILD_GNU3=YES
+])
+
+# Set whether Fortran driver and libraries will be built.
+AC_ARG_ENABLE([fortran],
+  AS_HELP_STRING([--disable-fortran], [Disable Fortran language support]))
+
+AS_IF([test "x$enable_fortran" != "xno"], [
+  BUILD_FORTRAN=YES
+])
 
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
@@ -310,6 +323,7 @@ AC_SUBST([BUILD_MULTILIB])
 AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
 AC_SUBST([BUILD_GNU3])
+AC_SUBST([BUILD_FORTRAN])
 AC_SUBST([GCC_CONFIGURE_TARG])
 AC_SUBST([GCC_DIR])
 
@@ -335,7 +349,6 @@ AC_CONFIG_FILES([
   osprey/targdir/lw_inline/Makefile
   osprey/targdir/ipa/Makefile
   osprey/targdir/whirl2c/Makefile
-  osprey/targdir/whirl2f/Makefile
   osprey/targdir/libcomutil/Makefile
   osprey/targdir/ir_tools/Makefile
   osprey/targdir/libcmplrs/Makefile
@@ -345,13 +358,19 @@ AC_CONFIG_FILES([
   osprey/targdir/orc_ict/Makefile
   osprey/targdir/orc_intel/Makefile
   osprey/targdir/libkapi/Makefile
+])
+
+if test "${BUILD_FORTRAN}" = "YES"; then
+ AC_CONFIG_FILES([
+  osprey/targdir/whirl2f/Makefile      
   osprey/targdir/crayf90/Makefile
   osprey/targdir/crayf90/fe90/Makefile
   osprey/targdir/crayf90/libf90sgi/Makefile
   osprey/targdir/crayf90/sgi/Makefile
-])
+ ])
+fi
 
-if test $BUILD_GNU3 = "YES"; then
+if test "${BUILD_GNU3}" = "YES"; then
   AC_CONFIG_FILES([
     osprey/targdir/gccfe/Makefile
     osprey/targdir/gccfe/gnu/Makefile
@@ -369,20 +388,31 @@ fi
 if test "${BUILD_TARGET}" = "SL"; then
   LIBLIST="include"
 elif test "${BUILD_TARGET}" = "IA64"; then
-  LIBLIST="include libopenmp libfortran libmv libu"
+  LIBLIST="include libopenmp libmv"
+  if test "${BUILD_FORTRAN}" = "YES"; then
+     LIBLIST="$LIBLIST libfortran libu"
+  fi
 else
-  LIBLIST="include libopenmp libfortran libhugetlbfs libmv libu"
+  LIBLIST="include libopenmp libhugetlbfs libmv"
+  if test "${BUILD_FORTRAN}" = "YES"; then
+     LIBLIST="$LIBLIST libfortran libu"
+  fi
 fi
 
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
   osprey/targdir_lib/include/Makefile
   osprey/targdir_lib/libopenmp/Makefile
-  osprey/targdir_lib/libfortran/Makefile
   osprey/targdir_lib/libhugetlbfs/Makefile
   osprey/targdir_lib/libmv/Makefile
-  osprey/targdir_lib/libu/Makefile
 ])
+
+if test "${BUILD_FORTRAN}" = "YES"; then
+   AC_CONFIG_FILES([
+   osprey/targdir_lib/libfortran/Makefile
+   osprey/targdir_lib/libu/Makefile
+])
+fi
 
 if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
   LIBLIST="libopen64rt libacml_mv $LIBLIST libinstr2"
@@ -398,11 +428,15 @@ if test $BUILD_MULTILIB = "YES"; then
     osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in
     osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in
     osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in
-    osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in
     osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in
     osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in
+  ])
+  if test "${BUILD_FORTRAN}" = "YES"; then
+    AC_CONFIG_FILES([
+    osprey/targdir_lib2/libfortran/Makefile:osprey/targdir_lib/libfortran/Makefile.in
     osprey/targdir_lib2/libu/Makefile:osprey/targdir_lib/libu/Makefile.in
   ])
+  fi
   if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
     AC_CONFIG_FILES([
       osprey/targdir_lib2/libopen64rt/Makefile:osprey/targdir_lib/libopen64rt/Makefile.in

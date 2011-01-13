@@ -2202,10 +2202,7 @@ static void check_for_elementals(int	attr_idx)
 
 # ifdef _DEBUG
    if (ATD_FLD(attr_idx) != IR_Tbl_Idx) {
-      /* Demoted this assertion, since we haven't seen a situation
-       * where it does not trigger.
-       */
-      PRINTMSG(line, 626, Dev_Warning, col,
+      PRINTMSG(line, 626, Internal, col,
                "ATD_FLD(attr_idx) == IR_Tbl_Idx", "check_for_elementals");
    }
 # endif
@@ -2217,10 +2214,8 @@ static void check_for_elementals(int	attr_idx)
    if (IR_FLD_R(asg_idx) != IR_Tbl_Idx ||
        IR_OPR(IR_IDX_R(asg_idx)) != Call_Opr ||
        ! ATP_ELEMENTAL(IR_IDX_L(IR_IDX_R(asg_idx)))) {
-      /* Demoted this assertion, since we haven't seen a situation
-       * where it does not trigger.
-       */
-      PRINTMSG(line, 626, Dev_Warning, col,
+
+      PRINTMSG(line, 626, Internal, col,
                "elemental function", "check_for_elementals");
    }
 # endif

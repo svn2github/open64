@@ -1826,6 +1826,10 @@ DCE::Unreachable_code_elim( void )
 	  nextsucc = succ_ref->Next();
 	  changed_cflow |= Update_predecessor_lists( succ_ref->Node() );
 	}
+        if (bb->Pred() == NULL) {
+          // bb from fake entry is removed, cfg is changed
+          changed_cflow = TRUE;
+        }
 	    
 	_cfg->Remove_bb(bb);
 #ifdef Is_True_On

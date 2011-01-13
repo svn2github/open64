@@ -1,4 +1,5 @@
 #
+#  Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2000 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -136,7 +137,13 @@ ifeq ($(BUILD_COMPILER), EDG)
 SI_EXPORT_LIST = $(TARGINFO_GENERATE_DIR)/si.Exported
 endif
 
-VPATH    =  $(SRC_DIRS)
+VPATH    =  \
+  $(CURRENT_DIR)		\
+  $(TARGINFO_ACCESS_DIR)	\
+  $(TARGINFO_GENERATE_DIR)	\
+  $(TARGINFO_DIR)		\
+  $(TARGINFO_MSCHED_DIR)  	\
+  $(COMMON_COM_DIR)	  
 
 LCOPTS = $(STD_COMPILE_OPTS)
 LCDEFS = $(HOSTDEFS) $(TARGDEFS)
@@ -208,6 +215,23 @@ LIB_LOC = $(STD_MONGOOSE_LINUX_LOC)
 else
 LIB_LOC = $(STD_MONGOOSE_LOC)
 endif
+
+TARGINFO_ISA_SRCS = \
+	isa_hazards.cxx		\
+	isa_pack.cxx		\
+	isa_decode.cxx		\
+	isa_pseudo.cxx		\
+	isa_print.cxx
+
+TARGINFO_GENERATE_SRCS = \
+	isa_hazards_gen.cxx	\
+	isa_pack_gen.cxx	\
+	isa_decode_gen.cxx	\
+	isa_pseudo_gen.cxx	\
+	isa_print_gen.cxx	\
+	gen_util.cxx
+
+TARGINFO_GENERATE_HDRS = $(TARGINFO_GENERATE_SRCS:.cxx=.h)
 
 TARGINFO_ACCESS_SRCS = \
 	ti_asm.c		\
@@ -420,34 +444,36 @@ endif
 #
 #----------------------------------------------------------------------
 
-# to install header files, they must be in the current directory.
-ti_asm.h:
-	ln -s $(OLD_TARGINFO_ACCESS_DIR)/ti_asm.h ti_asm.h
-ti_bundle.h:
-	ln -s $(OLD_TARGINFO_ACCESS_DIR)/ti_bundle.h ti_bundle.h
-ti_latency.h:
-	ln -s $(OLD_TARGINFO_ACCESS_DIR)/ti_latency.h ti_latency.h
-ti_errors.h:
-	ln -s $(OLD_TARGINFO_ACCESS_DIR)/ti_errors.h ti_errors.h
+#
+# Set up links to "old" targ_info source files.
+#
+$(TARGINFO_ACCESS_SRCS) $(TARGINFO_ACCESS_HDRS) $(OLD_TARGINFO_ACCESS_C):
+	ln -sf $(OLD_TARGINFO_ACCESS_DIR)/$@ $@
+
+$(TARGINFO_GENERATE_SRCS) $(TARGINFO_GENERATE_HDRS):
+	ln -sf $(OLD_TARGINFO_GENERATE_DIR)/$@ $@
+
+$(TARGINFO_ISA_SRCS):
+	ln -sf $(OLD_TARGINFO_ISA_DIR)/$@ $@
+
 
 ti_asm.o: ti_asm.c topcode.h targ_isa_operands.h targ_isa_print.h \
 	  targ_isa_pack.h targ_isa_bundle.h targ_isa_decode.h \
 	  targ_isa_pseudo.h ti_errors.h ti_asm.h 
-	$(CC) $(CFLAGS) -c $(OLD_TARGINFO_ACCESS_DIR)/ti_asm.c
+	$(CC) $(CFLAGS) -c ti_asm.c
 
 ti_bundle.o: ti_bundle.c ti_si.h targ_isa_bundle.h ti_bundle.h 
-	$(CC) $(CFLAGS) -c $(OLD_TARGINFO_ACCESS_DIR)/ti_bundle.c
+	$(CC) $(CFLAGS) -c ti_bundle.c
 
 ti_latency.o: ti_latency.c ti_si.h targ_isa_properties.h targ_isa_hazards.h \
 	      targ_isa_subset.h ti_errors.h ti_latency.h 
-	$(CC) $(CFLAGS) -c $(OLD_TARGINFO_ACCESS_DIR)/ti_latency.c
+	$(CC) $(CFLAGS) -c ti_latency.c
 
 ti_errors.o: ti_errors.c ti_errors.h 
-	$(CC) $(CFLAGS) -c $(OLD_TARGINFO_ACCESS_DIR)/ti_errors.c
-
+	$(CC) $(CFLAGS) -c ti_errors.c
 
 gen_util.o: gen_util.cxx gen_util.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/gen_util.cxx
+	$(CXX) $(CXXFLAGS) -c gen_util.cxx
 
 
 ifeq ($(BUILD_COMPILER), EDG)
@@ -480,10 +506,10 @@ isa_hazards_gen: isa_hazards_gen.o gen_util.o isa_hazards.o topcode.o \
 	    gen_util.o targ_isa_subset.o topcode.o -o isa_hazards_gen
 
 isa_hazards_gen.o: isa_hazards_gen.cxx isa_hazards_gen.h topcode.h targ_isa_subset.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/isa_hazards_gen.cxx
+	$(CXX) $(CXXFLAGS) -c isa_hazards_gen.cxx
 
 isa_hazards.o: isa_hazards.cxx isa_hazards_gen.h topcode.h targ_isa_subset.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_ISA_DIR)/isa_hazards.cxx
+	$(CXX) $(CXXFLAGS) -c isa_hazards.cxx
 
 
 targ_isa_operands.o: targ_isa_operands.c targ_isa_operands.h targ_isa_properties.h
@@ -503,10 +529,10 @@ isa_pack_gen: gen_util.o isa_pack_gen.o gen_util.o isa_pack.o \
 	    topcode.o targ_isa_properties.o -o isa_pack_gen
 
 isa_pack_gen.o: isa_pack_gen.cxx isa_pack_gen.h topcode.h targ_isa_properties.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/isa_pack_gen.cxx
+	$(CXX) $(CXXFLAGS) -c isa_pack_gen.cxx
 
 isa_pack.o: isa_pack.cxx isa_pack_gen.h topcode.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_ISA_DIR)/isa_pack.cxx
+	$(CXX) $(CXXFLAGS) -c isa_pack.cxx
 
 
 ## targ_isa_decode.[ch] ##
@@ -519,11 +545,11 @@ isa_decode_gen: gen_util.o isa_decode_gen.o gen_util.o isa_decode.o topcode.o ta
 	    topcode.o targ_isa_bundle.o -o isa_decode_gen
 
 isa_decode_gen.o: isa_decode_gen.cxx isa_decode_gen.h topcode.h 
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/isa_decode_gen.cxx
+	$(CXX) $(CXXFLAGS) -c isa_decode_gen.cxx
 
 isa_decode.o: isa_decode.cxx isa_decode_gen.h topcode.h targ_isa_bundle.h \
 	      targ_isa_pack.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_ISA_DIR)/isa_decode.cxx
+	$(CXX) $(CXXFLAGS) -c isa_decode.cxx
 
 
 ## targ_isa_pseudo.[ch] ##
@@ -540,10 +566,10 @@ isa_pseudo_gen: gen_util.o isa_pseudo_gen.o gen_util.o isa_pseudo.o topcode.o \
 	    -o isa_pseudo_gen
 
 isa_pseudo_gen.o: isa_pseudo_gen.cxx isa_pseudo_gen.h topcode.h targ_isa_operands.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/isa_pseudo_gen.cxx
+	$(CXX) $(CXXFLAGS) -c isa_pseudo_gen.cxx
 
 isa_pseudo.o: isa_pseudo.cxx isa_pseudo_gen.h topcode.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_ISA_DIR)/isa_pseudo.cxx
+	$(CXX) $(CXXFLAGS) -c isa_pseudo.cxx
 
 
 ## targ_isa_print.[ch] ##
@@ -557,10 +583,10 @@ isa_print_gen: gen_util.o isa_print_gen.o isa_print.o \
 	    topcode.o targ_isa_properties.o -o isa_print_gen
 
 isa_print_gen.o: isa_print_gen.cxx isa_print_gen.h topcode.h targ_isa_properties.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_GENERATE_DIR)/isa_print_gen.cxx
+	$(CXX) $(CXXFLAGS) -c isa_print_gen.cxx
 
 isa_print.o: isa_print.cxx isa_print_gen.h topcode.h
-	$(CXX) $(CXXFLAGS) -c $(OLD_TARGINFO_ISA_DIR)/isa_print.cxx
+	$(CXX) $(CXXFLAGS) -c isa_print.cxx
 
 
 ## topcode.[ch] ##

@@ -500,7 +500,8 @@ MA_OFFSET::Union (const MA_OFFSET* that, LMV_LOOP_INFO* loopinfo) {
         else {
           if (!this_vr.High_is_cr())
             break;
-          if (this_vr.High_cr() != r->high.cr())
+          if (r->high.Is_const() || 
+	      this_vr.High_cr() != r->high.cr())
             break;
 
           INT const_val = this_expr->Const_part();
