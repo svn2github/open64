@@ -123,6 +123,14 @@ Repl_Size16_Instr::Replace_CurOP (OP *newop) {
     Copy_WN_For_Memory_OP(newop, _cur_op);	
   }
   BB_Insert_Op_Before(OP_bb(_cur_op), _cur_op, newop);
+  
+  if (_cur_op == BB_entry_sp_adj_op(_cur_op->bb)) {
+    Set_BB_entry_sp_adj_op(_cur_op->bb,newop);
+  }
+  if (_cur_op == BB_exit_sp_adj_op(_cur_op->bb)) {
+    Set_BB_exit_sp_adj_op(_cur_op->bb,newop);
+  }
+
   OP_Change_To_Noop(_cur_op);
   _cur_op = newop;
   return; 
