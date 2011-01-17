@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -68,5 +72,5 @@ void Initialize_Targ_Info(void)
 
   proc = PROCESSOR_loongson;
   
-  TI_Initialize(abi, isa, proc, Targ_Path);
+  TI_Initialize(abi, isa, proc);
 }

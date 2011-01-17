@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -114,5 +114,5 @@ void Initialize_Targ_Info(void)
     /*NOTREACHED*/
   }
 
-  TI_Initialize(abi, isa, proc, Targ_Path);
+  TI_Initialize(abi, isa, proc);
 }

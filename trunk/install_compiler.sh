@@ -594,23 +594,6 @@ INSTALL_MISC () {
         INSTALL_EXEC_SUB ${AREA}/targ_info/itanium.so ${PHASEPATH}/itanium.so
         INSTALL_EXEC_SUB ${AREA}/targ_info/itanium2.so ${PHASEPATH}/itanium2.so
     fi
-    if [ "$TARG_HOST" = "ppc32" ]; then
-        INSTALL_EXEC_SUB ${AREA}/targ_info/ppc.so ${PHASEPATH}/ppc.so        
-    fi
-    if [ "$TARG_HOST" = "x8664" ]; then
-        INSTALL_EXEC_SUB ${AREA}/targ_info/opteron.so ${PHASEPATH}/opteron.so
-        INSTALL_EXEC_SUB ${AREA}/targ_info/em64t.so ${PHASEPATH}/em64t.so
-        INSTALL_EXEC_SUB ${AREA}/targ_info/core.so ${PHASEPATH}/core.so
-        INSTALL_EXEC_SUB ${AREA}/targ_info/wolfdale.so ${PHASEPATH}/wolfdale.so
-        INSTALL_EXEC_SUB ${AREA}/targ_info/barcelona.so ${PHASEPATH}/barcelona.so
-        INSTALL_EXEC_SUB ${AREA}/targ_info/orochi.so ${PHASEPATH}/orochi.so
-    fi
-#    if [ ! -z "$ROOT" ] ; then
-#        for i in gcc f77 as ld g++ gas as ; do
-#            x=`which $i 2>/dev/null`
-#            [ ! -z "$x" ] && ln -s $x $BIN_DIR/`basename $x` 2>/dev/null
-#        done
-#    fi
 
     # install some scripts
     [ ! -d ${PREBUILT_BIN}/misc ] && return 0

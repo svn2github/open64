@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2008 NVIDIA Corporation.  All rights reserved.
  */
 
@@ -60,10 +64,9 @@
 
 static RESOURCE res_issue;
 
-int
-main (int argc, char *argv[])
+void Generate_NVISA1 (void)
 {
-  Machine("nvisa1", ISA_SUBSET_nvisa1, argc, argv);
+  Machine("nvisa1", ISA_SUBSET_nvisa1);
 
   res_issue = RESOURCE_Create("issue", 6);
 
@@ -83,6 +86,6 @@ main (int argc, char *argv[])
   Any_Result_Available_Time(1);
   Resource_Requirement(res_issue, 0);
 
-  Machine_Done("nvisa1.c");
+  Machine_Done();
 }
 

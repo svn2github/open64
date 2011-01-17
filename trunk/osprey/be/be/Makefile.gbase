@@ -719,28 +719,6 @@ endif
 LLDLIBS = 
 LLDLIBS += $(LIBIBERTY_OBJS)
 
-# We need to have one of the target .so's on the link line 
-# while building cg.so . This is needed by the linker on linux.
-# So, arbitrarily pick one of the target .so's to define TARGET_SO.
-ifeq ($(BUILD_TARGET), MIPS)
-TARGET_SO = r10000.so
-endif
-ifeq ($(BUILD_TARGET), IA64)
-TARGET_SO = itanium.so
-endif
-ifeq ($(BUILD_TARGET), IA32)
-TARGET_SO = pentium.so
-endif
-ifeq ($(BUILD_TARGET), X8664)
-TARGET_SO = opteron.so
-endif
-ifeq ($(BUILD_TARGET), PPC32)
-TARGET_SO = ppc.so
-endif
-ifeq ($(BUILD_TARGET), LOONGSON)
-TARGET_SO = loongson.so
-endif
-
 VPATH    =  $(SRC_DIRS)
 
 .PHONY: default install first derived_files last
@@ -761,7 +739,6 @@ ifeq ($(BUILD_OS), LINUX)
 	$(call submake,$(BUILD_AREA)/include)
 	$(call submake,$(BUILD_AREA)/libiberty)
  endif
-	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 ifndef SKIP_DEP_BUILD
 ## verify that the targ info stuff is up to date.
@@ -841,7 +818,7 @@ wn_fio.o: wn_fio.cxx
 endif
 
 LDIRT += be wopt.so be.so cg.so lno.so whirl2c.so whirl2f.so purple.so prompf_anl.so
-LDIRT += ipl.so inline.so r4000.so r5000.so r8000.so r10000.so itanium.so pentium.so opteron.so
+LDIRT += ipl.so inline.so
 
 
 ifeq ($(BUILD_PCH), USE_PCH)
@@ -860,17 +837,10 @@ be:  $(BE_DRIVER_OBJS) $(LLDLIBS)
 
 else
 be:  $(BE_DRIVER_OBJS) $(LINK_DSO) be.so
-ifeq ($(BUILD_TARGET), IA64)
-	if ! test -e itanium.so; then ln -sf $(TARG_TARG_INFO_DIR)/itanium.so .; fi
-endif
-ifeq ($(BUILD_TARGET), IA32)
-	if ! test -e pentium.so; then ln -sf $(TARG_TARG_INFO_DIR)/pentium.so .; fi
-endif
 	$(link.c++f) -o be $(BE_DRIVER_OBJS)	\
 		$(LDFLAGS) be.so  $(LINK_DSO_OPTS) $(LINK_DSO) -ldl
 endif
 
-#so_locations : $(BE_BE_DIR)/so_locations
 .PHONY: so_locations
 so_locations : 
 	cp $(BE_BE_DIR)/so_locations so_locations
@@ -893,7 +863,7 @@ be.so:	$(BE_C_OBJS) $(BE_CXX_OBJS) $(BE_AS_OBJS) $(BE_BE_DIR)/so_locations \
 		$(EXPORT_FILE_BE_SO) 
 	$(link.c++f) $(STD_DSO_LOADOPTS) $(EXPORT_LIST_BE_SO) $(BE_C_OBJS) \
 		$(BE_CXX_OBJS) $(BE_AS_OBJS) \
-		$(TARG_INFO_LIB_DIR)/libtarginfo.a $(LINK_TARGET_SO) \
+		$(TARG_INFO_LIB_DIR)/libtarginfo.a \
 		-o $@ $(BE_DSO_OPTS)
 endif
 

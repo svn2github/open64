@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
 /********************************************************************\
 |*                                                                  *|   
 |*  Copyright (c) 2006 by SimpLight Nanoelectronics.                *|
@@ -56,10 +60,9 @@ static RESOURCE res_issue,
 #endif 
                 res_float;	// Float unit
 
-int
-main (int argc, char *argv[])
+void Generate_SL1_DSP (void)
 {
-  Machine("sl1_dsp", ISA_SUBSET_MIPS4, argc, argv);
+  Machine("sl1_dsp", ISA_SUBSET_MIPS4);
 
   res_issue = RESOURCE_Create("issue", 3);
   res_memory = RESOURCE_Create("memory", 1);
@@ -1360,5 +1363,5 @@ main (int argc, char *argv[])
   Alternative_Resource_Requirement(res_integer, 0);
   Alternative_Resource_Requirement(res_issue, 0);
 
-  Machine_Done("sl1_dsp.c");
+  Machine_Done();
 }

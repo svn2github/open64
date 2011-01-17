@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2004 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -103,10 +107,5 @@ void Initialize_Targ_Info(void)
     /*NOTREACHED*/
   }
 
-#if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
-  TI_Initialize(abi, isa, proc, Targ_Path, "");
-#else
-  TI_Initialize(abi, isa, proc, Targ_Path);
-
-#endif
+  TI_Initialize(abi, isa, proc);
 }

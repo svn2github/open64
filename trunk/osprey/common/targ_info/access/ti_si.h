@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 /*
@@ -135,13 +139,13 @@
  *              the following access functions:
  *
  *                  SI_RESOURCE_ID SI_RESOURCE_TOTAL_Resource_Id(
- *                      SI_RESOURCE_TOTAL* total
+ *                      const SI_RESOURCE_TOTAL* total
  *                  )
  *                      Return the RESOURCE_ID whose usage is described by
  *                      <total>.
  *
  *                  INT SI_RESOURCE_TOTAL_Total_Used(
- *                      SI_RESOURCE_TOTAL* total
+ *                      const SI_RESOURCE_TOTAL* total
  *                  )
  *                      Return the usage count of the RESOURCE_ID whose usage
  *                      is described by <total>.
@@ -280,18 +284,18 @@
  *              Returns a set indicating impossible IIs for this resource
  *              class.
  *
- *          SI_RR TSI_II_Resource_Requirement( TOP top, UINT ii )
+ *          SI_RR TSI_II_Resource_Requirement( TOP top, INT ii )
  *              A resource requirement for scheduling a <top> in a pipelined
  *              loop with <ii> cycles.  Guaranteed to have at most <ii> cycles
  *              worth of resource requirement.  This will be NULL if
  *              ii is a member of the bad IIs set.
  *
  *          const SI_RESOURCE_ID_SET*
- *          TSI_II_Cycle_Resource_Ids_Used( SI_ID, id, INT ii )
+ *          TSI_II_Cycle_Resource_Ids_Used( TOP top, INT ii )
  *              See SI_ID_II_Cycle_Resource_Ids_Used.
  *
  *          UINT TSI_Resource_Total_Vector_Size( TOP top )
- *          SI_RESOURCE_TOTAL* TSI_Resource_Total_Vector( TOP top )
+ *          const SI_RESOURCE_TOTAL* TSI_Resource_Total_Vector( TOP top )
  *              A vector and its size that gives the total resource usage for
  *              each SI_RESOURCE_ID for the given <top>.  There will be one
  *              entry for each resource class together with a count of the
@@ -350,8 +354,8 @@ static const char SI_rcs_id[] = "$Source: /proj/osprey/CVS/open64/osprey1.0/comm
 #endif
 #endif
 
-// KEY: Worked around linux "weak" bug for bug 13044.
 #include "ti_si_types.h"
+#include "targ_si.h"
 
 /****************************************************************************
  ****************************************************************************/
@@ -385,53 +389,30 @@ inline SI_BAD_II_SET SI_BAD_II_SET_Empty( void )
 /****************************************************************************
  ****************************************************************************/
 
-inline const char* SI_RESOURCE_Name( SI_RESOURCE* res )
+inline const char* SI_RESOURCE_Name( const SI_RESOURCE* res )
 {
   return res->name;
 }
 
-inline UINT SI_RESOURCE_Id( SI_RESOURCE* res )
+inline UINT SI_RESOURCE_Id( const SI_RESOURCE* res )
 {
   return res->id;
 }
 
-inline UINT SI_RESOURCE_Avail_Per_Cycle( SI_RESOURCE* res )
+inline UINT SI_RESOURCE_Avail_Per_Cycle( const SI_RESOURCE* res )
 {
   return res->avail_per_cycle;
 }
 
-inline UINT SI_RESOURCE_Word_Index( SI_RESOURCE* res )
+inline UINT SI_RESOURCE_Word_Index( const SI_RESOURCE* res )
 {
   return res->word_index;
 }
 
-inline UINT SI_RESOURCE_Bit_Index( SI_RESOURCE* res )
+inline UINT SI_RESOURCE_Bit_Index( const SI_RESOURCE* res )
 {
   return res->bit_index;
 }
-
-#if defined(__linux__) && (defined(TARG_X8664) || defined(TARG_LOONGSON))
-
-extern const int * SI_resource_count_p;
-#define SI_resource_count (*SI_resource_count_p)
-
-extern SI_RESOURCE * const * SI_resources_p;
-#define SI_resources SI_resources_p
-
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-extern INT *SI_resource_count_p;
-#define SI_resource_count (*SI_resource_count_p)
-extern SI_RESOURCE* (*SI_resources_p)[];
-#define SI_resources (*SI_resources_p)
-
-#else
-extern const INT SI_resource_count;
-#pragma weak SI_resource_count
-
-extern SI_RESOURCE* const SI_resources[];
-#pragma weak SI_resources
-
-#endif
 
 inline const char* SI_RESOURCE_ID_Name( SI_RESOURCE_ID id )
 {
@@ -489,34 +470,6 @@ SI_RESOURCE_ID_SET_Complement( SI_RESOURCE_ID_SET s )
 /****************************************************************************
  ****************************************************************************/
 
-#if defined( __linux__ ) && (defined(TARG_X8664) || defined(TARG_LOONGSON))
-
-extern const SI_RRW * SI_RRW_initializer_p;
-#define SI_RRW_initializer (*SI_RRW_initializer_p)
-
-extern const SI_RRW * SI_RRW_overuse_mask_p;
-#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
-
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-extern SI_RRW *SI_RRW_initializer_p;
-#define SI_RRW_initializer (*SI_RRW_initializer_p)
-extern SI_RRW *SI_RRW_overuse_mask_p;
-#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
-
-#else
-
-extern const SI_RRW SI_RRW_initializer;
-#ifdef SHARED_BUILD
-#pragma weak SI_RRW_initializer
-#endif
-
-extern const SI_RRW SI_RRW_overuse_mask;
-#ifdef SHARED_BUILD
-#pragma weak SI_RRW_overuse_mask
-#endif
-
-#endif
-
 inline SI_RRW SI_RRW_Initial(void)
 {
   return SI_RRW_initializer;
@@ -555,64 +508,37 @@ inline INT SI_ISSUE_SLOT_Avail_Per_Cycle( SI_ISSUE_SLOT* slot )
   return slot->avail_per_cycle;
 }
 
-#if defined (__linux__) && (defined(TARG_X8664) || defined(TARG_LOONGSON))
-
-extern const int * SI_issue_slot_count_p;
-#define SI_issue_slot_count (*SI_issue_slot_count_p)
-
-extern SI_ISSUE_SLOT * const * SI_issue_slots_p;
-#define SI_issue_slots SI_issue_slots_p
-
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-extern INT *SI_issue_slot_count_p;
-#define SI_issue_slot_count (*SI_issue_slot_count_p)
-
-extern SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
-#define SI_issue_slots (*SI_issue_slots_p)
-#else
-
-extern const INT SI_issue_slot_count;
-#ifdef SHARED_BUILD
-#pragma weak SI_issue_slot_count
-#endif
-
-extern SI_ISSUE_SLOT* const SI_issue_slots[];
-#ifdef SHARED_BUILD
-#pragma weak SI_issue_slots
-#endif
-
-#endif
-
 inline INT SI_ISSUE_SLOT_Count(void)
 {
-  return SI_issue_slot_count;
+  return si_machines[si_current_machine].SI_issue_slot_count;
 }
 
-inline SI_ISSUE_SLOT* SI_Ith_Issue_Slot( UINT i )
+inline const SI_ISSUE_SLOT* SI_Ith_Issue_Slot( UINT i )
 {
-  return SI_issue_slots[i];
+  return si_machines[si_current_machine].si_issue_slots[i];
 }
 
 /****************************************************************************
  ****************************************************************************/
 
-inline SI_RESOURCE*
-SI_RESOURCE_TOTAL_Resource( SI_RESOURCE_TOTAL* pair )
+inline const SI_RESOURCE*
+SI_RESOURCE_TOTAL_Resource( const SI_RESOURCE_TOTAL* pair )
 {
   return pair->resource;
 }
 
-inline SI_RESOURCE_ID SI_RESOURCE_TOTAL_Resource_Id( SI_RESOURCE_TOTAL* pair )
+inline SI_RESOURCE_ID
+SI_RESOURCE_TOTAL_Resource_Id( const SI_RESOURCE_TOTAL* pair )
 {
   return SI_RESOURCE_Id(SI_RESOURCE_TOTAL_Resource(pair));
 }
 
-inline UINT SI_RESOURCE_TOTAL_Avail_Per_Cycle(SI_RESOURCE_TOTAL* pair)
+inline UINT SI_RESOURCE_TOTAL_Avail_Per_Cycle( const SI_RESOURCE_TOTAL* pair)
 {
   return SI_RESOURCE_Avail_Per_Cycle(SI_RESOURCE_TOTAL_Resource(pair));
 }
 
-inline INT SI_RESOURCE_TOTAL_Total_Used( SI_RESOURCE_TOTAL* pair )
+inline INT SI_RESOURCE_TOTAL_Total_Used( const SI_RESOURCE_TOTAL* pair )
 {
   return pair->total_used;
 }
@@ -636,165 +562,137 @@ inline SI_RRW SI_RR_Cycle_RRW( SI_RR req, UINT cycle )
 /****************************************************************************
  ****************************************************************************/
 
-#if defined (__linux__) && (defined(TARG_X8664) ||defined(TARG_LOONGSON))
-
-extern SI * const * SI_top_si_p;
-#define SI_top_si SI_top_si_p
-
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-extern SI* (*SI_top_si_p)[];
-#define SI_top_si (*SI_top_si_p)
-#else
-
-extern SI* const SI_top_si[];
-#ifdef SHARED_BUILD
-#pragma weak SI_top_si
-#endif
-
-#endif
-
+#ifdef Is_True_On
 inline const char* TSI_Name( TOP top )
 {
-  return SI_top_si[(INT) top]->name;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->name;
 }
+#endif
 
 inline SI_ID TSI_Id( TOP top )
 {
-  return SI_top_si[top]->id;
+  return si_machines[si_current_machine].SI_top_si[top];
 }
 
 inline INT
 TSI_Operand_Access_Time( TOP top, INT operand_index )
 {
-  return SI_top_si[(INT) top]->operand_access_times[operand_index];
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->operand_access_times[operand_index];
 }
 
 inline INT
 TSI_Result_Available_Time( TOP top, INT result_index )
 {
-  return SI_top_si[(INT) top]->result_available_times[result_index];
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->result_available_times[result_index];
 }
 
 inline INT
 TSI_Load_Access_Time( TOP top )
 {
-  return SI_top_si[(INT) top]->load_access_time;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->load_access_time;
 }
 
 inline INT
 TSI_Last_Issue_Cycle( TOP top )
 {
-  return SI_top_si[(INT) top]->last_issue_cycle;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->last_issue_cycle;
 }
 
 inline INT
 TSI_Store_Available_Time( TOP top )
 {
-  return SI_top_si[(INT) top]->store_available_time;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->store_available_time;
 }
 
 inline SI_RR TSI_Resource_Requirement( TOP top )
 {
-  return SI_top_si[(INT) top]->rr;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->rr;
 }
 
 inline SI_RR TSI_Alternative_Resource_Requirement( TOP top )
 {
-  return SI_top_si[(INT) top]->alter_rr;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->alter_rr;
 }
 
 inline SI_BAD_II_SET TSI_Bad_IIs( TOP top )
 {
-  return SI_top_si[(INT) top]->bad_iis;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->bad_iis;
 }
 
 inline SI_RR TSI_II_Resource_Requirement( TOP top, INT ii )
 {
-  SI* const info = SI_top_si[(INT) top];
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
 
-  if ( ii > info->ii_info_size ) return info->rr;
+  if ( ii > si->ii_info_size ) return si->rr;
 
-  return info->ii_rr[ii - 1];
+  return si->ii_rr[ii - 1];
 }
 
 inline const SI_RESOURCE_ID_SET*
-TSI_II_Cycle_Resource_Ids_Used( TOP opcode, INT ii )
+TSI_II_Cycle_Resource_Ids_Used( TOP top, INT ii )
 {
-  SI* const info = SI_top_si[(INT)opcode];
-  if ( ii > info->ii_info_size ) return info->resources_used;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
 
-  return info->ii_resources_used[ii - 1];
+  if ( ii > si->ii_info_size ) return si->resources_used;
+
+  return si->ii_resources_used[ii - 1];
 }
 
 inline UINT TSI_Valid_Issue_Slot_Count( TOP top )
 {
-  return SI_top_si[(INT) top]->valid_issue_slot_count;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->valid_issue_slot_count;
 }
 
 inline SI_ISSUE_SLOT* TSI_Valid_Issue_Slots( TOP top, UINT i )
 {
-  return SI_top_si[(INT) top]->valid_issue_slots[i];
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->valid_issue_slots[i];
 }
 
 inline UINT TSI_Resource_Total_Vector_Size( TOP top )
 {
-  return SI_top_si[(INT) top]->resource_total_vector_size;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->resource_total_vector_size;
 }
 
-inline SI_RESOURCE_TOTAL* TSI_Resource_Total_Vector( TOP top )
+inline const SI_RESOURCE_TOTAL* TSI_Resource_Total_Vector( TOP top )
 {
-  return SI_top_si[(INT) top]->resource_total_vector;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->resource_total_vector;
 }
 
 inline INT TSI_Write_Write_Interlock( TOP top )
 {
-  return SI_top_si[(INT) top]->write_write_interlock;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_top_si[top] - 1];
+  return si->write_write_interlock;
 }
 
 /****************************************************************************
  ****************************************************************************/
 
-#if defined (__linux__) && (defined(TARG_X8664) || defined(TARG_LOONGSON))
-
-extern const int * SI_ID_count_p;
-#define SI_ID_count (*SI_ID_count_p)
-
-extern SI * const * SI_ID_si_p;
-#define SI_ID_si SI_ID_si_p
-
-#elif defined(TARG_SL) || defined(TARG_MIPS)
-extern INT *SI_ID_count_p;
-#define SI_ID_count (*SI_ID_count_p)
-extern SI *(*SI_ID_si_p)[];
-#define SI_ID_si (*SI_ID_si_p)
-
-
-#else
-
-extern const INT SI_ID_count;
-#ifdef SHARED_BUILD
-#pragma weak SI_ID_count
-#endif
-
-extern SI* const SI_ID_si[];
-#ifdef SHARED_BUILD
-#pragma weak SI_ID_si
-#endif
-
-#endif
-
 inline INT SI_ID_Count(void)
 {
-  return SI_ID_count;
+  return si_machines[si_current_machine].SI_ID_count;
 }
 
 inline const SI_RESOURCE_ID_SET*
 SI_ID_II_Cycle_Resource_Ids_Used( SI_ID id, INT ii )
 {
-  SI* const info = SI_ID_si[id];
-  if ( ii > info->ii_info_size ) return info->resources_used;
+  const SI* si = &SI_all[si_machines[si_current_machine].SI_ID_si[id] - 1];
 
-  return info->ii_resources_used[ii - 1];
+  if ( ii > si->ii_info_size ) return si->resources_used;
+
+  return si->ii_resources_used[ii - 1];
 }
   
 

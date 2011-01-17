@@ -70,9 +70,9 @@
 #include "topcode.h"
 
 
-int main (int argc, char *argv[])
+void Generate_EM64T (void)
 {
-  Machine( "em64t", ISA_SUBSET_x86_64, argc, argv );
+  Machine( "em64t", ISA_SUBSET_x86_64 );
 
   const RESOURCE res_issue  = RESOURCE_Create( "issue",  3 );
   const RESOURCE res_alu    = RESOURCE_Create( "alu",    3 );
@@ -4805,5 +4805,5 @@ int main (int argc, char *argv[])
   Resource_Requirement(res_issue, 0);
   Resource_Requirement(res_alu, 0);
 
-  Machine_Done("em64t.c");
+  Machine_Done();
 }

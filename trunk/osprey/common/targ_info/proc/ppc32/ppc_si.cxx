@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
   Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
 
   This program is free software; you can redistribute it and/or modify it
@@ -33,10 +37,9 @@
 static RESOURCE res_IBox, res_EX, res_LS, res_FP; /* MDMX units */
 static RESOURCE res_EX0, res_EX1, res_LS0, res_LS1, res_FP0, res_FP1;
 
-int
-main (int argc, char *argv[])
+void Generate_PowerPC5 (void)
 {
-  Machine("powerpc5", ISA_SUBSET_POWERPC5, argc, argv);
+  Machine("powerpc5", ISA_SUBSET_POWERPC5);
   res_IBox = RESOURCE_Create ("IBox", 4);
   res_EX = RESOURCE_Create ("Execution", 2);
   res_LS = RESOURCE_Create ("LoadStore", 2);
@@ -668,5 +671,5 @@ main (int argc, char *argv[])
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(1);
 
-  Machine_Done("ppc.c");
+  Machine_Done();
 }

@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -80,12 +84,11 @@ static RESOURCE res_issue,
 #endif 
                 res_branch;	// Branch unit
 
-int
-main (int argc, char *argv[])
+void Generate_R10000 (void)
 {
   INT i;
   
-  Machine("r10000", ISA_SUBSET_MIPS4, argc, argv);
+  Machine("r10000", ISA_SUBSET_MIPS4);
 
   res_issue = RESOURCE_Create("issue", 4);
   res_memory = RESOURCE_Create("memory", 2);
@@ -1483,5 +1486,5 @@ for(i = 3; i < 7; i++) {
 #endif
   Resource_Requirement(res_integer, 0);
 
-  Machine_Done("r10000.c");
+  Machine_Done();
 }

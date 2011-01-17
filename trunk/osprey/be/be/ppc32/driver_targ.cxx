@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2006-2009 Tsinghua University.  All Rights Reserved.
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
@@ -45,7 +49,6 @@ void Initialize_Targ_Info(void)
   ABI_PROPERTIES_ABI abi;
   ISA_SUBSET isa;
   PROCESSOR proc;
-  char version[2]="";
 
   switch (Target_ABI) {
   case ABI_P32:
@@ -77,5 +80,5 @@ void Initialize_Targ_Info(void)
     /*NOTREACHED*/
   }
 
-  TI_Initialize(abi, isa, proc, Targ_Path, version);
+  TI_Initialize(abi, isa, proc);
 }

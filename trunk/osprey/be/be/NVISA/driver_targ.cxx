@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright 2005-2008 NVIDIA Corporation.  All rights reserved.
  */
 
@@ -101,5 +105,5 @@ void Initialize_Targ_Info(void)
     /*NOTREACHED*/
   }
 
-  TI_Initialize(abi, isa, proc, Targ_Path);
+  TI_Initialize(abi, isa, proc);
 }

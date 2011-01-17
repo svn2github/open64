@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -252,30 +252,8 @@ endif
 
 TARGETS = whirl2f.so whirl2f_be whirl2f
 
-ifdef LOCAL_TARG_INFO_DIR
-TARG_TARG_INFO_DIR = $(TARGDIR)/$(LOCAL_TARG_INFO_DIR)
-else
-TARG_TARG_INFO_DIR = $(TARGDIR)/targ_info
-endif
-
-ifeq ($(BUILD_TARGET), MIPS)
-TARGET_SO = r10000.so
-endif
-ifeq ($(BUILD_TARGET), SL)
-TARGET_SO = r10000.so
-endif
-ifeq ($(BUILD_TARGET), IA64)
-TARGET_SO = itanium.so
-endif
-ifeq ($(BUILD_TARGET), IA32)
-TARGET_SO = pentium.so
-endif
-ifeq ($(BUILD_TARGET), X8664)
-TARGET_SO = opteron.so
-endif
-
 # extra files to be removed with make clobber
-LDIRT += be be.so $(TARGET_SO) $(TARGETS)
+LDIRT += be be.so $(TARGETS)
 
 
 #----------------------------------------------------------------------
@@ -299,9 +277,6 @@ default:
 first:
 ifndef SKIP_DEP_BUILD
 	$(call submake,$(TARGDIR)/be)
-endif
-ifeq ($(BUILD_OS), LINUX)
-	if ! test -e $(TARGET_SO); then ln -sf $(TARG_TARG_INFO_DIR)/$(TARGET_SO) .; fi
 endif
 
 #----------------------------------------------------------------------
