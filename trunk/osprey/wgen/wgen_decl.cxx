@@ -4103,6 +4103,200 @@ AGGINIT::Add_Init_For_Label_Values(WN* init_wn, UINT size, BOOL first_child, BOO
   }
 }
 
+
+static BOOL Is_Aggregate_Init_Zero (gs_t init_list, gs_t type);
+static BOOL Is_Aggregate_Init_Zero_Array (gs_t init_list, gs_t type);
+static BOOL Is_Aggregate_Init_Zero_Struct (gs_t init_list, gs_t type);
+static BOOL Is_Real_Init_Zero (gs_t init, UINT size);
+
+/*
+Is_Aggregate_Init_Zero:
+Return TRUE if all initializers found in init_list are zeros
+*/
+static BOOL 
+Is_Aggregate_Init_Zero (gs_t init_list, gs_t type)
+{
+  TY_IDX ty = Get_TY (type);
+  TY_KIND kind = TY_kind (ty);
+
+  switch (kind) {
+    case KIND_ARRAY:
+      return Is_Aggregate_Init_Zero_Array (init_list, type);
+    case KIND_STRUCT:
+      return Is_Aggregate_Init_Zero_Struct (init_list, type);
+    default:
+      return FALSE;
+  }
+}
+
+/*
+Is_Aggregate_Init_Zero_Array:
+Return TRUE if the array is initialized to all zeros
+*/
+static BOOL 
+Is_Aggregate_Init_Zero_Array (gs_t init_list, gs_t type)
+{
+#ifdef FE_GNU_4_2_0
+  UINT esize = TY_size(TY_etype(Get_TY(type)));
+  INT length = gs_constructor_length(init_list);
+
+  gs_t curr_value_elem = length > 0 ? gs_operand (init_list, GS_CONSTRUCTOR_ELTS_VALUE) : NULL;
+
+  for (INT idx = 0; idx < length; idx++) {
+
+    gs_t tree_value = gs_operand(curr_value_elem, 0);
+
+    curr_value_elem = gs_operand(curr_value_elem, 1);
+
+    switch (gs_tree_code (tree_value)) {
+      case GS_CONSTRUCTOR:
+        if (!Is_Aggregate_Init_Zero (tree_value, gs_tree_type (type)))
+          return FALSE;
+        break;
+      case GS_INTEGER_CST:
+        if (gs_get_integer_value(tree_value) != 0)
+          return FALSE;
+        break;
+      case GS_REAL_CST:
+        if (!Is_Real_Init_Zero(tree_value, esize))
+          return FALSE;
+        break;
+      default:
+        // Unknown / unimplemented types. Return FALSE
+        return FALSE;
+    }
+  }
+  return TRUE;
+#else
+  // Not implemented for old front-end
+  return FALSE;
+#endif
+}
+
+/*
+Is_Aggregate_Init_Zero_Struct:
+Return TRUE if the struct is initialized to all zeros
+*/
+static BOOL 
+Is_Aggregate_Init_Zero_Struct (gs_t init_list, gs_t type)
+{
+#ifdef FE_GNU_4_2_0
+  TY_IDX     ty    = Get_TY(type);
+  gs_t       field = get_first_real_or_virtual_field(type);
+  FLD_HANDLE fld   = TY_fld (ty);
+
+  gs_t       init;
+
+  gs_t type_binfo, basetypes;
+
+  if ((type_binfo = gs_type_binfo(type)) != NULL &&
+      (basetypes = gs_binfo_base_binfos(type_binfo)) != NULL) {
+
+    gs_t list;
+    for (list = basetypes; gs_code(list) != EMPTY; list = gs_operand(list, 1)) {
+      gs_t binfo = gs_operand(list, 0);
+      gs_t basetype = gs_binfo_type(binfo);
+      if (!is_empty_base_class(basetype) || !gs_binfo_virtual_p(binfo)) {
+        fld = FLD_next (fld);
+      }
+    }
+  }
+
+  while (field && gs_tree_code(field) != GS_FIELD_DECL)
+    field = next_real_field(type, field);
+
+  INT length = gs_constructor_length(init_list);
+  for (INT idx = 0; idx < length; idx++) {
+
+    gs_t element_index = gs_constructor_elts_index(init_list, idx);
+
+    // if the initialization is not for the current field,
+    // advance the fields till we find it
+    if (field && element_index && gs_tree_code(element_index) == GS_FIELD_DECL) {
+      for (;;) {
+        if (field == element_index) {
+          break;
+        }
+        if (gs_decl_name(field) && gs_decl_name(field) == gs_decl_name(element_index)) {
+          break;
+        }
+        fld = FLD_next (fld);
+        field = next_real_field(type, field);
+        while (field && gs_tree_code(field) != GS_FIELD_DECL)
+          field = next_real_field(type, field);
+      }
+    }
+
+    gs_t element_value = gs_constructor_elts_value(init_list, idx);
+    if (gs_tree_code(element_value) == GS_CONSTRUCTOR) {
+      // recursively process nested ARRAYs and STRUCTs
+      gs_t element_type;
+      element_type = gs_tree_type(field);
+      if (!Is_Aggregate_Init_Zero (element_value, element_type))
+        return FALSE;
+    }
+    else if (gs_type_ptrmemfunc_p(gs_tree_type(field))) {
+      return FALSE;
+    }
+    else if (gs_tree_code(element_value) == GS_REAL_CST) {
+      if (!Is_Real_Init_Zero (element_value, TY_size(FLD_type(fld))))
+        return FALSE;
+    }
+    else if (gs_tree_code(element_value) == GS_INTEGER_CST) {
+      // SCALARs and POINTERs
+      if (gs_get_integer_value (element_value) != 0)
+        return FALSE;
+    }
+    else {
+      return FALSE;
+    }
+
+    // advance to next field
+    fld = FLD_next(fld);
+    field = next_real_field(type, field);
+    while (field && gs_tree_code(field) != GS_FIELD_DECL)
+      field = next_real_field(type, field);
+  }
+
+  return TRUE;
+#else
+  // Not implemented for old front-end
+  return FALSE;
+#endif
+}
+
+/*
+Is_Real_Init_Zero:
+Return TRUE if the binary representation of the floating-point
+value is zero on target
+*/
+static BOOL
+Is_Real_Init_Zero (gs_t real, UINT size)
+{
+  TCON tc;
+  switch (size) {
+    case 4:
+      tc = Host_To_Targ_Float_4 (MTYPE_F4, gs_tree_real_cst_f(real));
+      break;
+    case 8:
+      tc = Host_To_Targ_Float (MTYPE_F8, gs_tree_real_cst_d(real));
+      break;
+    case 12:
+    case 16:
+#if defined(TARG_IA64) || defined(TARG_X8664)
+      tc = Host_To_Targ_Float_10(MTYPE_F10, gs_tree_real_cst_ld(real));
+#else
+      tc = Host_To_Targ_Quad (gs_tree_real_cst_ld(real));
+#endif
+      break;
+    default:
+      FmtAssert(FALSE, ("Is_Real_Init_Zero unexpected size"));
+      break;
+  }
+  return (tc.vals.uval.u0 == 0 && tc.vals.uval.u1 == 0 &&
+          tc.vals.uval.u2 == 0 && tc.vals.uval.u3 == 0);
+}
+
 void
 AGGINIT::Add_Inito_For_Tree (gs_t init, ST *st)
 {
@@ -4128,6 +4322,12 @@ AGGINIT::Add_Inito_For_Tree (gs_t init, ST *st)
 	WGEN_Add_Aggregate_Init_Integer (val, TY_size(ST_type(st)));
 	return;
   case GS_REAL_CST:
+	if ((lang_cplus || !ST_has_named_section(st)) && Is_Real_Init_Zero(init, TY_size(ST_type(st)))) {
+		Set_ST_init_value_zero(st);
+		if (ST_sclass(st) == SCLASS_DGLOBAL)
+			Set_ST_sclass(st, SCLASS_UGLOBAL);
+		return;
+	}
 	_inito = New_INITO (st);
 	_not_root = FALSE;
 	WGEN_Add_Aggregate_Init_Real (init, TY_size(ST_type(st)));
@@ -4209,6 +4409,14 @@ AGGINIT::Add_Inito_For_Tree (gs_t init, ST *st)
 	}
 	break;
   case GS_CONSTRUCTOR: {
+	if ((lang_cplus || !ST_has_named_section(st)) && Is_Aggregate_Init_Zero(init, gs_tree_type(init))) {
+		// If the aggregate is initialized but all its initializers are equal to zero,
+		// it can go to BSS
+		Set_ST_init_value_zero(st);
+		if (ST_sclass(st) == SCLASS_DGLOBAL)
+			Set_ST_sclass(st, SCLASS_UGLOBAL);
+		return;
+	}
 	AGGINIT agginit(New_INITO(st));
 #ifdef NEW_INITIALIZER
         WN* target = WN_Lda (Pointer_Mtype, 0, st, 0);
