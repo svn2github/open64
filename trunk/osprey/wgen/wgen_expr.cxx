@@ -3,7 +3,7 @@
  */
 
 /*
- * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
+ * Copyright (C) 2007, 2008 PathScale, LLC.  All Rights Reserved.
  */
 
 /*
@@ -9069,15 +9069,9 @@ WGEN_Expand_Expr (gs_t exp,
 	        break;
                
 	      case GSBI_BUILT_IN_POPCOUNT:
-	        iopc = INTRN_I4POPCNT;
-	        intrinsic_op = TRUE;
-	        break;
 	      case GSBI_BUILT_IN_POPCOUNTL:
-	        iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
-	        intrinsic_op = TRUE;
-	        break;
 	      case GSBI_BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_I8POPCNT;
+	        iopc = INTRN_POPCOUNT;
 		intrinsic_op = TRUE;
 		break;
 	
