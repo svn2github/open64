@@ -46,7 +46,9 @@
 #include "wssa_wn.h"
 #include "wn.h"
 #include "wn_util.h"
+#include "wn_lower.h"
 #include "symtab.h"
+#include "opt_points_to.h"
 
 namespace WSSA {
 
@@ -371,9 +373,10 @@ WHIRL_SSA_MANAGER::Get_wn_ver(const WN* wn) const {
 
 void
 WHIRL_SSA_MANAGER::Set_wn_ver(const WN* wn, VER_IDX ver) {
+  WN_MAP_Set_ID(Current_Map_Tab, const_cast<WN*>(wn));
   WN_VER_MAP::const_iterator it = _wn_ver_map.find( WN_idx(wn) );
   //Is_True(it == _wn_ver_map.end(), ("WN already has a ver"));
-  _wn_ver_map[ WN_idx(wn) ] = ver;
+  _wn_ver_map[WN_idx(wn)] = ver;
 }
 
 WST_IDX
@@ -435,22 +438,40 @@ WHIRL_SSA_MANAGER::Clear_wn_map() {
 
 //====================================================================
 // WSSA symbol operations
-//  Find_wst: find the wst for PREG ST
-//  Create_wst_for_wn: find or create wst for whirl node
-//  New_wst: create new WSSA symbol
-//  New_field_info: Create field info for struct field symbol
-//  New_vsym_info: Create vsym info for virtual symbol
+//  Add_wst_to_map: add wst to st -> wst map
+//  Find_wst: find the wst
 //====================================================================
+void
+WHIRL_SSA_MANAGER::Add_wst_to_map(ST_TO_WST_MAP& map, ST_IDX st_idx, WST_IDX wst_idx) {
+  WST_Symbol_Entry& sym = _sym_table[wst_idx];
+  ST_TO_WST_MAP::iterator it = map.find(st_idx);
+  if (it != map.end()) {
+#ifdef Is_True_On
+    const WST_Symbol_Entry& prev_sym = Get_wst(it->second);
+    // verify sym and prev_sym
+    Is_True(prev_sym.St_idx() == st_idx, ("prev st_idx mismatch"));
+    Is_True(sym.St_idx() == st_idx, ("sym st_idx mismatch"));
+    Is_True(prev_sym.Sym_type() == sym.Sym_type(), ("sym type mismatch"));
+#endif
+    sym.Set_next_wst(it->second);
+  }
+  else {
+    Is_True(sym.Next_wst() == WST_INVALID, ("Next_wst is wrong"));
+  }
+  map[st_idx] = wst_idx;
+}
+
 WST_IDX
 WHIRL_SSA_MANAGER::Find_wst(ST* st, PREG_NUM preg_num) {
   Is_True(st != NULL && ST_class(st) == CLASS_PREG,
           ("st is not PREG"));
-  ST_TO_WST_MAP::iterator it = _st_to_wst_map.find(ST_st_idx(st));
-  if (it != _st_to_wst_map.end()) {
+  ST_TO_WST_MAP::iterator it = _st_to_rwst_map.find(ST_st_idx(st));
+  if (it != _st_to_rwst_map.end()) {
     WST_IDX idx = it->second;
     do {
       const WST_Symbol_Entry& sym = Get_wst(idx);
       Is_True(sym.St_idx() == ST_st_idx(st), ("ST_idx mismatch"));
+      Is_True(sym.Sym_type() == WST_PREG, ("WST type mismatch"));
       if (sym.Preg_num() == preg_num) {
         return idx;
       }
@@ -461,62 +482,89 @@ WHIRL_SSA_MANAGER::Find_wst(ST* st, PREG_NUM preg_num) {
 }
 
 WST_IDX
-WHIRL_SSA_MANAGER::Create_wst_for_wn(WN* wn) {
-  // so far handle PREG only
-  Is_True(WN_operator(wn) == OPR_LDID || WN_operator(wn) == OPR_STID,
-          ("TODO: only support LDID and STID"));
-  ST* st = WN_st(wn);
-  Is_True(ST_class(st) == CLASS_PREG, ("TODO: only support PREG"));
-  PREG_NUM preg_num = WN_offset(wn);
-  WST_IDX idx = Find_wst(st, preg_num);
-  if (idx == WST_INVALID) {
-    idx = New_wst(ST_st_idx(st), preg_num);
+WHIRL_SSA_MANAGER::Find_wst(ST* st, INT64 byte_ofst, INT64 byte_size,
+                            UINT8 bit_ofst, UINT8 bit_size) {
+  Is_True(st != NULL && ST_class(st) != CLASS_PREG,
+          ("st can not be PREG"));
+  ST_TO_WST_MAP::iterator it = _st_to_rwst_map.find(ST_st_idx(st));
+  if (it != _st_to_rwst_map.end()) {
+    WST_IDX idx = it->second;
+    do {
+      const WST_Symbol_Entry& sym = Get_wst(idx);
+      Is_True(sym.St_idx() == ST_st_idx(st), ("ST_idx mismatch"));
+      Is_True(sym.Sym_type() == WST_FIELD, ("WST type mismatch"));
+      const WST_Field_Info& field = Get_field(sym.Field_idx());
+      if (field.Byte_offset() == byte_ofst &&
+          field.Byte_size() == byte_size &&
+          field.Bit_offset() == bit_ofst &&
+          field.Bit_size() == bit_size) {
+        return idx;
+      }
+      idx = sym.Next_wst();
+    } while (idx != WST_INVALID);
   }
-  return idx;
+  return WST_INVALID;
 }
 
 WST_IDX
-WHIRL_SSA_MANAGER::New_wst(ST_IDX idx) {
-  Is_True(ST_class(idx) == CLASS_VAR, ("Only used for VAR ST"));
+WHIRL_SSA_MANAGER::Find_wst(OPERATOR opr, ST* base, 
+                            INT64 byte_ofst, INT64 byte_size,
+                            UINT8 bit_ofst, UINT8 bit_size) {
+  FmtAssert(FALSE, ("TODO"));
+}
+
+//====================================================================
+//  New_wst: create new WSSA symbol
+//  New_field_info: Create field info for struct field symbol
+//  New_vsym_info: Create vsym info for virtual symbol
+//====================================================================
+WST_IDX
+WHIRL_SSA_MANAGER::New_wst(ST* st) {
+  FmtAssert(FALSE, ("TODO: convert into FIELD?"));
+  Is_True(ST_class(st) == CLASS_VAR, ("Only used for VAR ST"));
   WST_IDX wst = (WST_IDX)_sym_table.size();
   _sym_table.push_back(WST_Symbol_Entry());
   WST_Symbol_Entry& sym = _sym_table.back();
   sym.Set_sym_type(WST_WHIRL);
-  sym.Set_st_idx(idx);
+  sym.Set_st_idx(ST_st_idx(st));
+  // update st_to_rwst_map
+  Add_wst_to_map(_st_to_rwst_map, ST_st_idx(st), wst);
   return wst;
 }
 
 WST_IDX
-WHIRL_SSA_MANAGER::New_wst(ST_IDX idx, PREG_NUM preg) {
-  Is_True(ST_class(idx) == CLASS_PREG, ("Only used for PREG ST"));
-  WST_IDX wst = (WST_IDX)_sym_table.size();
+WHIRL_SSA_MANAGER::New_wst(ST* st, PREG_NUM preg) {
+  Is_True(ST_class(st) == CLASS_PREG, ("Only used for PREG ST"));
+  WST_IDX wst = Find_wst(st, preg);
+  if (wst != WST_INVALID)
+    return wst;
+  wst = (WST_IDX)_sym_table.size();
   _sym_table.push_back(WST_Symbol_Entry());
   WST_Symbol_Entry& sym = _sym_table.back();
   sym.Set_sym_type(WST_PREG);
-  sym.Set_st_idx(idx);
+  sym.Set_st_idx(ST_st_idx(st));
   sym.Set_preg_num(preg);
-  // update ST_to_wst_map
-  ST_TO_WST_MAP::iterator it = _st_to_wst_map.find(idx);
-  if (it != _st_to_wst_map.end()) {
-    sym.Set_next_wst(it->second);
-  }
-  else {
-    Is_True(sym.Next_wst() == WST_INVALID, ("Next_wst is wrong"));
-  }
-  _st_to_wst_map[idx] = wst;
+  // update st_to_rwst_map
+  Add_wst_to_map(_st_to_rwst_map, ST_st_idx(st), wst);
   return wst;
 }
 
 WST_IDX
 WHIRL_SSA_MANAGER::New_wst(ST* st, const WST_Field_Info& field) {
   Is_True(st != NULL, ("ST can not be null"));
+  WST_IDX wst = Find_wst(st, field.Byte_offset(), field.Byte_size(),
+                         field.Bit_offset(), field.Bit_size());
+  if (wst != WST_INVALID)
+    return wst;
   FIELD_INFO_IDX info_idx = New_field(field);
-  WST_IDX wst = (WST_IDX)_sym_table.size();
+  wst = (WST_IDX)_sym_table.size();
   _sym_table.push_back(WST_Symbol_Entry());
   WST_Symbol_Entry& sym = _sym_table.back();
   sym.Set_sym_type(WST_FIELD);
   sym.Set_st_idx(ST_st_idx(st));
   sym.Set_field_idx(info_idx);
+  // update st_to_rwst_map
+  Add_wst_to_map(_st_to_rwst_map, ST_st_idx(st), wst);
   return wst;
 }
 
@@ -527,8 +575,11 @@ WHIRL_SSA_MANAGER::New_wst(ST* st, const WST_Vsym_Info& vsym) {
   _sym_table.push_back(WST_Symbol_Entry());
   WST_Symbol_Entry& sym = _sym_table.back();
   sym.Set_sym_type(WST_VSYM);
-  sym.Set_st_idx(st == NULL ? WST_INVALID: ST_st_idx(st));
+  sym.Set_st_idx(st == NULL ? ST_INVALID : ST_st_idx(st));
   sym.Set_vsym_idx(info_idx);
+  // update st_to_vwst_map
+  Add_wst_to_map(_st_to_vwst_map, 
+                 st == NULL ? ST_INVALID : ST_st_idx(st), wst);
   return wst;
 }
 
@@ -811,12 +862,6 @@ WHIRL_SSA_MANAGER::Ver_count() const {
 //   the structure of two wn trees must be the same
 // Create_entry_chi
 //   create_entry_chi for preg when trying to use an uninited preg
-// Enter_stmt
-//   add new stmt. 
-//   rhs of stmt should have the correct ssa information
-//   if lhs of stmt doesn't have ssa, new version will be created
-// Remove_stmt
-//   remove the ssa info for the stmt
 //====================================================================
 void
 WHIRL_SSA_MANAGER::Copy_wn_ssa(WN* dest, const WN* src) {
@@ -897,7 +942,7 @@ WHIRL_SSA_MANAGER::Create_entry_chi(ST* preg_st, PREG_NUM preg_num) {
           ("st is not a preg st"));
   WST_IDX idx = Find_wst(preg_st, preg_num);
   Is_True(idx == WST_INVALID, ("preg already used before"));
-  idx = New_wst(ST_st_idx(preg_st), preg_num);
+  idx = New_wst(preg_st, preg_num);
   VER_IDX opnd_ver = New_ver(idx, NULL, WSSA_UNKNOWN);
   VER_IDX res_ver = New_ver(idx, _root, WSSA_CHI);
   CHI_NODE* chi = Create_chi();
@@ -907,6 +952,15 @@ WHIRL_SSA_MANAGER::Create_entry_chi(ST* preg_st, PREG_NUM preg_num) {
   return res_ver;
 }
 
+//====================================================================
+// Enter_stmt
+//   add new stmt. 
+//   rhs of stmt should have the correct ssa information
+//   if lhs of stmt doesn't have ssa, new version will be created
+// Remove_stmt
+//   remove the ssa info for the stmt
+//====================================================================
+#ifndef IR_TOOLS
 void
 WHIRL_SSA_MANAGER::Enter_stmt(WN* tree) {
   OPERATOR opr = WN_operator(tree);
@@ -915,7 +969,8 @@ WHIRL_SSA_MANAGER::Enter_stmt(WN* tree) {
 
   if (opr == OPR_STID) {
     WN_VER_MAP::const_iterator it = _wn_ver_map.find(WN_idx(tree));
-    if (it == _wn_ver_map.end()) {
+    if (it == _wn_ver_map.end() ||
+        ST_class(WN_st(tree)) == CLASS_PREG) {
       WST_IDX wst_idx = Create_wst_for_wn(tree);
       VER_IDX def_ver = New_ver(wst_idx, tree, WSSA_OCC);
       // make sure the dest node has map_id
@@ -928,7 +983,7 @@ WHIRL_SSA_MANAGER::Enter_stmt(WN* tree) {
       VER_IDX old_ver = it->second;
       WST_IDX wst_idx = Get_ver_wst(old_ver);
       VER_IDX new_ver = New_ver(wst_idx, tree, WSSA_OCC);
-      _wn_ver_map[WN_idx(tree)] = new_ver;
+      Set_wn_ver(tree, new_ver);
       // fall through since it may have chi node
     }
   }
@@ -950,7 +1005,8 @@ WHIRL_SSA_MANAGER::Enter_stmt(WN* tree) {
 void
 WHIRL_SSA_MANAGER::Remove_stmt(WN* tree) {
   OPERATOR opr = WN_operator(tree);
-  Is_True(opr == OPR_STID || opr == OPR_ISTORE,
+  Is_True(opr == OPR_STID || opr == OPR_ISTORE ||
+          OPERATOR_is_call(opr),
           ("unsupported OP: %s", OPCODE_name(WN_opcode(tree))));
 
   // reset ssa related entries
@@ -966,6 +1022,7 @@ WHIRL_SSA_MANAGER::Remove_stmt(WN* tree) {
   }
   // TODO: maintain def-def chain
 }
+#endif
 
 //====================================================================
 // Print_table_with_map: print the information from wssa table and map
@@ -1039,7 +1096,7 @@ void
 WHIRL_SSA_MANAGER::Print_wst(WST_IDX wst_idx, FILE* fp) const {
   const WST_Symbol_Entry& sym = Get_wst(wst_idx);
   fprintf(fp,"Index [%d], WST type: ", wst_idx);
-  switch(sym.Sym_type()) {
+  switch (sym.Sym_type()) {
     case WST_WHIRL:
       fprintf(fp,"WST_WHIRL\n");
       Print_ST(fp, &St_Table[sym.St_idx()], TRUE);

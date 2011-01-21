@@ -61,13 +61,13 @@ template<typename _Tcfg> class DF_BUILDER;
 template<typename _Tcfg, typename _Twalker, BOOL _Dom> class DOM_WALKER_HELPER;
 template<typename _Tcfg, BOOL _Fwd> class DFS_ITERATOR;
 template<typename _Tsc, typename _Tsm, typename _Tnc> class CFG_BASE;
-
+ 
 // bitwised options to control the dump content of the bb node
 enum DUMP_OPTIONS {
   // cfg dump flags use the bit 0-7 or more
   DUMP_CFG   = 0x00000001, // dump cfg info, _id, _preds, _succs
-  DUMP_DOM   = 0x00000002, // dump dom info, _idom, _dom_set
-  DUMP_PDOM  = 0x00000004, // dump pdom info, _ipdom, _pdom_set
+  DUMP_DOM   = 0x00000002, // dump dom info, _idom, _dom_list
+  DUMP_PDOM  = 0x00000004, // dump pdom info, _ipdom, _pdom_list
   DUMP_ADOM  = DUMP_DOM | DUMP_PDOM, // all dom related dump
   DUMP_DF    = 0x00000008, // dump dominance frontier
   DUMP_CD    = 0x00000010, // dump control dependency
@@ -168,12 +168,13 @@ public:
 //     BB_NODE *_prev, *_next;
 //     LIST<BB_NODE*> _preds, _succs;
 //     BB_NODE *_idom, *_ipdom;
-//     BB_NODE_SET *_dom_set, *_pdom_set;
+//     LIST<BB_NODE*> _dom_list, _pdom_list;
+//     LIST<BB_NODE*> _df_list,  _cd_list;
 //     UINT32 _id;
 //     _Tstmtcontainer _stmts;
 //   iterators:
 //     stmt_iterator to iterate all stmts in this BB_NODE
-//     bb_iterator to iterate preds/succs, dom_set/pdom_set
+//     bb_iterator to iterate preds/succs, dom/pdom/df/cd
 //===================================================================
 template<typename _Tstmtcontainer>
 class BB_NODE_BASE {
@@ -186,8 +187,8 @@ public:
   typedef typename BB_LIST::iterator bb_iterator;
   typedef typename BB_LIST::const_iterator const_bb_iterator;
 
-  typedef BS_ELM_ITERATOR dom_iterator;
-  typedef BS_ELM_ITERATOR const_dom_iterator;
+  typedef typename BB_LIST::iterator dom_iterator;
+  typedef typename BB_LIST::const_iterator const_dom_iterator;
 
   typedef typename _Tstmtcontainer::iterator stmt_iterator;
   typedef typename _Tstmtcontainer::const_iterator const_stmt_iterator;
@@ -198,8 +199,8 @@ private:
 
   BB_NODE* _idom;  // immediate dominator on CFG
   BB_NODE* _ipdom; // immediate dominator on RCFG
-  BB_NODE_SET* _dom_set;   // bb set dominated by this on CFG
-  BB_NODE_SET* _pdom_set;  // bb set dominated by this on RCFG
+  BB_LIST _dom_list;   // bb list dominated immediately on CFG
+  BB_LIST _pdom_list;  // bb list dominated immediately on RCFG
   BB_LIST _df_list;   // dominance frontier on CFG
   BB_LIST _cd_list;   // control dependence
 
@@ -209,7 +210,7 @@ private:
 
 public:
   BB_NODE_BASE(UINT32 id) 
-    : _id(id), _idom(NULL), _ipdom(NULL), _dom_set(NULL), _pdom_set(NULL) {
+    : _id(id), _idom(NULL), _ipdom(NULL) {
   }
 
 public:
@@ -229,20 +230,30 @@ public:
   void Remove_stmt(STMT stmt)   { _stmts.Remove_stmt(stmt); }
 
   // preds/succs related methods
-  void Add_pred(BB_NODE* pred)  { _preds.push_back(pred);   }
-  void Add_succ(BB_NODE* succ)  { _succs.push_back(succ);   }
-  void Remove_pred(BB_NODE* pred) {
+  void Add_pred(BB_NODE* pred) {
+    bb_iterator it = std::find(_preds.begin(), _preds.end(), pred);
+    FmtAssert(it == _preds.end(), ("pred has been added"));
+    if (it == _preds.end())
+      _preds.push_back(pred);
+  }
+  void Add_succ(BB_NODE* succ) {
+    bb_iterator it = std::find(_succs.begin(), _succs.end(), succ);
+    FmtAssert(it == _succs.end(), ("succ has been added"));
+    if (it == _succs.end())
+      _succs.push_back(succ);
+  }
+  bb_iterator Remove_pred(BB_NODE* pred) {
     bb_iterator it = std::find(_preds.begin(), _preds.end(), pred);
     FmtAssert(it != _preds.end(), ("Can not find pred"));
-    _preds.erase(it);
+    return _preds.erase(it);
   }
   void Remove_all_preds() {
     _preds.clear();
   }
-  void Remove_succ(BB_NODE* succ) {
+  bb_iterator Remove_succ(BB_NODE* succ) {
     bb_iterator it = std::find(_succs.begin(), _succs.end(), succ);
     FmtAssert(it != _preds.end(), ("Can not find succ"));
-    _succs.erase(it);
+    return _succs.erase(it);
   }
   void Remove_all_succs() {
     _succs.clear();
@@ -263,6 +274,28 @@ public:
       ++it;
     return *it;
   }
+  INT32 Pred_pos(BB_NODE* pred) {
+    INT32 pos = 0;
+    for (const_bb_iterator it = Pred_begin();
+         it != Pred_end();
+         ++it) {
+      if (*it == pred)
+        return pos;
+      ++pos;
+    }
+    FmtAssert(FALSE, ("can not find pred pos"));
+  }
+  INT32 Succ_pos(BB_NODE* succ) {
+    INT32 pos = 0;
+    for (const_bb_iterator it = Succ_begin();
+         it != Succ_end();
+         ++it) {
+      if (*it == succ)
+        return pos;
+      ++pos;
+    }
+    FmtAssert(FALSE, ("can not find succ pos"));
+  }
 
   // dominator and post-dominator related methods
   BB_NODE* Get_idom() const {
@@ -278,12 +311,23 @@ public:
   }
   void Set_ipdom(BB_NODE* node) { _ipdom = node; }
   BOOL Dominate(BB_NODE* node)  {
-    Is_True(_dom_set != NULL, ("dom set is NULL"));
-    return _dom_set->MemberP(node->Get_id());
+    Is_True(node != NULL, ("node is NULL"));
+    do {
+      if (node == this)
+        return TRUE;
+      else
+        node = node->Get_idom();
+    } while(node != NULL);
+    return FALSE;
   }
   BOOL Post_dominate(BB_NODE* node) {
-    Is_True(_dom_set != NULL, ("pdom set is NULL"));
-    return _pdom_set->MemberP(node->Get_id());
+    Is_True(node != NULL, ("node is NULL"));
+    do {
+      if (node == this)
+        return TRUE;
+      else
+        node = node->Get_ipdom();
+    } while (node != NULL);
   }
 
   // iterators for preds/succs
@@ -297,14 +341,14 @@ public:
   const_bb_iterator Succ_end() const { return _succs.end(); }
 
   // iterators for dom/pdom
-  dom_iterator Dom_begin()  { return dom_iterator(_dom_set, _dom_set->First()); }
-  dom_iterator Dom_end()    { return dom_iterator(_dom_set, BS_CHOOSE_FAILURE); }
-  const_dom_iterator Dom_begin() const { return const_dom_iterator(_dom_set, _dom_set->First()); }
-  const_dom_iterator Dom_end() const   { return const_dom_iterator(_dom_set, BS_CHOOSE_FAILURE); }
-  dom_iterator Pdom_begin()  { return dom_iterator(_pdom_set, _pdom_set->First()); }
-  dom_iterator Pdom_end()    { return dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);  }
-  const_dom_iterator Pdom_begin() const { return const_dom_iterator(_pdom_set, _pdom_set->First()); }
-  const_dom_iterator Pdom_end() const   { return const_dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);  }
+  dom_iterator Dom_begin()  { return _dom_list.begin(); }
+  dom_iterator Dom_end()    { return _dom_list.end();   }
+  const_dom_iterator Dom_begin() const { return _dom_list.begin(); }
+  const_dom_iterator Dom_end() const   { return _dom_list.end();   }
+  dom_iterator Pdom_begin()  { return _pdom_list.begin(); }
+  dom_iterator Pdom_end()    { return _pdom_list.end();   }
+  const_dom_iterator Pdom_begin() const { return _pdom_list.begin(); }
+  const_dom_iterator Pdom_end() const   { return _pdom_list.end();   }
 
   // iterators for df/cd
   bb_iterator Df_begin()  { return _df_list.begin(); }
@@ -317,14 +361,30 @@ public:
   const_bb_iterator Cd_end() const   { return _cd_list.end();   }
 
   // iterators for stmt
-  stmt_iterator Stmt_begin() { return _stmts.begin(); }
-  stmt_iterator Stmt_end()   { return _stmts.end();   }
-  const_stmt_iterator Stmt_begin() const { return _stmts.begin(); }
-  const_stmt_iterator Stmt_end() const   { return _stmts.end();   }
-  stmt_iterator Stmt_rbegin() { return _stmts.rbegin(); }
-  stmt_iterator Stmt_rend()   { return _stmts.rend();   }
-  const_stmt_iterator Stmt_rbegin() const { return _stmts.rbegin(); }
-  const_stmt_iterator Stmt_rend() const   { return _stmts.rend();   }
+  stmt_iterator Stmt_begin(STMT stmt = NULL) {
+    return _stmts.begin(stmt);
+  }
+  stmt_iterator Stmt_end(STMT stmt = NULL) {
+    return _stmts.end(stmt);
+  }
+  const_stmt_iterator Stmt_begin(STMT stmt = NULL) const {
+    return _stmts.begin(stmt);
+  }
+  const_stmt_iterator Stmt_end(STMT stmt = NULL) const {
+    return _stmts.end(stmt);
+  }
+  stmt_iterator Stmt_rbegin(STMT stmt = NULL) {
+    return _stmts.rbegin(stmt);
+  }
+  stmt_iterator Stmt_rend(STMT stmt = NULL) {
+    return _stmts.rend(stmt);
+  }
+  const_stmt_iterator Stmt_rbegin(STMT stmt = NULL) const {
+    return _stmts.rbegin(stmt);
+  }
+  const_stmt_iterator Stmt_rend(STMT stmt = NULL) const { 
+    return _stmts.rend(stmt);
+  }
 
 // The following section contains parameterized methods used by CFG utilities to
 //   unify the processing of CFG and RCFG
@@ -334,6 +394,7 @@ private:
   template<typename _Tcfg> friend class DF_BUILDER;
   template<typename _Tcfg, BOOL _Fwd> friend class DFS_ITERATOR;
   template<typename _Tsc, typename _Tsm, typename _Tnc> friend class CFG_BASE;
+  template<typename _Tcfg, typename _Twalker, BOOL _Dom> friend class DOM_WALKER_HELPER;
 
   // if dom is TRUE, _idom is returned
   BB_NODE* get_idom(bool dom) {
@@ -346,43 +407,24 @@ private:
     else
       _ipdom = node;
   }
-  // if dom is TRUE, _dom_set is cleared or initialized
-  void clear_dom_set(bool dom, int size, MEM_POOL* mpool) {
+  // if dom is TRUE, clear _dom_list, otherwise, clear _pdom_list
+  void clear_dom_list(bool dom) {
     if (dom) {
-      if (_dom_set)
-        _dom_set->ClearD();
-      else
-        _dom_set = CXX_NEW(BB_NODE_SET(size, mpool), mpool);
+      _dom_list.clear();
     }
     else {
-      if (_pdom_set)
-        _pdom_set->ClearD();
-      else
-        _pdom_set = CXX_NEW(BB_NODE_SET(size, mpool), mpool);
+      _pdom_list.clear();
     }
   }
-  void get_dom_set(bool dom) {
+  // if dom is TRUE, add node to _dom_list, otherwist, add to _pdom_list
+  void add_to_dom_list(BB_NODE* node, bool dom) {
     if (dom)
-      return _dom_set;
+      _dom_list.push_back(node);
     else
-      return _pdom_set;
+      _pdom_list.push_back(node);
   }
-  // add the id of node to dom_set/pdom_set
-  void add_node_to_dom_set(BB_NODE* node, bool dom) {
-    if (dom)
-      _dom_set->Union1D(node->Get_id());
-    else
-      _pdom_set->Union1D(node->Get_id());
-  }
-  // propagate the dom_set of node to current node
-  void propagate_dom_set(BB_NODE* node, bool dom) {
-    if (dom)
-      _dom_set->UnionD(node->_dom_set);
-    else
-      _pdom_set->UnionD(node->_pdom_set);
-  }
-  // if df is TRUE, node is added to _df_list
-  void add_df_list(BB_NODE* node, bool df) {
+  // if df is TRUE, add node to _df_list, otherwise, add to _cd_list
+  void add_to_df_list(BB_NODE* node, bool df) {
     Is_True(node != NULL, ("node is NULL"));
     if (df)
       _df_list.push_back(node);
@@ -396,45 +438,37 @@ private:
   const_bb_iterator bb_begin(BOOL fwd) const { return (fwd) ? _succs.begin() : _preds.begin(); }
   const_bb_iterator bb_end(BOOL fwd) const   { return (fwd) ? _succs.end() : _preds.end();     }
 
-  // iterators for dom/pdom, if dom is TRUE, _dom_set is visited
+  // iterators for dom/pdom, if dom is TRUE, _dom_list is visited
   dom_iterator dom_begin(BOOL dom) { 
     if (dom) {
-      Is_True(_dom_set != NULL, ("dom set is NULL"));
-      return dom_iterator(_dom_set, _dom_set->First());
+      return _dom_list.begin();
     }
     else {
-      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
-      return dom_iterator(_pdom_set, _pdom_set->First());
+      return _pdom_list.begin();
     }
   }
   dom_iterator dom_end(BOOL dom) {
     if (dom) {
-      Is_True(_dom_set != NULL, ("dom set is NULL"));
-      return dom_iterator(_dom_set, BS_CHOOSE_FAILURE);
+      return _dom_list.end();
     }
     else {
-      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
-      return dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);
+      return _pdom_list.end();
     }
   }
   const_dom_iterator dom_begin(BOOL dom) const {
     if (dom) {
-      Is_True(_dom_set != NULL, ("dom set is NULL"));
-      return const_dom_iterator(_dom_set, _dom_set->First());
+      return _dom_list.begin();
     }
     else {
-      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
-      return const_dom_iterator(_pdom_set, _pdom_set->First());
+      return _pdom_list.begin();
     }
   }
   const_dom_iterator dom_end(BOOL dom) const {
     if (dom) {
-      Is_True(_dom_set != NULL, ("dom set is NULL"));
-      return const_dom_iterator(_dom_set, BS_CHOOSE_FAILURE);
+      return _dom_list.end();
     }
     else {
-      Is_True(_pdom_set != NULL, ("pdom set is NULL"));
-      return const_dom_iterator(_pdom_set, BS_CHOOSE_FAILURE);
+      return _pdom_list.end();
     }
   }
 
@@ -463,22 +497,12 @@ public:
       fprintf(fp, "  Idom: %d\tIpdom: %d\n", 
         _idom ? _idom->_id : (-1), _ipdom ? _ipdom->_id : (-1));
       fprintf(fp, "  Dom list:");
-      if (_dom_set == NULL) {
-        fprintf(fp, " null, unreachable or DOM is not built");
-      }
-      else {
-        for (const_dom_iterator it = Dom_begin(); it != Dom_end(); ++it) {
-          fprintf(fp, " %d", *it);
-        }
+      for (const_dom_iterator it = Dom_begin(); it != Dom_end(); ++it) {
+        fprintf(fp, " %d", (*it)->Get_id());
       }
       fprintf(fp, "\n  Pdom list:");
-      if (_pdom_set == NULL) {
-        fprintf(fp, " null, unreachable or PDOM is not built");
-      }
-      else {
-        for (const_dom_iterator it = Pdom_begin(); it != Pdom_end(); ++it) {
-          fprintf(fp, " %d", *it);
-        }
+      for (const_dom_iterator it = Pdom_begin(); it != Pdom_end(); ++it) {
+        fprintf(fp, " %d", (*it)->Get_id());
       }
       fprintf(fp, "\n");
     }
@@ -705,17 +729,16 @@ class DOM_WALKER_HELPER {
 
 private:
   typedef typename _Tcfg::BB_NODE BB_NODE;
-  typedef typename _Tcfg::BB_LIST BB_LIST;
 
 private:
-  _Tcfg     _cfg;
+  _Tcfg&     _cfg;
   _Twalker& _walker;
 #ifdef Is_True_On
   std::vector<bool> _visited; // each node should only be visited once
 #endif
 
 public:
-  DOM_WALKER_HELPER(_Tcfg& cfg, _Twalker walker)
+  DOM_WALKER_HELPER(_Tcfg& cfg, _Twalker& walker)
     : _cfg(cfg), _walker(walker) { }
 
 private:
@@ -727,10 +750,12 @@ private:
 #endif
 
     _walker.Visit_push(node);
-    for (typename BB_LIST::bb_iterator it = node->dom_begin(_Dom);
+    for (typename BB_NODE::dom_iterator it = node->dom_begin(_Dom);
          it != node->dom_end(_Dom);
          ++it) {
-      Traverse(node);
+      BB_NODE* dom = *it;
+      Is_True(dom->get_idom(_Dom) == node, ("idom node mismatch"));
+      traverse_rec(dom);
     }
     _walker.Visit_pop(node);
   }
@@ -898,12 +923,31 @@ protected:
     node->Insert_after(after, stmt);
     Connect_stmt_node(stmt, node);
   }
+  void Add_stmt(BB_NODE* node, STMT stmt) {
+    Is_True(stmt != NULL, ("stmt is null"));
+    Is_True(node != NULL, ("BB is not empty"));
+    node->Add_stmt(stmt);
+    Connect_stmt_node(stmt, node);
+  }
   void Remove_stmt(STMT stmt) {
     Is_True(stmt != NULL, ("stmt is null"));
     BB_NODE* node = Get_stmt_node(stmt);
     Is_True(node != NULL, ("can not find BB for stmt"));
     node->Remove_stmt(stmt);
     Disconnect_stmt_node(stmt, node);
+  }
+  // split node at top into two nodes and return the new one
+  BB_NODE* Split_node(BB_NODE* node) {
+    Is_True(node != NULL, ("node is null"));
+    BB_NODE* new_bb = Create_node();
+    // transfer node's preds to new_bb
+    for (typename BB_NODE::bb_iterator bit = node->Pred_begin();
+         bit != node->Pred_end();
+         ++bit) {
+      Connect_predsucc(*bit, new_bb);
+    }
+    node->Remove_all_preds();
+    return new_bb;
   }
 
 // The following section contains parameterized methods used by CFG utilities to
@@ -912,6 +956,7 @@ private:
   // These interfaces are only used by DOM_BUILDER and DF_BUILDER
   template<typename _Tcfg> friend class DOM_BUILDER;
   template<typename _Tcfg> friend class DF_BUILDER;
+  template<typename _Tcfg, typename _Twalker, BOOL _Dom> friend class DOM_WALKER_HELPER;
 
   // if fwd is TRUE, return _dummy_entry
   BB_NODE* get_start_point(bool fwd) { return (fwd) ? _dummy_entry : _dummy_exit; }
@@ -922,20 +967,14 @@ private:
   void clear_dom_info(BB_NODE* node, bool dom) {
     Is_True(node != NULL, ("node is NULL"));
     node->set_idom(NULL, dom);
-    node->clear_dom_set(dom, Get_max_id(), _cfg_pool); 
+    node->clear_dom_list(dom); 
   }
   // if dom is TRUE, set parent to be child's immediate dominator
   void connect_dom_node(BB_NODE* parent, BB_NODE* child, bool dom) {
     Is_True(child != NULL, ("child node is NULL"));
     child->set_idom(parent, dom);
     if (parent != NULL) {
-      parent->add_node_to_dom_set(child, dom);
-      parent->propagate_dom_set(child, dom);
-      //propagate to its parent
-      while(parent->get_idom(dom) != NULL) {
-        parent->get_idom(dom)->propagate_dom_set(parent, dom);
-        parent = parent->get_idom(dom);
-      }
+      parent->add_to_dom_list(child, dom);
     }
   }
 

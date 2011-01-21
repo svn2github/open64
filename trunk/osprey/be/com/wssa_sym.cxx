@@ -73,10 +73,26 @@ WST_Field_Info::Print(FILE* fp) const {
 //====================================================================
 WST_Vsym_Info::WST_Vsym_Info()
   : _vsym_type(WVT_UNKNOWN) {
+  _points_to.Init();
 }
 
 WST_Vsym_Info::WST_Vsym_Info(WSSA_VSYM_TYPE type)
   : _vsym_type(type) {
+  _points_to.Init();
+}
+
+WST_Vsym_Info::WST_Vsym_Info(const WST_Vsym_Info& vsym) {
+  Set_vsym_type(vsym.Vsym_type());
+  Set_name_idx(vsym.Name_idx());
+  Copy_points_to(vsym.Points_to());
+}
+
+WST_Vsym_Info&
+WST_Vsym_Info::operator=(const WST_Vsym_Info& vsym) {
+  Set_vsym_type(vsym.Vsym_type());
+  Set_name_idx(vsym.Name_idx());
+  Copy_points_to(vsym.Points_to());
+  return *this;
 }
 
 void

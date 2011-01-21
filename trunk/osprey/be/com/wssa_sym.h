@@ -46,6 +46,7 @@
 #include <vector>
 #include <ext/hash_map>
 using __gnu_cxx::hash_map;
+#include "opt_points_to.h"
 
 namespace WSSA {
 
@@ -113,10 +114,13 @@ private:
     STR_IDX _name_idx;  // name of the vsym
     // TODO, alias information
   } _vsym;
+  POINTS_TO _points_to;
 
 public:
   WST_Vsym_Info();
   WST_Vsym_Info(WSSA_VSYM_TYPE type);
+  WST_Vsym_Info(const WST_Vsym_Info& vsym);
+  WST_Vsym_Info& operator=(const WST_Vsym_Info& vsym);
 
 public:
   WSSA_VSYM_TYPE Vsym_type() const    { return _vsym_type;     }
@@ -128,6 +132,19 @@ public:
   void Set_name_idx(STR_IDX idx) {
     _vsym._name_idx = idx;
   }
+  const POINTS_TO& Points_to() const {
+    return _points_to;
+  }
+  POINTS_TO& Points_to() {
+    return _points_to;
+  }
+  void Copy_points_to(const POINTS_TO& pt) {
+    _points_to.Copy_fully(&pt);
+  }
+  void Copy_points_to(const POINTS_TO* pt) {
+    _points_to.Copy_fully(pt);
+  }
+
   void Print(FILE* fp = stdout) const;
 };
 

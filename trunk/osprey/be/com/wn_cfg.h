@@ -156,14 +156,30 @@ public:
   void Remove_stmt(WN* stmt);
 
   // iterators to traverse the statements
-  iterator begin() { return iterator(TRUE, First_stmt(), this); }
-  iterator end()   { return iterator(TRUE, NULL, this);        }
-  const_iterator begin() const { return const_iterator(TRUE, First_stmt(), this); }
-  const_iterator end() const   { return const_iterator(TRUE, NULL, this);        }
-  iterator rbegin() { return iterator(FALSE, Last_stmt(), this); }
-  iterator rend()   { return iterator(FALSE, NULL, this);        }
-  const_iterator rbegin() const { return const_iterator(FALSE, Last_stmt(), this); }
-  const_iterator rend() const   { return const_iterator(FALSE, NULL, this);        }
+  iterator begin(WN* stmt = NULL) {
+    return iterator(TRUE, stmt ? stmt : First_stmt(), this);
+  }
+  iterator end(WN* stmt = NULL) {
+    return iterator(TRUE, stmt, this);
+  }
+  const_iterator begin(WN* stmt = NULL) const {
+    return const_iterator(TRUE, stmt ? stmt : First_stmt(), this);
+  }
+  const_iterator end(WN* stmt = NULL) const {
+    return const_iterator(TRUE, stmt, this);
+  }
+  iterator rbegin(WN* stmt = NULL) {
+    return iterator(FALSE, stmt ? stmt : Last_stmt(), this);
+  }
+  iterator rend(WN* stmt = NULL) { 
+    return iterator(FALSE, stmt, this);
+  }
+  const_iterator rbegin(WN* stmt = NULL) const {
+    return const_iterator(FALSE, stmt ? stmt : Last_stmt(), this);
+  }
+  const_iterator rend(WN* stmt = NULL) const {
+    return const_iterator(FALSE, stmt, this);
+  }
 
 public:
   // print and VCG dump methods
@@ -220,6 +236,10 @@ private:
 
 private:
   friend class WN_CFG_BUILDER;
+  template<typename _Tcfg> friend class WN_CFG_BUILD_ACTION;
+  template<typename _Tcfg> friend class WN_CFG_VERIFIER;
+  template<typename _Tcfg> friend class PARENTIZE_ACTION;
+  template<typename _Tcfg> friend class PARENTIZE_VERIFIER;
   // only accessable for WN_CFG_BUILDER
   void Set_parent(WN* parent, WN* kid);
   void Remove_parent(WN* wn);
@@ -262,25 +282,91 @@ public:
 
 public:
   // update interface
-  void Insert_before(WN* before, WN* stmt) {
+  void Insert_before(WN* before, WN* stmt, BOOL reparentize = TRUE) {
     CFG::Insert_before(before, stmt);
 
-    // maintain the parent map
-    Parentize_tree(stmt);
-    Set_parent(Get_parent(before), stmt);
+    if (reparentize) {
+      // maintain the parent map
+      Parentize_tree(stmt);
+      Set_parent(Get_parent(before), stmt);
+    }
+    if (WN_operator(stmt) == OPR_LABEL) {
+      BB_NODE* node = CFG::Get_stmt_node(before);
+      Set_label(WN_label_number(stmt), node);
+    }
   }
-  void Insert_after(WN* after, WN* stmt) {
+  void Insert_after(WN* after, WN* stmt, BOOL reparentize = TRUE) {
     CFG::Insert_after(after, stmt);
 
-    // maintain the parent map
-    Parentize_tree(stmt);
-    Set_parent(Get_parent(after), stmt);
+    if (reparentize) {
+      // maintain the parent map
+      Parentize_tree(stmt);
+      Set_parent(Get_parent(after), stmt);
+    }
+    if (WN_operator(stmt) == OPR_LABEL) {
+      BB_NODE* node = CFG::Get_stmt_node(after);
+      Set_label(WN_label_number(stmt), node);
+    }
   }
-  void Remove_stmt(STMT stmt) {
+  void Add_stmt(BB_NODE* node, WN* stmt, BOOL reparentize = TRUE) {
+    CFG::Add_stmt(node, stmt);
+
+    if (reparentize) {
+      Parentize_tree(stmt);
+      Is_True(WN_prev(stmt) != NULL, ("WN prev is NULL"));
+      Set_parent(Get_parent(WN_prev(stmt)), stmt);
+    }
+    if (WN_operator(stmt) == OPR_LABEL) {
+      Set_label(WN_label_number(stmt), node);
+    }
+  }
+  void Remove_stmt(WN* stmt, BOOL reparentize = TRUE) {
     CFG::Remove_stmt(stmt); 
 
-    // maintain the parent map
-    //Unparentize_tree(stmt);
+    if (reparentize) {
+      // maintain the parent map
+      //Unparentize_tree(stmt);
+    }
+    if (WN_operator(stmt) == OPR_LABEL) {
+      Remove_label(WN_label_number(stmt));
+    }
+  }
+  // split node at top into two nodes and return the new one
+  // after_wn is the last WN in original node
+  // WNs after after_wn is transferred to new_node
+  BB_NODE* Split_node(BB_NODE* node, WN* after_wn) {
+    BB_NODE* new_bb = CFG::Split_node(node);
+    WN* first_wn = node->First_stmt();
+    WN* last_wn = node->Last_stmt();
+    if (last_wn == NULL) {
+      Is_True(first_wn == NULL && after_wn == NULL,
+              ("node is empty"));
+      return new_bb;
+    }
+    Is_True(last_wn != NULL  && CFG::Get_stmt_node(last_wn)  == node,
+            ("invalid last_wn"));
+    Is_True(first_wn != NULL && CFG::Get_stmt_node(first_wn) == node,
+            ("invalid first_wn"));
+    WN* wn;
+    for (wn = last_wn; 
+         wn != WN_prev(first_wn) && wn != after_wn; 
+         wn = WN_prev(wn)) {
+      Remove_stmt(wn, FALSE);
+    }
+    Is_True(wn == after_wn || after_wn == NULL, 
+            ("can not find after_wn in node"));
+    if (wn == NULL) {
+      Is_True(after_wn == NULL, ("after_wn should be NULL"));
+      Is_True(WN_prev(first_wn) == NULL, ("prev of first_wn should be NULL"));
+      wn = first_wn;
+    }
+    else {
+      wn = WN_next(after_wn);
+    }
+    for (; wn != WN_next(last_wn); wn = WN_next(wn)) {
+      Add_stmt(new_bb, wn, FALSE);
+    }
+    return new_bb;
   }
 };
 
@@ -337,6 +423,7 @@ private:
   void Add_block(WN_CFG& cfg, WN* wn);
   void Add_region(WN_CFG& cfg, WN* wn);
   void Add_region_exit(WN_CFG& cfg, WN* wn);
+  void Add_intrinsic_call(WN_CFG& cfg, WN* wn);
   void Add_stmt(WN_CFG& cfg, BB_NODE* bb, WN* wn);
 };
 

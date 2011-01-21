@@ -1094,8 +1094,8 @@ static void ir_put_wn(WN * wn, INT indent)
             if (wsm->Stat() == WSSA::STAT_DUMP) {
                 if (wsm->WN_has_ver(wn)) {
                     WSSA::VER_IDX ver = wsm->Get_wn_ver(wn);
-                    WSSA::WST_IDX wst = wsm->Get_ver_wst(ver);
-                    fprintf(ir_ofile, " %sv%d", wsm->WST_name(wst), wsm->Get_ver_num(ver));
+                    fprintf(ir_ofile, " ");
+                    Print_ver(ir_ofile, ver);
                 }
                 else {
                     fprintf(ir_ofile, " INV_VER");

@@ -502,6 +502,7 @@ BE_COM_CXX_SRCS = \
   wssa_defs.cxx         \
   wssa_sym.cxx          \
   wssa_mgr.cxx          \
+  wssa_points_to.cxx    \
   wssa_du.cxx           \
   wssa_wn.cxx           \
   wssa_io.cxx           \

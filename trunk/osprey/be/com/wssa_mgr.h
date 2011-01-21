@@ -48,6 +48,7 @@
 #include "wssa_wn.h"
 #include "wn.h"
 #include "symtab.h"
+#include "opt_points_to.h"
 #include "cxx_memory.h"
 #include <list>
 
@@ -266,13 +267,30 @@ public:
   void Clear_wn_map();
 
 private:
-  ST_TO_WST_MAP _st_to_wst_map;
+  ST_TO_WST_MAP _st_to_rwst_map;   // st -> real var in wst
+  ST_TO_WST_MAP _st_to_vwst_map;   // st -> virtual var in wst
+  void Add_wst_to_map(ST_TO_WST_MAP& map, ST_IDX st_idx, WST_IDX wst_idx);
   WST_IDX Find_wst(ST* st, PREG_NUM preg);
+  WST_IDX Find_wst(ST* st, INT64 byte_ofst, INT64 byte_size,
+                   UINT8 bit_ofst, UINT8 bit_size);
+  WST_IDX Find_wst(OPERATOR opr, ST* base, 
+                   INT64 byte_ofst, INT64 byte_size,
+                   UINT8 bit_ofst, UINT8 bit_size);
+  WN*  Find_addr_base(WN* tree);
+  void Analyze_range(WN* expr, POINTS_TO* pt);
+  void Analyze_lda_base(WN* expr, POINTS_TO* pt);
+  void Analyze_ldid_base(WN* expr, POINTS_TO* pt);
+  void Analyze_addr_arith(WN* expr, POINTS_TO* pt);
+  void Analyze_addr_expr(WN* expr, POINTS_TO* pt);
+  void Analyze_addr_for_memop(WN* memop, POINTS_TO* pt);
+  UINT64 Desc_byte_size(WN* wn);
+  WST_IDX Create_wst_for_direct_memop(WN* wn);
+  WST_IDX Create_wst_for_indirect_memop(WN* wn);
 
 public:
   // manage symbols and max version of the symbol
-  WST_IDX New_wst(ST_IDX idx);
-  WST_IDX New_wst(ST_IDX idx, PREG_NUM preg);
+  WST_IDX New_wst(ST* st);
+  WST_IDX New_wst(ST* st, PREG_NUM preg);
   WST_IDX New_wst(ST* st, const WST_Field_Info& field);
   WST_IDX New_wst(ST* st, const WST_Vsym_Info& vsym);
   FIELD_INFO_IDX New_field(const WST_Field_Info& field_info);

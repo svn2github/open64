@@ -565,8 +565,6 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
 	    chi->RESULT()->Is_flag_set(CF_IS_ZERO_VERSION))
 	  continue;
 	chi->RESULT()->Set_flag(CF_SPRE_REMOVED);
-        // WHIRL SSA: reset version to 0 since there is no def
-        chi->RESULT()->Set_version(0);
       }
 
       // insert phi for the RHS preg
@@ -574,8 +572,6 @@ EXP_WORKLST::SPRE_perform_insert_delete(ETABLE *etable)
 	etable->Htable()->Insert_var_phi(stmt->Rhs(), stmt->Rhs()->Defbb());
 
       stmt->Lhs()->Set_flag(CF_SPRE_REMOVED);
-      // WHIRL SSA: reset version to 0 since there is no def
-      stmt->Lhs()->Set_version(0);
       bb->Remove_stmtrep(stmt); // TODO: free up chi list?
       Inc_reload_count();
 
