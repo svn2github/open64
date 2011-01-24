@@ -68,6 +68,7 @@ WHIRL_SSA_EMITTER::Alloca_Idx(hash_map<INT32, INT32> &st_field_idx_map, INT32 wn
     new_idx = it->second + 1;
   }
   st_field_idx_map[wn_st_idx] = new_idx;
+  return new_idx;
 }
 
 WSSA::WSSA_VSYM_TYPE
@@ -120,13 +121,6 @@ WHIRL_SSA_EMITTER::New_def_ver(CODEREP* cr, WN* def_wn, WSSA::WSSA_NODE_KIND def
     ver_info.Set_zero();
   WSSA::VER_IDX ver_idx = _wssa_mgr->New_ver(ver_info);
   _cr_to_ver[(INTPTR)cr] = ver_idx;
-
-if (def_wn != NULL && WN_operator(def_wn) == OPR_STID) {
-  if (ST_class(WN_st(def_wn)) == CLASS_PREG) {
-    const WSSA::WST_Symbol_Entry& sym = _wssa_mgr->Get_wst(wst_idx);
-    Is_True(sym.Sym_type() == WSSA::WST_PREG, ("sym is not preg"));
-  }
-}
 
   return ver_idx;
 }
@@ -259,7 +253,7 @@ WHIRL_SSA_EMITTER::WSSA_Convert_OPT_Symbol() {
       switch (aux->Stype()) {
         case VT_LDA_SCALAR:
         case VT_LDA_VSYM: {
-          vsym_info.Set_name_idx(Save_Str2("v_", ST_name(aux->Base())));
+          vsym_info.Set_name_idx(Save_Str2("v_", aux->Base_name()));
           base_st = aux->Base();
           break;
         }
@@ -290,6 +284,7 @@ WHIRL_SSA_EMITTER::WSSA_Convert_OPT_Symbol() {
           break;
         }
       }
+      vsym_info.Copy_points_to(aux->Points_to());
       wst_idx = _wssa_mgr->New_wst(base_st, vsym_info);
       ++_vsym_idx;
     }
@@ -303,7 +298,7 @@ WHIRL_SSA_EMITTER::WSSA_Convert_OPT_Symbol() {
       UINT field_id = aux->Field_id();
       if (ST_class(wn_st) == CLASS_PREG) {
         // PREG
-        wst_idx = _wssa_mgr->New_wst(wn_st_idx, st_ofst);
+        wst_idx = _wssa_mgr->New_wst(wn_st, st_ofst);
       }
       else {
         // all opt stab entry mapped to a field type now.
@@ -468,6 +463,12 @@ WHIRL_SSA_EMITTER::WSSA_Copy_CHI_Node(CHI_NODE* chi_node, WN* wn) {
       fprintf(TFile, "skip copy for non-live chi node\n");
     return;
   }
+  if (chi_node->OPND() == chi_node->RESULT() &&
+      !chi_node->OPND()->Is_flag_set(CF_IS_ZERO_VERSION)) {
+    if (_trace)
+      fprintf(TFile, "skip copy for chi wth the same res and opnd\n");
+    return;
+  }
 
   WSSA::CHI_NODE* wssa_chi = _wssa_mgr->Create_chi();
   WSSA::VER_IDX opnd_idx = Get_cr_ver(chi_node->OPND());
@@ -549,32 +550,6 @@ WHIRL_SSA_EMITTER::WSSA_Copy_PHI_Node(PHI_NODE* phi_node, WN* wn) {
   }
 
   Is_True(phi_node->Size() >= 1, ("phi node does not have operand"));
-  BOOL opnd_cr_live = FALSE;
-  for (INT32 i = 0; i < phi_node->Size(); ++i) {
-    // find the first one opnd who is not result and version is not 0
-    if (phi_node->OPND(i) != phi_node->RESULT() &&
-        phi_node->OPND(i)->Version() != 0) {
-      opnd_cr_live = Is_cr_def_live(phi_node->OPND(i));
-      break;
-    }
-  }
-#ifdef Is_True_On
-  for (INT32 i = 0; i < phi_node->Size(); ++i) {
-    CODEREP* opnd_cr = phi_node->OPND(i);
-    FmtAssert(phi_node->OPND(i) == phi_node->RESULT() ||
-              phi_node->OPND(i)->Version() == 0 ||
-              Is_cr_def_live(opnd_cr) == opnd_cr_live,
-              ("not all operands of phi are dead or live"));
-  }
-#endif
-
-  if (opnd_cr_live == FALSE) {
-    CODEREP* res_cr = phi_node->RESULT();
-    Is_True(res_cr->Usecnt() == 0, ("res is used but all opnd is dead"));
-    Reset_CR_version(phi_node->RESULT(), 0);
-    phi_node->Reset_live();
-    return;
-  }
 
   WSSA::VER_IDX* ver_list = (WSSA::VER_IDX* )alloca(sizeof(WSSA::VER_IDX)*phi_node->Size());
   INT32 opnd_count = 0;
@@ -733,14 +708,5 @@ void
 WHIRL_SSA_EMITTER::WSSA_Set_Ver(WN* wn, WSSA::VER_IDX ver_idx) {
   WN_MAP_Set_ID(Current_Map_Tab, wn);
   _wssa_mgr->Set_wn_ver(wn, ver_idx);
-}
-
-void
-WHIRL_SSA_EMITTER::Reset_CR_version(CODEREP* cr, UINT32 ver_num) {
-  Is_True(cr != NULL, ("cr is NULL"));
-  WSSA::VER_IDX res_idx = Get_cr_ver(cr);
-  cr->Set_version(ver_num);
-  if (res_idx != WSSA::VER_INVALID)
-    _wssa_mgr->Update_ver_num(res_idx, ver_num);
 }
 

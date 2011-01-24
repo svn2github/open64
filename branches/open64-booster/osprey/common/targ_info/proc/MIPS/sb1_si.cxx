@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *
  * Sibyte SB1 scheduling information
  *
@@ -27,10 +31,9 @@ static RESOURCE res_SL2;
 
 
 
-int
-main (int argc, char *argv[])
+void Generate_SB1 (void)
 {
-  Machine("sb1", ISA_SUBSET_MIPS4, argc, argv);
+  Machine("sb1", ISA_SUBSET_MIPS4);
 
   res_IBox = RESOURCE_Create ("IBox", 4);
   res_EX = RESOURCE_Create ("Execution", 2);
@@ -1254,5 +1257,5 @@ Instruction_Group("c3instr",
   Any_Result_Available_Time (1);
   Resource_Requirement (res_DSP, 0);
 #endif
-  Machine_Done("sb1.c");
+  Machine_Done();
 }

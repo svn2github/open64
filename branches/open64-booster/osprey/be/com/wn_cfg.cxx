@@ -41,6 +41,8 @@
 #include "wn_cfg.h"
 #include "cfg_util.h"
 #include "ir_reader.h"
+#include <ext/hash_set>
+using namespace __gnu_cxx;
 
 // VCG helper utilities
 #include <sstream>
@@ -123,7 +125,6 @@ WN_STMT_CONTAINER::Insert_before(WN* before, WN* stmt) {
   Is_True(stmt != NULL, ("invalid stmt"));
   Is_True(OPERATOR_is_stmt(WN_operator(stmt)), ("invalid stmt"));
   FmtAssert(before != _extra_stmt, ("TODO: support insert before extra stmt"));
-  FmtAssert(WN_operator(before) != OPR_LABEL, ("can not insert before label"));
 
 #ifdef Is_True_On
   WN* wn = NULL;
@@ -145,16 +146,6 @@ WN_STMT_CONTAINER::Insert_after(WN* after, WN* stmt) {
   Is_True(stmt != NULL, ("invalid stmt"));
   Is_True(OPERATOR_is_stmt(WN_operator(stmt)), ("invalid stmt"));
   Is_True(!OPERATOR_is_scf(WN_operator(after)), ("TODO: after is scf"));
-  Is_True(WN_operator(after) != OPR_TRUEBR &&
-          WN_operator(after) != OPR_FALSEBR &&
-          WN_operator(after) != OPR_GOTO &&
-          WN_operator(after) != OPR_AGOTO &&
-          WN_operator(after) != OPR_CASEGOTO &&
-          WN_operator(after) != OPR_COMPGOTO &&
-          WN_operator(after) != OPR_GOTO_OUTER_BLOCK &&
-          WN_operator(after) != OPR_RETURN &&
-          WN_operator(after) != OPR_RETURN_VAL &&
-          WN_operator(after) != OPR_XGOTO, ("TODO: after is jump"));
   FmtAssert(after != _extra_stmt, ("TODO: support insert after extra stmt"));
 
 #ifdef Is_True_On
@@ -274,6 +265,9 @@ WN_STMT_MAPPER::Get_stmt_node(STMT stmt) const {
 void
 WN_CFG::Set_parent(WN* parent, WN* kid) {
   Is_True(parent != NULL && kid != NULL, ("Parent or kid is NULL"));
+  Is_True(WN_operator(parent) != OPERATOR_UNKNOWN && 
+          WN_operator(kid) != OPERATOR_UNKNOWN, 
+          ("Parent or kid is invalid"));
 //  Is_True(_parent_map.find((INTPTR)kid) == _parent_map.end(), 
 //          ("Kid already has a parent"));
 #ifdef Is_True_On
@@ -301,7 +295,8 @@ WN_CFG::Set_parent(WN* parent, WN* kid) {
 
 void
 WN_CFG::Remove_parent(WN* wn) {
-  Is_True(wn != NULL, ("wn is NULL"));
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   Is_True(_parent_map.find((INTPTR)wn) != _parent_map.end(),
           ("wn does not have a parent"));
   _parent_map.erase((INTPTR)wn);
@@ -316,7 +311,8 @@ WN_CFG::Set_label(INT32 label_num, BB_NODE* node) {
 
 void
 WN_CFG::Parentize_tree(WN* tree) {
-  Is_True(tree != NULL, ("tree is NULL"));
+  Is_True(tree != NULL && WN_operator(tree) != OPERATOR_UNKNOWN, 
+          ("tree is invalid"));
   if (WN_operator(tree) == OPR_BLOCK) {
     WN* wn;
     for (wn = WN_first(tree); wn != NULL; wn = WN_next(wn)) {
@@ -335,7 +331,8 @@ WN_CFG::Parentize_tree(WN* tree) {
 
 void
 WN_CFG::Unparentize_tree(WN* tree) {
-  Is_True(tree != NULL, ("tree is NULL"));
+  Is_True(tree != NULL && WN_operator(tree) != OPERATOR_UNKNOWN, 
+          ("tree is invalid"));
   Remove_parent(tree);
   if (WN_operator(tree) == OPR_BLOCK) {
     WN* wn;
@@ -353,6 +350,8 @@ WN_CFG::Unparentize_tree(WN* tree) {
 
 WN*
 WN_CFG::Get_parent(WN* kid) const {
+  Is_True(kid != NULL && WN_operator(kid) != OPERATOR_UNKNOWN, 
+          ("kid is invalid"));
   if (WN_operator(kid) == OPR_FUNC_ENTRY) {
     return NULL;
   }
@@ -363,6 +362,8 @@ WN_CFG::Get_parent(WN* kid) const {
 
 WN*
 WN_CFG::Get_parent_stmt(WN* wn) const {
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   Is_True(WN_operator(wn) != OPR_FUNC_ENTRY, ("No parent for FUNC_ENTRY"));
   if (OPERATOR_is_stmt(WN_operator(wn))) {
     return wn;
@@ -384,6 +385,8 @@ WN_CFG::Get_parent_stmt(WN* wn) const {
 
 WN*
 WN_CFG::Get_parent_block(WN* wn) const {
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   if (WN_operator(wn) == OPR_BLOCK) {
     return wn;
   }
@@ -397,6 +400,8 @@ WN_CFG::Get_parent_block(WN* wn) const {
 
 WN*
 WN_CFG::Get_parent_scf(WN* wn) const {
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   // block has the SCF property, we need to exclude OPR_BLOCK
   if (OPERATOR_is_scf(WN_operator(wn)) && WN_operator(wn) != OPR_BLOCK) {
     return wn;
@@ -412,6 +417,8 @@ WN_CFG::Get_parent_scf(WN* wn) const {
 
 WN*
 WN_CFG::Get_parent_region(WN* wn) const {
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   if (WN_operator(wn) == OPR_REGION) {
     return wn;
   }
@@ -425,7 +432,8 @@ WN_CFG::Get_parent_region(WN* wn) const {
 
 WN_CFG::BB_NODE*
 WN_CFG::Get_wn_node(WN* wn) const {
-  Is_True(wn != NULL, ("wn is NULL"));
+  Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN, 
+          ("wn is invalid"));
   OPERATOR opr = WN_operator(wn);
   if (opr == OPR_BLOCK) {
     return NULL;  // no block in CFG
@@ -832,12 +840,18 @@ WN_CFG_BUILDER::Add_compgoto(WN_CFG& cfg, WN* wn) {
   // put all kids into BB0
   Add_stmt(cfg, _current_bb, wn);
   WN* goto_wn = WN_first(WN_switch_table(wn));
+  hash_set<INT32> label_set;
   while (goto_wn != NULL) {
-    Connect_goto_to_label(cfg, _current_bb, goto_wn);
+    if (label_set.find(WN_label_number(goto_wn)) == label_set.end()) {
+      label_set.insert(WN_label_number(goto_wn));
+      Connect_goto_to_label(cfg, _current_bb, goto_wn);
+    }
     goto_wn = WN_next(goto_wn);
   }
-  if (WN_switch_default(wn) != NULL)
-    Connect_goto_to_label(cfg, _current_bb, WN_switch_default(wn));
+  goto_wn = WN_switch_default(wn);
+  if (goto_wn != NULL &&
+      label_set.find(WN_label_number(goto_wn)) == label_set.end())
+    Connect_goto_to_label(cfg, _current_bb, goto_wn);
 
   // create BB1
   if (WN_next(wn) != NULL)
@@ -863,11 +877,17 @@ WN_CFG_BUILDER::Add_switch(WN_CFG& cfg, WN* wn) {
   // put all kids into BB0
   Add_stmt(cfg, _current_bb, wn);
   WN* casegoto_wn = WN_first(WN_switch_table(wn));
+  hash_set<INT32> label_set;
   while (casegoto_wn != NULL) {
-    Connect_goto_to_label(cfg, _current_bb, casegoto_wn);
+    if (label_set.find(WN_label_number(casegoto_wn)) == label_set.end()) {
+      label_set.insert(WN_label_number(casegoto_wn));
+      Connect_goto_to_label(cfg, _current_bb, casegoto_wn);
+    }
     casegoto_wn = WN_next(casegoto_wn);
   }
-  if (WN_switch_default(wn) != NULL)
+  casegoto_wn = WN_switch_default(wn);
+  if (casegoto_wn != NULL &&
+      label_set.find(WN_label_number(casegoto_wn)) == label_set.end())
     Connect_goto_to_label(cfg, _current_bb, WN_switch_default(wn));
 
   // create BB1
@@ -914,6 +934,10 @@ WN_CFG_BUILDER::Add_label(WN_CFG& cfg, WN* wn) {
   }
 
   // connect last_bb with current_bb
+  if (WN_Label_Is_Handler_Begin(wn) ||
+      LABEL_target_of_goto_outer_block(WN_label_number(wn))) {
+    cfg.Connect_predsucc(cfg.Get_dummy_entry(), _current_bb);
+  }
   if (last_bb != _current_bb)
     cfg.Connect_predsucc(last_bb, _current_bb);
 }
@@ -1030,6 +1054,8 @@ WN_CFG_BUILDER::Add_block(WN_CFG& cfg, WN* wn) {
     case OPR_PRAGMA:
     case OPR_XPRAGMA:
       Add_stmt(cfg, _current_bb, stmt); break;
+    case OPR_INTRINSIC_CALL:
+      Add_intrinsic_call(cfg, stmt); break;
     case OPR_REGION:
       Add_region(cfg, stmt); break;
     case OPR_REGION_EXIT:
@@ -1105,6 +1131,28 @@ WN_CFG_BUILDER::Add_region_exit(WN_CFG& cfg, WN* wn) {
     _current_bb = cfg.Create_node();
   else
     _current_bb = NULL;    // no fall-through for region_exit
+}
+
+//===================================================================
+// Add_intrinsic_call: handle INTRINSIC_CALL
+// INTRINSIC_CALL --> BB0
+//   if call never returns, end current bb and connect to exit
+//===================================================================
+void
+WN_CFG_BUILDER::Add_intrinsic_call(WN_CFG& cfg, WN* wn) {
+  Is_True(WN_operator(wn) == OPR_INTRINSIC_CALL,
+          ("WN is not call"));
+  Is_True(_current_bb != NULL, ("Current BB is NULL"));
+  // add call to current bb
+  Add_stmt(cfg, _current_bb, wn);
+  if (WN_Call_Never_Return(wn)) {
+    cfg.Connect_predsucc(_current_bb, cfg.Get_dummy_exit());
+    // create BB1
+    if (WN_next(wn) != NULL)
+      _current_bb = cfg.Create_node();
+    else
+      _current_bb = NULL;    // no fall-through for the intrinsic
+  }
 }
 
 //===================================================================

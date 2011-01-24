@@ -42,6 +42,7 @@ class ST;                   // forward decl of ST
 
 #define INVALID_IDX     ((UINT32)-1)
 #define INVALID_VER     ((UINT32)-1)
+#define ST_INVALID      0
 #define WSSA_ZERO_VER   0
 
 /* internal types */

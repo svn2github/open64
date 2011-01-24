@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -158,7 +162,7 @@ TI_RES_COUNT_Add_Op_Resources(
   INT                i;
   TOP                topcode = opcode;
   SI_BAD_II_SET      bad_iis = TSI_Bad_IIs(topcode);
-  SI_RESOURCE_TOTAL* rt_vec  = TSI_Resource_Total_Vector(topcode);
+  const SI_RESOURCE_TOTAL* rt_vec  = TSI_Resource_Total_Vector(topcode);
 
   for ( i = 0; i < TSI_Resource_Total_Vector_Size(topcode); ++i ) {
     SI_RESOURCE_ID id    = SI_RESOURCE_TOTAL_Resource_Id(rt_vec+i);
@@ -196,7 +200,7 @@ TI_RES_COUNT_Add_Op_Resources_Scaled(
   INT                i;
   TOP                topcode = opcode;
   SI_BAD_II_SET      bad_iis = TSI_Bad_IIs(topcode);
-  SI_RESOURCE_TOTAL *rt_vec  = TSI_Resource_Total_Vector(topcode);
+  const SI_RESOURCE_TOTAL *rt_vec  = TSI_Resource_Total_Vector(topcode);
 
   for ( i = 0; i < TSI_Resource_Total_Vector_Size(topcode); ++i ) {
     SI_RESOURCE_ID id    = SI_RESOURCE_TOTAL_Resource_Id(rt_vec+i);
@@ -233,7 +237,7 @@ TI_RES_COUNT_Subtract_Op_Resources(
   INT                i;
   TOP                topcode = opcode;
   SI_BAD_II_SET      bad_iis = TSI_Bad_IIs(topcode);
-  SI_RESOURCE_TOTAL *rt_vec = TSI_Resource_Total_Vector(topcode);
+  const SI_RESOURCE_TOTAL *rt_vec = TSI_Resource_Total_Vector(topcode);
 
   for ( i = 0; i < TSI_Resource_Total_Vector_Size(topcode); ++i ) {
     SI_RESOURCE_ID id    = SI_RESOURCE_TOTAL_Resource_Id(rt_vec+i);
@@ -271,7 +275,7 @@ TI_RES_COUNT_Subtract_Op_Resources_Scaled(
   INT                i;
   TOP                topcode = opcode;
   SI_BAD_II_SET      bad_iis = TSI_Bad_IIs(topcode);
-  SI_RESOURCE_TOTAL *rt_vec = TSI_Resource_Total_Vector(topcode);
+  const SI_RESOURCE_TOTAL *rt_vec = TSI_Resource_Total_Vector(topcode);
 
   for ( i = 0; i < TSI_Resource_Total_Vector_Size(topcode); ++i ) {
     SI_RESOURCE_ID id    = SI_RESOURCE_TOTAL_Resource_Id(rt_vec+i);

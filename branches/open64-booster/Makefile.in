@@ -1,6 +1,6 @@
 #
 #
-#  Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 #
@@ -79,15 +79,11 @@ endif
 ifeq ($(MACHINE_TYPE), i386)
 # i386
   GNUFE_BUILD_HOST    = x86_64-redhat-linux
-  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
-  TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
 endif
 
 ifeq ($(MACHINE_TYPE), x86_64)
 # x86_64
   GNUFE_BUILD_HOST    = x86_64-redhat-linux
-  TARGET_EXTRA_OBJ    = $(NATIVE_BUILD_DIR)/targ_info/opteron.so
-  TARGET_EXTRA_OBJ   += $(NATIVE_BUILD_DIR)/targ_info/em64t.so
 endif
 
 CROSS_BUILD = false
@@ -264,10 +260,6 @@ $(NATIVE_BUILD_DIR)/orc_intel/orc_intel.so orc_intel.so: cg.so
 	$(MAKE) -C $(NATIVE_BUILD_DIR)/orc_intel
 
 $(NATIVE_BUILD_DIR)/targ_info/itanium.so itanium.so: targ_info
-
-else
-$(NATIVE_BUILD_DIR)/targ_info/opteron.so opteron.so: targ_info
-$(NATIVE_BUILD_DIR)/targ_info/em64t.so em64t.so: targ_info
 endif
 
 $(NATIVE_BUILD_DIR)/ir_tools/ir_b2a ir_b2a: libcomutil

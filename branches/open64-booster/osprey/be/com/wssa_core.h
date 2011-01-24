@@ -158,22 +158,20 @@ public:
   // routines for debugging
   void Print(FILE* fp, int indent) const {
     Put_indent(fp, indent);
-    WST_IDX wst_idx = Get_ver_wst(Get_opnd(0)); // always use opnd 0
-    const char* name = Get_wst_name(wst_idx);
     if (Res_count() > 0) {
-      fprintf(fp, "%sv%d = ", name, Get_ver_num(Get_res(0)));
+      Print_ver(fp, Get_res(0));
+      fprintf(fp, " = ");
     }
     fprintf(fp, "%s(", WSSA_node_name(_Ttraits::NODE_KIND)); 
     int i = 0;
     for ( ; i < Opnd_count() - 1; ++i) {
-      fprintf(fp, "%sv%d, ", name, Get_ver_num(Get_opnd(i)));
+      Print_ver(fp, Get_opnd(i));
+      fprintf(fp, ", ");
     }
     if (i < Opnd_count()) {
-      fprintf(fp, "%sv%d)\n", name, Get_ver_num(Get_opnd(i)));
+      Print_ver(fp, Get_opnd(i));
     }
-    else {
-      fprintf(fp, ")\n");
-    }
+    fprintf(fp, ")\n");
   }
   void Verify() const {
     WST_IDX wst_idx = Get_ver_wst(Get_opnd(0)); // always use opnd 0

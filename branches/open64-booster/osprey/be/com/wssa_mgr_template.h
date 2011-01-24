@@ -171,6 +171,7 @@ WSSA_NODE_IDX WHIRL_SSA_MANAGER::Add_node(const WN* wn, _Tnode* node) {
   Is_True(WSSA::WN_has_node(wn, _Tnode::NODE_KIND), ("WN can not have this kind of node"));
 #endif
 
+  WN_MAP_Set_ID(Current_Map_Tab, const_cast<WN*>(wn));
   typedef typename NODE_TO_TYPES<_Tnode::NODE_KIND>::TABLE_TYPE TABLE_TYPE;
   typedef typename NODE_TO_TYPES<_Tnode::NODE_KIND>::WN_MAP_TYPE WN_MAP_TYPE;
   TABLE_TYPE& table = Get_table<_Tnode::NODE_KIND>();
@@ -214,7 +215,6 @@ typename NODE_TO_TYPES<_Tkind>::NODE_TYPE* WHIRL_SSA_MANAGER::WN_ssa_node(const 
       return node;
     idx = node->Next();
   }
-  FmtAssert(FALSE, ("can not find the node for given WST"));
   return NULL;
 }
 
@@ -228,7 +228,6 @@ const typename NODE_TO_TYPES<_Tkind>::NODE_TYPE* WHIRL_SSA_MANAGER::WN_ssa_node(
       return node;
     idx = node->Next();
   }
-  FmtAssert(FALSE, ("can not find the node for given WST"));
   return NULL;
 }
 

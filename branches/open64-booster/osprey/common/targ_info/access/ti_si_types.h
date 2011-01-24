@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2007 PathScale, LLC.  All Rights Reserved.
  */
 /*
@@ -99,7 +103,7 @@ typedef struct {
  ****************************************************************************/
 
 typedef struct {
-  SI_RESOURCE* resource;
+  const SI_RESOURCE* resource;
   mINT32 total_used;
 } SI_RESOURCE_TOTAL;
 
@@ -113,8 +117,9 @@ typedef const SI_RRW* SI_RR;
 typedef UINT SI_ID;
 
 typedef struct {
+#ifdef Is_True_On
   const char* name;
-  SI_ID id;
+#endif
   const mUINT8 *operand_access_times;
   const mUINT8 *result_available_times;
   mINT32 load_access_time;
@@ -130,9 +135,18 @@ typedef struct {
   mINT32 valid_issue_slot_count;
   SI_ISSUE_SLOT * const *valid_issue_slots;
   mINT32 resource_total_vector_size;
-  SI_RESOURCE_TOTAL *resource_total_vector;
+  const SI_RESOURCE_TOTAL *resource_total_vector;
   mUINT8 write_write_interlock;
 } SI;
+
+typedef struct {
+  const char *name;
+  const int SI_issue_slot_count;
+  const SI_ISSUE_SLOT * const * si_issue_slots;
+  const int SI_ID_count;
+  const int *SI_ID_si;
+  const int *SI_top_si;
+} SI_MACHINE;
 
 /****************************************************************************
  ****************************************************************************/

@@ -64,6 +64,9 @@ public:
 
 private:
   BOOL _trace;
+  BOOL _update_cfg;
+  BOOL _update_ssa;
+  BOOL _update_du;
   WN* _root;
   CFG_UTIL::WN_CFG* _cfg;
   WHIRL_SSA_MANAGER* _ssa;
@@ -72,16 +75,28 @@ private:
 public:
   WSSA_UPDATER(WN* root, CFG_UTIL::WN_CFG* cfg, 
                WHIRL_SSA_MANAGER* ssa, BOOL trace = FALSE)
-    : _root(root), _ssa(ssa), _cfg(cfg), _trace(trace) {
+    : _root(root), _ssa(ssa), _cfg(cfg), _trace(trace),
+      _update_cfg(FALSE), _update_ssa(FALSE), _update_du(FALSE) {
     _du = NULL;  // TODO: update DU
   } 
+
+public:
+  void Enable_update_cfg()  { _update_cfg = TRUE;  }
+  void Disable_update_cfg() { _update_cfg = FALSE; }
+  void Enable_update_ssa()  { _update_ssa = TRUE;  }
+  void Disable_update_ssa() { _update_ssa = FALSE; }
+  void Enable_update_du()   { _update_du  = TRUE;  }
+  void Disable_update_du()  { _update_du  = FALSE; }
 
 public:
   // adjust phi operands order according to CFG
   // only needed for WOPT emitter since the CFG and SSA are built separately
   void Adjust_phi_opnds();
+  void Rename_all_preg();
+  void Rename_all_wst();
 
 private:
+  BOOL wn_is_branch(WN* stmt);
   BOOL wn_change_cfg(WN* stmt);
   BOOL wn_change_ssa(WN* stmt);
 
@@ -92,6 +107,8 @@ private:
   VER_IDX get_prev_def(WST_DEF_MAP& def, WST_IDX wst_idx);
 
   // rename all the versions in the def info
+  void ssa_rename_mu(WN* wn, WST_DEF_MAP& def);
+  void ssa_rename_chi(WN* wn, WST_DEF_MAP& def);
   void ssa_rename_rhs(WN* rhs, WST_DEF_MAP& def);
   void ssa_rename_stmt(WN* stmt, WST_DEF_MAP& def);
   // rename the old versions to the new versions
@@ -133,6 +150,7 @@ public:
 public:
   // rename inside bb and keep the versions of live out the same
   void Rename_BB(BB_NODE* bb);
+  void Rename_BB_new_preg(BB_NODE* bb);
 };
 
 }; /* namespace WSSA */

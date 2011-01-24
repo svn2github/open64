@@ -373,9 +373,8 @@ private:
     // bottom up traversal on dom tree
     typename BB_NODE::dom_iterator xit;
     for (xit = node->dom_begin(_Fwd); xit != node->dom_end(_Fwd); ++xit) {
-      BB_NODE* dom_kid = _cfg.Get_node(*xit);
-      if (dom_kid->get_idom(_Fwd) == node)
-        Compute_DF_rec<_Fwd>(dom_kid);
+      Is_True((*xit)->get_idom(_Fwd) == node, ("idom node mismatch"));
+      Compute_DF_rec<_Fwd>(*xit);
     }
 
     // start from empty set
@@ -389,9 +388,8 @@ private:
     // traverse the dominated blocks
     typename BB_NODE::dom_iterator yit;
     for (yit = node->dom_begin(_Fwd); yit != node->dom_end(_Fwd); ++yit) {
-      if (_cfg.Get_node(*yit)->get_idom(_Fwd) != node)
-        continue;
-      BB_NODE_SET* ydf = DF_set(*yit);
+      Is_True((*yit)->get_idom(_Fwd) == node, ("idom node mismatch"));
+      BB_NODE_SET* ydf = DF_set((*yit)->Get_id());
       // for each element of Dominance-Frontier of yit
       for (bb_set_iterator zit = _cfg.BB_set_begin(ydf);
            zit != _cfg.BB_set_end(ydf);
@@ -405,7 +403,7 @@ private:
     for (bb_set_iterator dit = _cfg.BB_set_begin(node_df);
          dit != _cfg.BB_set_end(node_df);
          ++dit) {
-      node->add_df_list(&(*dit), _Fwd);
+      node->add_to_df_list(&(*dit), _Fwd);
     }
   }
 

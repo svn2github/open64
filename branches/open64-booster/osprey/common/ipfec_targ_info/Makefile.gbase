@@ -237,7 +237,10 @@ TARGINFO_ACCESS_SRCS = \
 	ti_asm.c		\
 	ti_bundle.c		\
 	ti_latency.c		\
-	ti_errors.c
+	ti_errors.c		\
+	ti_res.c		\
+	ti_res_count.c		\
+	ti_res_res.c
 
 TARGINFO_ACCESS_HDRS = $(TARGINFO_ACCESS_SRCS:.c=.h)
 TARGINFO_ACCESS_OBJS = $(TARGINFO_ACCESS_SRCS:.c=.o)
@@ -267,11 +270,6 @@ TARG_DSO_SRCS_CXX = \
 	targ_cache_info.cxx \
 	targ_bypass.cxx \
 	cggrp_ptn_table.cxx
-
-OLD_TARGINFO_ACCESS_C = \
-        ti_res.c        \
-        ti_res_count.c  \
-        ti_res_res.c
 
 # No head file for this class file
 TARG_INFO_SRCS_ONLY = \
@@ -303,10 +301,8 @@ TARG_DSO_OBJS_CXX = $(TARG_DSO_SRCS_CXX:.cxx=.o)
 TARG_DSO_MCK_OBJS_C = $(TARG_DSO_MCK_SRCS_C:.c=.o)
 TARG_DSO_MCK_OBJS_CXX = $(TARG_DSO_MCK_SRCS_CXX:.cxx=.o)
 
-OLD_TARGINFO_ACCESS_OBJS_C = $(OLD_TARGINFO_ACCESS_C:.c=.o)
-
-TARG_DSO_OBJS = $(TARG_DSO_OBJS_C) $(TARG_DSO_OBJS_CXX) $(OLD_TARGINFO_ACCESS_OBJS_C)
-TARG_DSO_MCK_OBJS = $(TARG_DSO_MCK_OBJS_C) $(TARG_DSO_MCK_OBJS_CXX) $(OLD_TARGINFO_ACCESS_OBJS_C)
+TARG_DSO_OBJS = $(TARG_DSO_OBJS_C) $(TARG_DSO_OBJS_CXX)
+TARG_DSO_MCK_OBJS = $(TARG_DSO_MCK_OBJS_C) $(TARG_DSO_MCK_OBJS_CXX)
 
 TARG_INFO_EXPORTS_C = $(TARG_INFO_SRCS_C:.c=.Exported)
 TARG_INFO_EXPORTS_CXX = $(TARG_INFO_SRCS_CXX:.cxx=.Exported)
@@ -447,7 +443,7 @@ endif
 #
 # Set up links to "old" targ_info source files.
 #
-$(TARGINFO_ACCESS_SRCS) $(TARGINFO_ACCESS_HDRS) $(OLD_TARGINFO_ACCESS_C):
+$(TARGINFO_ACCESS_SRCS) $(TARGINFO_ACCESS_HDRS):
 	ln -sf $(OLD_TARGINFO_ACCESS_DIR)/$@ $@
 
 $(TARGINFO_GENERATE_SRCS) $(TARGINFO_GENERATE_HDRS):
@@ -471,6 +467,15 @@ ti_latency.o: ti_latency.c ti_si.h targ_isa_properties.h targ_isa_hazards.h \
 
 ti_errors.o: ti_errors.c ti_errors.h 
 	$(CC) $(CFLAGS) -c ti_errors.c
+
+ti_res.o: ti_res.c ti_res.h
+	$(CC) $(CFLAGS) -c ti_res.c
+
+ti_res_res.o: ti_res_res.c ti_res_res.h
+	$(CC) $(CFLAGS) -c ti_res_res.c
+
+ti_res_count.o: ti_res_count.c ti_res_count.h
+	$(CC) $(CFLAGS) -c ti_res_count.c
 
 gen_util.o: gen_util.cxx gen_util.h
 	$(CXX) $(CXXFLAGS) -c gen_util.cxx

@@ -3,7 +3,11 @@
  */
 
 /*
- * Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
+ * Copyright (C) 2007, 2008 Pathscale, LLC.  All Rights Reserved.
+ */
+
+/*
+ * Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
 /* 
@@ -6606,15 +6610,9 @@ WFE_Expand_Expr (tree exp,
 	        break;
 	
 	      case BUILT_IN_POPCOUNT:
-                iopc = INTRN_I4POPCNT;
-                intrinsic_op = TRUE;
-                break;
 	      case BUILT_IN_POPCOUNTL:
-                iopc = Is_Target_32bit() ? INTRN_I4POPCNT : INTRN_I8POPCNT;
-                intrinsic_op = TRUE;
-                break;
 	      case BUILT_IN_POPCOUNTLL:
-	        iopc = INTRN_I8POPCNT;
+	        iopc = INTRN_POPCOUNT;
 		intrinsic_op = TRUE;
 		break;
 	

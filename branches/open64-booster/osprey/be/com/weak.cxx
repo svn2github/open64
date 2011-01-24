@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -176,17 +176,6 @@ void (*CG_PU_Finalize_p) ();
 void (*CG_Change_Elf_Symbol_To_Undefined_p) (ST*);
 WN* (*CG_Generate_Code_p) (WN*, ALIAS_MANAGER*, DST_IDX, BOOL);
 void (*CG_Dump_Region_p) (FILE*, WN*);
-#if defined(TARG_SL)  || defined(TARG_MIPS)
-INT *SI_resource_count_p;
-SI_RESOURCE  *(*SI_resources_p)[];
-SI *(*SI_top_si_p)[];
-SI_RRW *SI_RRW_initializer_p;
-SI_RRW *SI_RRW_overuse_mask_p;
-INT *SI_issue_slot_count_p;
-SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
-INT *SI_ID_count_p;
-SI *(*SI_ID_si_p)[];
-#endif
 // from be/cg/eh_region.h
 void (*EH_Generate_Range_List_p) (WN *);
 #if defined(TARG_IA64) || defined(TARG_X8664) 

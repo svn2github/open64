@@ -230,27 +230,6 @@ extern void EH_Generate_Range_List (WN *);
 #endif // __linux__
 #endif // SHARED_BUILD
 
-#if defined(TARG_SL)  || defined(TARG_MIPS)
-extern INT *SI_resource_count_p;
-#define SI_resource_count (*SI_resource_count_p)
-extern SI_RESOURCE* (*SI_resources_p)[];
-#define SI_resources (*SI_resources_p)
-extern SI* (*SI_top_si_p)[];
-#define SI_top_si (*SI_top_si_p)
-extern SI_RRW *SI_RRW_initializer_p;
-#define SI_RRW_initializer (*SI_RRW_initializer_p)
-extern SI_RRW *SI_RRW_overuse_mask_p;
-#define SI_RRW_overuse_mask (*SI_RRW_overuse_mask_p)
-extern INT *SI_issue_slot_count_p;
-#define SI_issue_slot_count (*SI_issue_slot_count_p)
-extern SI_ISSUE_SLOT *(*SI_issue_slots_p)[];
-#define SI_issue_slots (*SI_issue_slots_p)
-extern INT *SI_ID_count_p;
-#define SI_ID_count (*SI_ID_count_p)
-extern SI *(*SI_ID_si_p)[];
-#define SI_ID_si (*SI_ID_si_p)
-#endif // TARG_SL
-
 // symbols defined in wopt.so
 #if defined(SHARED_BUILD)
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)|| defined(__CYGWIN__) || defined(__MINGW32__)
@@ -2162,68 +2141,6 @@ Process_Feedback_Options (OPTION_LIST* olist)
   }
 } // Process_Feedback_Options
 
-#ifdef TARG_SL
-// load target.so and initialize weak variable in target.so
-void init_ti_target(void *handle) {
-  char *soname;
-  if (Is_Target_Sl1_pcore()) {
-    soname = (char*)alloca( strlen("sl1_pcore.so")+1 );
-    strncpy( soname, "sl1_pcore.so", strlen("sl1_pcore.so")+1 );
-  } else if (Is_Target_Sl2_pcore()) {
-    soname = (char*)alloca( strlen("sl2_pcore.so")+1 );
-    strncpy( soname, "sl2_pcore.so", strlen("sl2_pcore.so")+1 );
-  } else if (Is_Target_Sl1_dsp()) {
-    soname = (char*)alloca( strlen("sl1_dsp.so")+1 );
-    strncpy( soname, "sl1_dsp.so", strlen("sl1_dsp.so")+1 );
-  } else if (Is_Target_Sl5()) {
-    soname = (char*)alloca( strlen("sl5.so")+1 );
-    strncpy( soname, "sl5.so", strlen("sl5.so")+1 );
-  } else if (Target == TARGET_UNDEF) {
-    Is_True(0, ("undefined target"));
-  }
-  handle = dlopen(soname, RTLD_LAZY);
-  if (!handle) {
-    fprintf (stderr, "Error loading %s: %s\n", soname, dlerror());
-    exit (RC_SYSTEM_ERROR);
-  }
-  SI_resource_count_p = (INT *)dlsym(handle, "SI_resource_count");
-  SI_resources_p = (SI_RESOURCE *(*)[])dlsym(handle, "SI_resources");
-  SI_top_si_p = (SI *(*)[])dlsym(handle, "SI_top_si");
-  SI_RRW_initializer_p = (SI_RRW *)dlsym(handle, "SI_RRW_initializer");
-  SI_RRW_overuse_mask_p = (SI_RRW *)dlsym(handle, "SI_RRW_overuse_mask");
-  SI_issue_slot_count_p = (INT *)dlsym(handle, "SI_issue_slot_count");
-  SI_issue_slots_p = (SI_ISSUE_SLOT *(*)[])dlsym(handle, "SI_issue_slots");
-  SI_ID_count_p = (INT *)dlsym(handle, "SI_ID_count");
-  SI_ID_si_p = (SI *(*)[])dlsym(handle, "SI_ID_si");
-  return;
-}
-#endif
-
-#if defined(TARG_MIPS) && !defined(TARG_SL)
-// load target.so and initialize weak variable in target.so
-void init_ti_target(void *handle) {
-  char *soname;
-  soname = (char*)alloca( strlen("r10000.so")+1 );
-  strncpy( soname, "r10000.so", strlen("r10000.so")+1 );
-  handle = dlopen(soname, RTLD_LAZY);
-  if (!handle) {
-    fprintf (stderr, "Error loading %s: %s\n", soname, dlerror());
-    exit (RC_SYSTEM_ERROR);
-  }
-  SI_resource_count_p = (INT *)dlsym(handle, "SI_resource_count");
-  SI_resources_p = (SI_RESOURCE *(*)[])dlsym(handle, "SI_resources");
-  SI_top_si_p = (SI *(*)[])dlsym(handle, "SI_top_si");
-  SI_RRW_initializer_p = (SI_RRW *)dlsym(handle, "SI_RRW_initializer");
-  SI_RRW_overuse_mask_p = (SI_RRW *)dlsym(handle, "SI_RRW_overuse_mask");
-  SI_issue_slot_count_p = (INT *)dlsym(handle, "SI_issue_slot_count");
-  SI_issue_slots_p = (SI_ISSUE_SLOT *(*)[])dlsym(handle, "SI_issue_slots");
-  SI_ID_count_p = (INT *)dlsym(handle, "SI_ID_count");
-  SI_ID_si_p = (SI *(*)[])dlsym(handle, "SI_ID_si");
-  return;
-}
-
-#endif
-
 // Provide a place to stop after components are loaded
 extern "C" {
   void be_debug(void) {}
@@ -2276,9 +2193,7 @@ main (INT argc, char **argv)
   }
 
   Init_Operator_To_Opcode_Table();
-#if defined(TARG_SL)   || defined(TARG_MIPS)
-  init_ti_target(handle);
-#endif
+
   /* decide which phase to call */
   load_components (argc, argv);
   be_debug();

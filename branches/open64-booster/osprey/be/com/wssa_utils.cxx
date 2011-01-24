@@ -51,6 +51,29 @@ Put_indent(FILE* fp, int indent) {
   fprintf(fp, "%*s", indent, "");
 }
 
+void
+Print_wst(FILE* fp, WST_IDX idx) {
+  const WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
+  const WST_Symbol_Entry& sym = mgr->Get_wst(idx);
+  if (sym.Sym_type() == WST_PREG)
+    fprintf(fp, "%s:%d", mgr->WST_name(idx), sym.Preg_num());
+  else
+    fprintf(fp, "%s", mgr->WST_name(idx));
+}
+
+void
+Print_ver(FILE* fp, VER_IDX idx) {
+  const WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
+  WST_IDX wst_idx = mgr->Get_ver_wst(idx);
+  UINT32 ver_num = mgr->Get_ver_num(idx);
+  const WST_Symbol_Entry& sym = mgr->Get_wst(wst_idx);
+  if (sym.Sym_type() == WST_PREG)
+    fprintf(fp, "%s:%dv%d", 
+                mgr->WST_name(wst_idx), sym.Preg_num(), ver_num);
+  else
+    fprintf(fp, "%sv%d", mgr->WST_name(wst_idx), ver_num);
+}
+
 const char* Get_wst_name(WST_IDX idx) {
   const WHIRL_SSA_MANAGER* mgr = PU_Info_ssa_ptr(Current_PU_Info);
   return mgr->WST_name(idx);

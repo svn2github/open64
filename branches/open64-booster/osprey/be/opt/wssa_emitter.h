@@ -108,9 +108,6 @@ public:
   void WSSA_Copy_Fallthrough_PHI(BB_NODE*, STMT_CONTAINER*);
   WN*  WSSA_Copy_Equivalent_CHI(STMTREP*);
   void WSSA_Set_Ver(WN*, WSSA::VER_IDX);
-
-  // Reset version number for undef CODEREP
-  void Reset_CR_version(CODEREP* cr, UINT32 ver_num);
 };
 
 #endif  /* wssa_emitter_INCLUDED */

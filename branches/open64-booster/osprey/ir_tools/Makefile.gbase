@@ -88,11 +88,13 @@ COMMON_UTIL_DIR= $(BUILD_TOT)/common/util
 COMMON_COM_DIR= $(BUILD_TOT)/common/com
 COMMON_COM_TARG_DIR= $(BUILD_TOT)/common/com/$(BUILD_TARGET_DIR)
 BE_COM_DIR= $(BUILD_TOT)/be/com
+BE_OPT_DIR= $(BUILD_TOT)/be/opt
 
 LDIRT = $(TARGETS)
 
 LCINCS = -I$(BUILD_BASE) -I$(COMMON_COM_DIR) -I$(COMMON_COM_TARG_DIR) \
-	-I$(COMMON_UTIL_DIR) -I$(BE_COM_DIR) $(XINC) -I$(BUILD_TOT)/include
+	-I$(COMMON_UTIL_DIR) -I$(BE_COM_DIR) -I$(BE_OPT_DIR) $(XINC)  \
+        -I$(BUILD_TOT)/include
 ifeq ($(BUILD_OS), LINUX)
 LCINCS += -I$(BUILD_AREA)/include/libelf
 endif

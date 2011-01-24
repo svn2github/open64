@@ -61,6 +61,8 @@ namespace WSSA {
 // utility routines for Print/Verify, etc
 // in order to remove the dependency on WHRIL_SSA_MANAGER in Print/Verify routines
 void Put_indent(FILE* fp, int indent);
+void Print_wst(FILE* fp, WST_IDX idx);
+void Print_ver(FILE* fp, VER_IDX idx);
 const char* Get_wst_name(WST_IDX idx);
 WST_IDX Get_ver_wst(VER_IDX idx);
 UINT32 Get_ver_num(VER_IDX idx);
