@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  * Copyright 2004, 2005, 2006 PathScale, Inc.  All Rights Reserved.
  */
 
@@ -507,9 +510,11 @@ Rename_Threadprivate_COMMON(WN* pu, WN* parent, WN *wn, RENAMING_STACK *stack, R
   if (st) {
     ST *split_block;
     ST *common_block = ST_Source_Block(st, &split_block);
-    if (ST_is_thread_private(st) || 
-       (split_block && ST_is_thread_private(split_block)) ||
-       (common_block && ST_is_thread_private(common_block))) {
+
+    // Note that symbols in blocks are now marked to be thread private
+    // since it is possible that some symbols can be referenced as thread
+    // private and some as global.
+    if (ST_is_thread_private(st)) {
       ST *new_st; // renamed version of st
       ST *new_st_for_common_blk;
 

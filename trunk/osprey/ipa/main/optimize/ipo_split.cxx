@@ -365,6 +365,8 @@ Split_Individual_Common(COMMON_SNODE_LIST *snode)
       Set_TY_name_idx(Ty_Table[ty_idx], ST_name_idx(*new_st));
       Set_TY_split(Ty_Table[ty_idx]);
       Set_ST_is_split_common(new_st);
+      if (ST_is_thread_private(s))
+	Set_ST_is_thread_private(new_st);
 
       // attach the field information
       if (Field_Map)

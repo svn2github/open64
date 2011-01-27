@@ -13487,6 +13487,10 @@ static void send_attr_ntry(int		attr_idx)
          flag = flag | ((long64) 1 << FEI_OBJECT_ADDRTAKEN);
       }
 
+      if (ATD_TASK_PRIVATE(attr_idx) && SB_BLK_TYPE(sb_idx) != Stack) {
+         flag |= 1 << FEI_SEG_THREADPRIVATE;
+      }
+
       if (class == Component) {
          PDG_DBG_PRINT_START    
          PDG_DBG_PRINT_C("fei_member");
