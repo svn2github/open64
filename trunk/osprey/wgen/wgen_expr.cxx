@@ -6574,7 +6574,14 @@ WGEN_Expand_Expr (gs_t exp,
 	  }
 	}
 	else {
-	  if (mtyp != WN_rtype(wn)) 
+	  if (mtyp != WN_rtype(wn))
+#ifdef TARG_X8664
+            if (MTYPE_is_vector(mtyp) && MTYPE_is_vector(WN_rtype(wn)) &&
+                MTYPE_is_mmx_vector(mtyp) == MTYPE_is_mmx_vector(WN_rtype(wn)))             {
+               // CVT between vector types not needed
+            }
+            else
+#endif
 	    wn = WN_Cvt(WN_rtype(wn), mtyp, wn);
 	}
       }
