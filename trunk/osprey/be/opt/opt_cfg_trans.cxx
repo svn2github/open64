@@ -682,6 +682,8 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
 	      // the following test is to screen out COMPGOTO and XGOTO, ...
 	      if ((branch_sr->Op() == OPC_TRUEBR ||
 		   branch_sr->Op() == OPC_FALSEBR)) {
+                if (bb->Kind() == BB_LOGIF && bb->Ifinfo() != NULL)
+                  bb->Set_ifinfo(NULL);
 		if (branch_sr->Label_number() != goto_bb->Labnam()) {
 		  branch_sr->Set_st(NULL);
 		  branch_sr->Set_label_number(goto_bb->Labnam());
