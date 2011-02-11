@@ -391,6 +391,7 @@ private:
     WN* stmt = succ->First_stmt();
     if (stmt != NULL && _ssa->WN_has_phi(stmt)) {
       INT pred_pos = succ->Pred_pos(pred);
+      Is_True(pred_pos != POS_INVALID, ("can not find pred"));
       Is_True(succ->Get_pred(pred_pos) == pred, ("pred succ mismatch"));
       for (WHIRL_SSA_MANAGER::phi_iterator pit = _ssa->WN_phi_begin(stmt);
            pit != _ssa->WN_phi_end(stmt);
@@ -833,6 +834,7 @@ private:
     WN* stmt = succ->First_stmt();
     if (stmt != NULL && _ssa->WN_has_phi(stmt)) {
       INT pred_pos = succ->Pred_pos(pred);
+      Is_True(pred_pos != POS_INVALID, ("can not find pred"));
       Is_True(succ->Get_pred(pred_pos) == pred, ("pred succ mismatch"));
       for (WHIRL_SSA_MANAGER::phi_iterator pit = _ssa->WN_phi_begin(stmt);
            pit != _ssa->WN_phi_end(stmt);

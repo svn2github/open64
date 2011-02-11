@@ -52,6 +52,8 @@
 #include <algorithm>
 using namespace std;
 
+#define POS_INVALID -1
+
 namespace CFG_UTIL {
 
 // Forward declaration of DOM_BUILDER, DF_BUILDER, CFG_BASE, DFS_ITERATOR
@@ -221,6 +223,8 @@ public:
   STMT First_stmt() const  { return _stmts.First_stmt(); }
   STMT Last_stmt() const   { return _stmts.Last_stmt();  }
   BOOL Is_empty() const    { return _stmts.Is_empty();   }
+  STMT Next_stmt(STMT stmt) const  { return _stmts.Next_stmt(stmt); }
+  STMT Prev_stmt(STMT stmt) const  { return _stmts.Prev_stmt(stmt); }
   void Insert_before(STMT before, STMT stmt) {
     _stmts.Insert_before(before, stmt);
   }
@@ -283,7 +287,7 @@ public:
         return pos;
       ++pos;
     }
-    FmtAssert(FALSE, ("can not find pred pos"));
+    return POS_INVALID;
   }
   INT32 Succ_pos(BB_NODE* succ) {
     INT32 pos = 0;
@@ -294,7 +298,7 @@ public:
         return pos;
       ++pos;
     }
-    FmtAssert(FALSE, ("can not find succ pos"));
+    return POS_INVALID;
   }
 
   // dominator and post-dominator related methods
