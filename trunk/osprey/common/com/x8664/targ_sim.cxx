@@ -211,7 +211,7 @@ INT Classify_Aggregate(const TY_IDX ty,
     classes[i] = X86_64_NO_CLASS;
   if (TY_kind(ty) == KIND_STRUCT ||
       TY_kind(ty) == KIND_ARRAY) {
-    if (TY_kind(ty) == KIND_STRUCT) {
+    if (TY_kind(ty) == KIND_STRUCT && Ty_Table[ty].Fld()) {
       FLD_ITER fld_iter = Make_fld_iter(TY_fld(ty));
       do {
         FLD_HANDLE fld(fld_iter);
