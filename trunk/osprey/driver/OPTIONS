@@ -2002,7 +2002,7 @@ I-u%s		;		Cc	ld	"-u %s"
 -mno-sdata	;		Cc	NONE	"-G0"
 	""
 #endif
--finstrument-functions	;	ALL	NONE	"-OPT:cyg_instr=4"
+-finstrument-functions	;	ALL	NONE	"-OPT:cyg_instr=3"
 	""
 -finhibit-size-directive	;		Cc	be	"-CG:inhibit_size_directive=1:emit_asm_dwarf=0"
 	"Do not generate .size directives"
