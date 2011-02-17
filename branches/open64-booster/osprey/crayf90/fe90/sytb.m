@@ -1262,6 +1262,15 @@
 # endif
 
 # ifdef _DEBUG
+# define ATD_TASK_PRIVATE(IDX)                                                 \
+        ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
+		attr_tbl:sytb_var_error("ATD_TASK_PRIVATE", IDX))      \
+                [IDX].fld.flag58
+# else
+# define ATD_TASK_PRIVATE(IDX)           attr_tbl[IDX].fld.flag58
+# endif
+
+# ifdef _DEBUG
 # define ATD_TASK_COPYIN(IDX)                                                  \
         ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
 		attr_aux_tbl:attr_aux_var_error("ATD_TASK_COPYIN", IDX))       \
@@ -1325,14 +1334,10 @@
 # define ATD_TASK_LASTTHREAD(IDX)         attr_aux_tbl[IDX].fld.flag16
 # endif
 
-# ifdef _DEBUG
-# define ATD_TASK_PRIVATE(IDX)                                                 \
-        ((AT_OBJ_CLASS(IDX) == Data_Obj) ?                                     \
-		attr_aux_tbl:attr_aux_var_error("ATD_TASK_PRIVATE", IDX))      \
-                [IDX].fld.flag12
-# else
-# define ATD_TASK_PRIVATE(IDX)           attr_aux_tbl[IDX].fld.flag12
-# endif
+/* Module elements can be private or shared, see bug 686.
+ * ATD_TASK_PRIVATE is now a field of an element of attr_tbl (not
+ * attr_aux_tbl) since attr_aux_tbl is not exported in modules.
+ */
 
 # ifdef _DEBUG
 # define ATD_TASK_REDUCTION(IDX)                                               \

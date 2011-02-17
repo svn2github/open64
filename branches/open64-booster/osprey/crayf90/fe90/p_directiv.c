@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  *  Copyright (C) 2006. QLogic Corporation. All Rights Reserved.
  */
 
@@ -1372,6 +1375,15 @@ static void parse_slash_common_dirs(void)
                SB_BLK_TYPE(sb_idx)	= Threadprivate;
                SB_RUNTIME_INIT(sb_idx)	= FALSE;
                SB_IS_COMMON(sb_idx)	= TRUE;
+
+               /* Mark elements of the common block as thread private.
+                */
+               attr_idx	= SB_FIRST_ATTR_IDX(sb_idx);
+
+               while (attr_idx != NULL_IDX) {
+                  ATD_TASK_PRIVATE(attr_idx) = TRUE;
+                  attr_idx	= ATD_NEXT_MEMBER_IDX(attr_idx);
+               }
             }
 
             if (LA_CH_VALUE == SLASH) {
@@ -1405,6 +1417,11 @@ static void parse_slash_common_dirs(void)
 	    AT_OBJ_CLASS(attr_idx) = Data_Obj;
 	    SET_IMPL_TYPE(attr_idx);
 	 }
+	 /* Note that symbols in blocks are now marked to be thread private
+	  * since it is possible that some symbols can be referenced as thread
+	  * private and some as global.
+	  */
+	 ATD_TASK_PRIVATE(attr_idx) = TRUE;
 #ifdef KEY
          if (ATD_STOR_BLK_IDX(attr_idx) == NULL_IDX) {
             assign_storage_blk(attr_idx);

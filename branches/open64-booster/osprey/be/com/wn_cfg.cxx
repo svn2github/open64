@@ -39,6 +39,7 @@
 //====================================================================
 
 #include "wn_cfg.h"
+#include "wn_cfg_template.h"
 #include "cfg_util.h"
 #include "ir_reader.h"
 #include <ext/hash_set>
@@ -522,6 +523,42 @@ WN_CFG::Get_branch_stmt(BB_NODE* node) const {
   }
 }
 
+void
+WN_CFG::Build() {
+  Is_True(_root != NULL, ("root wn is NULL"));
+
+  // build parent map
+  PARENTMAP_BUILD_ACTION<WN_CFG> map_helper(*this);
+  WN_TREE_TRAVERSE<PARENTMAP_BUILD_ACTION<WN_CFG> > map_traveler(map_helper);
+  map_traveler.Traverse(_root);
+
+  // build CFG
+  WN_CFG_BUILD_ACTION<WN_CFG> cfg_helper(*this);
+  WN_CFG_TRAVERSE<WN_CFG_BUILD_ACTION<WN_CFG> > cfg_traveler(cfg_helper);
+  cfg_traveler.Traverse(_root);
+
+  // resolve the connectivity issue
+  CFG_UTIL::CFG_CONNECTIVITY<CFG_UTIL::WN_CFG> connectivity(*this);
+  connectivity.Perform();
+} 
+
+void
+WN_CFG::Verify() {
+#ifdef Is_True_On
+  Is_True(_root != NULL, ("root wn is NULL"));
+
+  // verify parent map
+  PARENTMAP_VERIFY_ACTION<WN_CFG> map_helper(*this);
+  WN_TREE_TRAVERSE<PARENTMAP_VERIFY_ACTION<WN_CFG> > map_traveler(map_helper);
+  map_traveler.Traverse(_root);
+
+  // verify CFG
+  WN_CFG_VERIFY_ACTION<WN_CFG> cfg_helper(*this);
+  WN_CFG_TRAVERSE<WN_CFG_VERIFY_ACTION<WN_CFG> > cfg_traveler(cfg_helper);
+  cfg_traveler.Traverse(_root);
+#endif
+}
+
 //===================================================================
 // Build_CFG
 //   Build CFG and parent map based on WHIRL tree
@@ -996,14 +1033,18 @@ WN_CFG_BUILDER::Add_condgoto(WN_CFG& cfg, WN* wn) {
   Add_stmt(cfg, _current_bb, wn);
   BB_NODE* condgoto_bb = _current_bb;
 
-  // connect the target of CONDGOTO if it's exist or push to list
-  LABEL_MAP::iterator lit = _label_map.find(WN_label_number(wn));
-  if (lit != _label_map.end()) {
-    cfg.Connect_predsucc(_current_bb, lit->second);
-  }
-  else {
-    vector<BB_NODE*>& gotos = _goto_map[WN_label_number(wn)];
-    gotos.push_back(_current_bb);
+  WN* next = WN_next(wn);
+  if (next == NULL || WN_operator(next) != OPR_LABEL ||
+      WN_label_number(wn) != WN_label_number(next)) {
+    // connect the target of CONDGOTO if it's exist or push to list
+    LABEL_MAP::iterator lit = _label_map.find(WN_label_number(wn));
+    if (lit != _label_map.end()) {
+      cfg.Connect_predsucc(_current_bb, lit->second);
+    }
+    else {
+      vector<BB_NODE*>& gotos = _goto_map[WN_label_number(wn)];
+      gotos.push_back(_current_bb);
+    }
   }
 
   // create and connect BB1

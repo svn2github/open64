@@ -458,7 +458,7 @@ static OPTION_DESC Options_OPT[] = {
     "Optimize generation of barrier calls for OpenMP" },
 
   { OVK_INT32, OV_VISIBLE,      TRUE,   "cyg_instr",    "",
-    4, 0, 4, &OPT_Cyg_Instrument, NULL,
+    3, 0, 4, &OPT_Cyg_Instrument, NULL,
     "Insert calls to __cyg_profile_func_enter/exit" },
 
   { OVK_BOOL, OV_INTERNAL, 	TRUE,	"icall_instr", "",

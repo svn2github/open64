@@ -244,7 +244,13 @@ static void Pop_Current_Function_Decl(void){
 static std::vector<WN*> curr_entry_wn;
 static void Push_Current_Entry_WN(WN *wn) { curr_entry_wn.push_back(wn); }
 static void Pop_Current_Entry_WN() { curr_entry_wn.pop_back(); }
-WN *Current_Entry_WN(void) { return curr_entry_wn.back(); }
+WN *Current_Entry_WN(void) {
+    if (curr_entry_wn.size()==0) {
+        return NULL;
+    } else {
+        return curr_entry_wn.back(); 
+    }
+}
 
 // Any typeinfo symbols that we have determined we should emit
 std::vector<gs_t> emit_typeinfos;
@@ -3269,23 +3275,11 @@ AGGINIT::Traverse_Aggregate_Struct (
 
 #ifdef FE_GNU_4_2_0
   INT length = gs_constructor_length(init_list);
-#ifdef KEY
-  if (length > 0)
-    ++field_id; // compute field_id for current field
-#endif
   for (INT idx = 0;
        idx < length;
        idx++) {
 
-#ifdef KEY
-    // Bug 14422: Do the first increment outside the loop. Then advance
-    // the field_id at the tail end of the loop before moving on to next
-    // field, taking into account any fields inside current struct field.
-    // The update at the tail end is done only if there is an iteration
-    // left.
-#else
     ++field_id; // compute field_id for current field
-#endif
     gs_t element_index = gs_constructor_elts_index(init_list, idx);
 
     // if the initialization is not for the current field,
@@ -3437,22 +3431,13 @@ AGGINIT::Traverse_Aggregate_Struct (
       }
     }
 
-#ifdef KEY
-    // Bug 14422:
-    // Count current field before moving to next field. The current field
-    // may be of struct type, in which case its fields need to be counted.
-    // We increment the field-id here instead of at the start of the loop.
-    if (idx < length-1) // only if there is an iteration left
-      field_id = Advance_Field_Id(fld, field_id);
-#endif
-    // advance ot next field
     current_offset = current_offset_base + emitted_bytes;
     fld = FLD_next(fld);
     field = next_real_field(type, field);
     while (field && gs_tree_code(field) != GS_FIELD_DECL)
       field = next_real_field(type, field);
   }
-#else
+#else // end FE_GNU_4_2_0
 #ifdef KEY
   if (gs_constructor_elts(init_list))
     ++field_id; // compute field_id for current field
@@ -3688,6 +3673,7 @@ AGGINIT::Traverse_Aggregate_Struct (
 #ifdef KEY
     field_id = Advance_Field_Id(fld,field_id)-1;
 #endif
+
     fld = FLD_next(fld);
     field = next_real_field(type, field);
     while (field && gs_tree_code(field) != GS_FIELD_DECL)

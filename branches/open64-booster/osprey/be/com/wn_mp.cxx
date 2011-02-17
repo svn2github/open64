@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -5904,7 +5904,7 @@ Get_Threadprv_St(WN *prags, ST *copyin_st, ST **copyin_local_st)
   }
   if (!match)
     Fail_FmtAssertion ( "bad copyin st (%s) in MP processing",
-                            ST_st_idx(copyin_st) );
+                            ST_name(copyin_st) );
   if (copyin_global_st)
     common_block = copyin_global_st;
   else

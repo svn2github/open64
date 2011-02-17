@@ -55,16 +55,30 @@ using std::vector;
 namespace CFG_UTIL {
 
 //===================================================================
-// class PARENTMAP_BUILDER
+// class PARENTMAP_ACTION_BASE
+//  base class to build or verify the parent map
+//===================================================================
+template<typename _Tcfg>
+class PARENTMAP_ACTION_BASE {
+public:
+  void Initialize() {
+  }
+
+  void Finalize() {
+  }
+};
+
+//===================================================================
+// class PARENTMAP_BUILD_ACTION
 //  class to build the parent map
 //===================================================================
 template<typename _Tcfg>
-class PARENTIZE_ACTION {
+class PARENTMAP_BUILD_ACTION : public PARENTMAP_ACTION_BASE<_Tcfg> {
 private:
   _Tcfg& _cfg;
 
 public:
-  PARENTIZE_ACTION(_Tcfg& cfg) : _cfg(cfg) {
+  PARENTMAP_BUILD_ACTION(_Tcfg& cfg) : _cfg(cfg) {
   }
 
 public:
@@ -74,22 +88,22 @@ public:
 };
 
 //===================================================================
-// class PARENTMAP_VERIFIER
+// class PARENTMAP_VERIFY_ACTION
 //  class to verfy the parent map
 //===================================================================
 template<typename _Tcfg>
-class PARENTIZE_VERIFIER {
+class PARENTMAP_VERIFY_ACTION : public PARENTMAP_ACTION_BASE<_Tcfg> {
 private:
   _Tcfg& _cfg;
 
 public:
-  PARENTIZE_VERIFIER(_Tcfg& cfg) : _cfg(cfg) {
+  PARENTMAP_VERIFY_ACTION(_Tcfg& cfg) : _cfg(cfg) {
   }
 
 public:
   void Process(WN* parent, WN* kid) const {
     Is_True(_cfg.Get_parent(kid) == parent, 
-            ("PARENTIZE_VERIFIER: parent mismatch"));
+            ("PARENTMAP VERIFY: parent and kid mismatch"));
   }
 };
 
@@ -106,23 +120,35 @@ public:
   WN_TREE_TRAVERSE(_Ttraverser& traverser) : _traverser(traverser) {
   }
 
-public:
-  void Traverse(WN* wn) {
+private:
+  void Traverse_rec(WN* wn) {
     Is_True(wn != NULL && WN_operator(wn) != OPERATOR_UNKNOWN,
             ("invalid WHIRL node"));
 
     if (WN_operator(wn) == OPR_BLOCK) {
       for (WN* item = WN_first(wn); item != NULL; item = WN_next(item)) {
         _traverser.Process(wn, item);
-        Traverse(item);
+        Traverse_rec(item);
       }
     }
     else {
       for (INT i = 0; i < WN_kid_count(wn); ++i) {
         _traverser.Process(wn, WN_kid(wn, i));
-        Traverse(WN_kid(wn, i));
+        Traverse_rec(WN_kid(wn, i));
       }
     }
+  }
+
+public:
+  void Traverse(WN* wn) {
+    Is_True(wn != NULL &&
+            (WN_operator(wn) == OPR_FUNC_ENTRY ||
+             WN_operator(wn) == OPR_REGION),
+            ("invalid WHIRL node"));
+
+    _traverser.Initialize();
+    Traverse_rec(wn);
+    _traverser.Finalize();
   }
 };
 
@@ -176,6 +202,24 @@ public:
   WN_CFG_BUILD_ACTION(_Tcfg& cfg) : WN_CFG_ACTION_BASE<_Tcfg> (cfg) {
   }
 
+  void Initialize() {
+  }
+
+  void Finalize() {
+#ifdef Is_True_On
+    Is_True(_goto_map.empty(), ("found unresolved GOTOs"));
+    for (typename LABEL_MAP::iterator it = _label_map.begin();
+         it != _label_map.end();
+         ++it) {
+      WN* stmt = it->second->First_stmt();
+      Is_True(stmt != NULL && WN_operator(stmt) == OPR_LABEL,
+              ("first stmt is not LABEL"));
+      Is_True(WN_label_number(stmt) == it->first,
+              ("LABEL number mismatch"));
+    }
+#endif    
+  }
+
 public:
   void Process_root(WN* root) {
     ACTION_BASE::_cfg.Set_wn_root(root);
@@ -188,7 +232,8 @@ public:
   void Process_stmt(BB_NODE* node, WN* stmt) {
     Is_True(node != NULL, ("invalid WCFG node"));
     Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN,
-            ("invalid WHIRL"));
+            ("invalid stmt"));
+
     node->Add_stmt(stmt);
     ACTION_BASE::_cfg.Connect_stmt_node(stmt, node);
   }
@@ -196,20 +241,24 @@ public:
   void Process_predsucc(BB_NODE* pred, BB_NODE* succ) {
     Is_True(pred != NULL && succ != NULL,
             ("invalid pred or succ node"));
+
     ACTION_BASE::_cfg.Connect_predsucc(pred, succ);
   }
 
   void Process_entry_node(BB_NODE* entry) {
     Is_True(entry != NULL, ("invalid node"));
+
     ACTION_BASE::_cfg.Add_entry_node(entry);
   }
 
   void Process_exit_node(BB_NODE* exit) {
     Is_True(exit != NULL, ("invalid node"));
+
     ACTION_BASE::_cfg.Add_exit_node(exit);
   }
 
   void Process_goto(BB_NODE* node, WN* stmt) {
+    Is_True(node != NULL, ("node is NULL"));
     Is_True(stmt != NULL &&
             (WN_operator(stmt) == OPR_GOTO ||
              WN_operator(stmt) == OPR_CASEGOTO ||
@@ -217,7 +266,6 @@ public:
              WN_operator(stmt) == OPR_FALSEBR ||
              WN_operator(stmt) == OPR_REGION_EXIT),
             ("WN is not goto or casegoto"));
-    Is_True(node != NULL, ("node is NULL"));
   
     typename LABEL_MAP::iterator lit = _label_map.find(WN_label_number(stmt));
     if (lit != _label_map.end()) {
@@ -236,6 +284,7 @@ public:
 
     FmtAssert(_label_map.find(WN_label_number(stmt)) == _label_map.end(),
               ("found duplicated labels"));
+
     _label_map[WN_label_number(stmt)] = node;
     ACTION_BASE::_cfg.Set_label(WN_label_number(stmt), node);
 
@@ -251,9 +300,16 @@ public:
     }
   }
 
-  BB_NODE* Create_node(WN* stmt) {
+  BB_NODE* Create_node(BB_NODE* node, WN* stmt) {
     return ACTION_BASE::_cfg.Create_node();
   }
+
+  BOOL Need_new_node(BB_NODE* node, WN* stmt) {
+    Is_True(node != NULL, ("node is NULL"));
+
+    return !node->Is_empty();
+  }
+
 };
 
 //===================================================================
@@ -264,57 +320,356 @@ template<typename _Tcfg>
 class WN_CFG_VERIFY_ACTION : public  WN_CFG_ACTION_BASE<_Tcfg> {
 public:
   typedef typename _Tcfg::BB_NODE BB_NODE;
+  typedef WN_CFG_ACTION_BASE<_Tcfg> ACTION_BASE;
 
 private:
-  _Tcfg& _cfg;
+  BB_NODE* _verify_node;
+  WN*      _verify_stmt;
+  typedef hash_set<INTPTR> NODE_SET;
+  vector<NODE_SET> _verify_preds;
+  vector<NODE_SET> _verify_succs;
+
+private:
+  BOOL Is_stmt_in_node(BB_NODE* node, WN* stmt) {
+    if (node == _verify_node && node->Next_stmt(_verify_stmt) == stmt) {
+      _verify_stmt = stmt;
+      return TRUE;
+    }
+    if (node->First_stmt() == stmt) {
+      _verify_node = node;
+      _verify_stmt = stmt;
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  BOOL Is_stmt_goto_label(WN* stmt, WN* label) {
+    Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN,
+            ("invalid stmt"));
+    Is_True(label != NULL && WN_operator(label) != OPERATOR_UNKNOWN,
+            ("invalid label"));
+
+    OPERATOR opr = WN_operator(stmt);
+    if (opr != OPR_GOTO &&
+        opr != OPR_CASEGOTO &&
+        opr != OPR_TRUEBR &&
+        opr != OPR_FALSEBR &&
+        opr != OPR_REGION_EXIT &&
+        opr != OPR_SWITCH &&
+        opr != OPR_COMPGOTO)
+      return FALSE;
+    if (WN_operator(label) != OPR_LABEL)
+      return FALSE;
+
+    if (opr == OPR_GOTO || opr == OPR_CASEGOTO ||
+        opr == OPR_TRUEBR || opr == OPR_FALSEBR ||
+        opr == OPR_REGION_EXIT) {
+      return WN_label_number(stmt) == WN_label_number(label);
+    }
+    else {
+      // OPR_SWITCH and OPR_COMPGOTO
+      for (WN* goto_wn = WN_first(WN_switch_table(stmt));
+           goto_wn != NULL;
+           goto_wn = WN_next(goto_wn)) {
+        if (WN_label_number(goto_wn) == WN_label_number(label))
+          return TRUE;
+      }
+      if (WN_label_number(WN_switch_default(stmt)) == 
+          WN_label_number(label))
+        return TRUE;
+      else
+        return FALSE;
+    }
+  }
+
+  BOOL Is_kid_of_stmt(WN* stmt, WN* kid) {
+    Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN,
+            ("invalid stmt"));
+    Is_True(kid != NULL && WN_operator(kid) != OPERATOR_UNKNOWN,
+            ("invalid label"));
+
+    if (WN_operator(stmt) != OPR_SWITCH &&
+        WN_operator(stmt) != OPR_COMPGOTO)
+      return FALSE;
+    if (WN_operator(kid) != OPR_GOTO &&
+        WN_operator(kid) != OPR_CASEGOTO)
+      return FALSE;
+
+    for (WN* goto_wn = WN_first(WN_switch_table(stmt));
+         goto_wn != NULL;
+         goto_wn = WN_next(goto_wn)) {
+      if (goto_wn == kid)
+        return TRUE;
+    }
+    if (WN_switch_default(stmt) == kid)
+      return TRUE;
+    else
+      return FALSE;
+  }
+
+  BOOL Is_stmt_adjacent(WN* prev, WN* next) {
+    Is_True(prev != NULL && WN_operator(prev) != OPERATOR_UNKNOWN,
+            ("invalid stmt"));
+    Is_True(next != NULL && WN_operator(next) != OPERATOR_UNKNOWN,
+            ("invalid label"));
+
+    while (prev != NULL && WN_next(prev) == NULL) {
+      prev = ACTION_BASE::_cfg.Get_parent(prev);
+    }
+    while (next != NULL && WN_prev(next) == NULL) {
+      next = ACTION_BASE::_cfg.Get_parent(next);
+    }
+
+    if (prev == NULL || next == NULL)
+      return FALSE;
+
+    if (WN_next(prev) == next) {
+      Is_True(WN_prev(next) == prev, ("invalid prev and next"));
+      return TRUE;
+    }
+    else {
+      return FALSE;
+    }
+  }
 
 public:
   WN_CFG_VERIFY_ACTION(_Tcfg& cfg) : WN_CFG_ACTION_BASE<_Tcfg> (cfg) {
   }
 
+  void Initialize() {
+    _verify_node = NULL;
+    _verify_stmt = NULL;
+    _verify_preds.resize(ACTION_BASE::_cfg.Get_max_id(), NODE_SET());
+    _verify_succs.resize(ACTION_BASE::_cfg.Get_max_id(), NODE_SET());
+  }
+
+  void Finalize() {
+    BB_NODE* dummy_exit = ACTION_BASE::Get_dummy_exit();
+    for (typename _Tcfg::bb_iterator bit = ACTION_BASE::_cfg.BB_begin();
+         bit != ACTION_BASE::_cfg.BB_end();
+         ++bit) {
+      UINT32 bb_id = (*bit)->Get_id();
+      if ((*bit)->Get_preds_count() != _verify_preds[bb_id].size()) {
+        if (dummy_exit != (*bit)) { // we possibly add edges to dummy exit
+          Is_True(FALSE, ("WCFG VERIFY: missing edge"));
+        }
+      }
+      if ((*bit)->Get_succs_count() != _verify_succs[bb_id].size()) {
+        if ((*bit)->Succ_pos(dummy_exit) == POS_INVALID ||
+            (*bit)->Get_succs_count() != _verify_succs[bb_id].size() + 1) {
+          Is_True(FALSE, ("WCFG VERIFY: missing edge"));
+        }
+      }
+    }
+  }
+
 public:
   void Process_root(WN* root) {
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(ACTION_BASE::_cfg.Get_wn_root() == root, 
+            ("WCFG VERIFY: root mismatch"));
+    Is_True(ACTION_BASE::_cfg.Get_dummy_entry()->First_stmt() == root,
+            ("WCFG VERIFY: root in dummy entry mismatch"));
   }
 
   void Process_rgn_level(REGION_LEVEL level) {
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(ACTION_BASE::_cfg.Get_rgn_level() == level, 
+            ("WCFG VERIFY: region level mismatch"));
   }
 
   void Process_stmt(BB_NODE* node, WN* stmt) {
     Is_True(node != NULL, ("invalid WCFG node"));
     Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN,
-            ("invalid WHIRL node"));
-    FmtAssert(FALSE, ("TODO"));
+            ("invalid stmt"));
+    Is_True(ACTION_BASE::_cfg.Get_wn_node(stmt) == node, 
+            ("WCFG VERIFY: stmt to node mapping mismatch"));
+    Is_True(Is_stmt_in_node(node, stmt),
+            ("WCFG VERIFY: node to stmt mapping mismatch"));
   }
 
   void Process_predsucc(BB_NODE* pred, BB_NODE* succ) {
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(pred != NULL && succ != NULL, ("invalid WCFG node"));
+
+    INT32 succ_pos = pred->Succ_pos(succ);
+    INT32 pred_pos = succ->Pred_pos(pred);
+    NODE_SET& succ_set = _verify_succs[pred->Get_id()];
+    NODE_SET& pred_set = _verify_preds[succ->Get_id()];
+
+    Is_True(succ_pos != POS_INVALID &&
+            pred->Get_succ(succ_pos) == succ,
+            ("WCFG VERIFY: can not find succ"));
+    Is_True(pred_pos != POS_INVALID &&
+            succ->Get_pred(pred_pos) == pred,
+            ("WCFG VERIFY: can not find pred"));
+    Is_True(succ_set.find((INTPTR)succ) == succ_set.end(),
+            ("WCFG VERIFY: duplicated succ"));
+    Is_True(pred_set.find((INTPTR)pred) == pred_set.end(),
+            ("WCFG VERIFY: duplicated pred"));
+
+    succ_set.insert((INTPTR)succ);
+    pred_set.insert((INTPTR)pred);
   }
 
   void Process_entry_node(BB_NODE* entry) {
     Is_True(entry != NULL, ("invalid entry node"));
+
+    BB_NODE* dummy_entry = ACTION_BASE::Get_dummy_entry();
+    INT32 pos = dummy_entry->Succ_pos(entry);
+
     Is_True(entry->Get_preds_count() == 1,
-            ("entry should only have 1 predecessor"));
-    FmtAssert(FALSE, ("TODO"));
+            ("WCFG VERIFY: entry can only have 1 predecessor"));
+    Is_True(entry->Get_pred(0) == dummy_entry,
+            ("WCFG VERIFY: predecessor of entry node must be dummy entry"));
+    Is_True(pos != POS_INVALID &&
+            dummy_entry->Get_succ(pos) == entry,
+            ("WCFG VERIFY: entry node is not connected to dummy entry"));
+
+    Process_predsucc(dummy_entry, entry);
   }
 
   void Process_exit_node(BB_NODE* exit) {
-    Is_True(exit != NULL, ("invalid node"));
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(exit != NULL, ("invalid exit node"));
+
+    BB_NODE* dummy_exit = ACTION_BASE::Get_dummy_exit();
+    INT32 pos = dummy_exit->Pred_pos(exit);
+
+    Is_True(exit->Get_succs_count() == 1,
+            ("WCFG VERIFY: exit can only have 1 successor"));
+    Is_True(exit->Get_succ(0) == dummy_exit,
+            ("WCFG VERIFY: successor of exit node must be dummy exit"));
+    Is_True(pos != POS_INVALID &&
+              dummy_exit->Get_pred(pos) == exit,
+              ("WCFG VERIFY: exit node is not connected to dummy exit"));
+
+    Process_predsucc(exit, dummy_exit);
   }
 
   void Process_goto(BB_NODE* node, WN* stmt) {
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN,
+            ("invalid stmt"));
+    Is_True(node != NULL, ("node is NULL"));
+    Is_True((WN_operator(stmt) == OPR_GOTO ||
+             WN_operator(stmt) == OPR_CASEGOTO ||
+             WN_operator(stmt) == OPR_TRUEBR ||
+             WN_operator(stmt) == OPR_FALSEBR ||
+             WN_operator(stmt) == OPR_REGION_EXIT),
+            ("stmt is not goto or casegoto"));
+    Is_True((node->Last_stmt() == stmt ||
+             Is_kid_of_stmt(node->Last_stmt(), stmt)),
+            ("WCFG VERIFY: stmt is not the last of node"));
+
+    INT32 label_number = WN_label_number(stmt);
+    BB_NODE* succ = ACTION_BASE::_cfg.Get_label_node(label_number);
+    WN* label_wn = succ->First_stmt();
+
+    Is_True(succ != NULL,
+            ("WCFG VERIFY: can not find label"));
+    Is_True((label_wn != NULL && 
+             WN_operator(label_wn) == OPR_LABEL &&
+             WN_label_number(label_wn) == WN_label_number(stmt)),
+            ("WCFG VERIFY: invalid label for goto"));
+
+    Process_predsucc(node, succ);
   }
 
   void Process_label(BB_NODE* node, WN* stmt) {
-    FmtAssert(FALSE, ("TODO"));
+    Is_True(stmt != NULL && WN_operator(stmt) == OPR_LABEL,
+            ("stmt is not label"));
+    Is_True(node != NULL, ("node is NULL"));
+
+    WN* label_wn = node->First_stmt();
+    Is_True(label_wn == stmt,
+            ("WCFG VERIFY: invalid label for node"));
+
+    if (WN_Label_Is_Handler_Begin(stmt) ||
+        LABEL_target_of_goto_outer_block(WN_label_number(stmt))) {
+      BB_NODE* dummy_entry = ACTION_BASE::Get_dummy_entry();
+      INT32 succ_pos = dummy_entry->Succ_pos(node);
+      INT32 pred_pos = node->Pred_pos(dummy_entry);
+
+      Is_True((succ_pos != POS_INVALID &&
+               dummy_entry->Get_succ(succ_pos) == node),
+              ("WCFG VERIFY: handler node is not connected to dummy entry"));
+      Is_True((pred_pos != POS_INVALID &&
+               node->Get_pred(pred_pos) == dummy_entry),
+              ("WCFG VERIFY: handler node is not connected to dummy entry"));
+      return; 
+    }
+
+    for (typename BB_NODE::bb_iterator bit = node->Pred_begin();
+         bit != node->Pred_end();
+         ++bit) {
+      WN* last_stmt = (*bit)->Last_stmt();
+      switch (WN_operator(last_stmt)) {
+      case OPR_GOTO:
+      case OPR_CASEGOTO:
+      case OPR_REGION_EXIT:
+        Is_True(WN_label_number(last_stmt) == WN_label_number(stmt),
+                ("WCFG VERIFY: invalid label for goto"));
+        break;
+      case OPR_TRUEBR:
+      case OPR_FALSEBR:
+        if (WN_label_number(last_stmt) != WN_label_number(stmt)) {
+          Is_True(Is_stmt_adjacent(last_stmt, stmt),
+                  ("WCFG VERIFY: invalid fall through node"));
+        }
+        break;
+      case OPR_COMPGOTO:
+      case OPR_SWITCH:
+        Is_True(Is_stmt_goto_label(last_stmt, stmt), 
+                ("WCFG VERIFY: invalid label for goto"));
+        break;
+      default:
+        Is_True(Is_stmt_adjacent(last_stmt, stmt),
+                ("WCFG VERIFY: invalid fall through node"));
+        break;
+      }
+    }
   }
 
-  BB_NODE* Create_node(WN* wn) {
-    FmtAssert(FALSE, ("TODO"));
+  BB_NODE* Create_node(BB_NODE* node, WN* stmt) {
+    if (stmt == NULL) {
+      Is_True(node != NULL, ("invalid node"));
+      UINT32 bb_id = node->Get_id();
+      for (typename BB_NODE::bb_iterator bit = node->Succ_begin();
+           bit != node->Succ_end();
+           ++bit) {
+        BB_NODE* succ = *bit;
+        if (_verify_succs[bb_id].find((INTPTR)succ) != _verify_succs[bb_id].end())
+          continue;
+        if (succ->Is_empty())
+          return succ;
+      }
+      Is_True(FALSE, ("WCFG VERIFY: can not verify node for stmt"));
+      return NULL;
+    }
+    else {
+      while (WN_operator(stmt) == OPR_REGION) {
+        stmt = WN_first(WN_region_body(stmt));
+        FmtAssert(stmt != NULL, ("stmt is NULL"));
+      }
+      Is_True(WN_operator(stmt) != OPR_BLOCK, ("invalid stmt"));
+
+      BB_NODE* new_node = ACTION_BASE::_cfg.Get_wn_node(stmt);
+      Is_True(new_node != NULL && new_node->First_stmt() == stmt,
+              ("WCFG VERIFY: invalid first stmt for node"));
+      return new_node;
+    }
   }
+
+  BOOL Need_new_node(BB_NODE* node, WN* stmt) {
+    Is_True(stmt != NULL && WN_operator(stmt) != OPERATOR_UNKNOWN, 
+            ("stmt is NULL"));
+    Is_True(node != NULL, ("node is NULL"));
+
+    while (WN_operator(stmt) == OPR_REGION) {
+      stmt = WN_first(WN_region_body(stmt));
+      Is_True(stmt != NULL, ("stmt is NULL"));
+    }
+    Is_True(WN_operator(stmt) != OPR_BLOCK, ("invalid stmt"));
+
+    return node->First_stmt() != stmt;
+  }
+
 };
 
 //===================================================================
@@ -336,18 +691,26 @@ public:
   }
 
   void Traverse(WN* tree) {
-    Is_True(tree != NULL, ("tree is NULL"));
+    Is_True(tree != NULL && WN_operator(tree) != OPERATOR_UNKNOWN, 
+            ("tree is NULL"));
+
     if (WN_operator(tree) == OPR_REGION) {
       FmtAssert(FALSE, ("TODO: build CFG for region"));
     }
-    Is_True(WN_operator(tree) == OPR_FUNC_ENTRY, ("tree is not FUNC_ENTRY"));
+    Is_True(WN_operator(tree) == OPR_FUNC_ENTRY, 
+            ("tree is not FUNC_ENTRY"));
+
+    _action.Initialize();
 
     _action.Process_root(tree);
     RID *rid = REGION_get_rid(tree);
     _action.Process_rgn_level((REGION_LEVEL)(RID_level(rid) + 1));
 
     Is_True(_current_bb == NULL, ("invalud current node"));
+
     Process_entry(tree);
+
+    _action.Finalize();
   }
 
 public:
@@ -364,10 +727,12 @@ public:
             ("WN is not FUNC_ENTRY"));
     Is_True(_current_bb == NULL,
             ("current BB is not NULL"));
+
     WN* func_body = WN_func_body(wn);
     Is_True(func_body != NULL && WN_operator(func_body) == OPR_BLOCK,
             ("invalid BLOCK of function body"));
-    _current_bb = _action.Create_node(WN_first(func_body));
+
+    _current_bb = _action.Create_node(NULL, WN_first(func_body));
     _action.Process_entry_node(_current_bb);
     Process_stmt(_action.Get_dummy_entry(), wn);
     Process_block(func_body);
@@ -385,7 +750,7 @@ public:
     Is_True(_current_bb != NULL, ("Current BB is NULL"));
     Is_True(_current_bb->Get_preds_count() == 0, ("Current BB has predecessors"));
 
-    _current_bb = _action.Create_node(wn);
+    _current_bb = _action.Create_node(NULL, wn);
     _action.Process_entry_node(_current_bb);
     Process_stmt(_current_bb, wn);
   }
@@ -412,7 +777,8 @@ public:
     WN* then_block = WN_then(wn);
     Is_True(then_block != NULL && WN_operator(then_block) == OPR_BLOCK,
             ("invalid BLOCK of IF then"));
-    BB_NODE* then_bb = _action.Create_node(WN_first(then_block));
+
+    BB_NODE* then_bb = _action.Create_node(if_bb, WN_first(then_block));
     _action.Process_predsucc(if_bb, then_bb);
     Process_block(then_block);
 
@@ -420,12 +786,14 @@ public:
     WN* else_block = WN_else(wn);
     Is_True(else_block != NULL && WN_operator(else_block) == OPR_BLOCK,
             ("invalid BLOCK of IF else"));
-    BB_NODE* else_bb = _action.Create_node(WN_first(else_block));
+
+    BB_NODE* else_bb = _action.Create_node(if_bb, WN_first(else_block));
     _action.Process_predsucc(if_bb, else_bb);
     Process_block(else_block);
 
     // connect THEN/ELSE block with BB3
-    _current_bb = _action.Create_node(WN_next(wn));
+    _current_bb = _action.Create_node(then_bb != NULL ? then_bb : else_bb, 
+                                      WN_next(wn));
     if (then_bb != NULL)
       _action.Process_predsucc(then_bb, _current_bb);
     if (else_bb != NULL)
@@ -454,7 +822,7 @@ public:
     Process_stmt(init_bb, wn);
   
     // put COMP into BB1
-    BB_NODE* cmp_bb = _action.Create_node(WN_end(wn));
+    BB_NODE* cmp_bb = _action.Create_node(init_bb, WN_end(wn));
     _action.Process_predsucc(init_bb, cmp_bb);
     Process_stmt(cmp_bb, WN_end(wn));
   
@@ -462,7 +830,8 @@ public:
     WN* body_block = WN_do_body(wn);
     Is_True(body_block != NULL && WN_operator(body_block) == OPR_BLOCK,
             ("invalid BLOCK for DO_LOOP body"));
-    BB_NODE* body_bb = _action.Create_node(WN_first(body_block));
+
+    BB_NODE* body_bb = _action.Create_node(cmp_bb, WN_first(body_block));
     _action.Process_predsucc(cmp_bb, body_bb);
     _current_bb = body_bb;
     Process_block(body_block);
@@ -470,7 +839,7 @@ public:
     _action.Process_predsucc(_current_bb, cmp_bb);
   
     // connect with BB3
-    _current_bb = _action.Create_node(WN_next(wn));
+    _current_bb = _action.Create_node(cmp_bb, WN_next(wn));
     _action.Process_predsucc(cmp_bb, _current_bb);
   }
 
@@ -490,11 +859,12 @@ public:
     WN* body_block = WN_while_body(wn);
     Is_True(body_block != NULL && WN_operator(body_block) == OPR_BLOCK,
             ("invalid BLOCK for DO_WHILE body"));
+
     // put BODY into BB1
-    if (!_current_bb->Is_empty()) {
+    if (_action.Need_new_node(_current_bb, WN_first(body_block)) /*!_current_bb->Is_empty()*/) {
       // create new BB if current BB isn't empty
       BB_NODE* last_bb = _current_bb;
-      _current_bb = _action.Create_node(WN_first(body_block));
+      _current_bb = _action.Create_node(last_bb, WN_first(body_block));
       _action.Process_predsucc(last_bb, _current_bb);
     }
     BB_NODE* body_entry = _current_bb;
@@ -503,11 +873,11 @@ public:
   
     if (_current_bb == NULL) {
       // there is a GOTO at the end of body
-      _current_bb = _action.Create_node(wn);
+      _current_bb = _action.Create_node(NULL, wn);
     }
     else if (_current_bb->Get_succs_count() > 0) {
       // can not put the COMP to BB1 in this case
-      _current_bb = _action.Create_node(wn);
+      _current_bb = _action.Create_node(body_exit, wn);
       _action.Process_predsucc(body_exit, _current_bb);
     }
     Process_stmt(_current_bb, wn);
@@ -516,7 +886,7 @@ public:
     // connect BB2 and BB3
     if (WN_next(wn) != NULL) {
       BB_NODE* cmp_bb = _current_bb;
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(cmp_bb, WN_next(wn));
       _action.Process_predsucc(cmp_bb, _current_bb);
     }
   }
@@ -535,10 +905,10 @@ public:
   Is_True(_current_bb != NULL, ("Current BB is NULL"));
 
   // put COMP into BB1
-  if (!_current_bb->Is_empty()) {
+  if (_action.Need_new_node(_current_bb, wn) /*!_current_bb->Is_empty()*/) {
     // create new BB if current BB isn't empty
     BB_NODE* last_bb = _current_bb;
-    _current_bb = _action.Create_node(wn);
+    _current_bb = _action.Create_node(last_bb, wn);
     _action.Process_predsucc(last_bb, _current_bb);
   }
   BB_NODE* cmp_bb = _current_bb;
@@ -548,7 +918,8 @@ public:
   WN* body_block = WN_while_body(wn);
   Is_True(body_block != NULL && WN_operator(body_block) == OPR_BLOCK,
           ("invalid BLOCK for WHILE_DO body"));
-  _current_bb = _action.Create_node(WN_first(body_block));
+
+  _current_bb = _action.Create_node(cmp_bb, WN_first(body_block));
   _action.Process_predsucc(cmp_bb, _current_bb);
   Process_block(body_block);
   if (_current_bb != NULL) {
@@ -557,7 +928,7 @@ public:
   }
 
   // connect BB1 and BB3
-  _current_bb = _action.Create_node(WN_next(wn));
+  _current_bb = _action.Create_node(cmp_bb, WN_next(wn));
   _action.Process_predsucc(cmp_bb, _current_bb);
 }
 
@@ -593,7 +964,7 @@ public:
   
     // create BB1
     if (WN_next(wn) != NULL)
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(NULL, WN_next(wn));
     else
       _current_bb = NULL;    // no fall-through for compgoto
   }
@@ -626,11 +997,11 @@ public:
     casegoto_wn = WN_switch_default(wn);
     if (casegoto_wn != NULL &&
         label_set.find(WN_label_number(casegoto_wn)) == label_set.end())
-      _action.Process_goto(_current_bb, WN_switch_default(wn));
+      _action.Process_goto(_current_bb, casegoto_wn);
   
     // create BB1
     if (WN_next(wn) != NULL)
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(NULL, WN_next(wn));
     else
       _current_bb = NULL;    // no fall-through for switch
   }
@@ -647,9 +1018,9 @@ public:
     Is_True(_current_bb != NULL, ("Current BB is NULL"));
   
     BB_NODE* last_bb = _current_bb;
-    if (! last_bb->Is_empty()) {
+    if (_action.Need_new_node(_current_bb, wn) /*!_current_bb->Is_empty()*/) {
       // create new bb if current BB isn't empty
-      _current_bb = _action.Create_node(wn);
+      _current_bb = _action.Create_node(last_bb, wn);
     }
   
     Process_stmt(_current_bb, wn);
@@ -680,7 +1051,7 @@ public:
   
     // create BB1
     if (WN_next(wn) != NULL)
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(NULL, WN_next(wn));
     else
       _current_bb = NULL;    // no fall-through for goto
   }
@@ -714,10 +1085,15 @@ public:
     // put CONDGOTO into BB0
     BB_NODE* condgoto_bb = _current_bb;
     Process_stmt(condgoto_bb, wn);
-    _action.Process_goto(condgoto_bb, wn);
+
+    WN* next = WN_next(wn);
+    if (next == NULL || WN_operator(next) != OPR_LABEL ||
+        WN_label_number(wn) != WN_label_number(next)) {
+      _action.Process_goto(condgoto_bb, wn);
+    }
   
     // create and connect BB1
-    _current_bb = _action.Create_node(WN_next(wn));
+    _current_bb = _action.Create_node(condgoto_bb, WN_next(wn));
     _action.Process_predsucc(condgoto_bb, _current_bb);
   }
   
@@ -806,10 +1182,11 @@ public:
     WN* region_body = WN_region_body(wn);
     Is_True(region_body != NULL && WN_operator(region_body) == OPR_BLOCK,
             ("invalid BLOCK for REGION body")); 
-    if (!_current_bb->Is_empty()) {
+
+    if (_action.Need_new_node(_current_bb, WN_first(region_body)) /*!_current_bb->Is_empty()*/) {
       // Force new block if current BB isn't empty
       BB_NODE* last_bb = _current_bb;
-      _current_bb = _action.Create_node(WN_first(region_body));
+      _current_bb = _action.Create_node(last_bb, WN_first(region_body));
       _action.Process_predsucc(last_bb, _current_bb);
     }
     Process_block(region_body);
@@ -817,7 +1194,7 @@ public:
   
     // create BB2
     if (WN_next(wn) != NULL) {
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(rgn_body, WN_next(wn));
       if (rgn_body != NULL) {
         _action.Process_predsucc(rgn_body, _current_bb);
       }
@@ -841,7 +1218,7 @@ public:
   
     // create BB1
     if (WN_next(wn) != NULL)
-      _current_bb = _action.Create_node(WN_next(wn));
+      _current_bb = _action.Create_node(NULL, WN_next(wn));
     else
       _current_bb = NULL;    // no fall-through for region_exit
   }
@@ -862,7 +1239,7 @@ public:
       _action.Process_predsucc(_current_bb, _action.Get_dummy_exit());
       // create BB1
       if (WN_next(wn) != NULL)
-        _current_bb = _action.Create_node(WN_next(wn));
+        _current_bb = _action.Create_node(NULL, WN_next(wn));
       else
         _current_bb = NULL;    // no fall-through for the intrinsic
     }
@@ -893,7 +1270,7 @@ public:
       _action.Process_exit_node(bb);
       // RETURN will end current bb
       if (WN_next(stmt) != NULL)
-        _current_bb = _action.Create_node(WN_next(stmt));
+        _current_bb = _action.Create_node(NULL, WN_next(stmt));
       else
         _current_bb = NULL;    // no fall-through for return
     }

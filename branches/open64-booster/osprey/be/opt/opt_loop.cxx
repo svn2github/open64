@@ -564,25 +564,26 @@ BB_LOOP::Invariant_cr_rec( CODEREP *cr ) const
 
   case CK_IVAR:
     {
-      CODEREP *base =
-	cr->Istr_base() ? cr->Istr_base() : cr->Ilod_base();
-      if ( ! Invariant_cr_rec(base) )
-	return FALSE;
-      if ( cr->Opr() == OPR_MLOAD && ! Invariant_cr_rec( cr->Mload_size() ) )
-	return FALSE;
-      if ( cr->Opr() == OPR_ILOADX && ! Invariant_cr_rec( cr->Index() ) )
-	return FALSE;
+      CODEREP *base = cr->Istr_base() ? cr->Istr_base() : cr->Ilod_base();
+
+      // volatile references are never loop invariant
+      if (cr->Is_ivar_volatile() ||
+         !Invariant_cr_rec(base) ||
+        (cr->Opr() == OPR_MLOAD && ! Invariant_cr_rec( cr->Mload_size())) ||
+        (cr->Opr() == OPR_ILOADX && ! Invariant_cr_rec( cr->Index()))) {
+        if ( WOPT_Enable_Prune ) 
+            cr->Reset_isop_visited( ISOP_INVARIANT_VISITED );
+        return FALSE;
+      }
       MU_NODE *mnode = cr->Ivar_mu_node();
       if ( mnode ) {
-	CODEREP *opnd = mnode->OPND();
-	if ( opnd && ! Invariant_cr_rec( opnd ) )
-	  return FALSE;
+	    CODEREP *opnd = mnode->OPND();
+	    if ( opnd && ! Invariant_cr_rec( opnd ) ) {
+            if ( WOPT_Enable_Prune )
+                cr->Reset_isop_visited( ISOP_INVARIANT_VISITED );
+	        return FALSE;
+        }  
       }
-    }
-
-    // volatile references are never loop invariant
-    if ( cr->Is_ivar_volatile() ) 
-      return FALSE;
 
     // no need to check Ivar_defstmt.  It is NULL unless
     // there is a ISTORE of the base address.
@@ -593,7 +594,7 @@ BB_LOOP::Invariant_cr_rec( CODEREP *cr ) const
     // return ( ! True_body_set()->MemberP( cr->Ivar_defstmt()->Bb() ) );
 
     return TRUE;
-
+  }  
   case CK_OP:
     {
       if ( cr->Is_isop_flag_set( ISOP_INVARIANT_VISITED )

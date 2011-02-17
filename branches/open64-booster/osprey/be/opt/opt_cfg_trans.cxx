@@ -147,6 +147,7 @@ static CFG_REGION_TYPE
 build_successor_graph(CFG *cfg, successor_graph& g, Insert_iterator entry)
 {
   bool containing_eh = false;
+  BB_NODE * fake_bb = cfg->Fake_entry_bb();
 
   for (BB_NODE *bb = cfg->First_bb();
        bb != NULL;
@@ -170,6 +171,10 @@ build_successor_graph(CFG *cfg, successor_graph& g, Insert_iterator entry)
     int count = 0;
     FOR_ALL_ELEM(succ, bb_succ_iter, Init(bb->Succ())) {
       ++count;
+      // avoid building edges between the fake entry and its unreachable successors.
+      if ((bb == fake_bb) && (succ->Kind() == BB_GOTO))
+        continue;
+ 
       if (succ == bb->Next())
        fall_thru = succ;
       else
@@ -682,6 +687,8 @@ reconstruct_CFG(successor_graph& g, CFG *cfg, bool trace, bool eh_regions)
 	      // the following test is to screen out COMPGOTO and XGOTO, ...
 	      if ((branch_sr->Op() == OPC_TRUEBR ||
 		   branch_sr->Op() == OPC_FALSEBR)) {
+                if (bb->Kind() == BB_LOGIF && bb->Ifinfo() != NULL)
+                  bb->Set_ifinfo(NULL);
 		if (branch_sr->Label_number() != goto_bb->Labnam()) {
 		  branch_sr->Set_st(NULL);
 		  branch_sr->Set_label_number(goto_bb->Labnam());

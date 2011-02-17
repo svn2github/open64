@@ -237,9 +237,10 @@ private:
 private:
   friend class WN_CFG_BUILDER;
   template<typename _Tcfg> friend class WN_CFG_BUILD_ACTION;
-  template<typename _Tcfg> friend class WN_CFG_VERIFIER;
-  template<typename _Tcfg> friend class PARENTIZE_ACTION;
-  template<typename _Tcfg> friend class PARENTIZE_VERIFIER;
+  template<typename _Tcfg> friend class WN_CFG_VERIFY_ACTION;
+  template<typename _Tcfg> friend class PARENTMAP_BUILD_ACTION;
+  template<typename _Tcfg> friend class PARENTMAP_VERIFY_VERIFIER;
+
   // only accessable for WN_CFG_BUILDER
   void Set_parent(WN* parent, WN* kid);
   void Remove_parent(WN* wn);
@@ -279,6 +280,10 @@ public:
 
   // get the branch WN for BB has more than one successors
   WN* Get_branch_stmt(BB_NODE* node) const;
+
+public:
+  void Build();
+  void Verify();
 
 public:
   // update interface
@@ -428,10 +433,6 @@ private:
 };
 
 } /* namespace CFG_UTIL */
-
-#ifdef Is_True_On
-void Test_CFG(WN* wn);
-#endif
 
 #endif /* wn_cfg_INCLUDED */
 

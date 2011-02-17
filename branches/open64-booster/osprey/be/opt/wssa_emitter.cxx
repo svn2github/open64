@@ -485,6 +485,16 @@ WHIRL_SSA_EMITTER::WSSA_Copy_CHI_Node(CHI_NODE* chi_node, WN* wn) {
     Update_def_ver(res_idx, wn, WSSA::WSSA_CHI);
   }
 
+  WSSA::WST_IDX wst_idx = _opt_stab->Aux_stab_entry(chi_node->Aux_id())->Get_wst_idx();
+  Is_True(_wssa_mgr->Get_ver_wst(res_idx) == wst_idx&&
+          _wssa_mgr->Get_ver_wst(opnd_idx) == wst_idx,
+          ("wst_idx of chi node and coderep mismatch"));
+  if (_wssa_mgr->WN_chi_node(wn, wst_idx) != NULL) {
+    if (_trace)
+      fprintf(TFile, "skip copy for duplicated chi node\n");
+    return;
+  }
+
   if (res_idx == opnd_idx) {
     if (_trace)
       fprintf(TFile, "skip copy for result and opnd same chi node\n");
@@ -524,6 +534,15 @@ WHIRL_SSA_EMITTER::WSSA_Copy_MU_Node(MU_NODE* mu_node, WN* wn) {
     opnd_idx = New_use_ver(mu_node->OPND(), wn);
   }
   wssa_mu->Set_opnd(opnd_idx);
+  WSSA::WST_IDX wst_idx = _opt_stab->Aux_stab_entry(mu_node->Aux_id())->Get_wst_idx();
+  Is_True(_wssa_mgr->Get_ver_wst(opnd_idx) == wst_idx,
+          ("wst_idx of mu node and coderep mismatch"));
+  if (_wssa_mgr->WN_mu_node(wn, wst_idx) != NULL) {
+    if (_trace)
+      fprintf(TFile, "skip copy for duplicated mu node\n");
+    return;
+  }
+
   _wssa_mgr->Add_mu(wn, wssa_mu);
 
   if (_trace) {
@@ -593,6 +612,17 @@ WHIRL_SSA_EMITTER::WSSA_Copy_PHI_Node(PHI_NODE* phi_node, WN* wn) {
   for (INT32 i = 0; i < opnd_count; ++i) {
     wssa_phi->Set_opnd(i, ver_list[i]);
   }
+
+  WSSA::WST_IDX wst_idx = _opt_stab->Aux_stab_entry(phi_node->Aux_id())->Get_wst_idx();
+  Is_True(_wssa_mgr->Get_ver_wst(res_idx) == wst_idx&&
+          _wssa_mgr->Get_ver_wst(ver_list[0]) == wst_idx,
+          ("wst_idx of phi node and coderep mismatch"));
+  if (_wssa_mgr->WN_phi_node(wn, wst_idx) != NULL) {
+    if (_trace)
+      fprintf(TFile, "skip copy for duplicated phi node\n");
+    return;
+  }
+
   _wssa_mgr->Add_phi(wn, wssa_phi);
 
   if (_trace) {

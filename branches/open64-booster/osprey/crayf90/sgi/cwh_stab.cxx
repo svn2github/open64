@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+/*
  * Copyright (C) 2008. PathScale, LLC. All Rights Reserved.
  */
 /*
@@ -991,6 +994,10 @@ fei_object(char * name_string,
 
   if (test_flag(flag_bits,FEI_OBJECT_READ_ONLY)) {
     Set_ST_is_const_var(st);
+  }
+
+  if (test_flag(flag_bits,FEI_SEG_THREADPRIVATE)) {
+     Set_ST_is_thread_private(st);
   }
 
   /* if dummy, name is the address. CQ, array, character results  */
