@@ -264,7 +264,17 @@ void ISA_Subset_End(void)
 
     fprintf(cfile,"  { /* %s */\n", subset->name);
     for ( unsigned int i = 0; i < bit_vector_sizeof; ++i ) {
-      int members = subset->members[i];
+      int members = 0;
+      for (int j = 0; j < 8; ++j ) {
+        TOP top = (TOP) ((i * 8) + j);
+        ISA_SUBSET ss;
+        for (ss = subset; ss != NULL ; ss = ss->superset) {
+          if (opcode_subset[top] == ss) {
+            members |= 1 << j;
+            break;
+          }
+        }
+      }
       fprintf(cfile,"    0%03o, /* ",members);
       for (int j = 0; j < 8; ++j) {
 	if (members & (1 << j)) {
