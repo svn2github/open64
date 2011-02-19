@@ -2105,6 +2105,7 @@ add_final_ld_args (string_list_t *args, phases_t ld_phase)
 		option_was_seen(O_apo) ||	// bug 6334
 		option_was_seen(O_fopenmp)) {
                 add_string(args, "-lopenmp");
+                add_string(args, "-lstdc++");
             }
 
             if (option_was_seen (O_fprofile_arcs))

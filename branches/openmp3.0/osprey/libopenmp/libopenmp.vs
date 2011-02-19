@@ -32,6 +32,17 @@ LIBOPENMP_1.0 {
     __ompc_static_init_8;
     __ompc_sug_numthreads;
     __ompc_cur_numthreads;
+    __ompc_task_wait;
+    __ompc_reduction;
+    __ompc_end_reduction;
+    __ompc_ebarrier;
+    __ompc_task_create_cond;
+    __ompc_task_create;
+    __ompc_task_body_start;
+    __ompc_task_delete;
+    __ompc_task_exit;
+    __ompc_task_inc_depth;
+    __ompc_task_dec_depth;
     omp_destroy_lock;
     omp_destroy_lock_;
     omp_destroy_nest_lock;

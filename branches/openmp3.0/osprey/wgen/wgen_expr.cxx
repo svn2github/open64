@@ -234,6 +234,7 @@ struct operator_from_tree_t {
  GS_OMP_MASTER,			OPERATOR_UNKNOWN,
  GS_OMP_ORDERED,		OPERATOR_UNKNOWN,
  GS_OMP_PARALLEL,		OPERATOR_UNKNOWN,
+ GS_OMP_TASK,			OPERATOR_UNKNOWN,
  GS_OMP_SECTION,		OPERATOR_UNKNOWN,
  GS_OMP_SECTIONS,		OPERATOR_UNKNOWN,
  GS_OMP_SINGLE,			OPERATOR_UNKNOWN,
@@ -8805,6 +8806,11 @@ WGEN_Expand_Expr (gs_t exp,
                 WGEN_expand_barrier ();
                 whirl_generated = TRUE;
                 break;
+
+              case GSBI_BUILT_IN_GOMP_TASKWAIT:
+                WGEN_expand_taskwait ();
+                whirl_generated = TRUE;
+                break;
 #endif
 
               case GSBI_BUILT_IN_RETURN_ADDRESS:
@@ -10433,6 +10439,7 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_OMP_MASTER:
     case GS_OMP_ORDERED:
     case GS_OMP_PARALLEL:
+    case GS_OMP_TASK:
     case GS_OMP_SECTIONS:
     case GS_OMP_SINGLE:
       WGEN_Expand_Stmt(exp);

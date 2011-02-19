@@ -42,7 +42,6 @@
 #define ALIGN_SIZE 64
 
 #include <pthread.h>
-#include "omp_sys.h"
 #include "omp_util.h"
 
 typedef struct {
@@ -54,7 +53,7 @@ typedef struct {
   union{
     pthread_spinlock_t spin_data;
     pthread_mutex_t mutex_data;
-  }lock;
+  } lock;
 }__attribute__ ((__aligned__(ALIGN_SIZE))) ompc_lock_t;
 
 #ifndef __OPENMP_LOCK_TYPE_DEFINED_
@@ -67,6 +66,7 @@ typedef struct {
 } ompc_nest_lock_t;
 
 #endif
+
 
 static inline void
 __ompc_init_spinlock(ompc_spinlock_t *lck_p)
@@ -107,11 +107,24 @@ extern int __ompc_test_lock (volatile ompc_lock_t *);
 extern void __ompc_init_nest_lock (volatile ompc_nest_lock_t *);
 extern void __ompc_nest_lock (volatile ompc_nest_lock_t *);
 extern void __ompc_nest_unlock (volatile ompc_nest_lock_t *);
+
+extern void __ompc_init_lock_s (volatile ompc_lock_t *);
+extern void __ompc_lock_s (volatile ompc_lock_t *);
+extern void __ompc_unlock_s (volatile ompc_lock_t *);
+
+extern void __ompc_init_nest_lock_s (volatile ompc_nest_lock_t *);
+extern void __ompc_nest_lock_s(volatile ompc_nest_lock_t *);
+extern void __ompc_nest_unlock_s(volatile ompc_nest_lock_t *);
+
+
 extern void __ompc_destroy_nest_lock (volatile ompc_nest_lock_t *);
 extern int __ompc_test_nest_lock (volatile ompc_nest_lock_t *);
 
 extern void __ompc_critical(int gtid, volatile ompc_lock_t **lck);
 extern void __ompc_end_critical(int gtid, volatile ompc_lock_t **lck);
+
+extern void __ompc_reduction(int gtid, volatile ompc_lock_t **lck);
+extern void __ompc_end_reduction(int gtid, volatile ompc_lock_t **lck);
 
 #endif
 

@@ -931,6 +931,15 @@ process_omp_stmt (tree t)
       expand_end_sl2_section ();
       break;
 #endif 
+    case task_cons_b:
+      expand_start_task((struct task_clause_list *)(tree)t->omp.omp_clause_list);
+      break;
+    case task_cons_e:
+      expand_end_task();
+      break;
+    case taskwait_dir:
+      expand_taskwait();
+      break;
 
     default:
       abort();

@@ -105,6 +105,7 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
   omp_v_thread_t *p_vthread;  
 
 
+  __ompc_set_state(THR_OVHD_STATE); 
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* in sequential part*/
     block_size = (incr > 0) ? (*pupper - *plower + 1) :
@@ -112,6 +113,7 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
     /* plower, pupper are not changed*/
     *pstride = block_size;
     //*plastiter = 1;
+    __ompc_set_state(THR_WORK_STATE);
     return;
   } 
 
@@ -124,6 +126,7 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
     /* plower, pupper are not changed*/
     *pstride = block_size;
     //*plastiter = 1;
+    __ompc_set_state(THR_WORK_STATE);
     return;
   }
 
@@ -145,6 +148,7 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
     *plower = my_lower;
     *pupper = my_upper;
     /* For Guide, the *plastiter is not set*/
+    __ompc_set_state(THR_WORK_STATE);
     return;
   } else { /* OMP_SCHED_STATIC*/
     Is_Valid( chunk > 0, ("chunk size must be a positive number"));
@@ -158,6 +162,7 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
     *pupper = my_upper;
     *pstride = stride * team_size;
     /* For Guide, the *plastiter is not set for STATIC*/
+    __ompc_set_state(THR_WORK_STATE);
     return;
   }
 }
@@ -177,6 +182,7 @@ __ompc_static_init_8 (omp_int32 global_tid, omp_sched_t schedtype,
   omp_int64 adjustment;
   omp_int64 stride;
   omp_v_thread_t *p_vthread;  
+  __ompc_set_state(THR_OVHD_STATE);
 
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /* in sequential part*/
@@ -293,6 +299,7 @@ __ompc_scheduler_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
   omp_team_t     *p_team;
   omp_v_thread_t *p_vthread;
 
+  __ompc_set_state(THR_OVHD_STATE);
   /* TODO: The validity of the parameters should be checked here*/
   if (schedtype == OMP_SCHED_RUNTIME) {
     /* The logic is still not complete*/
@@ -374,6 +381,7 @@ __ompc_scheduler_init_8 (omp_int32 global_tid, omp_sched_t schedtype,
   omp_team_t     *p_team;
   omp_v_thread_t *p_vthread;
 
+  __ompc_set_state(THR_OVHD_STATE);
   /* TODO: The validity of the parameters should be checked here*/
   if (schedtype == OMP_SCHED_RUNTIME) {
     /* The logic is still not complete*/
@@ -477,10 +485,12 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
   omp_int32	my_trip, schedule_count;
   float		trip_flag;
 
+  __ompc_set_state(THR_OVHD_STATE);
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /*Judge whether there are more iterations*/
     if ( __omp_root_team.schedule_count != 0) {
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
 
@@ -490,8 +500,8 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *pupper = __omp_root_team.loop_upper_bound;
     /* Warning: Don't know how pstride should be properly set*/
     *pstride = __omp_root_team.loop_increament;
-    //*plastiter = 1;
     __omp_root_v_thread.ordered_count = 0;
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
   }
@@ -510,6 +520,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     /*Judge whether there are more iterations*/
     if (p_team->schedule_count != 0) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     p_team->schedule_count = 1;
@@ -519,6 +530,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     /* Warning: Don't know how pstride should be properly set*/
     *pstride = p_team->loop_increament;
     p_vthread->ordered_count = 0;
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
   }
@@ -529,6 +541,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     /* specified by OMP_SCHEDULE */
     if (p_vthread->schedule_count != 0) {
       /* no more iteration*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     global_lower = p_team->loop_lower_bound;
@@ -550,13 +563,16 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     p_vthread->schedule_count = 1;
     /* Need to set plastiter right*/
     if (trip_count >= team_size) {
+      __ompc_set_state(THR_WORK_STATE);
       return 1;
     } else {
+       __ompc_set_state(THR_WORK_STATE);
       if (global_tid <= (trip_count - 1))
 	return 1;
       else
 	return 0;
     } 
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
     break;
@@ -580,6 +596,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
 
     if ( my_trip > trip_count ) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     adjustment = p_vthread->schedule_count * stride * team_size;
@@ -592,6 +609,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *pupper = my_upper;
 
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
   case OMP_SCHED_GUIDED:
@@ -606,6 +624,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
 
@@ -623,6 +642,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
 
@@ -639,6 +659,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
 
@@ -653,12 +674,14 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
   case OMP_SCHED_ORDERED_STATIC_EVEN:
     /* specified by OMP_SCHEDULE */
     if (p_vthread->schedule_count != 0) {
       /* no more iteration*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     global_lower = p_team->loop_lower_bound;
@@ -682,13 +705,16 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     p_vthread->rest_iter_count = (my_upper - my_lower) / incr + 1;
     /* Need to set plastiter right*/
     if (trip_count >= team_size) {
+      __ompc_set_state(THR_WORK_STATE);
       return 1;
     } else {
+      __ompc_set_state(THR_WORK_STATE);
       if (global_tid <= (trip_count - 1))
 	return 1;
       else
 	return 0;
     }
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
     break;
@@ -714,6 +740,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
 
     if ( my_trip > trip_count ) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     adjustment = p_vthread->schedule_count * stride * team_size;
@@ -729,6 +756,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *pupper = my_upper;
 
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -744,6 +772,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     my_lower = global_lower;
@@ -763,6 +792,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
   case OMP_SCHED_ORDERED_GUIDED:
@@ -779,6 +809,7 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
       {
 	__ompc_unlock_spinlock(&(p_team->schedule_lock));
 	/* No more iterations */
+        __ompc_set_state(THR_WORK_STATE);
 	return 0;
       }
     trip_count += 1;
@@ -799,12 +830,14 @@ omp_int32 __ompc_schedule_next_4 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
   default:
     /* runtime schedule type should have been resolved yet*/
     Not_Valid(" unknown schedule type specified");
   }
+  __ompc_set_state(THR_WORK_STATE);
 
   return 0;
 }
@@ -827,11 +860,14 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
   omp_int64	global_lower, global_upper;
   omp_int64	my_trip, schedule_count;
   float		  trip_flag;
+
+  __ompc_set_state(THR_OVHD_STATE);
   
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     /*Judge whether there are more iterations*/
     if ( __omp_root_team.schedule_count != 0) {
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     __omp_root_team.schedule_count = 1;
@@ -840,9 +876,9 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *pupper = __omp_root_team.loop_upper_bound;
     /* Warning: Don't know how pstride should be properly set*/
     *pstride = __omp_root_team.loop_increament;
-    //*plastiter = 1;
     __omp_root_v_thread.ordered_count = 0;
     /* no need to schedule anymore iterations*/
+    __ompc_set_state(THR_WORK_STATE);
     return 0;
   }
 
@@ -860,6 +896,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     /* Judge whether there are more iterations*/
     if (p_team->schedule_count != 0) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     p_team->schedule_count = 1;
@@ -869,6 +906,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     /* Warning: Don't know how pstride should be properly set*/
     *pstride = p_team->loop_increament;
     p_vthread->ordered_count = 0;
+    __ompc_set_state(THR_WORK_STATE);
 
     return 0;
   }
@@ -879,6 +917,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     /* specified by OMP_SCHEDULE */
     if (p_vthread->schedule_count != 0) {
       /* no more iteration*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     global_lower = p_team->loop_lower_bound;
@@ -900,13 +939,16 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     p_vthread->schedule_count = 1;
     /* Need to set plastiter right*/
     if (trip_count >= team_size) {
+      __ompc_set_state(THR_WORK_STATE);
       return 1;
     } else {
+      __ompc_set_state(THR_WORK_STATE);
       if (global_tid <= (trip_count - 1))
 	return 1;
       else
 	return 0;
     } 
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
     break;
@@ -932,6 +974,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
 
     if ( my_trip > trip_count ) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     adjustment = p_vthread->schedule_count * stride * team_size;
@@ -944,6 +987,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *pupper = my_upper;
 
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
     break;
   case OMP_SCHED_GUIDED:
@@ -958,6 +1002,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     trip_count += 1;
@@ -974,6 +1019,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -989,6 +1035,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     trip_count += 1;
@@ -1002,6 +1049,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -1009,6 +1057,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     /* specified by OMP_SCHEDULE */
     if (p_vthread->schedule_count != 0) {
       /* no more iteration*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     global_lower = p_team->loop_lower_bound;
@@ -1032,13 +1081,16 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     p_vthread->rest_iter_count = (my_upper - my_lower) / incr + 1;
     /* Need to set plastiter right*/
     if (trip_count >= team_size) {
+      __ompc_set_state(THR_WORK_STATE);
       return 1;
     } else {
+      __ompc_set_state(THR_WORK_STATE);
       if (global_tid <= (trip_count - 1))
 	return 1;
       else
 	return 0;
     }
+    __ompc_set_state(THR_WORK_STATE);
 
     return 1;
     break;
@@ -1063,6 +1115,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
 
     if ( my_trip > trip_count ) {
       /* No more iterations*/
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     adjustment = p_vthread->schedule_count * stride * team_size;
@@ -1078,6 +1131,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *pupper = my_upper;
 
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -1094,6 +1148,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     trip_count += 1;
@@ -1111,6 +1166,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -1127,6 +1183,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     if ( trip_flag < 0) {
       __ompc_unlock_spinlock(&(p_team->schedule_lock));
       /* No more iterations */
+      __ompc_set_state(THR_WORK_STATE);
       return 0;
     }
     trip_count += 1;
@@ -1147,6 +1204,7 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     *plower = my_lower;
     *pupper = my_upper;
     *pstride = incr;
+    __ompc_set_state(THR_WORK_STATE);
     return 1;
 
     break;
@@ -1154,7 +1212,33 @@ omp_int32 __ompc_schedule_next_8 (omp_int32 global_tid,
     /* runtime schedule type should have been resolved yet*/
     Not_Valid(" unknown schedule type specified");
   }
+  __ompc_set_state(THR_WORK_STATE);
 
+  return 0;
+}
+
+/*
+ * VAARGS:
+ *    for each loop level:
+ *         omp_uint32 is_64bit    // 0 - 32 bit index; 1 - 64 bit index
+ *         omp_int{32,64} lower   // lower bound of current loop
+ *         omp_int{32,64} upper   // upper bound of current loop
+ *         omp_int{32,64} stride  // stride of current loop
+ */
+void 
+__ompc_collapse_init (omp_int32 global_tid, omp_sched_t schedtype,
+                        omp_int64 chunk, omp_uint32 collapse_count, ...)
+{
+}         
+
+/*
+ * VAARGS:
+ *    for each loop level:
+ *         omp_int{32,64} *plower // output lower bound of the local loop
+ *         omp_int{32,64} *pupper // output upper bound of current loop
+ */
+omp_int32 __ompc_collapse_next (omp_int32 global_tid, ...)
+{
   return 0;
 }
 
@@ -1182,6 +1266,7 @@ __ompc_ordered (omp_int32 global_tid)
   if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL)
     return;
 
+  __ompc_event_callback(OMP_EVENT_THR_BEGIN_ORDERED);
   p_vthread = __ompc_get_v_thread_by_num(global_tid);
   p_team = p_vthread->team;
 
@@ -1189,9 +1274,16 @@ __ompc_ordered (omp_int32 global_tid)
     return;
 
   pthread_mutex_lock(&(p_team->ordered_mutex));
-  while (p_team->ordered_count != p_vthread->ordered_count)
+  while (p_team->ordered_count != p_vthread->ordered_count) {
+    omp_v_thread_t *p_vthread = __ompc_get_v_thread_by_num(__omp_myid);
+    p_vthread->thr_odwt_state_id++;
+    __ompc_set_state(THR_ODWT_STATE);
+    __ompc_event_callback(OMP_EVENT_THR_BEGIN_ODWT);
     pthread_cond_wait(&(p_team->ordered_cond), &(p_team->ordered_mutex));
+  }
+  __ompc_event_callback(OMP_EVENT_THR_END_ODWT);
   pthread_mutex_unlock(&(p_team->ordered_mutex));
+  __ompc_set_state(THR_WORK_STATE);
 }
 
 /* Inrease the global ordered semphore*/
@@ -1218,6 +1310,7 @@ __ompc_end_ordered (omp_int32 global_tid)
   p_team->ordered_count++;
   pthread_cond_broadcast(&(p_team->ordered_cond));
   pthread_mutex_unlock(&(p_team->ordered_mutex));
+  __ompc_event_callback(OMP_EVENT_THR_END_ORDERED);
 }
 
 /* Return 1 for the first one to enter single gate,
@@ -1238,6 +1331,8 @@ __ompc_end_ordered (omp_int32 global_tid)
 omp_int32 
 __ompc_single (omp_int32 global_tid) 
 {
+  __ompc_set_state(THR_OVHD_STATE);
+  __ompc_event_callback(OMP_EVENT_THR_BEGIN_SINGLE);
   omp_team_t *p_team;
   omp_v_thread_t *p_vthread;
   int	is_first = 0;
@@ -1265,6 +1360,7 @@ __ompc_single (omp_int32 global_tid)
     is_first = 1;
   }
   __ompc_unlock(&(p_team->single_lock));
+  if (is_first) __ompc_set_state(THR_WORK_STATE);
 
   return is_first;
 }
@@ -1273,23 +1369,30 @@ __ompc_single (omp_int32 global_tid)
 void
 __ompc_end_single (omp_int32 global_tid) 
 {
+  __ompc_event_callback(OMP_EVENT_THR_END_SINGLE);
+  __ompc_set_state(THR_WORK_STATE);
   /* The single flags should be reset here*/
-  /* Do nothing*/
 }
 
 
 omp_int32
 __ompc_master (omp_int32 global_tid) 
 {
-
-  if (global_tid == 0) return 1;
+  __ompc_set_state(THR_OVHD_STATE);
+  if (global_tid == 0) {
+    __ompc_event_callback(OMP_EVENT_THR_BEGIN_MASTER);
+    __ompc_set_state(THR_WORK_STATE);
+    return 1;
+  }
   return 0;	
 }
 
 void 
 __ompc_end_master (omp_int32 global_tid) 
-{
-  /* Do nothing*/
+{ 
+  if(global_tid ==0)
+    __ompc_event_callback(OMP_EVENT_THR_END_MASTER);
+  __ompc_set_state(THR_WORK_STATE);
 }
 
 /* Other APIs show up here*/
@@ -1332,6 +1435,7 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
     }
     pp[global_tid] = p;
   }
+
   return 1;
 }
 
