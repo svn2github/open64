@@ -119,8 +119,8 @@ __ompc_static_init_4 (omp_int32 global_tid, omp_sched_t schedtype,
   team_size = p_vthread->team_size;
   if (team_size == 1) {
     /* single thread schdule*/
-    block_size = (incr > 0) ? (*pupper - *plower - 1) :
-      (*pupper - *plower + 1);
+    block_size = (incr > 0) ? (*pupper - *plower + 1) :
+      (*pupper - *plower - 1);
     /* plower, pupper are not changed*/
     *pstride = block_size;
     //*plastiter = 1;
