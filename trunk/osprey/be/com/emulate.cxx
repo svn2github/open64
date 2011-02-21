@@ -2664,7 +2664,7 @@ static WN *em_complex_abs(WN *block, WN *z)
 static WN *em_complex_sqrt_preg(WN *block, TYPE_ID type, PREG_NUM zN_in) 
 {
   PREG_NUM	ziN, zN, absN, t1N, t2N, t3N;
-#ifdef TARG_X8664 
+#if defined(TARG_X8664) && 1
   if (type == MTYPE_V16C8)
     type = MTYPE_C8;
 #endif
