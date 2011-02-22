@@ -1484,6 +1484,9 @@ WGEN_Start_Function(gs_t fndecl)
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
 #endif
+          else if (is_attribute("malloc", attr)) {
+            Set_PU_has_attr_malloc (Pu_Table [ST_pu (func_st)]);
+          }
 	}
       } 
     }

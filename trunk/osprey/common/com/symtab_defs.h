@@ -739,7 +739,6 @@ public:
 #define PU_NO_INSTRUMENT        0x0000010000000000LL // -finstrument-functions will skip PU
 #endif
 
-#define PU_IS_MALLOC            0x0000020000000000LL // __attribute__((malloc)) semantic 
 #define PU_HAS_ATTR_MALLOC      0x0000020000000000LL // __attribute__((malloc)) semantic 
 #define PU_HAS_ATTR_PURE        0x0000040000000000LL // __attribute__((pure)) semantic 
 #define PU_HAS_ATTR_NORETURN    0x0000080000000000LL // __attribute__((noreturn)) semantic
