@@ -293,7 +293,7 @@ class HANDLER_ITER {
 
 static INT32	    scope_number;
 
-static TY_IDX
+TY_IDX
 Type_For_Function_Returning_Void (void)
 {
   static TY_IDX result = 0;
