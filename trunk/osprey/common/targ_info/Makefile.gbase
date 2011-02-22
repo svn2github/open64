@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-#  Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+#  Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
 #
 #  Copyright (C) 2007. Pathscale, LLC. All Rights Reserved.
 #
@@ -305,8 +305,7 @@ ti_res_res.o: ti_res_res.c ti_res_res.h topcode.h targ_si.h
 ## topcode.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-topcode.c: topcode.h
-topcode.h: isa_gen
+topcod%.c topcod%.h: isa_gen
 	$(run) ./isa_gen
 else
 topcode.c: $(COPYSOURCEDIR)/topcode.c
@@ -328,8 +327,7 @@ isa.o: isa.cxx isa_gen.h
 ## targ_isa_enums.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_enums.c: targ_isa_enums.h
-targ_isa_enums.h: isa_enums_gen
+tar%_isa_enums.c tar%_isa_enums.h: isa_enums_gen
 	$(run) ./isa_enums_gen
 else
 targ_isa_enums.c: $(COPYSOURCEDIR)/targ_isa_enums.c
@@ -351,8 +349,7 @@ isa_enums.o: isa_enums.cxx isa_enums_gen.h
 ## targ_isa_lits.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_lits.c: targ_isa_lits.h
-targ_isa_lits.h: isa_lits_gen
+tar%_isa_lits.c tar%_isa_lits.h: isa_lits_gen
 	$(run) ./isa_lits_gen
 else
 targ_isa_lits.c: $(COPYSOURCEDIR)/targ_isa_lits.c
@@ -374,8 +371,7 @@ isa_lits.o: isa_lits.cxx isa_lits_gen.h
 ## targ_isa_registers.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_registers.c: targ_isa_registers.h
-targ_isa_registers.h: isa_registers_gen
+tar%_isa_registers.c tar%_isa_registers.h: isa_registers_gen
 	$(run) ./isa_registers_gen
 else
 targ_isa_registers.c: $(COPYSOURCEDIR)/targ_isa_registers.c
@@ -399,8 +395,7 @@ isa_registers.o: isa_registers.cxx isa_registers_gen.h targ_isa_subset.h
 ## targ_isa_hazards.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_hazards.c: targ_isa_hazards.h
-targ_isa_hazards.h: isa_hazards_gen
+tar%_isa_hazards.c tar%_isa_hazards.h: isa_hazards_gen
 	$(run) ./isa_hazards_gen
 else
 targ_isa_hazards.c: $(COPYSOURCEDIR)/targ_isa_hazards.c
@@ -424,8 +419,7 @@ isa_hazards.o: isa_hazards.cxx isa_hazards_gen.h topcode.h targ_isa_subset.h
 ## targ_isa_subset.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_subset.c: targ_isa_subset.h
-targ_isa_subset.h: isa_subset_gen
+tar%_isa_subset.c tar%_isa_subset.h: isa_subset_gen
 	$(run) ./isa_subset_gen
 else
 targ_isa_subset.c: $(COPYSOURCEDIR)/targ_isa_subset.c
@@ -448,8 +442,7 @@ isa_subset.o: isa_subset.cxx isa_subset_gen.h topcode.h
 ## targ_isa_properties.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_properties.c: targ_isa_properties.h
-targ_isa_properties.h: isa_properties_gen
+tar%_isa_properties.c tar%_isa_properties.h: isa_properties_gen
 	$(run) ./isa_properties_gen
 else
 targ_isa_properties.c: $(COPYSOURCEDIR)/targ_isa_properties.c
@@ -472,8 +465,7 @@ isa_properties.o: isa_properties.cxx isa_properties_gen.h topcode.h
 ## targ_isa_operands.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_operands.c: targ_isa_operands.h
-targ_isa_operands.h: isa_operands_gen
+tar%_isa_operands.c tar%_isa_operands.h: isa_operands_gen
 	$(run) ./isa_operands_gen
 else
 targ_isa_operands.c: $(COPYSOURCEDIR)/targ_isa_operands.c
@@ -505,8 +497,7 @@ isa_operands.o: isa_operands.cxx isa_operands_gen.h targ_isa_registers.h \
 ## targ_isa_pack.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_pack.c: targ_isa_pack.h
-targ_isa_pack.h: isa_pack_gen
+tar%_isa_pack.c tar%_isa_pack.h: isa_pack_gen
 	$(run) ./isa_pack_gen
 else
 targ_isa_pack.c: $(COPYSOURCEDIR)/targ_isa_pack.c
@@ -530,8 +521,7 @@ isa_pack.o: isa_pack.cxx isa_pack_gen.h topcode.h
 ## targ_isa_decode.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_decode.c: targ_isa_decode.h
-targ_isa_decode.h: isa_decode_gen
+tar%_isa_decode.c tar%_isa_decode.h: isa_decode_gen
 	$(run) ./isa_decode_gen
 else
 targ_isa_decode.c: $(COPYSOURCEDIR)/targ_isa_decode.c
@@ -555,8 +545,7 @@ isa_decode.o: isa_decode.cxx isa_decode_gen.h topcode.h targ_isa_bundle.h \
 ## targ_isa_pseudo.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_pseudo.c: targ_isa_pseudo.h
-targ_isa_pseudo.h: isa_pseudo_gen
+tar%_isa_pseudo.c tar%_isa_pseudo.h: isa_pseudo_gen
 	$(run) ./isa_pseudo_gen
 else
 targ_isa_pseudo.c: $(COPYSOURCEDIR)/targ_isa_pseudo.c
@@ -583,8 +572,7 @@ isa_pseudo.o: isa_pseudo.cxx isa_pseudo_gen.h topcode.h
 ## targ_isa_print.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_print.c: targ_isa_print.h
-targ_isa_print.h: isa_print_gen
+tar%_isa_print.c tar%_isa_print.h: isa_print_gen
 	$(run) ./isa_print_gen
 else
 targ_isa_print.c: $(COPYSOURCEDIR)/targ_isa_print.c
@@ -609,8 +597,7 @@ isa_print.o: isa_print.cxx isa_print_gen.h topcode.h
 ## targ_abi_properties.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_abi_properties.c: targ_abi_properties.h
-targ_abi_properties.h: abi_properties_gen
+tar%_abi_properties.c tar%_abi_properties.h: abi_properties_gen
 	$(run) ./abi_properties_gen
 else
 targ_abi_properties.c: $(COPYSOURCEDIR)/targ_abi_properties.c
@@ -634,8 +621,7 @@ abi_properties.o: abi_properties.cxx abi_properties_gen.h targ_isa_registers.h
 ## targ_isa_bundle.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_isa_bundle.c: targ_isa_bundle.h
-targ_isa_bundle.h: isa_bundle_gen
+tar%_isa_bundle.c tar%_isa_bundle.h: isa_bundle_gen
 	$(run) ./isa_bundle_gen
 else
 targ_isa_bundle.c: $(COPYSOURCEDIR)/targ_isa_bundle.c
@@ -659,8 +645,7 @@ isa_bundle.o: isa_bundle.cxx isa_bundle_gen.h topcode.h
 ## targ_proc.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_proc.c: targ_proc.h
-targ_proc.h: proc_gen
+tar%_proc.c tar%_proc.h: proc_gen
 	$(run) ./proc_gen
 else
 targ_proc.c: $(COPYSOURCEDIR)/targ_proc.c
@@ -681,8 +666,7 @@ proc.o: proc.cxx proc_gen.h
 ## targ_proc_properties.[ch] ##
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_proc_properties.c: targ_proc_properties.h
-targ_proc_properties.h: proc_properties_gen
+tar%_proc_properties.c tar%_proc_properties.h: proc_properties_gen
 	$(run) ./proc_properties_gen
 else
 targ_proc_properties.c: $(COPYSOURCEDIR)/targ_proc_properties.c
@@ -772,7 +756,7 @@ targ_si_gen: $(SI_GEN_OBJS)
 	$(cxx) $(CXXLDFLAGS) $^ -o $@
 
 ifeq ($(COPYSOURCEDIR), FALSE)
-targ_si.c targ_si.h: targ_si_gen
+tar%_si.c tar%_si.h: targ_si_gen
 	$(run) ./targ_si_gen
 else
 targ_si.c: $(COPYSOURCEDIR)/targ_si.c
