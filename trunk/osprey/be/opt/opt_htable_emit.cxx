@@ -415,7 +415,16 @@ ML_WHIRL_EMITTER::Emit(void)
 
   // WHIRL SSA
   if (OPT_Enable_WHIRL_SSA) {
-    WSSA::WHIRL_SSA_MANAGER *wssa_mgr = PU_Info_ssa_ptr(Current_PU_Info);
+    WSSA::WHIRL_SSA_MANAGER *wssa_mgr = NULL;
+    if (PU_Info_state(Current_PU_Info, WT_SSA) == Subsect_InMem) {
+      wssa_mgr = PU_Info_ssa_ptr(Current_PU_Info);
+    }
+    else {
+      wssa_mgr = new WSSA::WHIRL_SSA_MANAGER(MEM_pu_nz_pool_ptr);
+      Set_PU_Info_ssa_ptr(Current_PU_Info, wssa_mgr);
+      Set_PU_Info_state(Current_PU_Info, WT_SSA, Subsect_InMem);
+    }
+
     _wssa_emitter = CXX_NEW(WHIRL_SSA_EMITTER(wssa_mgr, _opt_stab, 
                                               _wn_to_cr_map), _mem_pool);
     // dump code rep and SSA tree before emitter.
