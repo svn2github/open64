@@ -89,8 +89,8 @@ const int max_operands = ISA_OPERAND_max_operands;
 const int max_results = ISA_OPERAND_max_results;
 const int max_machine_slots = 16;
 
-static ISA_SUBSET machine_isa;
 static int current_machine_slot;
+static ISA_SUBSET machine_isa[max_machine_slots];
 static std::string machine_name[max_machine_slots];
 
 static const char * const interface[] = {
@@ -1172,7 +1172,7 @@ void LATENCY_INFO::Output(FILE* fd)
   GNAME gname("latency");
   output_latencies[*this] = gname;
 
-  fprintf(fd,"static const mUINT8 %s[%d] = {",gname.Gname(),times.size());
+  fprintf(fd,"static const mUINT8 %s[%lu] = {",gname.Gname(),times.size());
 
     bool is_first = true;
     std::vector<int>::iterator i;
@@ -1696,7 +1696,7 @@ void INSTRUCTION_GROUP::Output_All(FILE* fd)
   }
 
   i = 1;
-  fprintf(fd,"\nconst SI SI_all[%u] = {\n", instruction_group_set.size());
+  fprintf(fd,"\nconst SI SI_all[%lu] = {\n", instruction_group_set.size());
   for (mi = instruction_group_set.begin();
        mi != instruction_group_set.end();
        ++mi
@@ -1714,7 +1714,7 @@ void INSTRUCTION_GROUP::Output_Data(FILE* fd, int machine_slot)
 {
   std::list<INSTRUCTION_GROUP*>::iterator iig;
 
-  fprintf(fd,"\nstatic const int SI_ID_si_%d[%d] = {",machine_slot,
+  fprintf(fd,"\nstatic const int SI_ID_si_%d[%lu] = {",machine_slot,
           by_machine_instruction_groups[machine_slot].size());
 
   bool is_first = true;
@@ -1733,7 +1733,7 @@ void INSTRUCTION_GROUP::Output_Data(FILE* fd, int machine_slot)
 
 void INSTRUCTION_GROUP::Output_Members(FILE* fd, int machine_slot)
 {
-  fprintf(fd,"    %-20u  /* SI_ID_count */,\n",
+  fprintf(fd,"    %-20lu  /* SI_ID_count */,\n",
           by_machine_instruction_groups[machine_slot].size());
   fprintf(fd,"    SI_ID_si_%-11d  /* SI_ID_si */,\n",machine_slot);
 }
@@ -1780,6 +1780,9 @@ private:
 
   static std::vector<bool> top_sched_info_defined[max_machine_slots];
   // Which elements defined
+
+  static INSTRUCTION_GROUP* machine_dummies[max_machine_slots];
+  // Pointer to dummy instruction used to fill unused slots
 };
 
 std::vector<INSTRUCTION_GROUP*>
@@ -1787,14 +1790,14 @@ std::vector<INSTRUCTION_GROUP*>
 std::vector<bool>
   TOP_SCHED_INFO_MAP::top_sched_info_defined[max_machine_slots];
 
+INSTRUCTION_GROUP* TOP_SCHED_INFO_MAP::machine_dummies[max_machine_slots];
+
 void TOP_SCHED_INFO_MAP::Create_Dummies( void )
 {
   INSTRUCTION_GROUP *dummies = NULL;
 
-  TOP_SCHED_INFO_MAP::top_sched_info_ptr_map[current_machine_slot].resize(
-    TOP_count,NULL);
-  TOP_SCHED_INFO_MAP::top_sched_info_defined[current_machine_slot].resize(
-    TOP_count,false);
+  top_sched_info_ptr_map[current_machine_slot].resize(TOP_count,NULL);
+  top_sched_info_defined[current_machine_slot].resize(TOP_count,false);
 
   for ( int i = 0; i < TOP_count; ++i ) {
     if ( TOP_is_dummy((TOP)i) ) {
@@ -1806,6 +1809,7 @@ void TOP_SCHED_INFO_MAP::Create_Dummies( void )
       top_sched_info_ptr_map[current_machine_slot][i] = dummies;
     }
   }
+  machine_dummies[current_machine_slot] = dummies;
 }
 
 void TOP_SCHED_INFO_MAP::Add_Entry( TOP top, INSTRUCTION_GROUP* ig )
@@ -1828,14 +1832,14 @@ void TOP_SCHED_INFO_MAP::Output_Data( FILE* fd, int machine_slot )
   bool err = false;
   bool is_first = true;
   for ( i = 0; i < TOP_count; ++i ) {
-    bool isa_member = ISA_SUBSET_Member(machine_isa, (TOP)i);
+    bool isa_member = ISA_SUBSET_Member(machine_isa[machine_slot], (TOP)i);
     bool is_dummy = TOP_is_dummy((TOP)i);
 
     if ( top_sched_info_defined[machine_slot][i] ) {
       if ( ! isa_member ) {
         fprintf(stderr,
                 "### Warning: scheduling info for non-%s ISA opcode %s (%s)\n",
-                ISA_SUBSET_Name(machine_isa),
+                ISA_SUBSET_Name(machine_isa[machine_slot]),
                 TOP_Name((TOP)i),
                 machine_name[machine_slot].c_str());
       } else if ( is_dummy ) {
@@ -1858,8 +1862,13 @@ void TOP_SCHED_INFO_MAP::Output_Data( FILE* fd, int machine_slot )
     // If we have seen a fatal error, skip printing the entry to avoid a crash.
     if ( ! err ) {
       Maybe_Print_Comma(fd,is_first);
-      fprintf(fd,"\n  %-4u  /* %s */",
-              top_sched_info_ptr_map[machine_slot][i]->Id(),TOP_Name((TOP)i));
+      if ( ! isa_member )
+        fprintf(fd,"\n  %-4u  /* %s (dummy, not in ISA subset %s) */",
+                machine_dummies[machine_slot]->Id(),TOP_Name((TOP)i),
+                ISA_SUBSET_Name(machine_isa[machine_slot]));
+      else
+        fprintf(fd,"\n  %-4u  /* %s */",
+                top_sched_info_ptr_map[machine_slot][i]->Id(),TOP_Name((TOP)i));
     }
   }
   fprintf(fd,"\n};\n");
@@ -1886,7 +1895,7 @@ void Targ_SI( void )
 void Machine( const char* name, ISA_SUBSET isa )
 {
   machine_name[current_machine_slot] = name;
-  machine_isa = isa;
+  machine_isa[current_machine_slot] = isa;
 
   TOP_SCHED_INFO_MAP::Create_Dummies();
 }

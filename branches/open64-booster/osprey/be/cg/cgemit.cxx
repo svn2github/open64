@@ -6592,8 +6592,18 @@ Write_Symbol (
 	fprintf (Asm_File, " %+lld)\n", (INT64) sym_ofst);
       }
       else {
-	EMT_Write_Qualified_Name (Asm_File, sym);
-	fprintf (Asm_File, " %+lld\n", (INT64) sym_ofst);
+          if ( ST_is_export_local(sym) &&
+                  ST_class(sym) == CLASS_VAR &&
+                  ST_level(sym) == GLOBAL_SYMTAB &&
+                  Read_Global_Data) {
+              // we are in IPA mode and we are generating a reference to local symbol
+              // that has been merged into global symtab because of IPA
+              EMT_Write_Qualified_Name (Asm_File, basesym);
+              fprintf (Asm_File, " %+lld\n", (INT64) base_ofst);
+          } else {
+              EMT_Write_Qualified_Name (Asm_File, sym);
+              fprintf (Asm_File, " %+lld\n", (INT64) sym_ofst);
+          }
       }
       if (ST_class(sym) == CLASS_FUNC
 #if defined(BUILD_OS_DARWIN)

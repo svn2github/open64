@@ -1475,7 +1475,7 @@ IP_ALIAS_CLASSIFICATION::Handle_return_val(WN *const stmt)
   ST *pu_st = Scope_tab[CURRENT_SYMTAB].st;
   IP_ALIAS_CLASS_REP *pu_acr =
     _base_id_map[Base_id(pu_st, 0ll)]->Base_member().Alias_class();
-  IP_ALIAS_CLASS_MEMBER *return_ac_member = pu_acr->Signature().Returns();
+  IP_ALIAS_CLASS_MEMBER *return_ac_member = pu_acr->Signature().Return_class_member();
 
   Classify_deref_of_expr(return_ac_member, WN_kid0(stmt), FALSE);
 
@@ -1544,16 +1544,7 @@ IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
   if (WN_Call_Does_Mem_Alloc(call_wn))
     return TRUE;
   if (WN_operator(call_wn) == OPR_CALL) {
-    const ST *const st = WN_st(call_wn);
-
-    // Cheap hack for now, to test performance. This should be based on
-    // some real mechanism in the future instead of cheesebag hacks.
-    if ((strcmp("malloc", ST_name(st)) == 0) ||
-	(strcmp("alloca", ST_name(st)) == 0) ||
-	(strcmp("calloc", ST_name(st)) == 0) ||
-	(strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
-      return TRUE;
-    }
+    return Callee_returns_new_memory(WN_st(call_wn));
   }
   else if (WN_operator(call_wn) == OPR_INTRINSIC_CALL) {
     if ((WN_intrinsic(call_wn) == INTRN_U4I4ALLOCA) ||
@@ -1571,13 +1562,18 @@ IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const WN *const call_wn)
 BOOL
 IP_ALIAS_CLASSIFICATION::Callee_returns_new_memory(const ST *const st)
 {
+  Is_True(ST_class(st) == CLASS_FUNC, ("invalid st class"));
+  if (PU_has_attr_malloc (Pu_Table[ST_pu(st)]))
+    return TRUE;
+
 #ifdef KEY
   // Cheap hack for now, to test performance. This should be based on
   // some real mechanism in the future instead of cheesebag hacks.
-  if ((strcmp("malloc", ST_name(st)) == 0) ||
-      (strcmp("alloca", ST_name(st)) == 0) ||
-      (strcmp("calloc", ST_name(st)) == 0) ||
-      (strcmp("_F90_ALLOCATE", ST_name(st)) == 0)) {
+  if ((strcmp("malloc", ST_name(st)) == 0 ||
+       strcmp("alloca", ST_name(st)) == 0 ||
+       strcmp("calloc", ST_name(st)) == 0 ||
+       strcmp("_F90_ALLOCATE", ST_name(st)) == 0) &&
+      ST_sclass(st) == SCLASS_EXTERN) {
     return TRUE;
   }
   else {

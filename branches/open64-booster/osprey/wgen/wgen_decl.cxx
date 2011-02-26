@@ -1021,6 +1021,7 @@ Setup_Entry_For_EH (void)
                       New_INITO (ST_st_idx (etable), exc_ptr_iv));
 }
 
+extern TY_IDX Type_For_Function_Returning_Void (void);
 
 
 // Generate WHIRL representing an asm at file scope (between functions).
@@ -1029,13 +1030,14 @@ static void
 WGEN_Assemble_Asm(char *asm_string)
 {
   ST *asm_st = New_ST(GLOBAL_SYMTAB);
+  TY_IDX ty_idx = Type_For_Function_Returning_Void();
   ST_Init(asm_st,
           Str_To_Index (Save_Str (asm_string),
                         Global_Strtab),
           CLASS_NAME,
           SCLASS_UNKNOWN,
           EXPORT_LOCAL,
-          (TY_IDX) 0);
+	  ty_idx);
                                                                                 
   Set_ST_asm_function_st(*asm_st);
                                                                                 
@@ -1124,11 +1126,15 @@ WGEN_Assemble_Asm(char *asm_string)
                                                                                 
     PU_IDX pu_idx;
     PU &pu = New_PU(pu_idx);
-    PU_Init(pu, (TY_IDX) 0, CURRENT_SYMTAB);
+    PU_Init(pu, ty_idx, CURRENT_SYMTAB);
     Set_PU_no_inline(pu);
     Set_PU_no_delete(pu);
     Set_ST_pu(*asm_st, pu_idx);
                                                                                 
+    if (lang_cplus) 
+      Set_PU_cxx_lang (Pu_Table [ST_pu (asm_st)]);
+    else Set_PU_c_lang (Pu_Table [ST_pu (asm_st)]);
+
     Write_PU_Info (pu_info);
                                                                                 
     // What does the following line do?
@@ -1484,6 +1490,9 @@ WGEN_Start_Function(gs_t fndecl)
 	  else if (is_attribute("used", attr))
 	    Set_PU_no_delete (Pu_Table [ST_pu (func_st)]);  // bug 3697
 #endif
+          else if (is_attribute("malloc", attr)) {
+            Set_PU_has_attr_malloc (Pu_Table [ST_pu (func_st)]);
+          }
 	}
       } 
     }

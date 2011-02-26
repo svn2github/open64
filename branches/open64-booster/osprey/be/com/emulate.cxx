@@ -2664,11 +2664,6 @@ static WN *em_complex_abs(WN *block, WN *z)
 static WN *em_complex_sqrt_preg(WN *block, TYPE_ID type, PREG_NUM zN_in) 
 {
   PREG_NUM	ziN, zN, absN, t1N, t2N, t3N;
-#ifdef TARG_X8664 
-  if (type == MTYPE_V16C8)
-    type = MTYPE_C8;
-#endif
-
   TYPE_ID	rtype = Mtype_complex_to_real(type);
 
   zN = AssignExpr(block,WN_Realpart(rtype,WN_LdidPreg(type,zN_in)),rtype);

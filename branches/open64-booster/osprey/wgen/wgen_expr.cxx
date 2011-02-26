@@ -7698,6 +7698,9 @@ WGEN_Expand_Expr (gs_t exp,
 	// WGEN_Expand_Ptr_To_Member_Func_Call_Expr to expand it.  Otherwise,
 	// call WGEN_Expand_Expr to do regular expansion.  Bug 4737.
 	gs_t exp_opnd1 = gs_tree_operand(exp, 1);
+        // Skip the NOP_EXPRs
+        while (gs_tree_code(exp_opnd1) == GS_NOP_EXPR)
+          exp_opnd1 = gs_tree_operand (exp_opnd1, 0);
 	if (WGEN_Call_Returns_Ptr_To_Member_Func(exp_opnd1)) {
 	  TYPE_ID desc = TY_mtype(Get_TY(gs_tree_type(exp_opnd1)));
 	  wn1 = WGEN_Expand_Ptr_To_Member_Func_Call_Expr(exp_opnd1, 0,

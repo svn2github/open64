@@ -772,6 +772,9 @@ IPO_INLINE::SubstituteFormal (ST* formal, WN* actual, INT position)
     if (ST_addr_saved (formal) || ST_addr_passed (formal))
 	return FALSE;
 
+    if (TY_kind(ST_type(formal)) == KIND_STRUCT)
+    return FALSE;
+
     ST *st = Get_actual_st_if_passed (actual);
 
     if (st == NULL) {
