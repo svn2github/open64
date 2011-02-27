@@ -748,7 +748,6 @@ public:
     Is_True(wn != NULL && WN_operator(wn) == OPR_ALTENTRY,
             ("WN is not ALTENTRY"));
     Is_True(_current_bb != NULL, ("Current BB is NULL"));
-    Is_True(_current_bb->Get_preds_count() == 0, ("Current BB has predecessors"));
 
     _current_bb = _action.Create_node(NULL, wn);
     _action.Process_entry_node(_current_bb);
@@ -1093,8 +1092,10 @@ public:
     }
   
     // create and connect BB1
-    _current_bb = _action.Create_node(condgoto_bb, WN_next(wn));
-    _action.Process_predsucc(condgoto_bb, _current_bb);
+    if (WN_next(wn) != NULL) {
+      _current_bb = _action.Create_node(condgoto_bb, WN_next(wn));
+      _action.Process_predsucc(condgoto_bb, _current_bb);
+    }
   }
   
   //===================================================================
