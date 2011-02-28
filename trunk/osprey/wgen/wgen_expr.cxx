@@ -5984,90 +5984,84 @@ WGEN_Expand_Expr (gs_t exp,
 			      Get_Srcpos());
 	    }
 	  }
-          // OSP_397, if opnd 0 of TARGET_EXPR is an COMPONENT_REF
-          else if (gs_tree_code(t) == GS_AGGR_INIT_EXPR && 
-                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
-            WN *target_wn = WGEN_Address_Of(opnd0);
-            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/, 
-                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
-            /* We ignore the result_wn, for safety, place an assertion here */
-            FmtAssert(result_wn == NULL,
-                      ("result_wn should be NULL for the result is passed as param."));
-          } else if (gs_tree_code(t) == GS_COMPONENT_REF &&
-                  gs_tree_code(opnd0) == GS_COMPONENT_REF &&
-                  gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_INDIRECT_REF) {
-              /*
-               * match the following kind of tree 
-               * - TARGET_REF
-               * |-0 COMPONENT_REF
-               *   |- 0 INDIRECT_REF
-               *   |- 1 FIELD
-               * |-1 COMPONENT_REF
-               */
-              // generate rhs first
-			  WN *rhs_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
-					  0, 0, 0, 0, FALSE, FALSE, NULL);
+          else if( gs_tree_code(opnd0) == GS_COMPONENT_REF ) {
+            // OSP_397, if opnd 0 of TARGET_EXPR is an COMPONENT_REF
+            if (gs_tree_code(t) == GS_AGGR_INIT_EXPR ) {
+              WN *target_wn = WGEN_Address_Of(opnd0);
+              WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
+                                                0, 0, 0, 0, FALSE, FALSE, target_wn);
+              /* We ignore the result_wn, for safety, place an assertion here */
+              FmtAssert(result_wn == NULL,
+                        ("result_wn should be NULL for the result is passed as param."));
+            } else if (gs_tree_code(t) == GS_COMPONENT_REF &&
+                    gs_tree_code(gs_tree_operand(opnd0, 0)) == GS_INDIRECT_REF) {
+                /*
+                 * match the following kind of tree 
+                 * - TARGET_REF
+                 * |-0 COMPONENT_REF
+                 *   |- 0 INDIRECT_REF
+                 *   |- 1 FIELD
+                 * |-1 COMPONENT_REF
+                 */
+                // generate rhs first
+  			  WN *rhs_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
+  					  0, 0, 0, 0, FALSE, FALSE, NULL);
+  
+                gs_t obj_instance = gs_tree_operand(opnd0, 0);
+                gs_t obj_ptr = gs_tree_operand(obj_instance, 0);
+  
+                gs_t member = gs_tree_operand(opnd0, 1);
+                WN_OFFSET ofst = 0;
+                UINT xtra_BE_ofst = 0;
+  
+                TY_IDX obj_ty_idx = Get_TY(gs_tree_type(gs_tree_operand(obj_ptr, 0)));
+  
+                ofst = (BITSPERBYTE * gs_get_integer_value(gs_decl_field_offset(member)) +
+                        gs_get_integer_value(gs_decl_field_bit_offset(member)))
+                    / BITSPERBYTE;
+  
+  
+                WN *obj_wn = WGEN_Expand_Expr(obj_ptr, TRUE, 0, 0, 0, 0, FALSE, FALSE, NULL);
+  
+                TY_IDX hi_ty_idx;
+                if (gs_tree_code(gs_tree_type(opnd0)) == GS_VOID_TYPE)
+                    hi_ty_idx = MTYPE_To_TY(MTYPE_I4); // dummy; for bug 10176 Comment #4
+                else hi_ty_idx = Get_TY(gs_tree_type(opnd0));
+  
+                desc_ty_idx = hi_ty_idx;
+                ty_idx = desc_ty_idx;
+  
+                wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, TY_mtype(hi_ty_idx),
+                        xtra_BE_ofst,
+                        obj_ty_idx,
+                        rhs_wn, obj_wn, DECL_FIELD_ID(member));
+                WGEN_Stmt_Append(wn, Get_Srcpos());
+                break;
+	      }
+            // bug 15210
+            // Replace the VAR_DECL with the REF, for this case
+            //
+            else if (gs_tree_code(t) == GS_COND_EXPR &&
+                     gs_tree_code(gs_tree_operand(t,1)) == GS_TARGET_EXPR &&
+                     gs_tree_code(gs_tree_operand(t,2)) == GS_TARGET_EXPR ) {
+               gs_t t1, t2;
 
-              gs_t obj_instance = gs_tree_operand(opnd0, 0);
-              gs_t obj_ptr = gs_tree_operand(obj_instance, 0);
+               t1 = gs_tree_operand(t, 1);
+               t2 = gs_tree_operand(t, 2);
+               gs_set_tree_operand(t1, 0, opnd0);
+               gs_set_tree_operand(t2, 0, opnd0);
+               wn = WGEN_Expand_Expr(t);
 
-              gs_t member = gs_tree_operand(opnd0, 1);
-              WN_OFFSET ofst = 0;
-              UINT xtra_BE_ofst = 0;
-
-              TY_IDX obj_ty_idx = Get_TY(gs_tree_type(gs_tree_operand(obj_ptr, 0)));
-
-              ofst = (BITSPERBYTE * gs_get_integer_value(gs_decl_field_offset(member)) +
-                      gs_get_integer_value(gs_decl_field_bit_offset(member)))
-                  / BITSPERBYTE;
-
-
-              WN *obj_wn = WGEN_Expand_Expr(obj_ptr, TRUE, 0, 0, 0, 0, FALSE, FALSE, NULL);
-
-              TY_IDX hi_ty_idx;
-              if (gs_tree_code(gs_tree_type(opnd0)) == GS_VOID_TYPE)
-                  hi_ty_idx = MTYPE_To_TY(MTYPE_I4); // dummy; for bug 10176 Comment #4
-              else hi_ty_idx = Get_TY(gs_tree_type(opnd0));
-
-              desc_ty_idx = hi_ty_idx;
-              ty_idx = desc_ty_idx;
-
-              wn = WN_CreateIstore(OPR_ISTORE, MTYPE_V, TY_mtype(hi_ty_idx),
-                      xtra_BE_ofst,
-                      obj_ty_idx,
-                      rhs_wn, obj_wn, DECL_FIELD_ID(member));
-              WGEN_Stmt_Append(wn, Get_Srcpos());
+               break;
+            } else {
+              WN *target_wn = WGEN_Address_Of(opnd0);
+              WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
+                                                0, 0, 0, 0, FALSE, FALSE, target_wn);
+              wn = result_wn;
+              WN_set_rtype(wn, MTYPE_V);
               break;
-		  }
-	  //15210
-          else if (gs_tree_code(t) == GS_CALL_EXPR &&
-                   gs_tree_code(opnd0) == GS_COMPONENT_REF) {
-            WN *target_wn = WGEN_Address_Of(opnd0);
-            WN *result_wn = WGEN_Expand_Expr (t, TRUE /* for return_in_mem*/,
-                                              0, 0, 0, 0, FALSE, FALSE, target_wn);
-            wn = result_wn;
-            WN_set_rtype(wn, MTYPE_V);
-	    break;
+            }
           }
-
-           // bug 15210
-           // Replace the VAR_DECL with the REF, for this case
-           //
-           else if (gs_tree_code(t) == GS_COND_EXPR &&
-                    gs_tree_code(opnd0) == GS_COMPONENT_REF &&
-                   gs_tree_code(gs_tree_operand(t,1)) == GS_TARGET_EXPR &&
-                   gs_tree_code(gs_tree_operand(t,2)) == GS_TARGET_EXPR ) {
-             gs_t t1, t2;
- 
-             t1 = gs_tree_operand(t, 1);
-             t2 = gs_tree_operand(t, 2);
-             gs_set_tree_operand(t1, 0, opnd0);
-             gs_set_tree_operand(t2, 0, opnd0);
-             wn = WGEN_Expand_Expr(t);
- 
-             break;
-          }
-
 	  // If the initializer returns the object in memory, then make sure
 	  // the type doesn't require a copy constructor, since such types
 	  // sometimes require one.
