@@ -6878,13 +6878,6 @@ WGEN_Expand_Expr (gs_t exp,
 		wn = WN_Cvt(MTYPE_I4, mtyp, wn0);
 	      else wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
 	    }
-#if !defined(TARG_SL)
-	    // bug 14430: Generate a CVT with the same signedness.
-	    else if (MTYPE_signed(WN_rtype(wn0)) != MTYPE_signed(mtyp) &&
-	             MTYPE_bit_size(WN_rtype(wn0)) > MTYPE_bit_size(mtyp)) {
-	      wn = WN_Cvt(Mtype_TransferSign(mtyp, WN_rtype(wn0)), mtyp, wn0);
-	    }
-#endif
 	    else
 #endif
 	    wn = WN_Cvt(WN_rtype(wn0), mtyp, wn0);
