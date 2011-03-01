@@ -173,7 +173,9 @@ void COND_BOUNDS_INFO::Kill_Written_Symbols(ACCESS_VECTOR* av,
 #ifdef Is_True_On
     if (TY_kind(ST_type(WN_st(wn))) == KIND_SCALAR) { 
       WN *tmp = wn;
-      while (tmp && WN_opcode(tmp) != OPC_IO) tmp = LWN_Get_Parent(tmp);
+      while (tmp && (WN_opcode(tmp)!= OPC_IO) && (WN_opcode(tmp) != OPC_FUNC_ENTRY)) 
+	tmp = LWN_Get_Parent(tmp);
+      
       Is_True(tmp, ("Missing defs for %s (wn=%ld=0x%lx)",
 		   SYMBOL(wn).Name(), wn, wn));
     } 
