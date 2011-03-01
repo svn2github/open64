@@ -7893,6 +7893,7 @@ WGEN_Expand_Expr (gs_t exp,
     case GS_AGGR_INIT_EXPR:
     case GS_CALL_EXPR:
       {
+        BOOL is_gs_addr_arg = FALSE;
 	gs_t arglist = gs_tree_operand (exp, 1);
         TYPE_ID ret_mtype;
         WN *call_wn;
@@ -9834,11 +9835,24 @@ WGEN_Expand_Expr (gs_t exp,
 	      TY_mtype(TY_pointed(ty_idx)) == MTYPE_V) /* pointer to void */
 	    ty_idx = nop_ty_idx;
 #endif
+          if((ret_mtype == MTYPE_M) && (Is_Target_64bit()))
+          {
+            for (list = gs_tree_operand (exp, 1); list;
+                 list = gs_tree_chain (list)) {
+              if(gs_tree_code(gs_tree_value (list)) == GS_ADDR_EXPR)
+              {
+                if (gs_tree_code(
+                    gs_tree_operand(gs_tree_value (list),0)) == GS_VAR_DECL )
+                  is_gs_addr_arg = TRUE;
+              }
+           }
+         }
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
 
-	  if (ret_mtype == MTYPE_M) { // copy the -1 preg to a temp area
+	  if (ret_mtype == MTYPE_M && (!is_gs_addr_arg)) { // copy the -1 preg to a temp area
 
 	    TY_IDX ret_ty_idx = ty_idx;
+            is_gs_addr_arg = FALSE;
 #ifndef KEY
 // bug 3735: the compiler cannot arbitrarily change the alignment of
 // individual structures

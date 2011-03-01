@@ -4855,8 +4855,11 @@ static WN *lower_return_ldid(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif // TARG_X8664 || VECTOR_MTYPES
 
     case MTYPE_M:
-      Fail_FmtAssertion ("MLDID of Return_Val_Preg not allowed in middle"
-			 " of expression");
+      WN_st_idx(tree) = ST_st_idx(MTYPE_To_PREG(MTYPE_U8));
+      WN_load_offset(tree) = First_Int_Preg_Return_Offset;
+      WN_set_rtype(tree, MTYPE_U8);
+      WN_set_desc(tree, MTYPE_U8);
+      return tree;
       /*NOTREACHED*/
     default:
       Fail_FmtAssertion ("Unexpected type in lower_return_ldid");
@@ -11391,7 +11394,7 @@ static WN *lower_call(WN *block, WN *tree, LOWER_ACTIONS actions)
                                                          : parm;
 
     ploc = Get_Output_Parameter_Location(TY_Of_Parameter(parm));
-    if (MTYPE_is_m(parmType))
+    if (MTYPE_is_m(parmType)&&(WN_operator(actual) != OPR_LDID))
     {
      /*
       * structure parameter
