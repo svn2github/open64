@@ -1216,11 +1216,18 @@ LFTR::Replace_comparison(EXP_OCCURS *comp, BOOL cur_expr_is_sr_candidate)
 
     // adjust operator of new comparison
     OPERATOR new_compare_opr = comparison_cr->Opr();
-#ifdef KEY
+#ifdef KEY 
     MTYPE new_compare_type = tempcr->Dtyp();
     // do not change signedness of comparison since that could change semantics
     new_compare_type = Mtype_TransferSign(comparison_cr->Dsctyp(), 
 					  new_compare_type);
+    if (Is_Target_32bit()
+	&& (addressable == ADDRESSABILITY_IS_ADDRESS) 
+	&& MTYPE_is_signed(new_compare_type)) {
+      // For 32-bit targets, force comparison of address expressions to be unsigned.
+      new_compare_type = Mtype_from_mtype_class_and_size(MTYPE_CLASS_UNSIGNED,
+							 MTYPE_size_min(new_compare_type)/8);
+    }
 #else
     MTYPE new_compare_type = comparison_cr->Dsctyp();
     if (addressable == ADDRESSABILITY_IS_ADDRESS &&
