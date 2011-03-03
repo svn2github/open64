@@ -156,8 +156,9 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_U8:
     if (rclass == ISA_REGISTER_CLASS_mmx)
       return base == NULL ? TOP_ld64_2m_n32 : TOP_ld64_2m;
-    return base == NULL ? TOP_ld64_off :
-	   is_reloc_x8664_64 ? TOP_ld64_abs : TOP_ld64;
+    if (base == NULL)
+      return is_reloc_x8664_64 ? TOP_ld64_abs : TOP_ld64_off;
+    return TOP_ld64;
   case MTYPE_F4:
     if (rclass == ISA_REGISTER_CLASS_float)
       return base != NULL ? TOP_ldss : TOP_ldss_n32;
