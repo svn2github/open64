@@ -3332,7 +3332,8 @@ AGGINIT::Traverse_Aggregate_Struct (
     }
 
     gs_t element_value = gs_constructor_elts_value(init_list, idx);
-    if (gs_tree_code(element_value) == GS_NOP_EXPR)
+    if (gs_tree_code(element_value) == GS_NOP_EXPR &&
+        gs_tree_code(gs_tree_operand(element_value, 0)) == GS_CONSTRUCTOR)
         element_value = gs_tree_operand(element_value, 0);
 
     fld_ty = FLD_type(fld);
