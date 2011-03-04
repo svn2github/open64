@@ -6599,7 +6599,11 @@ Write_Symbol (
               // we are in IPA mode and we are generating a reference to local symbol
               // that has been merged into global symtab because of IPA
               EMT_Write_Qualified_Name (Asm_File, basesym);
-              fprintf (Asm_File, " %+lld\n", (INT64) base_ofst);
+              fprintf (Asm_File, " %+lld", (INT64) base_ofst);
+              // now emit comments on this symbol for readability
+              fprintf (Asm_File, " %s ", ASM_CMNT);
+              EMT_Write_Qualified_Name (Asm_File, sym);
+              fprintf (Asm_File, " %+lld\n", (INT64) sym_ofst);
           } else {
               EMT_Write_Qualified_Name (Asm_File, sym);
               fprintf (Asm_File, " %+lld\n", (INT64) sym_ofst);
