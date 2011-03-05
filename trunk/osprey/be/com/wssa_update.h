@@ -151,6 +151,9 @@ public:
   // rename inside bb and keep the versions of live out the same
   void Rename_BB(BB_NODE* bb);
   void Rename_BB_new_preg(BB_NODE* bb);
+
+  // delete all statements in bb and bb itself
+  void Delete_BB(BB_NODE* bb);
 };
 
 }; /* namespace WSSA */

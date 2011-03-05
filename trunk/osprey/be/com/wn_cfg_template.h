@@ -374,8 +374,8 @@ private:
         if (WN_label_number(goto_wn) == WN_label_number(label))
           return TRUE;
       }
-      if (WN_label_number(WN_switch_default(stmt)) == 
-          WN_label_number(label))
+      if (WN_kid_count(stmt) > 2 &&
+          WN_label_number(WN_switch_default(stmt)) == WN_label_number(label))
         return TRUE;
       else
         return FALSE;
@@ -401,7 +401,8 @@ private:
       if (goto_wn == kid)
         return TRUE;
     }
-    if (WN_switch_default(stmt) == kid)
+    if (WN_kid_count(stmt) > 2 &&
+        WN_switch_default(stmt) == kid)
       return TRUE;
     else
       return FALSE;
@@ -445,18 +446,18 @@ public:
 
   void Finalize() {
     BB_NODE* dummy_exit = ACTION_BASE::Get_dummy_exit();
-    for (typename _Tcfg::bb_iterator bit = ACTION_BASE::_cfg.BB_begin();
-         bit != ACTION_BASE::_cfg.BB_end();
+    for (typename _Tcfg::dfs_fwd_iterator bit = ACTION_BASE::_cfg.Dfs_fwd_begin();
+         bit != ACTION_BASE::_cfg.Dfs_fwd_end();
          ++bit) {
-      UINT32 bb_id = (*bit)->Get_id();
-      if ((*bit)->Get_preds_count() != _verify_preds[bb_id].size()) {
-        if (dummy_exit != (*bit)) { // we possibly add edges to dummy exit
+      UINT32 bb_id = bit->Get_id();
+      if (bit->Get_preds_count() != _verify_preds[bb_id].size()) {
+        if (dummy_exit != &(*bit)) { // we possibly add edges to dummy exit
           Is_True(FALSE, ("WCFG VERIFY: missing edge"));
         }
       }
-      if ((*bit)->Get_succs_count() != _verify_succs[bb_id].size()) {
-        if ((*bit)->Succ_pos(dummy_exit) == POS_INVALID ||
-            (*bit)->Get_succs_count() != _verify_succs[bb_id].size() + 1) {
+      if (bit->Get_succs_count() != _verify_succs[bb_id].size()) {
+        if (bit->Succ_pos(dummy_exit) == POS_INVALID ||
+            bit->Get_succs_count() != _verify_succs[bb_id].size() + 1) {
           Is_True(FALSE, ("WCFG VERIFY: missing edge"));
         }
       }
@@ -777,18 +778,20 @@ public:
     Is_True(then_block != NULL && WN_operator(then_block) == OPR_BLOCK,
             ("invalid BLOCK of IF then"));
 
-    BB_NODE* then_bb = _action.Create_node(if_bb, WN_first(then_block));
-    _action.Process_predsucc(if_bb, then_bb);
+    _current_bb = _action.Create_node(if_bb, WN_first(then_block));
+    _action.Process_predsucc(if_bb, _current_bb);
     Process_block(then_block);
+    BB_NODE* then_bb = _current_bb;
 
     // put ELSE block into BB2
     WN* else_block = WN_else(wn);
     Is_True(else_block != NULL && WN_operator(else_block) == OPR_BLOCK,
             ("invalid BLOCK of IF else"));
 
-    BB_NODE* else_bb = _action.Create_node(if_bb, WN_first(else_block));
-    _action.Process_predsucc(if_bb, else_bb);
+    _current_bb = _action.Create_node(if_bb, WN_first(else_block));
+    _action.Process_predsucc(if_bb, _current_bb);
     Process_block(else_block);
+    BB_NODE* else_bb = _current_bb;
 
     // connect THEN/ELSE block with BB3
     _current_bb = _action.Create_node(then_bb != NULL ? then_bb : else_bb, 
@@ -821,18 +824,18 @@ public:
     Process_stmt(init_bb, wn);
   
     // put COMP into BB1
-    BB_NODE* cmp_bb = _action.Create_node(init_bb, WN_end(wn));
-    _action.Process_predsucc(init_bb, cmp_bb);
-    Process_stmt(cmp_bb, WN_end(wn));
+    _current_bb = _action.Create_node(init_bb, WN_end(wn));
+    _action.Process_predsucc(init_bb, _current_bb);
+    Process_stmt(_current_bb, WN_end(wn));
+    BB_NODE* cmp_bb = _current_bb;
   
     // put BODY/INCR into BB2
     WN* body_block = WN_do_body(wn);
     Is_True(body_block != NULL && WN_operator(body_block) == OPR_BLOCK,
             ("invalid BLOCK for DO_LOOP body"));
 
-    BB_NODE* body_bb = _action.Create_node(cmp_bb, WN_first(body_block));
-    _action.Process_predsucc(cmp_bb, body_bb);
-    _current_bb = body_bb;
+    _current_bb = _action.Create_node(cmp_bb, WN_first(body_block));
+    _action.Process_predsucc(cmp_bb, _current_bb);
     Process_block(body_block);
     Process_stmt(_current_bb, WN_step(wn));
     _action.Process_predsucc(_current_bb, cmp_bb);
@@ -956,7 +959,7 @@ public:
       }
       goto_wn = WN_next(goto_wn);
     }
-    goto_wn = WN_switch_default(wn);
+    goto_wn = WN_kid_count(wn) > 2 ? WN_switch_default(wn) : NULL;
     if (goto_wn != NULL &&
         label_set.find(WN_label_number(goto_wn)) == label_set.end())
       _action.Process_goto(_current_bb, goto_wn);
@@ -993,7 +996,7 @@ public:
       }
       casegoto_wn = WN_next(casegoto_wn);
     }
-    casegoto_wn = WN_switch_default(wn);
+    casegoto_wn = WN_kid_count(wn) > 2 ? WN_switch_default(wn) : NULL;
     if (casegoto_wn != NULL &&
         label_set.find(WN_label_number(casegoto_wn)) == label_set.end())
       _action.Process_goto(_current_bb, casegoto_wn);
