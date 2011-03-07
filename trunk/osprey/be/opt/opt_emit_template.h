@@ -106,9 +106,16 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	if (WOPT_Enable_Cvt_Folding && !emitter->For_preopt()) {
 	  INT    cvt_kind;
 	  OPCODE opc;
-	  cvt_kind =
-	    Need_type_conversion(exp->Dsctyp(), exp->Dtyp(), &opc);//326120
-
+          if (MTYPE_is_vector(exp->Dtyp()) && MTYPE_is_vector(exp->Dsctyp())
+              && exp->Dtyp() != exp->Dsctyp()) {
+            opc = OPCODE_make_op(OPR_CVT, exp->Dtyp(), exp->Dsctyp());
+            cvt_kind = NEED_CVT;
+          }
+          else
+          {
+	    cvt_kind =
+	      Need_type_conversion(exp->Dsctyp(), exp->Dtyp(), &opc);//326120
+          }
 	  CODEREP *kid = exp->Get_opnd(0);
 	  if (cvt_kind == NEED_CVT) {
 	    

@@ -9828,6 +9828,7 @@ WGEN_Expand_Expr (gs_t exp,
 	      TY_mtype(TY_pointed(ty_idx)) == MTYPE_V) /* pointer to void */
 	    ty_idx = nop_ty_idx;
 #endif
+#ifdef TARG_X8664
           if((ret_mtype == MTYPE_M) && (Is_Target_64bit()))
           {
             for (list = gs_tree_operand (exp, 1); list;
@@ -9836,14 +9837,21 @@ WGEN_Expand_Expr (gs_t exp,
               {
                 if (gs_tree_code(
                     gs_tree_operand(gs_tree_value (list),0)) == GS_VAR_DECL )
-                  is_gs_addr_arg = TRUE;
+                {
+                  gs_t argument = gs_tree_operand(gs_tree_value (list),0);
+                  if(gs_decl_initial(argument))
+                    is_gs_addr_arg = TRUE;
+                }
               }
            }
          }
+#endif
 	  wn1 = WN_Ldid (ret_mtype, -1, Return_Val_Preg, ty_idx);
-
+#ifdef TARG_X8664
 	  if (ret_mtype == MTYPE_M && (!is_gs_addr_arg)) { // copy the -1 preg to a temp area
-
+#else
+          if (ret_mtype == MTYPE_M){// copy the -1 preg to a temp area
+#endif
 	    TY_IDX ret_ty_idx = ty_idx;
             is_gs_addr_arg = FALSE;
 #ifndef KEY
