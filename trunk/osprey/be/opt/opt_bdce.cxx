@@ -1452,6 +1452,7 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
 	      opr == OPR_ADD || opr == OPR_SUB || opr == OPR_MPY ||
 	      opr == OPR_BAND || opr == OPR_BIOR || opr == OPR_BNOR ||
 	      opr == OPR_BXOR || opr == OPR_LAND || opr == OPR_LIOR)) {
+      INT index;
       // change the operation to 32-bit, which is good for 32-bit target
       cr->Set_dtyp(Mtype_TransferSize(MTYPE_I4, cr->Dtyp()));
       if (cr->Dsctyp() != MTYPE_V)
@@ -1459,6 +1460,18 @@ BITWISE_DCE::Delete_cvtls(CODEREP *cr, STMTREP *use_stmt)
       new_cr->Set_dtyp(Mtype_TransferSize(MTYPE_I4, new_cr->Dtyp()));
       if (new_cr->Dsctyp() != MTYPE_V)
         new_cr->Set_dsctyp(Mtype_TransferSize(MTYPE_I4, new_cr->Dsctyp()));
+
+      for (index = 0; index < new_cr->Kid_count(); index++) {
+          CODEREP *opnd = new_cr->Opnd(index);
+
+          if (new_cr->Dtyp() != opnd->Dtyp()) {
+              OPCODE   opc = OPCODE_make_op(OPR_CVT, new_cr->Dtyp(), opnd->Dtyp());
+              CODEREP *cvt_cr = Htable()->Add_unary_node(opc, opnd);
+
+              new_cr->Set_opnd(index, cvt_cr);
+              need_rehash = TRUE;
+          }
+      }
     }
 #endif
     // can also apply to some BAND and BIOR with constants
