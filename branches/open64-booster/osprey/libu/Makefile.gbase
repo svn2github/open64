@@ -358,3 +358,10 @@ numbers.h :  $(BUILD_BASE)/errmsg/massage.awk  $(ROOT)/usr/include/liberrno.h
 	./massage > numbers.h
 endif
 
+ifeq ($(BUILD_COMPILER), OSP)
+defgu2s.o defgu2s.pic.o defgu2s.pg.o : CFLAGS += -OPT:ro=1 
+endif
+
+ifeq ($(BUILD_COMPILER), SELF)
+defgu2s.o defgu2s.pic.o defgu2s.pg.o : CFLAGS += -OPT:ro=1 
+endif

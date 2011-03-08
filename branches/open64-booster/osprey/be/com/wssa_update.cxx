@@ -1298,6 +1298,16 @@ WSSA_UPDATER::ssa_rename_tree(WN* wn, VER_IDX old_ver, VER_IDX new_ver) {
   Is_True(old_ver == VER_INVALID ||
           wst_idx == _ssa->Get_ver_wst(old_ver), ("wst mismatch"));
 
+  if (WN_operator(wn) == OPR_BLOCK) {
+    for (WN* kid = WN_first(wn); kid != NULL; kid = WN_next(kid)) {
+      BOOL redef = ssa_rename_tree(kid, old_ver, new_ver);
+      if (redef) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
   // rename kids at first
   for (int i = 0; i < WN_kid_count(wn); i++) {
     BOOL redef = ssa_rename_tree(WN_kid(wn, i), old_ver, new_ver);
@@ -1913,6 +1923,54 @@ WSSA_UPDATER::Rename_BB_new_preg(BB_NODE* bb) {
   rename.Finalize();
 }
 
+//===================================================================
+// Delete_BB
+//   delete all statements in bb
+//   delete BB itself
+//===================================================================
+void
+WSSA_UPDATER::Delete_BB(BB_NODE* bb) {
+  if (bb->Is_empty()) {
+    _cfg->Delete_node(bb);
+    return;
+  }
+
+  // keep the info of stmts
+  WN* first = bb->First_stmt();
+  WN* last = bb->Last_stmt();
+  Is_True(first != NULL && last != NULL,
+          ("TODO: extra stmt is not NULL"));
+  if (first != last) {
+    Is_True(WN_prev(last) == bb->Prev_stmt(last),
+            ("TODO: handle extra_stmt in bb"));
+  }
+
+  WN* block = _cfg->Get_parent_block(first);
+  Is_True(block != NULL && _cfg->Get_parent_block(last) == block,
+          ("unexpected parent block"));
+
+  // delete the node from CFG
+  _cfg->Delete_node(bb);
+
+  // remove the stmts from WHIRL tree
+  WN* prev = WN_prev(first);
+  WN* next = WN_next(last);
+  if (prev != NULL)
+    WN_next(prev) = next;
+  else
+    WN_first(block) = next;
+
+  if (next != NULL)
+    WN_prev(next) = prev;
+  else
+    WN_last(block) = prev;
+
+  for (WN* stmt = first; stmt != WN_next(last); ) {
+    WN* to_delete = stmt;
+    stmt = WN_next(stmt);
+    WN_DELETE_Tree(to_delete);
+  }
+}
 
 } /* namespace WSSA */
 

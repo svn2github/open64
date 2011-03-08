@@ -280,6 +280,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
     else if (cr->Dtyp() != MTYPE_M && MTYPE_byte_size(cr->Dsctyp()) < 4 &&
 	     (idx = _opt_stab->Part_of_reg_size_symbol(cr->Aux_id())) != 0) {
       cr->Set_promote_to_reg_size(); // flag this cr for processing in step 2
+      _symbols_to_revise->Union1D(cr->Aux_id());
       _symbols_to_revise->Union1D(idx);
       cr->Set_scalar_aux_id(idx);
       _has_bitfield = TRUE;

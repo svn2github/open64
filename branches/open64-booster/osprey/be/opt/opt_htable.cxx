@@ -5102,8 +5102,11 @@ CODEREP::Check_if_result_is_address(OPT_STAB *opt_stab) const
       if (res0 == ADDRESSABILITY_UNKNOWN)
 	return ADDRESSABILITY_UNKNOWN;
       res1 = Opnd(1)->Check_if_result_is_address(opt_stab); 
-      if (res1 == ADDRESSABILITY_UNKNOWN)
+      if (res1 == ADDRESSABILITY_UNKNOWN) {
+	if (res0 == ADDRESSABILITY_IS_ADDRESS)
+	  return res0;
 	return ADDRESSABILITY_UNKNOWN;
+      }
       if (res0 == res1) {
         if (res0 == ADDRESSABILITY_IS_ADDRESS)
           return ADDRESSABILITY_NOT_ADDRESS;

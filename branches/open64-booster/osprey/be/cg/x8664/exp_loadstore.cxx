@@ -156,8 +156,9 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_U8:
     if (rclass == ISA_REGISTER_CLASS_mmx)
       return base == NULL ? TOP_ld64_2m_n32 : TOP_ld64_2m;
-    return base == NULL ? TOP_ld64_off :
-	   is_reloc_x8664_64 ? TOP_ld64_abs : TOP_ld64;
+    if (base == NULL)
+      return is_reloc_x8664_64 ? TOP_ld64_abs : TOP_ld64_off;
+    return TOP_ld64;
   case MTYPE_F4:
     if (rclass == ISA_REGISTER_CLASS_float)
       return base != NULL ? TOP_ldss : TOP_ldss_n32;
@@ -188,7 +189,9 @@ Pick_Load_Instruction (TYPE_ID rtype, TYPE_ID desc,
   case MTYPE_V8I4: 
   case MTYPE_V8I8: 
   case MTYPE_V8F4:
-    if ( rclass == ISA_REGISTER_CLASS_float )
+    if ( rclass == ISA_REGISTER_CLASS_mmx )
+      return base != NULL ? TOP_ld64_2m : TOP_ld64_2m_n32;
+    else if ( rclass == ISA_REGISTER_CLASS_float )
       return base != NULL ? TOP_ld64_2sse : TOP_ld64_2sse_n32;
     else
       return base != NULL ? TOP_ld64 : TOP_ld64_off;
@@ -450,7 +453,9 @@ Pick_Store_Instruction( TYPE_ID mtype,
   case MTYPE_V8I4: 
   case MTYPE_V8I8: 
   case MTYPE_V8F4:
-    if ( rclass == ISA_REGISTER_CLASS_float )
+    if ( rclass == ISA_REGISTER_CLASS_mmx )
+      return base != NULL ? TOP_store64_fm : TOP_store64_fm_n32;
+    else if ( rclass == ISA_REGISTER_CLASS_float )
       return base != NULL ? TOP_store64_fsse : TOP_store64_fsse_n32;
     else
       return base != NULL ? TOP_store64 : TOP_store64_off;

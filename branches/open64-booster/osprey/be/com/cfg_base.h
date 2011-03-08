@@ -796,8 +796,8 @@ public:
   typedef BB_NODE_BASE<_Tstmtcontainer> BB_NODE;
   typedef typename BB_NODE::BB_LIST BB_LIST;
 
-  typedef DFS_ITERATOR<BB_NODE, TRUE> dfs_fwd_itrator;
-  typedef DFS_ITERATOR<BB_NODE, FALSE> dfs_bwd_itrator;
+  typedef DFS_ITERATOR<BB_NODE, TRUE> dfs_fwd_iterator;
+  typedef DFS_ITERATOR<BB_NODE, FALSE> dfs_bwd_iterator;
 
   typedef typename _Tnodecontainer::iterator bb_iterator;
   typedef typename _Tnodecontainer::const_iterator const_bb_iterator;
@@ -892,10 +892,10 @@ public:
   }
 
   // DFS iterators
-  dfs_fwd_itrator Dfs_fwd_begin() { dfs_fwd_itrator it(Get_dummy_entry(), Get_max_id()); return it;  }
-  dfs_fwd_itrator Dfs_fwd_end()   { dfs_fwd_itrator it(NULL, 0); return it; }
-  dfs_bwd_itrator Dfs_bwd_begin() { dfs_bwd_itrator it(Get_dummy_exit(), Get_max_id()); return it; }
-  dfs_bwd_itrator Dfs_bwd_end()   { dfs_bwd_itrator it(NULL, 0); return it; }
+  dfs_fwd_iterator Dfs_fwd_begin() { dfs_fwd_iterator it(Get_dummy_entry(), Get_max_id()); return it;  }
+  dfs_fwd_iterator Dfs_fwd_end()   { dfs_fwd_iterator it(NULL, 0); return it; }
+  dfs_bwd_iterator Dfs_bwd_begin() { dfs_bwd_iterator it(Get_dummy_exit(), Get_max_id()); return it; }
+  dfs_bwd_iterator Dfs_bwd_end()   { dfs_bwd_iterator it(NULL, 0); return it; }
 
   // BB iterators
   bb_iterator BB_begin() { return _node_container.begin(); }

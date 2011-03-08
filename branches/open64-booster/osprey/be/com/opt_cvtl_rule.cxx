@@ -160,6 +160,12 @@ INT Need_type_conversion(TYPE_ID from_ty, TYPE_ID to_ty, OPCODE *opc)
 #endif
   if (!(MTYPE_is_integral(from_ty) && MTYPE_is_integral(to_ty))) {
     if (from_ty == to_ty) return NOT_AT_ALL;
+#ifdef TARG_X8664
+  if (MTYPE_is_vector(from_ty) && MTYPE_is_vector(to_ty) &&
+       MTYPE_is_mmx_vector(from_ty) == MTYPE_is_mmx_vector(to_ty)) {
+    return NOT_AT_ALL;
+  }
+#endif
     if (opc != NULL) 
       *opc = OPCODE_make_op(OPR_CVT, to_ty, from_ty);
     return NEED_CVT;

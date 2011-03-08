@@ -2176,7 +2176,7 @@ Expand_Multiply (TN *result, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
   FmtAssert( MTYPE_is_integral(mtype) && !MTYPE_is_mmx_vector(mtype),
              ("Should be handled in Expand_Flop") );
 
-  if ( mtype == MTYPE_V16I2 || mtype == MTYPE_V8I2 || mtype == MTYPE_V16I4 ) {
+  if ( mtype == MTYPE_V16I2 || mtype == MTYPE_V8I2 || mtype == MTYPE_V16I4 || mtype == MTYPE_V16I1) {
     Expand_Flop( OPCODE_make_op(OPR_MPY, mtype, MTYPE_V), 
                  result, src1, src2, NULL, ops );
     return;
@@ -5949,6 +5949,83 @@ void Expand_Flop( OPCODE opcode, TN *result, TN *src1, TN *src2, TN *src3, OPS *
     Expand_Complex_Divide(opcode, result, src1, src2, ops);
     return;
 
+  case OPC_V8I1MPY:
+  case OPC_M8I1MPY:
+  {
+      TN* tmp_a = Build_TN_Like( src1 );
+      TN* tmp_b = Build_TN_Like( src1 );
+      TN* tmp_c = Build_TN_Like( src1 );
+      TN* tmp_d = Build_TN_Like( src1 );
+      TN* tmp_e = Build_TN_Like( src1 );
+      TN* tmp_f = Build_TN_Like( src1 );
+      TN* tmp_g = Build_TN_Like( src1 );
+      TN* tmp_h = Build_TN_Like( src1 );
+      TN* tmp_i = Build_TN_Like( src1 );
+
+      Exp_COPY(tmp_a, src1, ops);
+      Exp_COPY(tmp_c, src2, ops);
+    
+      Build_OP(TOP_mov64_m, tmp_b, tmp_a, ops); 
+      Build_OP(TOP_punpckhbw, tmp_b, tmp_b, tmp_a, ops);
+      Build_OP(TOP_mov64_m, tmp_d, tmp_c, ops);
+      Build_OP(TOP_punpckhbw, tmp_d, tmp_d, tmp_c, ops);
+      Build_OP(TOP_mov64_m, tmp_e, tmp_a, ops);
+      Build_OP(TOP_punpcklbw, tmp_e, tmp_e, tmp_a, ops);
+      Build_OP(TOP_mov64_m, tmp_f, tmp_c, ops);
+      Build_OP(TOP_punpcklbw, tmp_f, tmp_c, tmp_c, ops);
+      Build_OP(TOP_mov64_m, tmp_g, tmp_b, ops);
+      Build_OP(TOP_pmullw, tmp_g, tmp_g, tmp_d, ops);
+      Build_OP(TOP_pmullw, tmp_f, tmp_f, tmp_e, ops);
+      Build_OP(TOP_mov64_m, tmp_h, tmp_f, ops);
+      Build_OP(TOP_punpckhbw, tmp_h, tmp_h, tmp_g, ops);
+      Build_OP(TOP_punpcklbw, tmp_f, tmp_f, tmp_g, ops);
+      Build_OP(TOP_mov64_m, tmp_i, tmp_f, ops);
+      Build_OP(TOP_punpckhbw, tmp_i, tmp_i, tmp_h, ops);
+      Build_OP(TOP_punpcklbw, tmp_f, tmp_f, tmp_h, ops);
+      Build_OP(TOP_punpcklbw, result, tmp_f, tmp_i, ops);
+  }
+  return; 
+	  
+  case OPC_V16I1MPY:
+  {
+      TN* tmp_a = Build_TN_Like( src1 );
+      TN* tmp_b = Build_TN_Like( src1 );
+      TN* tmp_c = Build_TN_Like( src1 );
+      TN* tmp_d = Build_TN_Like( src1 );
+      TN* tmp_e = Build_TN_Like( src1 );
+      TN* tmp_f = Build_TN_Like( src1 );
+      TN* tmp_g = Build_TN_Like( src1 );
+      TN* tmp_h = Build_TN_Like( src1 );
+      TN* tmp_i = Build_TN_Like( src1 );
+      TN* tmp_j = Build_TN_Like( src1 );
+
+      Exp_COPY(tmp_a, src1, ops);
+      Exp_COPY(tmp_c, src2, ops);
+    
+      Build_OP(TOP_movdq, tmp_b, tmp_a, ops); 
+      Build_OP(TOP_punpckhbw128, tmp_b, tmp_b, tmp_a, ops);
+      Build_OP(TOP_movdq, tmp_d, tmp_c, ops);
+      Build_OP(TOP_punpckhbw128, tmp_d, tmp_d, tmp_c, ops);
+      Build_OP(TOP_movdq, tmp_e, tmp_a, ops);
+      Build_OP(TOP_punpcklbw128, tmp_e, tmp_e, tmp_a, ops);
+      Build_OP(TOP_movdq, tmp_f, tmp_c, ops);
+      Build_OP(TOP_punpcklbw128, tmp_f, tmp_c, tmp_c, ops);
+      Build_OP(TOP_movdq, tmp_g, tmp_b, ops);
+      Build_OP(TOP_pmullw128, tmp_g, tmp_g, tmp_d, ops);
+      Build_OP(TOP_pmullw128, tmp_f, tmp_f, tmp_e, ops);
+      Build_OP(TOP_movdq, tmp_h, tmp_f, ops);
+      Build_OP(TOP_punpckhbw128, tmp_h, tmp_h, tmp_g, ops);
+      Build_OP(TOP_punpcklbw128, tmp_f, tmp_f, tmp_g, ops);
+      Build_OP(TOP_movdq, tmp_i, tmp_f, ops);
+      Build_OP(TOP_punpckhbw128, tmp_i, tmp_i, tmp_h, ops);
+      Build_OP(TOP_punpcklbw128, tmp_f, tmp_f, tmp_h, ops);
+      Build_OP(TOP_movdq, tmp_j, tmp_f, ops);
+      Build_OP(TOP_punpckhbw128, tmp_j, tmp_j, tmp_i, ops);
+      Build_OP(TOP_punpcklbw128, tmp_f, tmp_f, tmp_i, ops);
+      Build_OP(TOP_punpcklbw128, result, tmp_f, tmp_j, ops);
+  }  
+   return;
+ 
   default:
     #pragma mips_frequency_hint NEVER
     FmtAssert(FALSE, ("Unimplemented flop: %s", OPCODE_name(opcode)));
