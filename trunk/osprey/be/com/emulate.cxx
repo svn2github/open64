@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1348,6 +1348,12 @@ static WN *em_exp_float(WN *block, WN *x, WN *pow, TYPE_ID type)
 	return NULL;
       }
     }
+
+    /* Workaround for bug 688.
+     */
+    if (MTYPE_is_vector(type))
+      return NULL;
+
     n = Targ_To_Host_Float(con);
     sqrt = rsqrt = FALSE;
 #ifdef KEY
