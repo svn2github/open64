@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -982,21 +982,34 @@ SUMMARIZE<program>::Process_eh_globals (void)
       {
         INITV_IDX st_entry = INITV_blk (blk);
 	ST_IDX st_idx = 0;
-	if (INITV_kind (st_entry) != INITVKIND_ZERO)
+	bool catch_all = false;
+	if (INITV_kind (st_entry) == INITVKIND_ONE)
+	{
+	  catch_all = true;
+	}
+	else if (INITV_kind (st_entry) != INITVKIND_ZERO)
 	{
 	  st_idx = TCON_uval (INITV_tc_val (st_entry));
 	  FmtAssert (st_idx != 0, ("Invalid st idx"));
 	}
-	if (st_idx <= 0)
+	if (st_idx <= 0 && !catch_all)
 	{
 	  blk = INITV_next (blk);
 	  continue;
 	}
-	INT32 index = Get_symbol_index (&St_Table [st_idx]);
 	INITV_IDX filter = INITV_next (st_entry); // for backup
-	FmtAssert (index >= 0, ("Unexpected summary id for eh symbol"));
-	INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
-	               Host_To_Targ (MTYPE_U4, index)), 1);
+	if (!catch_all)
+	{
+	  INT32 index = Get_symbol_index (&St_Table [st_idx]);
+	  FmtAssert (index >= 0, ("Unexpected summary id for eh symbol"));
+	  INITV_Set_VAL (Initv_Table[st_entry], Enter_tcon (
+	                 Host_To_Targ (MTYPE_U4, index)), 1);
+	}
+	else
+	{
+	  // copy catch-all marker
+	  INITV_Set_ONE (Initv_Table[st_entry], MTYPE_U4, 1);
+	}
         Set_INITV_next (st_entry, filter);
 	blk = INITV_next (blk);
       } while (blk);
@@ -1055,7 +1068,7 @@ SUMMARIZE<program>::Process_eh_region (WN * wn)
     for (; types; types = INITV_next (types))
     {
       int sym = 0;
-      if (INITV_kind (types) != INITVKIND_ZERO)
+      if (INITV_kind (types) == INITVKIND_VAL)
         sym = TCON_uval (INITV_tc_val (types));
       if (sym > 0)
       {
