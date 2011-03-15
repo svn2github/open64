@@ -87,10 +87,6 @@ static char *rcs_id = 	opt_dse_CXX"$Revision: 1.17 $";
 #include "opt_ssa.h"
 #include "opt_mu_chi.h"
 #include "opt_util.h"
-#include <vector> 
-using std::vector;
-#include "opt_alias_rule.h"
-#include "idx_32_set.h"
 
 // ====================================================================
 // ====================================================================
@@ -108,7 +104,6 @@ class DSE {
 #ifdef TARG_SL
     vector <WN *> *_injury_aux_intrnop;
 #endif
-    vector <WN *> *_last_store_vec;
 
     //
     // access methods
@@ -136,7 +131,7 @@ class DSE {
     void Set_Required_VSE( VER_STAB_ENTRY *, BOOL , WN * ) const;
     void Set_Required_PHI( VER_STAB_ENTRY *vse, WN *ref_wn ) const;
     void Set_Required_MU( MU_NODE *mu, BOOL real_use ) const;
-    void Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const;
+    void Set_Required_CHI( CHI_NODE *chi ) const;
     void Set_Required_WN( WN *wn ) const;
     void Add_EH_exposed_use(WN *call) const;
 #ifdef KEY
@@ -153,18 +148,6 @@ class DSE {
     void Repair_Injured_AuxIntrnOP(void) const ;
     void Append_Injured_AuxIntrnOp(WN *wn) const { _injury_aux_intrnop->insert(_injury_aux_intrnop->begin(), wn);};
 #endif
-    WN* Last_store(AUX_ID aid) const
-              { return (*_last_store_vec)[aid]; }
-    void Set_last_store( AUX_ID aid, WN *store) const 
-              { (*_last_store_vec)[aid] = store; }
-    //OSP_468, remove all Set_Required_Imp_VSE()
-    //void Set_Required_Imp_VSE( VER_ID vid, BOOL real_use) const;
-    BOOL Mem_WN_equiv_rec(WN *wn1, WN *wn2) const;
-    BOOL Mem_WN_equiv(WN *wn1, WN* wn2) const;
-    BOOL Same_memloc( WN* store1, WN* store2) const;
-    VER_ID Prop_vsym_new_result( VER_ID vid ) const;
-    void Propagate_vsym_wn( WN *wn ) const;
-    void Propagate_vsym_bb( BB_NODE *bb ) const;
 
   public:
 
@@ -177,11 +160,6 @@ class DSE {
 #ifdef TARG_SL
         _injury_aux_intrnop = CXX_NEW(vector<WN *>, pool);
 #endif
-
-        //init _last_store_vec
-        INT asym_count = Opt_stab()->Lastidx() + 1;
-        _last_store_vec = CXX_NEW(vector<WN *>, pool);
-        _last_store_vec->insert(_last_store_vec->end(), asym_count, (WN*)NULL);
 
       }
 
@@ -422,8 +400,8 @@ DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
   // we only need to propagate this usage if the symbol
   // was not already marked as having a use
   if ( vse->Any_use() ) return;
-  
-  BOOL vse_live=TRUE;
+  vse->Set_Any_use();
+ 
   // now recursively follow this symbol's use-def chain
   switch ( vse->Type() ) {
     case WHIRL_STMT:
@@ -437,7 +415,7 @@ DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
       Set_Required_PHI( vse, ref_wn );
       break;
     case CHI_STMT:
-      Set_Required_CHI( vse->Chi(), &vse_live );
+      Set_Required_CHI( vse->Chi() );
       break;
     case ENTRY_STMT:
       // no definition, value is just live-in to the region
@@ -452,11 +430,7 @@ DSE::Set_Required_VSE( VER_STAB_ENTRY *vse, BOOL real_use, WN *ref_wn ) const
   }
 
   if ( Tracing() ) {
-    if(vse_live)
-      fprintf( TFile, "<dse> Required VSE: var:%d version:%d\n",
-	     vse->Aux_id(), vse->Version() );
-    else
-      fprintf( TFile, "<dse> Not Required VSE: var:%d version:%d\n",
+    fprintf( TFile, "<dse> Required VSE: var:%d version:%d\n",
 	     vse->Aux_id(), vse->Version() );
   }
 }
@@ -482,7 +456,6 @@ DSE::Set_Required_PHI( VER_STAB_ENTRY *vse, WN *ref_wn ) const
   for ( INT32 opndnum = 0; opndnum < phi->Size(); opndnum++ ) {
     VER_ID phi_opnd = phi->Opnd(opndnum);
     VER_STAB_ENTRY *sym = Opt_stab()->Ver_stab_entry(phi_opnd);
-    Set_last_store( sym->Aux_id(), NULL);
     Set_Required_VSE( sym, FALSE, ref_wn );
   }
 }
@@ -496,7 +469,6 @@ void
 DSE::Set_Required_MU( MU_NODE *mu, BOOL real_use ) const
 {
   VER_STAB_ENTRY *ver = Opt_stab()->Ver_stab_entry(mu->Opnd());
-  Set_last_store(ver->Aux_id(), NULL);
   Set_Required_VSE( ver, real_use, NULL );
 }
 
@@ -515,110 +487,13 @@ static bool Is_identity_asgn(WN *wn, OPT_STAB *opt_stab)
 	  opt_stab->Ver_stab_entry(WN_ver(rhs))->Aux_id());
 }
 
-BOOL
-DSE::Mem_WN_equiv_rec(WN *wn1, WN *wn2) const
-{
-  if (!wn1 || !wn2) return FALSE;
-  if (!Mem_WN_equiv(wn1,wn2)) {
-    return FALSE;
-  }
-  for (INT i=0; i<WN_kid_count(wn1); i++) {
-    if (!Mem_WN_equiv_rec(WN_kid(wn1,i),WN_kid(wn2,i))) {
-      return FALSE;
-    }
-  }
-  return TRUE;
-}
-
-BOOL
-DSE::Mem_WN_equiv(WN *wn1, WN *wn2) const
-{
-  if (!WN_Equiv(wn1, wn2)) 
-    return FALSE;
-
-  OPERATOR opr = WN_operator(wn1);
-  if(OPERATOR_has_field_id(opr)) {
-    if(WN_field_id(wn1) != WN_field_id(wn2))
-      return FALSE;
-  }
-
-  if(opr == OPR_STBITS || opr == OPR_ISTBITS || opr == OPR_LDBITS || opr == OPR_ILDBITS) {
-    if( WN_bit_offset(wn1) != WN_bit_offset(wn2))
-      return FALSE;
-    if( WN_bit_size(wn1) != WN_bit_size(wn2))
-      return FALSE;
-  }
-
-  if (WN_has_mu(wn1, Cfg()->Rgn_level())) {
-    MU_NODE *mu1 = Opt_stab()->Get_occ(wn1)->Mem_mu_node();
-    MU_NODE *mu2 = Opt_stab()->Get_occ(wn2)->Mem_mu_node();
-    if(mu1 != NULL && mu2 != NULL && mu1->Opnd() != mu2->Opnd() ) 
-      return FALSE;
-    if((mu1==NULL) != (mu2 == NULL))
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-BOOL
-DSE::Same_memloc( WN* store1, WN* store2) const
-{
-  FmtAssert(OPERATOR_is_scalar_istore(WN_operator(store1)) ||
-                     OPERATOR_is_scalar_store (WN_operator(store1)) ||
-                     WN_operator(store1) == OPR_MSTORE, 
-                    ("DSE::Same_memloc: store1 is not istore"));
-  FmtAssert(OPERATOR_is_scalar_istore(WN_operator(store2)) ||
-                     OPERATOR_is_scalar_store (WN_operator(store2)) ||
-                     WN_operator(store2) == OPR_MSTORE, 
-                    ("DSE::Same_memloc: store2 is not istore"));
-  
-  OCC_TAB_ENTRY *occ1 = Opt_stab()->Get_occ(store1);
-  OCC_TAB_ENTRY *occ2 = Opt_stab()->Get_occ(store2);
-  FmtAssert(occ1 != NULL && occ2 != NULL, ("DSE::Same_memloc: occ == NULL"));
-  POINTS_TO *pt1 = occ1->Points_to();
-  POINTS_TO *pt2 = occ2->Points_to();
-  FmtAssert(pt1 != NULL && pt2 != NULL, ("DSE::Same_memloc: points_to == NULL"));
-
-  if (Opt_stab()->Rule()->Same_location(store1, store2, pt1, pt2)) {
-#if defined(TARG_NVISA)
-    //for dynamic array, we need to be more conservative
-    INT i;
-    TY_IDX ty;
-    ty = ST_type(pt1->Base()); 
-    if (TY_kind(ty) == KIND_ARRAY) {
-      for (i = 0; i < TY_AR_ndims(ty); i++) {
-        if ( !TY_AR_const_lbnd(ty, i) ||
-             !TY_AR_const_ubnd(ty, i) )
-          return FALSE;
-      }
-    }
-
-    ty = ST_type(pt2->Base());
-    if (TY_kind(ty) == KIND_ARRAY) {
-      for (i = 0; i < TY_AR_ndims(ty); i++) {
-        if ( !TY_AR_const_lbnd(ty, i) ||
-             !TY_AR_const_ubnd(ty, i) )
-          return FALSE;
-      }
-    }
-#endif
-    return TRUE;
-  }
-  else if (Mem_WN_equiv(store1, store2)) {
-    if (WN_kid_count(store1)>1 && Mem_WN_equiv_rec(WN_kid1(store1), WN_kid1(store2))) 
-      return TRUE;
-  }
-  return FALSE;
-}
-
 // ====================================================================
 // Recursively set the flags that say this chi statement and the 
 // variables it references are used.
 // ====================================================================
 
 void 
-DSE::Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const
+DSE::Set_Required_CHI( CHI_NODE *chi ) const
 {
   AUX_ID vaux = chi->Aux_id();
   BOOL real_use = FALSE;
@@ -642,36 +517,7 @@ DSE::Set_Required_CHI( CHI_NODE *chi, BOOL *chi_is_live ) const
     Opt_stab()->Ver_stab_entry(chi->Result())->Set_Real_use();
   }
 
-  *chi_is_live = TRUE;
-  if (OPERATOR_is_scalar_istore(WN_operator(chiwn)) || 
-      OPERATOR_is_scalar_store(WN_operator(chiwn)) ||
-      WN_operator(chiwn) == OPR_MSTORE) {
-    WN *last_st = Last_store(vaux);
-    if( last_st != NULL && chiwn != last_st )  {
-      if( Same_memloc(chiwn, last_st) ) {
-        *chi_is_live = FALSE;
-        if ( Tracing() ) {
-          fprintf ( TFile, "DSE::Set_Required_CHI, current chiwn is not set live:\n" );
-          fdump_tree_no_st(TFile, chiwn);
-      	}
-      }
-    }
-    if(*chi_is_live)
-      Set_last_store(vaux, chiwn);
-  } 
-
-  if(*chi_is_live) {
-    VER_STAB_ENTRY *vsym = Opt_stab()->Ver_stab_entry(chi->Result());
-    vsym->Set_Any_use();
-    Set_Required_WN(chiwn);
-  }
-
-  if (OPERATOR_is_scalar_istore(WN_operator(chiwn)) || 
-      OPERATOR_is_scalar_store(WN_operator(chiwn)) ||
-      WN_operator(chiwn) == OPR_MSTORE) {
-    if(*chi_is_live)
-      Set_last_store(vaux, chiwn);
-  }
+  Set_Required_WN(chiwn);
 
   // The following breaks the use-def chain.  The definition
   // of the chi operand can become dse-dead.  It violates assertions
@@ -732,11 +578,6 @@ DSE::Set_Required_WN( WN *wn ) const
 
   if ( WN_has_ver(wn) ) {
     VER_STAB_ENTRY *sym = Opt_stab()->Ver_stab_entry(WN_ver(wn));
-    if(OPERATOR_is_scalar_load( WN_operator(wn) )) {
-      //OSP_468
-      //Set_Required_Imp_VSE(WN_ver(wn), TRUE);
-      Set_last_store(sym->Aux_id(), NULL);
-    }
     Set_Required_VSE( sym, TRUE, wn );
   }
 
@@ -876,130 +717,6 @@ DSE::Is_deleted_statement( WN *stmt ) const
 
   return FALSE;
 }
-
-
-VER_ID
-DSE::Prop_vsym_new_result( VER_ID vid ) const
-{
-  VER_STAB_ENTRY *vse = Opt_stab()->Ver_stab_entry(vid);
-  if ( vse->Type() == PHI_STMT ) {
-    // we assume that the result is correct
-    return vse->Phi()->Result();
-  }
-  else if ( vse->Type() == CHI_STMT ) {
-    // is this statement live?
-    if (vse->Chi()->Live()) {
-      return vse->Chi()->Result();
-    }
-    else {
-      return Prop_vsym_new_result(vse->Chi()->Opnd());
-    }
-  }
-  else {
-    return vid;
-  }
-}
-
-void
-DSE::Propagate_vsym_wn( WN *wn ) const
-{
-  if ( WN_has_ver(wn) ) {
-    WN_set_ver(wn, Prop_vsym_new_result(WN_ver(wn)));
-  }
-
-  if ( WN_has_mu(wn, Cfg()->Rgn_level()) ) {
-    // process the mu operand as use
-    OCC_TAB_ENTRY *occ = Opt_stab()->Get_occ(wn);
-    MU_NODE *mu = occ->Mem_mu_node();
-    mu->Set_opnd( Prop_vsym_new_result(mu->Opnd()) );
-  }
-  return;
-}
-
-// ====================================================================
-// After we've deleted some globals that had chis with a virtual
-// variable in them, we need to go back and fix up the use-def chain
-// to be correct.
-//
-// This involves "skipping" over dead statements and updating the
-// references.  The algorithm does update the dead statements as well
-// however, so each reference only has to look at its definition to see
-// what the propagated value is.
-//
-// Do this in dominator-tree order, so it must be called for the first
-// time with the entry-bb that dominates all blocks.
-// ====================================================================
-
-void
-DSE::Propagate_vsym_bb( BB_NODE *bb ) const
-{
-  // propagate into the phi-nodes, if any
-  PHI_LIST_ITER phi_iter;
-  PHI_NODE     *phi;
-  FOR_ALL_ELEM ( phi, phi_iter, Init(bb->Phi_list()) ) {
-    if (phi->Live() ) {
-	for ( INT pkid = 0; pkid < phi->Size(); pkid++ ) {
-	  phi->Set_opnd(pkid, Prop_vsym_new_result(phi->Opnd(pkid)));
-	}
-    }
-  }
-
-  // handle the block's statements, INCLUDING non-live ones
-  STMT_ITER stmt_iter;
-  WN *stmt;
-  FOR_ALL_ELEM(stmt, stmt_iter, Init(bb->Firststmt(),bb->Laststmt())) {
-    // handle mu references only on live statements
-    if ( !Is_deleted_statement(stmt) ) {
-      // handle the statement's mu list
-      if ( WN_has_mu(stmt, Cfg()->Rgn_level()) ) {
-	MU_LIST *mu_list = _opt_stab->Get_stmt_mu_list(stmt);
-	if (mu_list) {
-	  MU_LIST_ITER mu_iter;
-	  MU_NODE *mu;
-	  FOR_ALL_NODE( mu, mu_iter, Init(mu_list)) {
-            mu->Set_opnd( Prop_vsym_new_result(mu->Opnd()) );	  
-          }
-	}
-      }
-
-      for ( INT32 kidnum = 0; kidnum < WN_kid_count(stmt); kidnum++ ) {
-        Propagate_vsym_wn( WN_kid(stmt, kidnum) );
-      }
-
-      // need to handle all chi statements, dead or not
-      // handle the statement's chi list
-      if ( WN_has_chi(stmt, Cfg()->Rgn_level())) {
-        CHI_LIST *chi_list = _opt_stab->Get_generic_chi_list(stmt);
-        if (chi_list) {
-          CHI_LIST_ITER chi_iter;
-          CHI_NODE *chi;
-          FOR_ALL_NODE( chi, chi_iter, Init(chi_list)) {
-          // propagate into the chi node's operand
-          //
-          // only do this for a non-dead chi; otherwise, we can have
-          // live-range overlap when we resurrenct this dead chi:
-          // resurrecting only updates along the def chain, not the
-          // use chain. 
-          // not updating the dead chi here is ok since all the uses
-          // below this should be dead (or we have an overlapped
-          // live range already).
-          //
-            if (chi->Live())
-              chi->Set_opnd( Prop_vsym_new_result( chi->Opnd() ));
-          }
-        }
-      }
-    }
-  }
-
-  // do copy propagation for this block's dominated nodes
-  BB_NODE *dom_bb;
-  BB_LIST_ITER dom_bb_iter;
-  FOR_ALL_ELEM(dom_bb, dom_bb_iter, Init(bb->Dom_bbs())) {
-    Propagate_vsym_bb(dom_bb);
-  }
-}
-
 
 #if defined(TARG_SL)
 /* result = intrnsic_slave_op( master, ar2,ar3...)
@@ -1191,8 +908,6 @@ DSE::Dead_store_elim( void ) const
       }
     }
   }
-
-  Propagate_vsym_bb( Cfg()->Entry_bb() );
 
   if ( Tracing() ) {
     fprintf ( TFile, "SSA::Dead_store_elim (after dse)\n" );
