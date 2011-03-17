@@ -9538,6 +9538,8 @@ WGEN_Expand_Expr (gs_t exp,
 	    case IRETURN_M8I1: ret_mtype = MTYPE_M8I1; break;
 	    case IRETURN_M8I2: ret_mtype = MTYPE_M8I2; break;
 	    case IRETURN_M8I4: ret_mtype = MTYPE_M8I4; break;
+            case IRETURN_I1:
+            case IRETURN_I2:   ret_mtype = MTYPE_I4;   break; // promote to I4
 	    default: ;
 	    }
 #endif
