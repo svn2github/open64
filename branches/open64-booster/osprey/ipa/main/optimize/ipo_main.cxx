@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -451,7 +451,7 @@ static void Fixup_EHinfo_In_PU (IPA_NODE* node, WN * w = NULL)
       INITV_IDX types = INITV_next (INITV_blk (blk));
       for (; types; types = INITV_next (types))
       {
-        if (INITV_kind (types) == INITVKIND_ZERO)
+        if (INITV_kind (types) != INITVKIND_VAL)
           continue;
         int index = TCON_uval (INITV_tc_val (types));
         if (index <= 0) continue;

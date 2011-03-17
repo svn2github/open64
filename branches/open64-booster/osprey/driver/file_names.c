@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  *  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
  */
 
@@ -70,8 +74,15 @@ extern int errno;
 
 boolean keep_flag = FALSE;
 
+/* linked list of files */
+typedef struct file_item_rec {
+       char *name;
+       int file_descriptor;
+       struct file_item_rec *next;
+} file_item_t;
+
 string_list_t *count_files = NULL;
-static string_list_t *temp_files = NULL;
+static file_item_t *temp_files = NULL;
 #ifdef KEY /* Bug 11265 */
 string_list_t *isystem_dirs = NULL;
 #endif /* KEY Bug 11265 */
@@ -122,6 +133,38 @@ static char * default_tmpdir(void)
 
 static string_pair_list_t *temp_obj_files = NULL;
 
+/* add file that has already been opened */
+static void
+add_temp_file_info (char *s, int fd)
+{
+       file_item_t *p;
+       p = (file_item_t *) malloc(sizeof(file_item_t)); 
+       p->next = NULL;
+       if (temp_files == NULL) {
+               temp_files = p;
+       } else {
+               p->next = temp_files; 
+               temp_files = p;
+       }
+       p->name = s;
+       p->file_descriptor = fd;
+
+}
+
+/* add file to list if not already in list */
+static void
+add_file_if_new (char *s, int fd)
+{
+       file_item_t *p;
+       char *str; 
+       for (p = temp_files; p != NULL; p = p->next) {
+               if (strcmp(p->name, s) == 0)
+                       return;         /* already in list */
+       }
+       str = string_copy(s);
+       /* string not in list */
+       add_temp_file_info(str, fd);
+}
 
 /* get object file corresponding to src file */
 char *
@@ -182,8 +225,8 @@ create_temp_file_name (char *suffix)
 	buffer_t pathbuf;
 	size_t prefix_len;
 	char *s;
-	string_item_t *p;
-	int fd;
+	file_item_t *p;
+	int fd = -1;
 	/* use same prefix as gcc compilers */
 	/* use mkstemp instead of tempnam to be more portable */
 	sprintf(buf, "cc%s#.XXXXXX", suffix);
@@ -196,7 +239,7 @@ create_temp_file_name (char *suffix)
 	/* subtracting the XXXXXX */
 	prefix_len = strlen(pathbuf) - strlen(strchr(pathbuf, '#'));
 
-	for (p = temp_files->head; p != NULL; p = p->next) {
+	for (p = temp_files; p != NULL; p = p->next) {
 	  if (strncmp(p->name, pathbuf, prefix_len) == 0) {
 	    /* matches the prefix and suffix character */
 	    return p->name;
@@ -215,7 +258,7 @@ create_temp_file_name (char *suffix)
 	fd = mkstemp(pathbuf);
 	s = string_copy(pathbuf);
 #endif
-	add_string (temp_files, s);
+	add_temp_file_info(s, fd);
 	return s;
 }
 
@@ -249,7 +292,7 @@ construct_given_name (char *src, char *suffix, boolean keep)
 		return s;
 	} else {
 		s = string_copy(s);
-		add_string_if_new (temp_files, s);
+		add_file_if_new(s, -1);
 		return s;
 	}
 }
@@ -258,7 +301,7 @@ void
 mark_saved_object_for_cleanup ( void )
 {
 	if (saved_object != NULL)
-	add_string_if_new (temp_files, saved_object);
+	add_file_if_new(saved_object, -1);
 }
 
 /* Create filename with the given extension; eg. foo.anl from foo.f */
@@ -300,7 +343,7 @@ init_temp_files (void)
 		/* drop / at end so strcmp matches */
 		tmpdir[strlen(tmpdir)-1] = '\0';
 	}
-	temp_files = init_string_list();
+	temp_files = NULL;
 
 	temp_obj_files = init_string_pair_list();
 }
@@ -329,7 +372,7 @@ init_crash_reporting (void)
 		report_file = NULL;
 		goto bail;
 	}
-	
+
 	if (mkstemp(report_file) == -1) {
 		report_file = NULL;
 		goto bail;
@@ -523,11 +566,14 @@ void
 cleanup (void)
 {
 	/* cleanup temp-files */
-	string_item_t *p;
+	file_item_t *p;
 	int status;
 	if (temp_files == NULL) return;
-	for (p = temp_files->head; p != NULL; p = p->next) {
+	for (p = temp_files; p != NULL; p = p->next) {
 		if (debug) printf("unlink %s\n", p->name);
+                 if (p->file_descriptor > 0){
+                       close(p->file_descriptor);
+                 }
 		/* when using mkstemp, files are always created */
 		/* if (execute_flag) { */
 			if (internal_error_occurred)
@@ -547,7 +593,13 @@ cleanup (void)
 				perror(program_name);			
 			}
 	}
-	temp_files->head = temp_files->tail = NULL;
+        p = temp_files;
+        while (p != NULL) {
+                file_item_t *p_next = p->next;
+                free(p);
+                p = p_next;
+        } 
+	temp_files = NULL;
 
 	if (save_count) {
 		fprintf(stderr, "Please review the above file%s and, "
@@ -560,7 +612,7 @@ cleanup (void)
 void
 mark_for_cleanup (char *s)
 {
-	add_string_if_new (temp_files, s);
+	add_file_if_new(s, -1);
 }
 
 void

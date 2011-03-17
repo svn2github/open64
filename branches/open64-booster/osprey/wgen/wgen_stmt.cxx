@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3080,8 +3080,13 @@ Create_handler_list (int scope_index)
         gs_t type = gs_handler_type(h);
 
 	ST_IDX st = 0;
-	if (type) st = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
-	INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+	if (type)
+	{
+	  st = ST_st_idx (Get_ST (Get_typeinfo_var(type)));
+	  INITV_Set_VAL (Initv_Table[type_st], Enter_tcon (Host_To_Targ (MTYPE_U4, st)), 1);
+	}
+	else // catch-all handler
+	  INITV_Set_ONE (Initv_Table[type_st], MTYPE_U4, 1);
 
 	if (prev_type_st) Set_INITV_next (prev_type_st, type_st);
 	else start = type_st;
@@ -3178,17 +3183,18 @@ append_eh_filter (INITV_IDX& iv)
   else iv = eh_filter;
 }
 
+// Zero represents no handler, but possibly an associated landing pad.
 static void
-append_catch_all (INITV_IDX& iv)
+append_cleanup (INITV_IDX& iv)
 {
   INITV_IDX tmp = iv;
   while (tmp && INITV_next (tmp))
 	tmp = INITV_next (tmp);
 
-  INITV_IDX catch_all = New_INITV();
-  INITV_Set_VAL (Initv_Table[catch_all], Enter_tcon (Host_To_Targ (MTYPE_U4, 0)), 1);
-  if (tmp) Set_INITV_next (tmp, catch_all);
-  else iv = catch_all;
+  INITV_IDX cleanup = New_INITV();
+  INITV_Set_VAL (Initv_Table[cleanup], Enter_tcon (Host_To_Targ (MTYPE_U4, 0)), 1);
+  if (tmp) Set_INITV_next (tmp, cleanup);
+  else iv = cleanup;
 }
 
 // current: D1 D2 D3, prev: D1 D2 => emit D3 for current, goto prev
@@ -3285,11 +3291,11 @@ lookup_cleanups (INITV_IDX& iv)
   	Set_PU_needs_manual_unwinding (Get_Current_PU());
 // the following 2 calls can change 'iv'.
 // NOTE: CG expects a zero before eh-spec filter
-  bool catch_all_appended = false;
+  bool cleanup_appended = false;
   if (PU_needs_manual_unwinding (Get_Current_PU()))
   {
-	append_catch_all (iv);
-	catch_all_appended = true;
+	append_cleanup (iv);
+	cleanup_appended = true;
   }
   if (processing_handler)
   {
@@ -3297,15 +3303,15 @@ lookup_cleanups (INITV_IDX& iv)
 	FmtAssert (eh_spec, ("Invalid eh_spec inside handler"));
 	if (!eh_spec->empty())
 	{
-	    if (!catch_all_appended)
-	    	append_catch_all (iv);
+	    if (!cleanup_appended)
+	    	append_cleanup (iv);
 	    append_eh_filter (iv);
   	}
   }
   else if (!eh_spec_vector.empty())
   {
-	if (!catch_all_appended)
-	    append_catch_all (iv);
+	if (!cleanup_appended)
+	    append_cleanup (iv);
   	append_eh_filter (iv);
   }
   if (!iv)

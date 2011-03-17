@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -495,7 +495,7 @@ ir_b_write_tree (WN *node, off_t base_offset, Output_File *fl, WN_MAP off_map)
     	INITV_IDX types = INITV_next (INITV_blk (INITO_val (WN_ereg_supp (node))));
 	for (; types; types = INITV_next (types))
 	{
-	    if (INITV_kind (types) == INITVKIND_ZERO)
+	    if (INITV_kind (types) != INITVKIND_VAL)
 	    	continue;
 	    int index = TCON_uval (INITV_tc_val (types));
 	    if (index <= 0) continue;

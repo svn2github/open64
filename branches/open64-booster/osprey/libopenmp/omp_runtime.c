@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1329,6 +1329,7 @@ __ompc_get_thdprv(void *** thdprv_p, omp_int64 size, void *datap,omp_int32 globa
     else {
       p = aligned_malloc((int)size, CACHE_LINE_SIZE);
       Is_True (p !=NULL, "cannot allocate memory");
+      memcpy(p, datap, size);
     }
     pp[global_tid] = p;
   }

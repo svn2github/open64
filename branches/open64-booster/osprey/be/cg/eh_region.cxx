@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1689,7 +1689,7 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     for (INITV_IDX next = INITV_next(first); next; next = INITV_next(next)) {
       // begin write action record (cinv, next)
       int filter = 0;
-      if (INITVKIND_ZERO != INITV_kind(next))
+      if (INITVKIND_VAL == INITV_kind(next))
 	filter = TCON_ival(INITV_tc_val(next));
 
       if (filter > 0) { // handler
@@ -1859,34 +1859,18 @@ Create_INITO_For_Range_Table(ST * st, ST * pu)
     		next_initv; next_initv=INITV_next (next_initv))
     {
     	INITV_IDX action = New_INITV();
-	int sym=0;
-	if (INITV_kind(next_initv) != INITVKIND_ZERO)
+	// The special value INITVKIND_ONE represents a catch-all handler.
+	// A zero in the list means no handler, although there may still
+	// be a landing pad (cleanup).
+	int sym = 0;
+	bool catch_all = false;
+	if (INITV_kind(next_initv) == INITVKIND_ONE) {
+	    FmtAssert (pad_label, ("Catch-all with no landing pad"));
+	    catch_all = true;
+	}
+	else if (INITV_kind(next_initv) != INITVKIND_ZERO)
 	    sym = TCON_uval(INITV_tc_val (next_initv));
 
-	bool catch_all = false;	// catch-all clause
-	if (!sym)
-	    catch_all = (type_filter_map.find(sym) != type_filter_map.end());
-	// if a region has eh specifications, we at least need:
-	// 0 /* zero means zero */
-	// 1 /* offset */
-	// -filter /* eh spec typeinfo offset */
-	// 0
-	// But catch-all typeinfo is also zero. How to distinguish between
-	// the first zero and a catch-all zero? The following hack is used:
-	// if the next typeinfo is negative, then "zero means zero".
-	if (catch_all && INITV_next (next_initv))
-	{
-	    int next_sym = 0;
-	    INITV_IDX tmp_idx = INITV_next (next_initv);
-	    if (INITV_kind (tmp_idx) != INITVKIND_ZERO)
-	    	next_sym = TCON_ival (INITV_tc_val (tmp_idx));
-	    if (next_sym < 0)
-	    	catch_all = false;
-	}
-
-	// If there is no landing pad for this region, there should not be
-	// a catch-all clause for it.
-	if (catch_all && !pad_label) catch_all = false;
 	// action field
 	// Check if we have any action for this eh-region, if not, emit 0
 	// for action start marker.

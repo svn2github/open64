@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -296,17 +296,31 @@ WN *OMP_Prelower(PU_Info *current_pu, WN *pu)
   Is_True(rename_common_stack.Elements() == 1,
           ("OMP_Prelower(): rename_common_stack.Elements() != 1"));
 
-# ifdef KEY
   RENAMING_SCOPE rename_common(NULL, &omp_pool);
-  RENAMING_SCOPE rename_common_blk(NULL, &omp_pool);
+
+  // Note that rename_common_blk renaming scope needs to provide
+  // mappings that are valid through the entire compilation.
+  static RENAMING_SCOPE *rename_common_blk;
+  if (rename_common_blk == NULL) {
+    rename_common_blk = CXX_NEW(RENAMING_SCOPE(NULL, Malloc_Mem_Pool),
+				Malloc_Mem_Pool);
+  }
+  else {
+    std::list<ST*>::const_iterator cit = rename_common_blk->local_mappings.begin();
+
+    // Remove any mappings local symbols for previously processed PU.
+    for( ; cit != rename_common_blk->local_mappings.end(); cit++ )
+      rename_common_blk->map.Remove(*cit);
+    rename_common_blk->local_mappings.clear();
+  }
+
   RENAMING_STACK rename_scope_stack(&omp_pool);
   rename_scope_stack.Push(CXX_NEW(RENAMING_SCOPE(NULL, &omp_pool),
                                    &omp_pool));
   Rename_Threadprivate_COMMON(pu, pu, pu, 
                              &rename_scope_stack, 
                              &rename_common,
-                             &rename_common_blk);
-# endif
+                             rename_common_blk);
 
     // create parent map
   Omp_Parent_Map = WN_MAP_Create(&omp_pool);

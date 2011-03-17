@@ -8381,12 +8381,7 @@ static LABEL_IDX       prev_pu_last_label  = LABEL_IDX_ZERO;
 static Dwarf_Unsigned  prev_pu_base_elfsym = 0;
 static PU_IDX          prev_pu_pu_idx      = (PU_IDX) 0;
 static Dwarf_Unsigned  prev_pu_end_offset_from_last_label = 0;
-#ifdef TARG_LOONGSON
- /* We'd better use str_idx, not the str itself to avoid access trouble after alloc*/ 
 static STR_IDX	prev_pu_last_label_name_idx = 0;
-#else
-static char           *prev_pu_last_label_name = NULL;
-#endif
 static Dwarf_Unsigned  prev_pu_last_offset = 0;
 
 static void
@@ -8399,11 +8394,7 @@ cache_last_label_info(LABEL_IDX      label_idx,
   prev_pu_base_elfsym = base_elf_idx;
   prev_pu_pu_idx      = pu_idx;
   prev_pu_end_offset_from_last_label = end_offset;
-#ifdef TARG_LOONGSON
-  prev_pu_last_label_name_idx = Save_Str(LABEL_name(label_idx));
-#else
-  prev_pu_last_label_name = LABEL_name(label_idx);
-#endif
+  prev_pu_last_label_name_idx = LABEL_name_idx(label_idx);
   prev_pu_last_offset = Get_Label_Offset(label_idx);
 }
 
@@ -8417,11 +8408,7 @@ end_previous_text_region(pSCNINFO scninfo,
 							       prev_pu_last_label,
 							       prev_pu_base_elfsym,
 							       prev_pu_pu_idx,
-#ifdef TARG_LOONGSON
 							       Index_To_Str(prev_pu_last_label_name_idx),
-#else
-							       prev_pu_last_label_name,
-#endif
 							       prev_pu_last_offset),
 					 prev_pu_end_offset_from_last_label);
 }
