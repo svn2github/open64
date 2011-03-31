@@ -819,8 +819,8 @@ Configure_Source_Target ( char * /* filename */ )
     FP_Exception_Enable_Min |= FPX_V;
 
 // TMP: ignore cpic until we figure out what to do with it
-  if (Gen_PIC_Call_Shared)
-	Gen_PIC_Call_Shared = FALSE;
+//   if (Gen_PIC_Call_Shared)
+// 	Gen_PIC_Call_Shared = FALSE;
 
   return;
 }

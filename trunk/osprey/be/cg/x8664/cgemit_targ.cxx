@@ -3906,7 +3906,7 @@ static void Adjust_Opnd_Name( OP* op, int opnd, char* name )
     // Mach-O linker evidently handles this automatically
 #else /* defined(BUILD_OS_DARWIN) */
     // Add a reference to the PLT under -fPIC compilation.
-    if ( Gen_PIC_Shared &&  
+    if ( (Gen_PIC_Shared || Gen_PIC_Call_Shared) &&  
 	 !TN_is_label( OP_opnd(op,opnd) ) &&
          TOP_is_jump(topcode) &&
          opnd == OP_find_opnd_use(op,OU_target) ) {

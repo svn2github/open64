@@ -1678,7 +1678,7 @@ Handle_Call_Site (WN *call, OPERATOR call_opr)
 
 #ifdef TARG_X8664
   if( Is_Target_32bit() &&
-      Gen_PIC_Shared    &&
+      (Gen_PIC_Shared || Gen_PIC_Call_Shared)    &&
       call_st != NULL   &&
       !ST_is_export_local(call_st) ){
     PU_References_GOT = TRUE;
@@ -7784,7 +7784,7 @@ Expand_New_Call_To_OPs (WN *call, OPERATOR call_opr, OPS *ops)
 
 #ifdef TARG_X8664
   if( Is_Target_32bit() &&
-      Gen_PIC_Shared    &&
+      (Gen_PIC_Shared || Gen_PIC_Call_Shared)   &&
       call_st != NULL   &&
       !ST_is_export_local(call_st) ){
     PU_References_GOT = TRUE;
