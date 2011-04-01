@@ -4183,21 +4183,6 @@ Is_Aggregate_Init_Zero_Struct (gs_t init_list, gs_t type)
 
   gs_t       init;
 
-  gs_t type_binfo, basetypes;
-
-  if ((type_binfo = gs_type_binfo(type)) != NULL &&
-      (basetypes = gs_binfo_base_binfos(type_binfo)) != NULL) {
-
-    gs_t list;
-    for (list = basetypes; gs_code(list) != EMPTY; list = gs_operand(list, 1)) {
-      gs_t binfo = gs_operand(list, 0);
-      gs_t basetype = gs_binfo_type(binfo);
-      if (!is_empty_base_class(basetype) || !gs_binfo_virtual_p(binfo)) {
-        fld = FLD_next (fld);
-      }
-    }
-  }
-
   while (field && gs_tree_code(field) != GS_FIELD_DECL)
     field = next_real_field(type, field);
 
