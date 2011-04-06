@@ -2752,7 +2752,7 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
   // is not need to adjust.  It is the sub-pointer size offsets
   // that will cause issues, especially if the offsets to not
   // match up with a valid field offset in the current TY
-  if (offset & (~(Pointer_Size-1)) == offset)
+  if ((offset & (~(Pointer_Size-1))) == offset)
     return offset;
 
   TY ty = Ty_Table[ty_idx];
@@ -2773,8 +2773,16 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
   if (kind == KIND_SCALAR ||
       kind == KIND_FUNCTION ||
       kind == KIND_POINTER ||
-      kind == KIND_VOID)
-    offset = offset & (~(TY_size(ty)-1));
+      kind == KIND_VOID) {
+    UINT64 size = TY_size(ty);
+    // if scalar type is a complex, no need align to start of
+    // complex, it can also align to the imaginary part.
+    // Complex actually need treated as a struct.
+    if (MTYPE_is_complex(TY_mtype(ty))) {
+      size = size / 2;
+    }
+    offset = offset & (~(size-1));
+  }
   else { // kind == KIND_STRUCT
     FmtAssert(kind == KIND_STRUCT,("Expecting only structs here"));
 
@@ -2786,6 +2794,12 @@ StInfo::alignOffset(TY_IDX ty_idx, INT64 offset)
          if (TY_kind(fty) == KIND_ARRAY ||
              TY_kind(fty) == KIND_STRUCT)
            offset = start + alignOffset(FLD_type(fld),(offset-start));
+         // treat complex as a struct
+         else if (MTYPE_is_complex(TY_mtype(fty))) {
+           UINT64 size = TY_size(fty);
+           size = size / 2;
+           offset = start + ((offset-start) & (~(size-1)));
+         }
          else
            offset = start;
          break;
