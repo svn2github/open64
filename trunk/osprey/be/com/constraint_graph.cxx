@@ -759,6 +759,7 @@ ConstraintGraph::adjustPointsToForKCycle(ConstraintGraphNode *cgNode)
     }
     ptsTo.clear();
     cgNode->unionPointsTo(tmp, pti.qual());
+    tmp.clear();
   }
 }
 
@@ -996,7 +997,12 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
         node = notAPointer();
       else {
         // Do initial value processing for the symbol
-        processInitValues(ST_st_idx(base_st));
+        if (ST_is_initialized(*base_st) &&
+              (_processedInitVals.find(ST_st_idx(base_st)) ==
+               _processedInitVals.end())) {
+          processInitValues(ST_st_idx(base_st));
+          _processedInitVals.insert(ST_st_idx(base_st));
+        }
         node = getCGNode(CG_ST_st_idx(base_st), base_offset);
       }
       pts.setBit(node->id());
@@ -1146,9 +1152,14 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
       node = notAPointer();
     else {
       // Process the init vals of this symbol
-      if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
-        fprintf(stderr, "Processing symbol value...\n");
-      processInitValues(ST_st_idx(base_st));
+      if (ST_is_initialized(*base_st) &&
+          (_processedInitVals.find(ST_st_idx(base_st)) ==
+           _processedInitVals.end())) {
+        if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
+          fprintf(stderr, "Processing symbol value...\n");
+        processInitValues(ST_st_idx(base_st));
+        _processedInitVals.insert(ST_st_idx(base_st));
+      }
       if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
         fprintf(stderr, "End processing symbol value...\n");
       node = getCGNode(CG_ST_st_idx(base_st), base_offset);
@@ -1332,8 +1343,11 @@ ConstraintGraph::processInito(const INITO *const inito)
     }
 
     // If the init vals did not have a pointer, ignore any initializations
-    if (!foundPtr)
+    if (!foundPtr) {
+      MEM_POOL_Delete(&memPool);
+      tmp.clear();
       return;
+    }
 
     ConstraintGraphNode::sanitizePointsTo(tmp,NULL,CQ_NONE);
     ConstraintGraphNode *node = getCGNode(CG_ST_st_idx(base_st), base_offset);
@@ -1344,6 +1358,8 @@ ConstraintGraph::processInito(const INITO *const inito)
       node->print(stderr);
       fprintf(stderr, "\n");
     }
+    MEM_POOL_Delete(&memPool);
+    tmp.clear();
     return;
   }
 

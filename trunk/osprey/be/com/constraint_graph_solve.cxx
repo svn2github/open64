@@ -333,6 +333,7 @@ SCCDetection::pointsToAdjust(NodeToKValMap &nodeToKValMap)
       }
       ptsTo.clear();
       rep->unionPointsTo(tmp, pti.qual());
+      tmp.clear();
     }
   }
 }
@@ -1274,6 +1275,7 @@ ConstraintGraphNode::unionDiffPointsTo(const PointsTo &ptsToSet,
 
 
   bool change = dst.setUnion(diff);
+  diff.clear();
   return change;
 }
 
@@ -1363,6 +1365,7 @@ ConstraintGraphNode::unionPointsTo(const PointsTo &ptsToSet, CGEdgeQual qual)
     printPointsTo(dst);
     fprintf(stderr,"\n");
   }
+  diff.clear();
 
   Is_True(sanityCheckPointsTo(qual),
           ("Node %d destination contains <ST,x> and <ST,-1>\n",id()));
@@ -1456,7 +1459,6 @@ ConstraintGraphSolve::processAssign(const ConstraintGraphEdge *edge)
   }
 
   CGNodeId trackNodeId = 0;
-  PointsTo origPts;
 
   UINT32 assignSize = edge->size();
   StInfo *dstStInfo = dst->cg()->stInfo(dst->cg_st_idx());
@@ -1559,6 +1561,7 @@ ConstraintGraphSolve::processSkew(const ConstraintGraphEdge *edge)
         ConstraintGraph::solverModList()->push(dst);
         updateOffsets(dst,tmp,dstQual);
       }
+      tmp.clear();
     }
   }
 }
