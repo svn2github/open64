@@ -207,6 +207,7 @@ BOOL  WOPT_Enable_Move_Intrinsicop = TRUE;
 BOOL  WOPT_Enable_MP_varref = TRUE;
 const BOOL  WOPT_Enable_MP_Const_Prop = TRUE;
 BOOL  WOPT_Enable_New_SR = TRUE;
+BOOL  WOPT_Enable_SIB = FALSE;
 INT32 WOPT_Enable_New_SR_Limit = 0;
 BOOL  WOPT_Enable_Output_Copy = TRUE;
 INT32 WOPT_Enable_Ocopy_Lookupstmt = 2;
@@ -587,6 +588,8 @@ static OPTION_DESC Options_WOPT[] = {
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_sr",		"",
     0, 0, 0,	&WOPT_Enable_New_SR, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "sib",		"sib",
+    0, 0, 0,	&WOPT_Enable_SIB, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "new_sr_limit",		"new_sr_limit",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_New_SR_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ocopy",		"ocopy",

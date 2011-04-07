@@ -148,7 +148,7 @@ static INT32 fixed_branch_cost, taken_branch_cost;
 static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Mul( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Or( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
-static BOOL Convert_Imm_Add( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
+static BOOL Convert_Imm_Add( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo, BOOL simplify_iadd );
 static BOOL Convert_Imm_Xor( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Cmp( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 
@@ -1477,7 +1477,8 @@ static TOP TOP_with_Imm_Opnd( OP* op, int opnd, INT64 imm_val )
 /* Attempt to convert an add of 'tn' + 'imm_val' into an addi. Return
    TRUE if we succeed, FALSE otherwise. */
 static BOOL
-Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
+Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, 
+                 EBO_TN_INFO *tninfo, BOOL simplify_iadd)
 {
 #if Is_True_On
   if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_ADD)) return FALSE;
@@ -1501,11 +1502,26 @@ Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
     new_op = Mk_OP(new_opcode, tnr, tn);
 
   } else if (ISA_LC_Value_In_Class ( imm_val, LC_simm32)) {
-    if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ||
-	 OP_code(op) == TOP_lea32 || OP_code(op) == TOP_lea64 )
+    // Use simplify_iadd to guard against inc/dec forms which
+    // come from addi-addi combinations.
+    if ( simplify_iadd ) {
+      if ( OP_code(op) == TOP_lea32 || OP_code(op) == TOP_lea64 ) {
+        return FALSE;
+      } else if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ) {
+        if ( ( imm_val != 1 ) && ( imm_val != -1 ) )
+          return FALSE;
+        else if ( Is_Target_32bit() ) 
+          return FALSE;
+      }
+    } else if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ||
+                OP_code(op) == TOP_lea32  || OP_code(op) == TOP_lea64 ) {
       return FALSE;
+    }
     new_opcode = is_64bit ? TOP_addi64 : TOP_addi32;
     BOOL rflags_read = FALSE;
+    if ( simplify_iadd )
+      new_opcode = OP_code(op);
+
     // If there is an instruction that is awaiting a rflags update then, 
     // do not convert the current op.
     for( OP* next_op = OP_next(op); next_op != NULL;
@@ -1534,6 +1550,17 @@ Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
 	  (!TOP_is_change_rflags( new_opcode ) && 
 	   TOP_is_change_rflags( OP_code(op) )))))
       return FALSE;
+
+    if ( simplify_iadd ) {
+      bool valid_inc_dec = true;
+      if ( is_64bit && (OP_code(op) != TOP_addi64))
+        valid_inc_dec = false;
+      else if (!is_64bit && (OP_code(op) != TOP_addi32))
+        valid_inc_dec = false;
+
+      if (valid_inc_dec == false)
+        return FALSE;
+    }
 
     if (new_opcode != TOP_inc32 && new_opcode != TOP_inc64 &&
 	new_opcode != TOP_dec32 && new_opcode != TOP_dec64)
@@ -1617,7 +1644,8 @@ Constant_Operand0 (OP *op,
       opcode == TOP_add64 ||
       opcode == TOP_lea32 ||
       opcode == TOP_lea64)
-    return Convert_Imm_Add(op, tnr, tn1, TN_value(tn0), opnd_tninfo[o1_idx]);
+    return Convert_Imm_Add(op, tnr, tn1, TN_value(tn0), 
+                           opnd_tninfo[o1_idx], false);
 
   return FALSE;
 }
@@ -1850,6 +1878,17 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   return TRUE;
 }
 
+BOOL OP_iadd_inc(OP* op)
+{
+  if (OP_iadd(op)) return TRUE;
+  TOP top = OP_code(op);
+  if (top == TOP_inc32 || top == TOP_inc64 ||
+      top == TOP_dec32 || top == TOP_dec64)
+	 return TRUE;
+  return FALSE; 
+
+}
+
 
 /*
  * Look at an exression that has a constant second operand and attempt to
@@ -1886,6 +1925,11 @@ Constant_Operand1 (OP *op,
 
   TN *tn0 = opnd_tn[o0_idx];
   TN *tn1 = opnd_tn[o1_idx];
+  if (OP_code(op) == TOP_inc32 || OP_code(op) == TOP_inc64)
+    tn1 = Gen_Literal_TN(1, 4);
+  else if (OP_code(op) == TOP_dec32 || OP_code(op) == TOP_dec64)
+    tn1 = Gen_Literal_TN(-1, 4);
+
   TN *tnr = OP_has_result(op) ? OP_result(op,0) : NULL;
 
   /* Don't mess with symbols. */
@@ -1921,7 +1965,9 @@ Constant_Operand1 (OP *op,
       opcode == TOP_add64 ||
       opcode == TOP_lea32 || 
       opcode == TOP_lea64 )
-    return Convert_Imm_Add(op, tnr, tn0, imm_val, opnd_tninfo[o0_idx]);
+    return Convert_Imm_Add( op, tnr, tn0, imm_val, 
+                            opnd_tninfo[o0_idx], false );
+
 
   if( OP_imul( op ) )
     return Convert_Imm_Mul( op, tnr, tn0, imm_val, opnd_tninfo[o0_idx] );
@@ -1943,12 +1989,16 @@ Constant_Operand1 (OP *op,
   TOP pred_opcode = OP_code(pred_op);
 
   /* Look for a sequence of two addi that can be combined. */
-  if (OP_iadd(op) && OP_iadd(pred_op))
+  if (OP_iadd_inc(op) && OP_iadd_inc(pred_op))
   {
     INT ptn0_idx = 0;
     INT ptn1_idx = 1;
     TN *ptn0 = OP_opnd(pred_op, ptn0_idx);
     TN *ptn1 = OP_opnd(pred_op, ptn1_idx);
+    if (OP_code(pred_op) == TOP_inc32 || OP_code(pred_op) == TOP_inc64)
+      ptn1 = Gen_Literal_TN(1, 4);
+    else if (OP_code(pred_op) == TOP_dec32 || OP_code(pred_op) == TOP_dec64)
+      ptn1 = Gen_Literal_TN(-1, 4);
 
     if (TN_is_constant(ptn1) && !TN_is_symbol(ptn1))
     {
@@ -1958,7 +2008,7 @@ Constant_Operand1 (OP *op,
       if (EBO_tn_available(bb, ptn0_tninfo))
       {
 	const INT64 new_val = imm_val + TN_value(ptn1);
-	if (Convert_Imm_Add(op, tnr, ptn0, new_val, ptn0_tninfo))
+	if (Convert_Imm_Add(op, tnr, ptn0, new_val, ptn0_tninfo, false))
 	{
 	  if (EBO_Trace_Optimization)
 	    fprintf(TFile,"\tcombine immediate adds\n");
@@ -1966,6 +2016,14 @@ Constant_Operand1 (OP *op,
 	  return TRUE;
 	}
       }
+    }
+  }
+
+  if ( opcode == TOP_addi32 ||
+       opcode == TOP_addi64 ) {
+    if ( ( imm_val == 1 ) || ( imm_val == -1 ) ) {
+      return Convert_Imm_Add( op, tnr, tn0, imm_val, 
+                              opnd_tninfo[o0_idx], true );
     }
   }
 
@@ -2691,6 +2749,7 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
 
   return TRUE;
 }
+static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use );
 
 BOOL Delete_Unwanted_Prefetches ( OP* op )
 {
@@ -2703,7 +2762,9 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   OP *incr = NULL;
   OP *as_opnd = NULL;
   OP *as_result = NULL;
+  OP *leaxx = NULL;
   OP *load_store = NULL;
+  BOOL sib = FALSE;
   BB* bb = OP_bb( op );
   OP *next = BB_first_op( bb );
 
@@ -2714,7 +2775,9 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   if(PF_GET_KEEP_ANYWAY(WN_prefetch_flag(mem_wn)))
    return FALSE;
 #endif  
-  if (OP_find_opnd_use( op, OU_base ) >= 0)
+  if (OP_find_opnd_use( op, OU_base ) >= 0 && 
+      // the prefetch instruction has passed a call of this function, so pass it.
+      Get_Top_For_Addr_Mode(OP_code(op), BASE_MODE) == OP_code(op))
     base = OP_opnd( op, OP_find_opnd_use( op, OU_base ));
   else
     return FALSE; // Can not analyze further; make safe assumption.
@@ -2729,21 +2792,43 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
 	as_result = next;
       else if (OP_opnd(next, 0) == base)
 	as_opnd = next;
-    }
+    } else if ((OP_code(next) == TOP_leax32 || OP_code(next) == TOP_leax64) 
+		    && OP_result(next, 0) == base)
+	    leaxx = next;
     
     next = OP_next(next);
   }
   
+  INT delta_base;
   if (!incr) {
-    if (!as_result && !as_opnd)
+    if (!as_result && !as_opnd && !leaxx)
       return TRUE;
-    else if (as_result)
-      incr = as_result;
+    else if (leaxx)
+    {  // further analyze the two terms for RPR
+      TN* term;
+      term = OP_opnd_use(leaxx, OU_index);
+
+      OP *w_incr;
+        for (w_incr = BB_first_op(bb); w_incr != NULL; w_incr = OP_next(w_incr))
+	{
+          if (((OP_code(w_incr) == TOP_addi32 || OP_code(w_incr) == TOP_addi64)) &&
+            (OP_results(w_incr) != 0 && OP_result(w_incr, 0) == term && 
+             OP_opnd(w_incr, 0) == term))
+	  break;
+	}
+      if (w_incr != NULL){
+	sib = TRUE;
+        delta_base = TN_value(OP_opnd(w_incr,1)) * (TN_value(OP_opnd_use(leaxx,OU_scale)));
+      } else
+        return TRUE;
+    } else if (as_result)
+	    incr = as_result;
     else 
       incr = as_opnd;
   }
   
-  INT delta_base = TN_value(OP_opnd(incr, 1));
+  if (!sib) 
+    delta_base = TN_value(OP_opnd(incr, 1));
 
   next = BB_first_op( bb );
   while (next && !load_store) {
@@ -4110,12 +4195,21 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
     break;
 
   case TOP_addi32:
+  case TOP_inc32:
+  case TOP_dec32:
     if( Is_Target_64bit() )
       return FALSE;
     // fall thru
   case TOP_addi64:
+  case TOP_inc64:
+  case TOP_dec64:
     a.base = OP_opnd( addr_op, 0 );
-    a.offset = OP_opnd( addr_op, 1 );
+    if (top == TOP_inc32 || top == TOP_inc64)
+      a.offset = Gen_Literal_TN(1, 4);
+    else if (top == TOP_dec32 || top == TOP_dec64)
+      a.offset = Gen_Literal_TN(-1, 4);
+    else
+      a.offset = OP_opnd( addr_op, 1 );
     break;
 
   case TOP_mov32:

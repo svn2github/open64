@@ -214,6 +214,7 @@ extern BOOL WOPT_Enable_MP_varref;      /* trust the var list in the nested proc
 extern const BOOL WOPT_Enable_MP_Const_Prop;  /* perform const prop into MP region */
 extern BOOL WOPT_Enable_New_SR;		/* new strength-reduction */
 extern BOOL WOPT_Enable_New_SR_Limit;
+extern BOOL WOPT_Enable_SIB;		/* abandon some SR candidate for x86 SIB */
 extern BOOL WOPT_Enable_Output_Copy;    /* output copy propagation */
 extern BOOL WOPT_Enable_Ocopy_Lookupstmt;
 extern BOOL WOPT_Enable_Parm;		/* insert OPTPARM over parms */

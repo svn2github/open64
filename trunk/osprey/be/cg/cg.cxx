@@ -748,6 +748,7 @@ CG_Generate_Code(
   Set_Error_Phase( "Code Generation" );
   Start_Timer( T_CodeGen_CU );
 
+
 #ifdef TARG_X8664
 // Cannot enable emit_unwind_info if Force_Frame_Pointer is not set
 // Need this flag set for C++ exceptions and for -g
