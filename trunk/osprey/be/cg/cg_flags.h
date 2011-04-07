@@ -640,6 +640,9 @@ extern BOOL CGSPILL_Enable_Force_Rematerialization;
 
 /* GCM, LOCS and IGLS */
 
+extern UINT32 LOCS_PRE_Enable_Minreg_Level;
+extern BOOL LOCS_PRE_Enable_General_RegPressure_Sched;
+extern BOOL LOCS_PRE_Enable_Unroll_RegPressure_Sched;
 extern BOOL LOCS_PRE_Enable_Scheduling;
 extern BOOL LOCS_POST_Enable_Scheduling;
 extern BOOL LOCS_Enable_Bundle_Formation;

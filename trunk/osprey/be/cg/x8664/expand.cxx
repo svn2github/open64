@@ -4311,33 +4311,53 @@ Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     }
 
   } else if ( MTYPE_is_vector(mtype) ) { // Integer MIN      
-      TN *tmp1 = Build_TN_Like(src1); 
-      TN *tmp2 = Build_TN_Like(src1); 
-      TN *tmp3 = Build_TN_Like(src1); 
-      TN *tmp4 = Build_TN_Like(src1); 
-      TN *tmp5 = Build_TN_Like(src1); 
-      TN *tmp6 = Build_TN_Like(src1); 
-      Build_OP( TOP_movdq, tmp1, src1, ops );
-      Build_OP( TOP_movdq, tmp2, tmp1, ops );
-      Build_OP( TOP_movdq, tmp3, src2, ops );
+      TN *tmp1;
+      TN *tmp2;
+      TN *tmp3;
+      TN *tmp4;
+      TN *tmp5;
+      TN *tmp6;
+      if (!Is_Target_SSE41()) {
+        tmp1 = Build_TN_Like(src1); 
+        tmp2 = Build_TN_Like(src1); 
+        tmp3 = Build_TN_Like(src1); 
+        tmp4 = Build_TN_Like(src1); 
+        tmp5 = Build_TN_Like(src1); 
+        tmp6 = Build_TN_Like(src1); 
+        Build_OP( TOP_movdq, tmp1, src1, ops );
+        Build_OP( TOP_movdq, tmp2, tmp1, ops );
+        Build_OP( TOP_movdq, tmp3, src2, ops );
+      }
       switch(mtype){
         case MTYPE_V16I1: //added for bug 5695, refer to 8676
-            Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
-            Build_OP( TOP_cmpgt128v8, tmp5, tmp3, tmp2, ops );
-            Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
-            Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_mins128v8, dest, src1, src2, ops );
+            } else {
+              Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
+              Build_OP( TOP_cmpgt128v8, tmp5, tmp3, tmp2, ops );
+              Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
+              Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            }
             break;
         case MTYPE_V16I2: //added for bug 5695, refer to 8676
-            Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
-            Build_OP( TOP_cmpgt128v16, tmp5, tmp3, tmp2, ops );
-            Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
-            Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_mins128v16, dest, src1, src2, ops );
+            } else {
+              Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
+              Build_OP( TOP_cmpgt128v16, tmp5, tmp3, tmp2, ops );
+              Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
+              Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            }
             break;
         case MTYPE_V16I4: /// original one
-            Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
-            Build_OP( TOP_cmpgt128v32, tmp5, tmp3, tmp2, ops );
-            Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
-            Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_mins128v32, dest, src1, src2, ops );
+            } else {
+              Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
+              Build_OP( TOP_cmpgt128v32, tmp5, tmp3, tmp2, ops );
+              Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
+              Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            }
             break;
          default:
             FmtAssert(FALSE, ("NYI"));
@@ -4432,33 +4452,53 @@ Expand_Max (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
     }
 
   } else if ( MTYPE_is_vector(mtype) ) { // Integer MAX
-      TN *tmp1 = Build_TN_Like(src1); 
-      TN *tmp2 = Build_TN_Like(src1); 
-      TN *tmp3 = Build_TN_Like(src1); 
-      TN *tmp4 = Build_TN_Like(src1); 
-      TN *tmp5 = Build_TN_Like(src1); 
-      TN *tmp6 = Build_TN_Like(src1); 
-      Build_OP( TOP_movdq, tmp1, src1, ops );
-      Build_OP( TOP_movdq, tmp2, tmp1, ops );
-      Build_OP( TOP_movdq, tmp3, src2, ops );
+      TN *tmp1;
+      TN *tmp2;
+      TN *tmp3;
+      TN *tmp4;
+      TN *tmp5;
+      TN *tmp6;
+      if (!Is_Target_SSE41()) {
+        tmp1 = Build_TN_Like(src1); 
+        tmp2 = Build_TN_Like(src1); 
+        tmp3 = Build_TN_Like(src1); 
+        tmp4 = Build_TN_Like(src1); 
+        tmp5 = Build_TN_Like(src1); 
+        tmp6 = Build_TN_Like(src1); 
+        Build_OP( TOP_movdq, tmp1, src1, ops );
+        Build_OP( TOP_movdq, tmp2, tmp1, ops );
+        Build_OP( TOP_movdq, tmp3, src2, ops );
+      }
       switch(mtype){
         case MTYPE_V16I1: /// added for bug 8676
-            Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
-            Build_OP( TOP_cmpgt128v8, tmp5, tmp2, tmp3, ops );
-            Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
-            Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_maxs128v8, dest, src1, src2, ops );
+            } else {
+              Build_OP( TOP_xor128v8, tmp4, tmp1, tmp3, ops );
+              Build_OP( TOP_cmpgt128v8, tmp5, tmp2, tmp3, ops );
+              Build_OP( TOP_and128v8, tmp6, tmp5, tmp4, ops );
+              Build_OP( TOP_xor128v8, dest, tmp6, tmp3, ops );
+            }
             break;
         case MTYPE_V16I2: /// added for bug 8676
-	    Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
-            Build_OP( TOP_cmpgt128v16, tmp5, tmp2, tmp3, ops );
-            Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
-            Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_maxs128v16, dest, src1, src2, ops );
+            } else {
+	      Build_OP( TOP_xor128v16, tmp4, tmp1, tmp3, ops );
+              Build_OP( TOP_cmpgt128v16, tmp5, tmp2, tmp3, ops );
+              Build_OP( TOP_and128v16, tmp6, tmp5, tmp4, ops );
+              Build_OP( TOP_xor128v16, dest, tmp6, tmp3, ops );
+            }
             break;
         case MTYPE_V16I4: /// original one
-	    Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
-	    Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp3, ops );
-	    Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
-	    Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            if (Is_Target_SSE41()) {
+              Build_OP( TOP_maxs128v32, dest, src1, src2, ops );
+            } else {
+	      Build_OP( TOP_xor128v32, tmp4, tmp1, tmp3, ops );
+	      Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp3, ops );
+	      Build_OP( TOP_and128v32, tmp6, tmp5, tmp4, ops );
+	      Build_OP( TOP_xor128v32, dest, tmp6, tmp3, ops );
+            }
             break;
          default:
             FmtAssert(FALSE, ("NYI"));
@@ -4560,23 +4600,28 @@ Expand_MinMax (TN *dest_min, TN *dest_max,
 
   } else if ( MTYPE_is_vector(mtype) ) { // Integer MINMAX
     if (mtype == MTYPE_V16I4) {
-      TN *tmp1 = Build_TN_Like(src1); 
-      TN *tmp2 = Build_TN_Like(src1); 
-      TN *tmp3 = Build_TN_Like(src1); 
-      TN *tmp4 = Build_TN_Like(src1); 
-      TN *tmp5 = Build_TN_Like(src1); 
-      TN *tmp6 = Build_TN_Like(src1); 
-      TN *tmp7 = Build_TN_Like(src1); 
+      if (Is_Target_SSE41()) {
+        Build_OP( TOP_maxs128v32, dest_max, src1, src2, ops );
+        Build_OP( TOP_mins128v32, dest_min, src1, src2, ops );
+      } else {
+        TN *tmp1 = Build_TN_Like(src1); 
+        TN *tmp2 = Build_TN_Like(src1); 
+        TN *tmp3 = Build_TN_Like(src1); 
+        TN *tmp4 = Build_TN_Like(src1); 
+        TN *tmp5 = Build_TN_Like(src1); 
+        TN *tmp6 = Build_TN_Like(src1); 
+        TN *tmp7 = Build_TN_Like(src1); 
       
-      Build_OP( TOP_movdq, tmp1, src1, ops );
-      Build_OP( TOP_movdq, tmp2, tmp1, ops );
-      Build_OP( TOP_movdq, tmp3, tmp1, ops );      
-      Build_OP( TOP_movdq, tmp4, src2, ops );
-      Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp4, ops );
-      Build_OP( TOP_xor128v32, tmp6, tmp3, tmp4, ops );
-      Build_OP( TOP_and128v32, tmp7, tmp5, tmp6, ops );
-      Build_OP( TOP_xor128v32, dest_max, tmp4, tmp7, ops );
-      Build_OP( TOP_xor128v32, dest_min, tmp1, tmp7, ops );
+        Build_OP( TOP_movdq, tmp1, src1, ops );
+        Build_OP( TOP_movdq, tmp2, tmp1, ops );
+        Build_OP( TOP_movdq, tmp3, tmp1, ops );      
+        Build_OP( TOP_movdq, tmp4, src2, ops );
+        Build_OP( TOP_cmpgt128v32, tmp5, tmp2, tmp4, ops );
+        Build_OP( TOP_xor128v32, tmp6, tmp3, tmp4, ops );
+        Build_OP( TOP_and128v32, tmp7, tmp5, tmp6, ops );
+        Build_OP( TOP_xor128v32, dest_max, tmp4, tmp7, ops );
+        Build_OP( TOP_xor128v32, dest_min, tmp1, tmp7, ops );
+      }
     } else
       FmtAssert(FALSE, ("NYI"));
 
@@ -7404,16 +7449,16 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_min64v16, result, op0, op1, ops );
     break;
   case INTRN_PMAXUB128:
-    Build_OP( TOP_max128v8, result, op0, op1, ops );
+    Build_OP( TOP_maxu128v8, result, op0, op1, ops );
     break;
   case INTRN_PMAXSW128:
-    Build_OP( TOP_max128v16, result, op0, op1, ops );
+    Build_OP( TOP_maxs128v16, result, op0, op1, ops );
     break;
   case INTRN_PMINUB128:
-    Build_OP( TOP_min128v8, result, op0, op1, ops );
+    Build_OP( TOP_minu128v8, result, op0, op1, ops );
     break;
   case INTRN_PMINSW128:
-    Build_OP( TOP_min128v16, result, op0, op1, ops );
+    Build_OP( TOP_mins128v16, result, op0, op1, ops );
     break;
   case INTRN_PEXTRW0:
     Is_True (op1 == NULL, ("Imm operand should be null"));

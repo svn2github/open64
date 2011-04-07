@@ -229,6 +229,9 @@ BOOL CG_tail_call = TRUE;
 BOOL GCM_Speculative_Loads = FALSE;
 BOOL GCM_Predicated_Loads = FALSE;
 #endif
+UINT32 LOCS_PRE_Enable_Minreg_Level = 0;
+BOOL LOCS_PRE_Enable_General_RegPressure_Sched = FALSE;
+BOOL LOCS_PRE_Enable_Unroll_RegPressure_Sched = FALSE;
 BOOL LOCS_PRE_Enable_Scheduling = TRUE;
 BOOL LOCS_POST_Enable_Scheduling = TRUE;
 BOOL LOCS_Enable_Scheduling = TRUE;
