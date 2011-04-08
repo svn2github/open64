@@ -269,6 +269,9 @@ ModulusRange::build(TY_IDX ty_idx, UINT32 offset, MEM_POOL *memPool)
       while (TY_kind(Ty_Table[etyIdx]) == KIND_ARRAY)
         etyIdx = TY_etype(Ty_Table[etyIdx]);
       UINT32 elmtSize = TY_size(Ty_Table[etyIdx]);
+      // same handling as StInfo::init
+      if (elmtSize == 0)
+        elmtSize = 1;
       newRange = 
          CXX_NEW(ModulusRange(start,end,elmtSize,FLD_type(fld)),memPool);
     }
