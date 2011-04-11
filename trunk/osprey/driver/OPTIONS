@@ -4,6 +4,8 @@
 
 % -*- fundamental -*-
 %
+%  Copyright (C) 2007, 2008, 2009 PathScale, LLC.  All Rights Reserved.
+%
 %  Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
 %
 %  Copyright (C) 2006, 2007. QLogic Corporation. All Rights Reserved.
@@ -1567,7 +1569,7 @@ I-u%s		;		Cc	ld	"-u %s"
 	"Warn if an undefined identifier appears in a #if directive"
 -Wno-undef	;		Cc,CPP	CPP,f	self
 	"Do not warn if an undefined identifier appears in a #if directive"
--Wuninitialized		;	FTN,Cc	f	self "-WOPT:warn_uninit=on"
+-Wuninitialized	;		FTN,Cc	f	-WOPT:warn_uninit=on
 	"Warn about unitialized automatic variables"
 -Wno-uninitialized	;	Cc	f	self "-WOPT:warn_uninit=off"
 	"Do not warn about unitialized automatic variables"
