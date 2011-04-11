@@ -981,6 +981,21 @@ ConstraintGraph::genTempCGNode()
   return tmpCGNode;
 }
 
+static bool INITV_BLKIsFlat(INITV_IDX initv_idx)
+{
+  const INITV &initv = Initv_Table[initv_idx];
+  if (INITV_kind(initv) == INITVKIND_BLOCK) {
+    // only has one child is val or pad
+    INITV_IDX child_initv_idx = INITV_blk(initv);
+    if ((INITV_kind(child_initv_idx) == INITVKIND_VAL ||
+       INITV_kind(child_initv_idx) == INITVKIND_PAD) &&
+       INITV_next(child_initv_idx) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // This just recursively processes all initvs starting from initv_idx
 // and adds any nodes that correspond to symbols to pts
 void
@@ -1038,9 +1053,13 @@ ConstraintGraph::processFlatInitvals(TY &ty,
   FmtAssert(TY_kind(ty) == KIND_ARRAY || TY_kind(ty) == KIND_STRUCT,
             ("Expecting KIND_ARRAY or KIND_STRUCT"));
   FmtAssert(INITV_kind(Initv_Table[initv_idx]) == INITVKIND_VAL ||
-            INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD,
-            ("Expecting INITVKIND_VAL or INITVKIND_PAD"));
+            INITV_kind(Initv_Table[initv_idx]) == INITVKIND_PAD ||
+            INITV_BLKIsFlat(initv_idx),
+            ("Expecting INITVKIND_VAL, INITVKIND_PAD or flat BLK"));
   UINT32 size = 0;
+  if(INITV_BLKIsFlat(initv_idx)) {
+    initv_idx = INITV_blk(initv_idx);
+  }
   // Iterate over all INITVKIND_VALs/PADs until size of ty
   while (size < TY_size(ty) && initv_idx != 0) {
     used_repeat++;
@@ -1088,21 +1107,6 @@ ConstraintGraph::processFlatInitvals(TY &ty,
   OffsetPointsToList *valList = CXX_NEW(OffsetPointsToList(), memPool);
   valList->push_back(make_pair(startOffset, pts));
   return valList;
-}
-
-static bool INITV_BLKIsFlat(INITV_IDX initv_idx)
-{
-  const INITV &initv = Initv_Table[initv_idx];
-  if(INITV_kind(initv) == INITVKIND_BLOCK) {
-    // only has one child is val or pad
-    INITV_IDX child_initv_idx = INITV_blk(initv);
-    if((INITV_kind(child_initv_idx) == INITVKIND_VAL ||
-         INITV_kind(child_initv_idx) == INITVKIND_PAD) &&
-         INITV_next(child_initv_idx) == 0) {
-         return true;
-    }
-  }
-  return false;
 }
 
 
