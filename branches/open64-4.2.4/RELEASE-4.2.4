@@ -1,0 +1,325 @@
+Open64 Compiler Version 4.2.4 Release Notes 
+
+
+                Mar 31, 2011
+
+
+1. Overview
+
+2. Features
+  2.1 Important bug fixes
+  2.2 Frontend specific changes
+  2.3 Infrastructure changes
+  2.4 New optimizations
+  2.5 Architecture support
+
+3. The Packages of the compiler suite
+
+4. Installing the compiler suite
+  4.1 Install from bz2 package
+  4.2 Install from RPM packages
+
+5. Build the compiler suite - directly from source
+
+6. Bug reporting
+
+7. Known problems, limitation and some notes
+
+8. Acknowledgements
+
+
+1. Overview
+===============
+
+ Open64 is an open source, optimizing compiler for multiple architectures. 
+ Open64 supports Fortran 77/95/2003 and C/C++, as well as the shared memory 
+ programming model OpenMP. Open64 derives from the SGI compilers for the MIPS 
+ called MIPSPro. It was released under the GNU GPL in 2000. The initial release 
+ of Open64 only supports Intel IA-64(Itanium). Now it has been extended to 
+ generate code for CISC, RISC, VLIW, GPU architectures, including IA-32/x86-64, 
+ MIPS, IA-64, CUDA and others.
+
+ The objective of the Osprey project is to bring the Open64 compiler to that
+ of a production quality compiler and catch up with the GCC/G++ features
+ evolution. This version is a major release based on Open64 4.2.3 with many 
+ important bug fixes and performance improvements.
+ 
+ The source code of the latest release and all previous archives can be 
+ found in the subversion tree and it is readily available for researchers 
+ and developers to join the development and incrementally check in changes. 
+
+ The website for that is http://www.open64.net/
+
+ The release consists of two kinds of packages: a suite of pre-built 
+ compiler binaries including C, C++, F95 and related archives, and 
+ a suite of corresponding compiler source codes. The pre-built compilers 
+ are built using a self-build bootstrap process. They are provided both in
+ .bz2 and RPM packages. These files can be downloaded from sourceforge.net:
+ http://sourceforge.net/project/showfiles.php?group_id=34861
+
+ After this release, we will continue to update the GCC/G++ front end to the 
+ latest version, improve the quality and scalability. Another important 
+ focus after this release is further performance improvement to follow the 
+ latest CPU and architecture evolution, especially for the multicore. Besides 
+ this, Open64 based static analysis tool, runtime optimization framework, 
+ security checking tool are highly expected. 
+ 
+ We are looking forward for collaboration from the open source community 
+ for this effort. The SVN source control and Bugzilla system are built up 
+ to facilitate this. Our check-in testing will be continuously improved 
+ to achieve the "check-in early and check-in fast with little to no impact 
+ to overall quality" development environment.
+
+ For a more detailed description of the quality and performance of the compiler, 
+ please visit Open64 website: http://www.open64.net
+
+
+2. Features
+===============
+
+2.1 Important bug fixes
+--------------------
+ o. These bugs listed on Open64 Bugzilla have been fixed in this release:
+  497, 516, 520, 544, 557, 580, 582, 585, 589, 591, 593, 594, 600, 602, 603,
+  608, 609, 611, 612, 618, 624, 626, 628, 633, 643, 648, 649, 658, 659, 661,
+  664, 667, 668, 674, 677, 679, 685, 688, 695, 700, 701, 702, 703, 705, 707,
+  709, 710, 712, 713, 716, 717, 718, 719, 720, 722, 723, 725, 728, 730, 732,
+  734, 735, 736, 739, 740, 741, 742, 743, 744
+  Please refer https://bugs.open64.net/show_bug.cgi?id=NNN for details. 
+  (replace NNN with the numbers listed above)
+    
+2.2 Frontend specific changes 
+--------------------
+ o. The GCC 3.3 frontend is deprecated and is no longer built by default. Use 
+  "BUILD_GNU3=YES" during configure to build it. The GCC 4.0 frontend has been
+  removed from the build process. 
+
+2.3 Infrastructure changes 
+--------------------
+
+ o. Changed build process to use autoconf and a configure script that many other
+  open source projects use. The typical sequence of "configure, make, make 
+  install" is followed. The libraries are now built with the new compiler that 
+  is created. 
+
+ o. Improved processor affinity mapping in the OpenMP and parallel runtime 
+  library. 
+
+ o. Added support for 1 GB huge pages. 
+
+ o. New options for better control of floating point accuracy. 
+
+ o. Improved gcc compatibility with the addition of long double support and bug
+  fixes for ABI compatibility, nonstandard calling conventions, and inline 
+  assembly. 
+
+ o. Improved Fortran support with prebuilt OpenMP bindings and bug fixes for 
+  Fortran preprocessing and OpenMP compilation. 
+
+ o. General correctness improvements including bug fixes for problems with C++ 
+  short circuit operators, prefetching, inlining, and PIC code generation. 
+
+ o. Implemented a framework to enable Static Single Assignment (SSA) information
+  on WHILRL tree, which provides a better ¡°DU manager¡± and facilitates the LNO 
+  and IPA optimizations. 
+
+ o. Implemented a new alias analysis infrastructure to enable advanced and more
+  aggressive optimizations. Andersen-style pointer analysis algorithm has been
+  implemented, that is flow-insensitive , field sensitive and context-sensitive. 
+
+ o. Implemented a framework for componentizing optimization phases to allow easy
+  and consistent handling of traces, dumps and options. Using the framework, 
+  adding a new optimization phase will be simplified. 
+
+2.4 New optimizations 
+--------------------
+ o. Improved function inlining heuristics and enhanced inline expansion of 
+  library functions. 
+
+ o. Enhanced framework for multi-versioning. 
+
+ o. Improved inductive expression simplification and if-merging optimization. 
+
+ o. Improved code generation for the % operator. 
+
+ o. Improved interprocedural analysis for indirect function calls, virtual 
+  functions, and functions with "noreturn" attribute. 
+
+ o. Optimized exception handling. 
+
+ o. Optimized processing of Fortran 90 temporary arrays. 
+
+2.5 Architecture support 
+--------------------
+ o. New version of SL (Simplight) processor support merged in. 
+
+
+3. The Packages of the compiler suite
+===============
+
+ This compiler is available in both binary and source-code form for
+ different target machines.
+
+ o. open64-4.2.4-0.src.tar.bz2
+   This package contains the compiler's source code. It's machine independent.
+
+ o. open64-4.2.4-0.ia64.tar.bz2, open64-4.2.4-0.ia64.rpm
+   These two packages contain all the binary files including the compiler
+   components and libraries for IA-64 machine. The compiler is built on an 
+   IA-64 based system with kernel 2.6.18 and glibc 2.3 by GCC 4.1.2. The
+   libraries are built on the same system by this compiler.
+
+ o. open64-4.2.4-0.x86_64.tar.bz2, open64-4.2.4-0.x86_64.rpm 
+   These two packages contain all the binary files including the compiler 
+   components and libraries for both IA-32 and x86_64 machines. The compiler
+   is built on an x86_64 based system with kernel 2.6.16 and glibc 2.4 by
+   GCC 4.1.2. The 32-bit libraries are built on the same system by this compiler
+   with '-m32' flag. The 64-bit libraries are built on the same system using
+   this compiler.
+
+ o. open64-4.2.4-0.i686.rpm
+   This package contains the same files as open64-4.2.4-0.x86_64.rpm and can be
+   used to install the compiler from RPM package on IA-32 platform.
+
+
+4. Installing the compiler suite
+===============
+
+4.1 Install from bz2 package on x86_64 platform
+--------------------
+
+ To install the compiler from bz2 package: 
+ o Expand open64-4.2.4-0.x86_64.tar.bz2 with the command:
+
+   tar xjvf open64-4.2.4-0.x86_64.tar.bz2
+
+ o If desired, move the open64-4.2.4 directory to the final
+   installation location using the 'mv' command.
+
+   The C, C++, FORTRAN compilers are now available in the 'bin'
+   subdirectory.
+
+4.2 Install from RPM package on x86_64 platform
+--------------------
+
+ To install the compiler from rpm:
+
+   rpm -ivh open64-4.2.4-0.x86_64.rpm
+
+ This command will install the Open64 compiler to /opt/open64. The C, C++, 
+ FORTRAN compilers are in folder /opt/open64/bin.
+
+ To install the compiler to another location:
+
+   rpm --prefix=/path/to/folder -ivh open64-4.2.4-0.x86_64.rpm
+
+ Then the compiler will be installed to /path/to/folder
+
+4.3 Install from RPM package on IA-32 platform
+--------------------
+
+ To install the compiler on IA-32/x86_64 platform, just follow the same steps 
+ listed in 4.2 with the input file 'open64-4.2.4-0.i686.rpm'.
+ The open64-4.2.4-0.x86_64.tar.bz2 also works on IA-32 platform.
+
+4.4 Install from RPM package on IA-64 platform
+--------------------
+
+ To install the compiler on IA-64 platform, just follow the same steps in 4.1
+ and 4.2 with input file 'open64-4.2.4-0.ia64.tar.bz2' and 
+ 'open64-4.2.4-0.ia64.rpm'  respectively.
+
+
+5. Build the compiler suite - directly from source
+===============
+
+ If you choose to build the compiler suite from the source tar ball,
+ follow the steps outlined below:
+
+ Step 1: Expand the source tarball:
+ 
+   tar jxvf open64-4.2.4-0.src.tar.bz2
+
+   After that, the whole source hierarchy will be in directory rooted at
+   open64-4.2.4-src/.
+   
+ Step 2: Follow the steps listed in open64-4.2.4-src/HOWTO-INSTALL-OPEN64 to 
+  configure, build and install the compiler.   
+
+ For people interested in building the compiler for other ports than 
+  IA-32/x86_64/IA-64 should contact the vendors listed below directly:
+  
+  CUDA     - NVIDIA Inc.
+  SL       - SimpLight Nanoelectronics Inc.
+  MIPS     - Institute of Computing Technology at the Chinese Academy of Science
+  LOONGSON - Institute of Computing Technology at the Chinese Academy of Science
+  PowerPC  - Tsinghua University  
+
+
+6. Bug reporting
+===============
+
+   You are WELCOME to report bugs. The bugs tracked at
+   
+   http://bugs.open64.net/. 
+   
+   Bug reports should include these items in order to be reproduced:
+
+ o. The compiler release version;
+
+ o. System details -- the OS, libc etc;
+
+ o. The compilation flags that trigger the bug;
+
+ o. The test file if applicable (it is highly appreciated if the test file
+   is minimized);
+
+ o. The correct output of the test file.
+
+
+7. Known problems, limitation and some notes
+===============
+
+ o. Currently, we built the compiler *ONLY* on Linux/IA64, x86_64, i386.
+  'make cross' is supposed to be used to build the cross compiler on
+  Linux/IA32 systems targeting IA64. However, we have not tested this 
+  thoroughly.
+
+ o. The perlbench benchmark in CPU2006 suite may not run successfully without
+  some changes to its source code on IA-64. It is *NOT* an Open64 bug. 
+  The problem is with the perlbench benchmark itself. Please check the bug-81
+  (https://bugs.open64.net/show_bug.cgi?id=81) for details. This problem can be 
+  solved by deleting following lines from file spec_config.h (of perlbench 
+  benchmark):
+
+     1172 #undef HASATTRIBUTE
+     1173 #ifndef HASATTRIBUTE
+     1174 #define __attribute__(_arg_)
+     1175 #endif
+
+ o. A full list of known bugs can be found in our bug database. You can visit
+
+  http://bugs.open64.net
+
+  to view them.
+
+
+8. Acknowledgements
+===============
+
+ This project is led by Open64 Steering Group (OSG). It is the result of
+ partnership between these academies and companies:
+  o. Advanced Micro Devices, Inc 
+  o. CAPSL research laboratory at the University of Delaware
+  o. Google Inc.
+  o. Hewlett-Packard Inc.
+  o. Institute of Computing Technology at the Chinese Academy of Science
+  o. NVIDIA Inc.
+  o. SimpLight Nanoelectronics Inc.
+  o. Tsinghua University
+
+ We upgraded the GCC front end in Open64 by leveraging PathScale's effort.
+ We also got a lot of suggestions, bug fixes, and performance enhancements from
+ Fred Chow and PathScale Inc. Their help is greatly appreciated.
+ 
+ Thanks all of the Pro64 developers, the ORC developers and ORC/Open64 users.
