@@ -197,7 +197,12 @@ static void Process_Store(WN *store_wn, VINDEX16 v,
     WN *load_wn = dep_graph->Get_Wn(sink);
     OPCODE opcode = WN_opcode(load_wn);
     if (OPCODE_is_load(opcode)) {
-      if (OPCODE_operator(opcode) != OPR_LDID) {
+      if (OPCODE_operator(opcode) != OPR_LDID && 
+	  // Do not scalarize MTYPE_M loads as this may result in a parent MTYPE_M store
+	  // having a child that is not MTYPE_M and function 'Add_def' may not be able to 
+	  // handle such stores during coderep creation. The check here catches 'uses' involving 
+	  // MTYPE_M whereas the check at the beginning of 'Process_Store' catches 'defs'.
+	  (WN_rtype(load_wn) != MTYPE_M) && (WN_desc(load_wn) != MTYPE_M)) {
         ACCESS_ARRAY *load = (ACCESS_ARRAY *) 
 	  WN_MAP_Get(LNO_Info_Map,WN_kid0(load_wn));
         if (WN_operator(WN_kid0(load_wn)) == OPR_ARRAY && 
