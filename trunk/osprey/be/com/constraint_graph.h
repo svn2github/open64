@@ -1624,6 +1624,8 @@ private:
 
   ConstraintGraphNode *genTempCGNode();
 
+  TY& getTY(const WN* wn, const ConstraintGraphNode* node);
+
   UINT32 findMaxTypeSize();
 
   void buildCGFromSummary();

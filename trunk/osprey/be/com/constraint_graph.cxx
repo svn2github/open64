@@ -996,6 +996,20 @@ static bool INITV_BLKIsFlat(INITV_IDX initv_idx)
   return false;
 }
 
+// get WN node's TY, used for determin kcycle
+TY&
+ConstraintGraph::getTY(const WN* wn, const ConstraintGraphNode* node)
+{
+  if (OPERATOR_has_1ty(WN_operator(wn))) {
+    TY_IDX ty_idx = WN_ty(wn);
+    return Ty_Table[ty_idx];
+  }
+  else {
+    ST *st = &St_Table[SYM_ST_IDX(node->cg_st_idx())];
+    return Ty_Table[ST_type(st)];
+  }
+}
+
 // This just recursively processes all initvs starting from initv_idx
 // and adds any nodes that correspond to symbols to pts
 void
@@ -1878,8 +1892,7 @@ ConstraintGraph::processExpr(WN *expr)
         // size of the pointed-to type.
         if (!kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
             kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-          ST *st = &St_Table[SYM_ST_IDX(kid0CGNode->cg_st_idx())];
-          TY &ty = Ty_Table[ST_type(st)];
+          TY &ty = getTY(WN_kid0(expr), kid0CGNode);
           INT32 size = 1;
           if (TY_kind(ty) == KIND_POINTER)
             size = TY_size(Ty_Table[TY_pointed(ty)]);
@@ -1893,8 +1906,7 @@ ConstraintGraph::processExpr(WN *expr)
         // Check the other kid
         if (!kid1CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER) && 
             kid0CGNode->checkFlags(CG_NODE_FLAGS_NOT_POINTER)) {
-          ST *st = &St_Table[SYM_ST_IDX(kid1CGNode->cg_st_idx())];
-          TY &ty = Ty_Table[ST_type(st)];
+          TY &ty = getTY(WN_kid1(expr), kid1CGNode);
           INT32 size = 1;
           if (TY_kind(ty) == KIND_POINTER)
             size = TY_size(Ty_Table[TY_pointed(ty)]);
@@ -1913,14 +1925,12 @@ ConstraintGraph::processExpr(WN *expr)
         // is of a pointer type, set it to the size of the pointed-to type. 
         // Compute size from first kid
         INT32 size0 = 1;
-        ST *kid0st = &St_Table[SYM_ST_IDX(kid0CGNode->cg_st_idx())];
-        TY &kid0ty = Ty_Table[ST_type(kid0st)];
+        TY &kid0ty = getTY(WN_kid0(expr), kid0CGNode);
         if (TY_kind(kid0ty) == KIND_POINTER)
           size0 = TY_size(Ty_Table[TY_pointed(kid0ty)]);
         // Compute size from other kid
         INT32 size1 = 1;
-        ST *kid1st = &St_Table[SYM_ST_IDX(kid1CGNode->cg_st_idx())];
-        TY &kid1ty = Ty_Table[ST_type(kid1st)];
+        TY &kid1ty = getTY(WN_kid1(expr), kid1CGNode);
         if (TY_kind(kid1ty) == KIND_POINTER)
           size1 = TY_size(Ty_Table[TY_pointed(kid1ty)]);
 
