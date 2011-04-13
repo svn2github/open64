@@ -370,8 +370,27 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
         repPNodeParent->merge(cgNode);
         cgNode->repParent(repPNodeParent);
       }
+      else if (repPNode != cgNode && cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
+        // summNode parent is not cgNode, and cgNode is summNode parent's
+        // parent. Here is a cyclic repParent chain.
+        // if cgNode is collapsed node(means it will not used in points to),
+        // break the chain and make cgNode not top repParent.
+        repPNodeParent = repPNode;
+        while (true) {
+          if (repPNodeParent->repParent() == cgNode) {
+            repPNodeParent->repParent(NULL);
+            break;
+          }
+          repPNodeParent = repPNodeParent->repParent();
+        }
+        repPNodeParent->clearFlags(CG_NODE_FLAGS_MERGED);
+        repPNodeParent->merge(cgNode);
+        cgNode->repParent(repPNode);
+      }
+      else {
+        // here it is break the chain, and let cgNode be top repParent.
+      }
     }
-
     // Set the collapsed parent
     if (cgNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
       if (summNode.collapsedParent() != 0) {
