@@ -463,8 +463,11 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        change = cgNode->parent()->addPointsTo(
-                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_GBL);
+        ConstraintGraphNode* collapseParent =
+                             ConstraintGraph::cgNode(pNode->collapsedParent());
+        while (collapseParent->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+          collapseParent = ConstraintGraph::cgNode(collapseParent->collapsedParent());
+        change = cgNode->parent()->addPointsTo(collapseParent, CQ_GBL);
       } else
         change = cgNode->parent()->addPointsTo(pNode, CQ_GBL);
       // Mark a changed global as modified so that its outgoing edges
@@ -484,8 +487,11 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        change = cgNode->parent()->addPointsTo(
-                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_HZ);
+        ConstraintGraphNode* collapseParent =
+                             ConstraintGraph::cgNode(pNode->collapsedParent());
+        while (collapseParent->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+          collapseParent = ConstraintGraph::cgNode(collapseParent->collapsedParent());
+        change = cgNode->parent()->addPointsTo(collapseParent, CQ_HZ);
       } else
         change = cgNode->parent()->addPointsTo(pNode, CQ_HZ);
       // Mark a changed global as modified so that its outgoing edges
@@ -505,8 +511,11 @@ ConstraintGraph::buildCGipa(IPA_NODE *ipaNode)
       if (pNode->checkFlags(CG_NODE_FLAGS_COLLAPSED)) {
         FmtAssert(pNode != pNode->parent(), ("Expecting a distinct parent "
                   "for COLLAPSED node: %d\n", pNode->id()));
-        change = cgNode->parent()->addPointsTo(
-                 ConstraintGraph::cgNode(pNode->collapsedParent()), CQ_DN);
+        ConstraintGraphNode* collapseParent =
+                             ConstraintGraph::cgNode(pNode->collapsedParent());
+        while (collapseParent->checkFlags(CG_NODE_FLAGS_COLLAPSED))
+          collapseParent = ConstraintGraph::cgNode(collapseParent->collapsedParent());
+        change = cgNode->parent()->addPointsTo(collapseParent, CQ_DN);
       } else
         change = cgNode->parent()->addPointsTo(pNode, CQ_DN);
       if (change && cgNode->parent()->cg() == globalCG()) {
