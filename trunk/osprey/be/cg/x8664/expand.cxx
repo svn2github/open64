@@ -9890,7 +9890,7 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
 	         Gen_Literal_TN(4*(num_xmms-8), 4), ops);
       }
       Build_OP(TOP_neg64, r11_tn, r11_tn, ops);
-      if ( Gen_PIC_Shared || Gen_PIC_Call_Shared ) {
+      if ( Gen_PIC_Shared ) {
 	Build_OP ( TOP_lea64, rax_tn, Rip_TN(), OP_opnd( op, 4 ), ops );
 	ops->last->bb = bb; // to pass Verify_Operand
 	Build_OP ( TOP_leax64, r11_tn, r11_tn, rax_tn, 

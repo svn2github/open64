@@ -1453,8 +1453,15 @@ Configure_Source ( char	*filename )
 
   if ( Use_Large_GOT )	Guaranteed_Small_GOT = FALSE;
 
-  /* if we get both TENV:CPIC and TENV:PIC, use only TENV:CPIC */
-  if (Gen_PIC_Call_Shared && Gen_PIC_Shared) Gen_PIC_Shared = FALSE;
+  /* If we get both TENV:CPIC and TENV:PIC, use only TENV:PIC.
+   *
+   * To fix bug 721, "use only TENV:CPIC" is changed to "use only TENV:PIC".
+   * While PIC, represented by Gen_PIC_Shared, is for 'shared objects', 
+   * CPIC, represented by Gen_PIC_Call_Shared, is for 'dynamic executables'
+   * that call functions in shared objects. Since CPIC should be the default,
+   * Gen_PIC_Call_Shared is not very useful.
+   */
+  if (Gen_PIC_Call_Shared && Gen_PIC_Shared) Gen_PIC_Call_Shared = FALSE;
 
   /* Select optimization options: */
 

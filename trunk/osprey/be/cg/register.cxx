@@ -776,7 +776,7 @@ REGISTER_Pu_Begin(void)
        be used to hold the address pointing to the global offset table.
     */
     if( Is_Target_32bit() &&
-	(Gen_PIC_Shared || Gen_PIC_Call_Shared)   &&
+	Gen_PIC_Shared    &&
 	rclass == TN_register_class(ebx_tn) ){
       reg_alloc_status[rclass][TN_register(ebx_tn)] = AS_not_allocatable;
       re_init = TRUE;

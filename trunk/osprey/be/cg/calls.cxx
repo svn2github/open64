@@ -374,7 +374,7 @@ Init_Callee_Saved_Regs_for_REGION ( ST *pu, BOOL is_region )
 #ifdef TARG_X8664
   if( CG_opt_level > 0  &&
       Is_Target_32bit() &&
-      (Gen_PIC_Shared || Gen_PIC_Call_Shared)    &&
+      Gen_PIC_Shared    &&
       !PU_References_GOT ){
     TN* ebx_tn = Ebx_TN();
     REGISTER_Set_Allocatable( TN_register_class(ebx_tn),
@@ -924,7 +924,7 @@ Generate_Entry (BB *bb, BOOL gra_run )
   }
 
 #ifdef TARG_X8664
-  if( Is_Target_32bit() && (Gen_PIC_Shared || Gen_PIC_Call_Shared) ){
+  if( Is_Target_32bit() && Gen_PIC_Shared ){
     EETARG_Generate_PIC_Entry_Code( bb, &ops );
   }
 #endif
@@ -1749,7 +1749,7 @@ Generate_Exit (
     EETARG_Restore_Extra_Callee_Tns (&ops);
 
 #ifdef TARG_X8664
-  if( Is_Target_32bit() && (Gen_PIC_Call_Shared || Gen_PIC_Shared) ){
+  if( Is_Target_32bit() && Gen_PIC_Shared ){
     EETARG_Generate_PIC_Exit_Code( bb_epi, &ops );
   }
 #endif
