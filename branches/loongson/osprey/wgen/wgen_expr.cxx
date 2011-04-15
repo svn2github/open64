@@ -8151,7 +8151,12 @@ WGEN_Expand_Expr (gs_t exp,
 	      case GSBI_BUILT_IN_SINF:
 #endif
               case GSBI_BUILT_IN_SIN:
+// The intrinsic operation of SIN is not as precise as the one from math.h 
+#if defined(TARG_LOONGSON)
+		intrinsic_op = FALSE;
+#else
 		intrinsic_op = TRUE;
+#endif
 #ifdef TARG_X8664
                 if (!Force_IEEE_Comparisons)
                 {
@@ -8177,7 +8182,12 @@ WGEN_Expand_Expr (gs_t exp,
 #ifdef KEY
 	      case GSBI_BUILT_IN_COSF:
 #endif
+// The intrinsic operation of COS is not as precise as the one from math.h 
+#if defined(TARG_LOONGSON)
+		intrinsic_op = FALSE;
+#else
 		intrinsic_op = TRUE;
+#endif
 #ifdef TARG_X8664
                 if (!Force_IEEE_Comparisons)
                 {

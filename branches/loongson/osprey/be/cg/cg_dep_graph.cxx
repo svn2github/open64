@@ -2905,7 +2905,13 @@ BOOL get_mem_dep(OP *pred_op, OP *succ_op, BOOL *definite, UINT8 *omega)
 	    }
 	  }
 	  *definite = cg_result == IDENTICAL && *definite ||
+	    // If we can't figure out if there is a data dependence,
+            // we should not, in any sense, make *definite == true. 
+#ifdef TARG_LOONGSON
+	  ((cg_result != DONT_KNOW) && (is_must && dist < MAX_OMEGA));
+#else
 	    is_must && dist < MAX_OMEGA;
+#endif
 	  if (lex_neg && dist == 0) {
 	    /* LNO can't exclude the zero-omega arcs, so we do. */
 	    if (is_distance)
