@@ -170,6 +170,7 @@ extern volatile omp_exe_mode_t __omp_exe_mode;
 typedef struct omp_u_thread omp_u_thread_t;
 typedef struct omp_v_thread omp_v_thread_t;
 typedef struct omp_team	    omp_team_t;
+typedef struct omp_loop_info omp_loop_info_t;
 
 /* kernel thread*/
 struct omp_u_thread{
@@ -178,6 +179,14 @@ struct omp_u_thread{
   omp_v_thread_t *task;		/* task(vthread)*/
   char *stack_pointer;
 } __attribute__ ((__aligned__(CACHE_LINE_SIZE))) ;
+
+struct omp_loop_info {
+  int       is_64bit;
+  omp_int64 lower_bound;
+  omp_int64 upper_bound;
+  omp_int64 incr;
+  omp_uint64 next_index;
+};
 
 /* team*/
 struct omp_team{
@@ -190,24 +199,31 @@ struct omp_team{
   /* for loop schedule*/
 
   ompc_spinlock_t schedule_lock;
-  volatile long loop_lower_bound;
-  long	loop_upper_bound;
-  long	loop_increament;
+  volatile omp_int64 loop_lower_bound;
+  omp_int64	loop_upper_bound;
+  omp_int64	loop_increament;
 	
   int	schedule_type;
-  long	chunk_size;
+  omp_int64	chunk_size;
   /* For static schedule*/
   //	long	loop_stride;
   /* For ordered dynamic schedule*/
-  volatile long schedule_count;
+  volatile omp_int64 schedule_count;
   /* We still need a semphore for scheduler initialization */
   volatile int loop_count;
+
+  /* for collapsed loop */
+  unsigned collapse_count;
+  unsigned loop_info_size;
+  omp_loop_info_t* loop_info;
+  omp_uint64* loop_lenv;
+
   /* For scheduler initialization count. */
   //	volatile int schedule_in_count;
 
   /* for ordered schedule*/
   /* Using schedule_lock as the ordered lock*/
-  volatile long	ordered_count;
+  volatile omp_int64 ordered_count;
   // using a dummy field to make the following layout better
   int dummy11;
   // offset = 128, when -m64 
@@ -258,10 +274,10 @@ struct omp_v_thread {
   volatile frame_pointer_t frame_pointer;
 
   /* For RUNTIME assigned STATIC schedule only*/
-  long schedule_count;
+  omp_int64 schedule_count;
   /* For ordered schedule*/
-  long ordered_count;
-  long rest_iter_count;
+  omp_int64 ordered_count;
+  omp_int64 rest_iter_count;
   /* For single sections*/
   int	single_count;
   /* For Dynamic scheduler initialization*/

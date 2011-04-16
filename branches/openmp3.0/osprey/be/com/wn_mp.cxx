@@ -526,6 +526,8 @@ static vector<ST *> local_stride;  /* Parallel Do local stride for next chunk */
 static ST *last_iter;      /* Is local execute last iteration? */
 static vector<ST *> limit_st;      /* Temp var to store do_limit. can be preg. */
 static vector<WN_OFFSET> limit_ofst;
+static vector<ST *> base_st;      /* Temp var to store do_base. can be preg. */
+static vector<WN_OFFSET> base_ofst;
 static ST *local_gtid;		/* Microtask local gtid */
 static ST *local_btid;		/* Microtask local btid */
 static vector<WN *> base_node;		  /* Parallel do base */
@@ -5404,14 +5406,18 @@ static void
 Make_Local_Temps ( void )
 {
   limit_st.clear();
+  base_st.clear();
   limit_ofst.clear();
+  base_ofst.clear();
   local_upper.clear();
   local_lower.clear();
   local_stride.clear();
 
   for (UINT32 i = 0; i < collapse_count; i++) {
     ST *tmp_limit_st;
+    ST *tmp_base_st;
     WN_OFFSET tmp_limit_ofst;
+    WN_OFFSET tmp_base_ofst;
     ST *tmp_local_upper;
     ST *tmp_local_lower;
     ST *tmp_local_stride;
@@ -5423,6 +5429,10 @@ Make_Local_Temps ( void )
     Create_Preg_or_Temp( do_index_type[0], "temp_limit", i, &tmp_limit_st, &tmp_limit_ofst );
     limit_st.push_back(tmp_limit_st);
     limit_ofst.push_back(tmp_limit_ofst);
+
+    Create_Preg_or_Temp( do_index_type[0], "temp_base", i, &tmp_base_st, &tmp_base_ofst );
+    base_st.push_back(tmp_base_st);
+    base_ofst.push_back(tmp_base_ofst);
 
     Create_Temp( do_index_type[i], "do_upper", i, &tmp_local_upper );
     Set_ST_addr_passed( tmp_local_upper );
@@ -9475,6 +9485,11 @@ Rewrite_Collapsed_Do ( WN * block, WN * do_tree, vector<BOOL>& is_LE )
       } else {
         overflow_cond = WN_LT(ST_mtype(do_id_st), WN_COPY_Tree(index_wn), limit_wn);
       }
+
+      WN * base_wn = WN_Integer_Cast(WN_Ldid(ST_mtype(base_st[i]), base_ofst[i], base_st[i], ST_type(base_st[i]), 0), ST_mtype(do_id_st), ST_mtype(base_st[i]));
+      WN * reset_index_wn = WN_Stid(ST_mtype(do_id_st), do_id_ofst, do_id_st, ST_type(do_id_st), base_wn, do_id_field_id);
+      WN_INSERT_BlockLast(incr_block, reset_index_wn);
+
       WN * overflow_test = WN_CreateIf(overflow_cond, incr_block, WN_CreateBlock());
       WN_INSERT_BlockLast(current_incr_block, overflow_test);
     }
@@ -9583,6 +9598,11 @@ Transform_Do( WN * do_tree,
     wn = WN_COPY_Tree ( limit_node[i] );
     wn_tmp = WN_Stid ( do_index_type[i], limit_ofst[i], 
                        limit_st[i], ST_type(limit_st[i]), wn );
+    WN_INSERT_BlockLast( do_prefix, wn_tmp );
+
+    wn = WN_COPY_Tree ( base_node[i] );
+    wn_tmp = WN_Stid ( do_index_type[i], base_ofst[i], 
+                       base_st[i], ST_type(base_st[i]), wn );
     WN_INSERT_BlockLast( do_prefix, wn_tmp );
     //  Create_Temp( do_index_type, "do_upper", &local_upper );
     //  if ((WN_operator(WN_end(current_do)) == OPR_LT) ||
@@ -9812,10 +9832,10 @@ Transform_Do( WN * do_tree,
 #endif
     for (UINT32 i = 0; i < collapse_count; i++) {
       wn_tmp = WN_Lda( Pointer_type, 0, local_lower[i] );
-      WN_kid( call_wn, 2 * i + 1 ) = WN_CreateParm( Pointer_type, wn_tmp,  
+      WN_kid( call_wn, 2 * (collapse_count - i) - 1 ) = WN_CreateParm( Pointer_type, wn_tmp,  
         WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
       wn_tmp = WN_Lda( Pointer_type, 0, local_upper[i] );
-      WN_kid( call_wn, 2 * i + 2 ) = WN_CreateParm( Pointer_type, wn_tmp,  
+      WN_kid( call_wn, 2 * (collapse_count - i)) = WN_CreateParm( Pointer_type, wn_tmp,  
         WN_ty( wn_tmp ), WN_PARM_BY_REFERENCE );
        // What if the do_stride is not the same type as M_I4/ M_I8?
     }

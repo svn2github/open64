@@ -801,7 +801,10 @@ __ompc_init_rtl(int num_threads)
   __omp_level_1_team_manager.single_count = 0;
   __omp_level_1_team_manager.new_task = 0;
   __omp_level_1_team_manager.loop_count = 0;
+  __omp_level_1_team_manager.loop_info_size = 0;
+  __omp_level_1_team_manager.loop_info = NULL;
   __omp_level_1_team_manager.num_tasks = 0;
+  
 	
   __ompc_init_spinlock(&(__omp_level_1_team_manager.schedule_lock));
   pthread_cond_init(&(__omp_level_1_team_manager.ordered_cond), NULL);
@@ -1156,6 +1159,8 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     temp_team.new_task = 0;
     /* Used anywhere. obsoleted*/
     temp_team.loop_count = 0;
+    temp_team.loop_info_size = 0;
+    temp_team.loop_info = NULL;
     temp_team.single_count = 0;
 
     __ompc_init_spinlock(&(temp_team.schedule_lock));
@@ -1257,6 +1262,8 @@ __ompc_fork(const int _num_threads, omp_micro micro_task,
     /* The lock can be eliminated, anyway */
     /* no need to use lock in this case*/
     temp_team.loop_count = 0;
+    temp_team.loop_info_size = 0;
+    temp_team.loop_info = NULL;
     temp_team.single_count = 0;
 
     __ompc_init_spinlock(&(temp_team.schedule_lock));

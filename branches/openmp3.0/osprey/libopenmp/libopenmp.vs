@@ -24,6 +24,8 @@ LIBOPENMP_1.0 {
     __ompc_schedule_next_8;
     __ompc_scheduler_init_4;
     __ompc_scheduler_init_8;
+    __ompc_collapse_init;
+    __ompc_collapse_next;
     __ompc_serialized_parallel;
     __ompc_set_num_threads;
     __ompc_single;
