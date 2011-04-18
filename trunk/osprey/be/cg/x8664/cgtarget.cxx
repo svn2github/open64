@@ -392,6 +392,8 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_ldaps:
       case TOP_ldaps_n32:
       case TOP_ldups:
+      case TOP_ldupsx:
+      case TOP_ldupsxx:
       case TOP_ldups_n32:
       case TOP_ldupd:
       case TOP_ldupdx:
@@ -444,6 +446,8 @@ UINT32 CGTARG_Mem_Ref_Bytes(const OP *memop)
       case TOP_vldaps:
       case TOP_vldaps_n32:
       case TOP_vldups:
+      case TOP_vldupsx:
+      case TOP_vldupsxx:
       case TOP_vldups_n32:
       case TOP_vldupd:
       case TOP_vldupdx:

@@ -782,6 +782,8 @@ void Generate_Orochi (void)
                      TOP_ldupdxx, 
 		     TOP_ldupd_n32,
 		     TOP_ldups,
+		     TOP_ldupsx,
+		     TOP_ldupsxx,
 		     TOP_ldups_n32,
 		     TOP_ldmxcsr,
 		     TOP_UNDEFINED );

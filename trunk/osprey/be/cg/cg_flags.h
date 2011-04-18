@@ -533,6 +533,7 @@ extern BOOL CG_dispatch_schedule;
 extern BOOL CG_128bitstore;
 extern BOOL CG_branch_fuse;
 extern BOOL CG_strcmp_expand;
+extern BOOL CG_merge_counters_x86;
 #endif
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;

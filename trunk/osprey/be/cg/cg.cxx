@@ -1490,6 +1490,18 @@ extern void Generate_Return_Address(void);
   GRA_LIVE_Rename_TNs();
 #if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#ifdef TARG_X8664
+  void Counter_Merge (char*);
+  if (CG_merge_counters_x86 == TRUE && CG_opt_level > 1) {
+    if (Enable_CG_Peephole) {
+      Set_Error_Phase ( "SIB counter merging" );
+      GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+      GRA_LIVE_Rename_TNs ();
+      Counter_Merge (Cur_PU_Name);
+    }
+  }
+#endif
+
 #endif 
 
 #endif // TARG_SL

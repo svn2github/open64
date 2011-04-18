@@ -125,6 +125,7 @@ BOOL CG_128bitstore = TRUE;
 BOOL CG_branch_fuse = TRUE;
 BOOL CG_dispatch_schedule = FALSE;
 BOOL CG_strcmp_expand = TRUE;
+BOOL CG_merge_counters_x86 = FALSE;
 #endif
 BOOL CG_opt_level;
 BOOL CG_localize_tns = FALSE;

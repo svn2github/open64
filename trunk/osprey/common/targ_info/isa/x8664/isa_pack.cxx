@@ -771,6 +771,8 @@ int main()
 		    TOP_ldaps,  0x000000ff,
 		    TOP_ldupd,  0x000000ff,
 		    TOP_ldups,  0x000000ff,
+		    TOP_ldupsx,  0x000000ff,
+		    TOP_ldupsxx,  0x000000ff,
 		    TOP_stapd,  0x000000ff,
 		    TOP_staps,  0x000000ff,
 		    TOP_stupd,  0x000000ff,

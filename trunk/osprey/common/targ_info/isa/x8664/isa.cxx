@@ -871,6 +871,8 @@ int main ()
 	      "ldapdx",
 	      "ldapdxx",
 	      "ldups",
+	      "ldupsx",
+	      "ldupsxx",
 	      "ldupd",
 	      "ldupdx",
 	      "ldupdxx",

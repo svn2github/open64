@@ -475,6 +475,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_branch_fuse, NULL },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "strcmp_expand", "",
     0, 0, 0,    &CG_strcmp_expand, NULL },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "merge_counters_x86", "",
+    0, 0, 0,    &CG_merge_counters_x86, NULL },
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
