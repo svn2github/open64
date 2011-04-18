@@ -1879,10 +1879,26 @@ Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kin
     }
   }
 
-  if( OP_NEED_PAIR( mtype ) )
-    Expand_Split_Shift( kind, result, src1, src2, ops );
-  else
-    Build_OP(top, result, src1, src2, ops);
+
+  switch(mtype) {
+  case MTYPE_V16I1: 
+    if (kind == shift_left)
+      Build_OP(TOP_psllw, result, src1, src2, ops); break;
+  case MTYPE_V16I2: 
+    if (kind == shift_left)
+      Build_OP(TOP_psllw, result, src1, src2, ops); break;
+  case MTYPE_V16I4: 
+    if (kind == shift_left)
+      Build_OP(TOP_pslld, result, src1, src2, ops); break;
+  case MTYPE_V16I8: 
+    if (kind == shift_left)
+      Build_OP(TOP_psllq, result, src1, src2, ops); break;
+  default:
+    if( OP_NEED_PAIR( mtype ) )
+      Expand_Split_Shift( kind, result, src1, src2, ops );
+    else
+      Build_OP(top, result, src1, src2, ops);
+  }
 }
 
 void
@@ -6502,6 +6518,15 @@ Expand_Shuffle (OPCODE opc, TN* result, TN* op1, VARIANT variant, OPS *ops)
   case OPC_V16I4V16I4SHUFFLE:
     Build_OP(TOP_pshufd, result, op1, Gen_Literal_TN(0x1B, 1), ops);
     break;
+
+  case OPC_V8I4V8I4SHUFFLE:
+  case OPC_V8F4V8F4SHUFFLE:
+    // Transpose elements 0 and 1. The content of element 2 and 3 are 
+    // immaterial.
+    //
+    Build_OP (TOP_pshufd, result, op1, Gen_Literal_TN(0x1, 1), ops);
+    break;
+
   case OPC_V16I8V16I8SHUFFLE:
   case OPC_V16F8V16F8SHUFFLE:
     if (Is_Target_Orochi() && Is_Target_AVX()) {
@@ -6528,7 +6553,7 @@ Expand_Shuffle (OPCODE opc, TN* result, TN* op1, VARIANT variant, OPS *ops)
       break;
     }
   default:
-    FmtAssert(FALSE, ("NYI"));
+    FmtAssert(FALSE, ("expand %s, NYI", OPCODE_name(opc)));
   }
   return;
 }
