@@ -214,6 +214,7 @@ enum ST_FLAGS_EXT
     ST_IS_VBUF_OFFSET = 0x8000,  // represent this symbol means offset instead of a absolute address
     ST_IS_SBUF_OFFSET = 0x10000, // same as above and will be deleted for we don't have sbuf in the future.
 #endif     
+    ST_IS_VTABLE = 0x40000,        //st is a vtalbe
 }; // ST_FLAGS_EXT
 #endif
 
@@ -259,6 +260,8 @@ public:
 
     ST_IDX st_idx;			// my own st_idx
 
+    TY_IDX vtable_ty_idx;
+
     // operations
     
     ST ()  {Fail_FmtAssertion("ST default constructor must not be called.");}
@@ -291,6 +294,7 @@ enum FLD_FLAGS
     FLD_IS_BIT_FIELD	= 0x0040,	// is bit field
     FLD_IS_ANONYMOUS    = 0x0080,       // is anonymous field
     FLD_IS_BASE_CLASS   = 0x0100,       // is a field of base class type
+    FLD_IS_VIRTUAL      = 0x0200,       // is virutal (base class) field
 };
 
 struct FLD
@@ -620,6 +624,8 @@ public:
 	ST_IDX copy_constructor;	// copy constructor X(X&) (record only)
 #endif
     } u2;
+	
+    ST_IDX vtable;
 
     // access function for unions
 
@@ -657,6 +663,15 @@ public:
       }
     void Set_copy_constructor (ST_IDX idx)	{ u2.copy_constructor = idx; }
 #endif	// KEY
+
+    ST_IDX Vtable () const
+      {
+	Is_True(kind == KIND_STRUCT,
+		("non-KIND_STRUCT type has no vtable"));
+	return vtable;
+      }
+    void Set_vtable (ST_IDX idx)	{ vtable = idx; }
+
 
     PU_IDX Pu_flags () const		{ return u2.pu_flags; }
     void Set_pu_flag (TY_PU_FLAGS f)	{ u2.pu_flags |= f; }

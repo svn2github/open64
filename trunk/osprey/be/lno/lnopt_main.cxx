@@ -887,20 +887,23 @@ BOOL Peel_2D_Triangle_Loops(WN* outer_loop)
 }
 
 // returns true if any inner loop in wn is fully unrolled.
-
+// 'is_seq_iter' indicates whether caller site is iterating the WHIRLs sequentially.
 BOOL
-Fully_Unroll_Short_Loops(WN* wn)
+Fully_Unroll_Short_Loops(WN* wn, BOOL is_seq_iter = FALSE)
 {
   WN* first;
   WN* last;
   WN* next;
   BOOL unrolled = FALSE;
   OPERATOR oper = WN_operator(wn);
+  // This routine can be destructive to 'wn', verify that 'wn' was not deleted.
+  Is_True(oper != OPERATOR_UNKNOWN, ("invalid operator"));
+
   if (oper == OPR_BLOCK) {
     wn = WN_first(wn); 
     while (wn) {
       next = WN_next(wn);
-      unrolled  |=  Fully_Unroll_Short_Loops(wn);
+      unrolled  |=  Fully_Unroll_Short_Loops(wn, TRUE);
       wn = next;
     }
     return unrolled;
@@ -982,17 +985,27 @@ Fully_Unroll_Short_Loops(WN* wn)
         unrolled = TRUE;
         // Du_Sanity_Check(Current_Func_Node);
       }
+      WN * next_wn = WN_next(wn);
       Remove_Unity_Trip_Loop(wn, TRUE, &first, &last, NULL, Du_Mgr);
       // Du_Sanity_Check(Current_Func_Node);
-      wn = first; 
-      while (wn) {
-        next = WN_next(wn);
-        unrolled |= Fully_Unroll_Short_Loops(wn);
-        if (wn == last) {
-          break;
-        }
-        wn = next;
+      // If caller is sequentially visiting the WHIRLs, the 'next_wn'
+      // will be visited in the caller site.  if the 'next_wn' is the
+      // same as 'first', we should not recursively invoke the routine
+      // 'Fully_Unroll_Short_Loops', otherwise if 'first' is deleted,
+      // the caller site will visit the deleted wn.
+      if (!is_seq_iter || (first != next_wn)) {
+	wn = first; 
+
+	while (wn) {
+	  next = WN_next(wn);
+	  unrolled |= Fully_Unroll_Short_Loops(wn, TRUE);
+	  if (wn == last) {
+	    break;
+	  }
+	  wn = next;
+	}
       }
+
       return unrolled;
     }
   }

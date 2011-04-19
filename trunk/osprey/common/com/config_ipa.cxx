@@ -113,6 +113,7 @@ const float DEFAULT_MIN_PROBABILITY = 0.20;
 #define DEFAULT_ICALL_MIN_FREQ		200
 #endif
 
+#define DEFAULT_ICALL_TARGET_MIN_RATE   30
 
 /* #define DEFAULT_GSPACE	65535	-- from config.c */
 
@@ -274,6 +275,13 @@ BOOL IPA_Consult_Inliner_For_Icall_Opt = TRUE; // Check inlining heuristics
                                                // during icall-opt?
 UINT32 IPA_Icall_Min_Freq = DEFAULT_ICALL_MIN_FREQ; // Min freq for icall opt
                                                     // used in IPL.
+// the ratio of an icall tartget be called 
+// among all the indirect calls at the callsite,
+// the ratio is range from 0 to 100. To promote
+// an icall target, it must exceed the ratio
+UINT32 IPA_Icall_Target_Min_Rate = DEFAULT_ICALL_TARGET_MIN_RATE;
+                                  
+
 BOOL IPA_Enable_Source_PU_Order = FALSE;
 #ifdef TARG_X8664
 UINT32 IPA_Enable_Struct_Opt = 1;
@@ -324,6 +332,14 @@ BOOL IPA_Enable_Old_Type_Merge = TRUE;  //jczhang: Not enabled in SL
 /* enable devirtualization */
 BOOL IPA_Enable_Devirtualization = FALSE;
 BOOL IPA_Enable_Fast_Static_Analysis_VF = TRUE;
+BOOL IPA_Enable_Original_VF = TRUE;
+BOOL IPA_Enable_New_VF = TRUE;
+BOOL IPA_Inline_Original_VF = TRUE;
+BOOL IPA_Inline_New_VF = FALSE;
+const char* IPA_Devirtualization_Input_File;
+
+BOOL IPA_During_Original_VF = FALSE;
+BOOL IPA_During_New_VF = FALSE;
 
 /* assert whole program mode to enable more aggressive ipo */
 BOOL IPA_Enable_Whole_Program_Mode = FALSE;
@@ -607,6 +623,9 @@ static OPTION_DESC Options_IPA[] = {
     { OVK_UINT32, OV_INTERNAL,	FALSE, "icall_min_freq",	"",
 	  DEFAULT_ICALL_MIN_FREQ, 1, UINT32_MAX, &IPA_Icall_Min_Freq, NULL,
 	  "Min freq of icall for icall optimization"},
+    { OVK_UINT32, OV_INTERNAL,	FALSE, "icall_min_rate",	"",
+	  DEFAULT_ICALL_MIN_FREQ, 1, UINT32_MAX, &IPA_Icall_Target_Min_Rate, NULL,
+	  "Min icall target call ratio for icall optimization"},
     { OVK_BOOL, OV_INTERNAL,    FALSE, "source_pu_order",  "",
       0, 0, 0,              &IPA_Enable_Source_PU_Order, NULL,
       "Maintain source-code PU ordering in IPA output"},
@@ -615,6 +634,21 @@ static OPTION_DESC Options_IPA[] = {
       "Use the old type merge phase in IPA"},
     { OVK_BOOL, OV_INTERNAL,    TRUE, "devirtual_CHA", "",
       0, 0, 0,              &IPA_Enable_Fast_Static_Analysis_VF, NULL,
+      "Use devirtualization phase"},
+    { OVK_BOOL, OV_VISIBLE,    FALSE, "devirtual_ORIG", "",
+      0, 0, 0,              &IPA_Enable_Original_VF, NULL,
+      "Use devirtualization phase"},
+    { OVK_BOOL, OV_VISIBLE,    FALSE, "devirtual_NEW", "",
+      0, 0, 0,              &IPA_Enable_New_VF, NULL,
+      "Use devirtualization phase"},
+    { OVK_BOOL, OV_VISIBLE,    FALSE, "devirtual_inline", "",
+      0, 0, 0,              &IPA_Inline_Original_VF, NULL,
+      "Enable devirtualization inlining"},
+    { OVK_BOOL, OV_VISIBLE,    FALSE, "aggressive_devirtual_inline", "",
+      0, 0, 0,              &IPA_Inline_New_VF, NULL,
+      "Enable aggressive devirtualization inlining"},
+    { OVK_NAME, OV_VISIBLE,    FALSE, "dv_input", "",
+      0, 0, 0,              &IPA_Devirtualization_Input_File, NULL,
       "Use devirtualization phase"},
     { OVK_BOOL, OV_VISIBLE,     FALSE, "whole_program_mode", "",
       0, 0, 0,              &IPA_Enable_Whole_Program_Mode,

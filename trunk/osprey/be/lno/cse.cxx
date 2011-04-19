@@ -1251,7 +1251,7 @@ static INT current_level=0;
 static int local_num=0;
 
 extern WN* Find_Stmt_Under(WN* stmt,WN* body);
-extern BOOL Fully_Unroll_Short_Loops(WN *);
+extern BOOL Fully_Unroll_Short_Loops(WN *, BOOL = FALSE);
 //don't do invariant factorization if current level >=3
 #define STOP_LEVEL 3
 #define GOOD_FACTORS 4

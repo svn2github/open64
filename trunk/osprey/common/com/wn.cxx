@@ -420,6 +420,8 @@ void IPA_WN_Delete(WN_MAP_TAB *maptab, WN *wn)
 
   free_list = use_free_list ? Which_WN_FREE_LIST(WN_Size(wn)) : 0;
 	  
+  // trace delete
+  Check_Traced_Wn_Node(wn);
 
 #ifdef KEEP_WHIRLSTATS
   whirl_num_deallocated++;
@@ -545,7 +547,9 @@ void Check_Traced_Wn_Node(WN *n)
 {
    if (n && (n == trace_wn_node 
              || trace_wn_mapid != -1 && WN_map_id(n) == trace_wn_mapid
+#ifdef USE_UNIQUE_MAP_ID_FOR_DEBUG
              || trace_wn_id != 0 && trace_wn_id == WN_id(n)
+#endif
              ) ) {
       gdb_stop_here();
    }
@@ -555,18 +559,22 @@ static set<UINT32> copied_ids;
 
 void Set_Trace_Wn_id(UINT32 wn_id) 
 { 
+#ifdef USE_UNIQUE_MAP_ID_FOR_DEBUG
    trace_wn_id = wn_id; 
    copied_ids.insert(wn_id);
+#endif
 }
 
 void Trace_Wn_Copy(const WN *wn, const WN *src_wn)
 {
+#ifdef USE_UNIQUE_MAP_ID_FOR_DEBUG
    set<UINT32>::iterator itr = copied_ids.find(WN_id(src_wn));
    if (itr != copied_ids.end()) {
       // found src_wn's wn_id in copied list
       copied_ids.insert(WN_id(wn));
       gdb_stop_here();
    }
+#endif
 }
 
 /* ---------------------------------------------------------------------

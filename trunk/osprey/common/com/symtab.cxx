@@ -1858,6 +1858,8 @@ ST::Print (FILE *f, BOOL verbose) const
                 fprintf (f, " st_used_as_initialization");
             if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
+            if (flags_ext & ST_IS_VTABLE)
+                fprintf (f, " vtable");
 	}
 #endif
 #ifdef TARG_NVISA
@@ -1935,6 +1937,10 @@ ST::Print (FILE *f, BOOL verbose) const
 	}
 
 	fprintf (f, "\n\t\tSclass: %s\n", Sclass_Name (storage_class));
+	if(vtable_ty_idx)
+	{
+	    fprintf (f, "\t\tVtable for type: %s\n", TY_name (vtable_ty_idx));
+	}
     }
 } // ST::Print
 
@@ -2379,6 +2385,8 @@ TY::Print (FILE *f) const
 	    } while (! FLD_last_field (iter++));
 	} else
 	    fputc ('\n', f);
+	if (TY_vtable(*this))
+	    fprintf(f, "VTABLE: %s\n", ST_name(TY_vtable(*this)));
 	break;
 
     case KIND_POINTER:

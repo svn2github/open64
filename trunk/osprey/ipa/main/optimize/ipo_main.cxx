@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
  * Copyright (C) 2008-2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
@@ -1888,6 +1892,11 @@ IPO_main (IPA_CALL_GRAPH* cg)
     if (IPA_Enable_EH_Region_Removal)
     	IPA_Remove_Regions (walk_order, cg); // Remove EH regions that are not required
 #endif
+
+    if (Get_Trace(TP_IPA, IPA_TRACE_ICALL_DEVIRTURAL)) {
+       fprintf( TFile, "\n\nIPA_Call_Graph:\n");
+       IPA_Call_Graph->Print(TFile);
+    }
 
     // we will use the following loop to check whether it is legal to perform
     // the complete structure relayout optimization; later (in the subsequent
