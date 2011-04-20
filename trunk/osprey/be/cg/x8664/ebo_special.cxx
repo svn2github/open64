@@ -7858,6 +7858,12 @@ BOOL EBO_Load_Execution( OP* alu_op,
     return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
 
+  if ((OP_code(ld_op) == TOP_ldhps ||
+	OP_code(ld_op) == TOP_ldhpsx ||
+	OP_code(ld_op) == TOP_ldhpsxx) &&
+      OP_code(alu_op) == TOP_cvtps2pd)
+    return FALSE;
+
   /* Check <index> and <base> will not be re-defined between
      <ld_op> and <alu_op>, inclusive.
   */
