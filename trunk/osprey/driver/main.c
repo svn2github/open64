@@ -1341,7 +1341,11 @@ read_gcc_output(char *cmdline)
 	char *gcc_cmd = NULL;
 	FILE *fp = NULL;
 
+#ifdef TARG_X8664
+	if (asprintf(&gcc_cmd, "%s %s %s", gcc_path, (abi == ABI_N32)?"-m32":"", cmdline) == -1) {
+#else
 	if (asprintf(&gcc_cmd, "%s %s", gcc_path, cmdline) == -1) {
+#endif
 		internal_error("cannot allocate memory");
 		goto bail;
 	}
