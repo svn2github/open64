@@ -2493,6 +2493,14 @@ Process_Stack_Variable ( ST *st )
 	base = SP_Sym;
    else
 	base = FP_Sym;
+
+   if (ST_class (st) == CLASS_VAR) {
+     INT16 align = Adjusted_Alignment (st);
+     TY_IDX ty = ST_type(st);
+     Set_TY_align (ty, align); 
+     Set_ST_type (*st, ty);
+   }
+
    ST_Block_Merge (base, st, 0, 0, MAX_FRAME_OFFSET);
 }
 
