@@ -146,6 +146,7 @@ extern BOOL IPA_Consult_Inliner_For_Icall_Opt; // Consult inliner for icallopt?
 extern UINT32 IPA_Icall_Min_Freq;	// Min icall freq for icall opt
 extern BOOL IPA_Enable_Source_PU_Order;
 extern UINT32 IPA_Enable_Struct_Opt;
+extern UINT32 IPA_Enable_Global_As_Local;
 extern UINT32 IPA_Update_Struct;
 #endif
 

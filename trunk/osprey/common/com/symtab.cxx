@@ -1858,6 +1858,8 @@ ST::Print (FILE *f, BOOL verbose) const
                 fprintf (f, " st_used_as_initialization");
             if (flags_ext & ST_IS_THREAD_LOCAL)
                 fprintf (f, " thread_local");
+	    if (flags_ext & ST_IS_GLOBAL_AS_LOCAL)
+	        fprintf (f, " global_as_local");
             if (flags_ext & ST_IS_VTABLE)
                 fprintf (f, " vtable");
 	}

@@ -257,6 +257,7 @@ static void Inter_Iteration_Cses_Loop(WN *loop)
     UINT16 eq1 = (UINT16) WN_MAP32_Get(Equivalence_Class_Map,load);
     if (eq1) { // might be zero if we've dealt with this load already
       VINDEX16 v = Current_Dep_Graph->Get_Vertex(load);
+      if (!v) continue;
       EINDEX16 e = Current_Dep_Graph->Get_In_Edge(v);
       WN *parent = LWN_Get_Parent(load);
       WN *child = load;

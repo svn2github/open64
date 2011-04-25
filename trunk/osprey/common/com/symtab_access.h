@@ -706,11 +706,19 @@ Set_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext |= ST_IS_ARRAY_
 inline void
 Clear_ST_is_array_remapping_candidate_malloc(ST *s) { s->flags_ext &= ~ST_IS_ARRAY_REMAPPING_CANDIDATE_MALLOC; }
 inline BOOL
+ST_is_global_as_local(const ST * s) { return s->flags_ext & ST_IS_GLOBAL_AS_LOCAL; }
+inline void
+Set_ST_is_global_as_local(ST * s) { s->flags_ext |= ST_IS_GLOBAL_AS_LOCAL; }
+inline void 
+Clear_ST_is_global_as_local(ST *s) { s->flags_ext &= ~ST_IS_GLOBAL_AS_LOCAL; }
+
+inline BOOL
 ST_is_vtable (const ST* s)  { return s->flags_ext & ST_IS_VTABLE; }
 inline void
 Set_ST_is_vtable (ST* s)    { s->flags_ext |= ST_IS_VTABLE; }
 inline void
 Reset_ST_is_vtable (ST* s)  { s->flags_ext &= ~ST_IS_VTABLE; }
+
 #endif /* KEY */
 
 //----------------------------------------------------------------------

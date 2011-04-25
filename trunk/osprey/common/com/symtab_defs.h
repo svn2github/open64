@@ -214,6 +214,7 @@ enum ST_FLAGS_EXT
     ST_IS_VBUF_OFFSET = 0x8000,  // represent this symbol means offset instead of a absolute address
     ST_IS_SBUF_OFFSET = 0x10000, // same as above and will be deleted for we don't have sbuf in the future.
 #endif     
+    ST_IS_GLOBAL_AS_LOCAL = 0x20000, // Is a global variable that can be treated as a local variable.
     ST_IS_VTABLE = 0x40000,        //st is a vtalbe
 }; // ST_FLAGS_EXT
 #endif
@@ -229,11 +230,7 @@ public:
 
     mUINT32 flags;			// misc. attributes
 
-#if defined(TARG_SL)
     mUINT32 flags_ext;			// more attributes
-#else
-    mUINT16 flags_ext;			// more attributes
-#endif
 
     ST_CLASS sym_class : 8;		// class info
     ST_SCLASS storage_class : 8;	// storage info

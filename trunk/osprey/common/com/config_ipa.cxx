@@ -285,8 +285,10 @@ UINT32 IPA_Icall_Target_Min_Rate = DEFAULT_ICALL_TARGET_MIN_RATE;
 BOOL IPA_Enable_Source_PU_Order = FALSE;
 #ifdef TARG_X8664
 UINT32 IPA_Enable_Struct_Opt = 1;
+UINT32 IPA_Enable_Global_As_Local = 1;
 #else
 UINT32 IPA_Enable_Struct_Opt = 0;
+UINT32 IPA_Enable_Global_As_Local = 0;
 #endif
 UINT32 IPA_Update_Struct = 0;		/* temporary, should be removed */
 #else
@@ -666,6 +668,16 @@ static OPTION_DESC Options_IPA[] = {
 	  0, 0, UINT32_MAX, &IPA_Enable_Struct_Opt, NULL,
 #endif
 	  "Enable IPA struct optimizations"},
+
+#ifdef TARG_X8664
+      { OVK_UINT32, OV_INTERNAL,	FALSE, "global_as_local",	"",
+	1, 0, UINT32_MAX, &IPA_Enable_Global_As_Local, NULL,
+	"Enable global-as-local optimizations"},
+#else
+      {OVK_UINT32, OV_INTERNAL,	FALSE, "global_as_local",	"",
+       0, 0, UINT32_MAX, &IPA_Enable_Global_As_Local, NULL,
+       "Enable global-as-local optimizations"},
+#endif      
     /* The following option is temporary, and should be removed soon */
     { OVK_UINT32, OV_INTERNAL,	FALSE, "update_struct",	"",
 	  0, 0, UINT32_MAX, &IPA_Update_Struct, NULL,
