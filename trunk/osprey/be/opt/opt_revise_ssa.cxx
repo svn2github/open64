@@ -269,6 +269,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld_cr(CODEREP *cr)
       _symbols_to_revise->Union1D(idx);
       AUX_STAB_ENTRY *aux = _opt_stab->Aux_stab_entry(idx);
       aux->Points_to()->Set_expr_kind(EXPR_IS_ADDR);
+      aux->Points_to()->Set_ofst_kind(OFST_IS_FIXED);
       aux->Points_to()->Set_named();
 
       cr->Set_scalar_aux_id(idx);
@@ -389,6 +390,7 @@ OPT_REVISE_SSA::Find_scalars_from_lowering_bitfld(void)
 	  _symbols_to_revise->Union1D(idx);
 	  AUX_STAB_ENTRY *aux = _opt_stab->Aux_stab_entry(idx);
 	  aux->Points_to()->Set_expr_kind(EXPR_IS_ADDR);
+	  aux->Points_to()->Set_expr_kind(OFST_IS_FIXED);
 	  aux->Points_to()->Set_named();
 
 	  lhs->Set_scalar_aux_id(idx);
@@ -483,6 +485,7 @@ OPT_REVISE_SSA::Find_scalars_from_lda_iloads(CODEREP *cr)
     _symbols_to_revise->Union1D(idx);
     AUX_STAB_ENTRY *aux = _opt_stab->Aux_stab_entry(idx);
     aux->Points_to()->Set_expr_kind(EXPR_IS_ADDR);
+    aux->Points_to()->Set_ofst_kind(OFST_IS_FIXED);
     aux->Points_to()->Set_named();
 
     cr->Set_scalar_aux_id(idx);
@@ -592,6 +595,7 @@ OPT_REVISE_SSA::Find_scalars_from_lda_indirects(void)
 	  _symbols_to_revise->Union1D(idx);
 	  AUX_STAB_ENTRY *aux = _opt_stab->Aux_stab_entry(idx);
 	  aux->Points_to()->Set_expr_kind(EXPR_IS_ADDR);
+	  aux->Points_to()->Set_expr_kind(OFST_IS_FIXED);
 	  aux->Points_to()->Set_named();
 
 	  lhs->Set_scalar_aux_id(idx);
