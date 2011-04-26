@@ -1036,6 +1036,19 @@ ConstraintGraphSolve::postProcessPointsTo()
   }
 }
 
+// give a src points to, and its points to qual and edge qual
+// exclude the src points to from dest points to set.
+void 
+ConstraintGraphSolve::Exclude(PointsTo &src, CGEdgeType et, CGEdgeQual aq, 
+                                CGEdgeQual eq, bool cs, PointsTo &dest)
+{
+  CGEdgeQual targetqual = qualMap(et, aq, eq, cs);
+  if (targetqual == CQ_NONE)
+    return;
+  else
+    dest.setDiff(src);
+}
+
 void
 ConstraintGraph::addEdgesToWorkList(ConstraintGraphNode *node)
 {

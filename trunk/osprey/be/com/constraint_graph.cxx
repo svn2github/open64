@@ -492,6 +492,8 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   // Set the flags
   ST_SCLASS storage_class = ST_sclass(st);
   if (storage_class == SCLASS_FSTATIC ||
+      (storage_class == SCLASS_PSTATIC &&
+       ST_IDX_level(st_idx) == GLOBAL_SYMTAB) ||
       storage_class == SCLASS_COMMON ||
       storage_class == SCLASS_UGLOBAL ||
       storage_class == SCLASS_DGLOBAL ||
@@ -503,8 +505,10 @@ StInfo::StInfo(ST_IDX st_idx, MEM_POOL *memPool)
   if (ST_class(st) == CLASS_FUNC)
     addFlags(CG_ST_FLAGS_FUNC);
 
-  if (ST_class(st) == CLASS_PREG)
+  if (ST_class(st) == CLASS_PREG) {
     addFlags(CG_ST_FLAGS_PREG);
+    maxOffsets(0);
+  }
 
   // Globals are treated context-insensitive
   if (checkFlags(CG_ST_FLAGS_GLOBAL))
@@ -2920,6 +2924,15 @@ ConstraintGraph::getCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
     }
     si->incrNumOffsets();
   }
+  else {
+    // record preg has how many offset.
+    // recomrd max preg number in maxOffsets
+    si->incrNumOffsets();
+    Is_True(offset % CG_PREG_SCALE == 0, ("incorrect offset\n"));
+    if(offset > si->maxOffsets()*CG_PREG_SCALE) {
+        si->maxOffsets(offset/CG_PREG_SCALE);
+    }
+  }
 
   cgNode = CXX_NEW(ConstraintGraphNode(cg_st_idx, offset, this), _memPool);
 
@@ -2960,6 +2973,15 @@ ConstraintGraph::checkCGNode(CG_ST_IDX cg_st_idx, INT64 offset)
   if (cgIter != _cgNodeToIdMap.end())
     return cgIter->first;
   return NULL;
+}
+
+bool
+ConstraintGraph::nodeInGraph(ConstraintGraphNode* node)
+{
+  CGNodeToIdMapIterator cgIter = _cgNodeToIdMap.find(node);
+  if (cgIter != _cgNodeToIdMap.end())
+    return true;
+  return false;
 }
 
 PointsTo &
@@ -3150,6 +3172,17 @@ StInfo::collapse()
     firstOffset()->nextOffset()->collapse(firstOffset());
     firstOffset(firstOffset()->nextOffset());
     firstOffset()->nextOffset(NULL);
+  }
+}
+
+bool 
+StInfo::isCollapse()
+{
+  if (checkFlags(CG_ST_FLAGS_MODRANGE)) {
+    return modRange()->mod() == 1;
+  }
+  else {
+    return mod()==1;
   }
 }
 
@@ -3428,6 +3461,49 @@ ConstraintGraphNode::deleteRevPointsToSet()
     p = np;
   }
   _revPointsToList = NULL;
+}
+
+void 
+ConstraintGraphNode::deleteDiffPointsToSet()
+{
+  PointsToList *p = _diffPointsToList;
+  PointsToList *np;
+  while (p) {
+    np = p->next();
+    CXX_DELETE(p, cg()->memPool());
+    p = np;
+  }
+  _diffPointsToList = NULL;
+}
+
+// union node's points to, to a single set.
+void 
+ConstraintGraphNode::UnionPointsToSet(PointsTo &unionPts)
+{
+  for ( PointsToIterator pti(this); pti != 0; ++pti ) {
+    unionPts.setUnion(*pti);
+  }
+}
+
+void 
+ConstraintGraphNode::copyPtsToDiff()
+{
+  for ( PointsToIterator pti(this); pti != 0; ++pti ) {
+    PointsTo &diffPts = _getPointsTo(pti.qual(), PtsDiff);
+    diffPts = *pti;
+  }
+}
+
+void 
+ConstraintGraphNode::unionDiffToPts() 
+{
+  for ( PointsToIterator pti(this); pti != 0; ++pti ) {
+    PointsTo *diffPts = _findPointsTo(pti.qual(), PtsDiff);
+    if ( diffPts != NULL ) {
+      PointsTo &pts = *pti;
+      pts.setUnion(*diffPts);
+    }
+  }
 }
 
 void
@@ -3973,6 +4049,29 @@ ConstraintGraph::updateCloneStIdxMap(ST_IDX old_clone_idx,
   }
 }
 
+ST_IDX
+ConstraintGraph::getCloneOirgStIdx(ST_IDX clone_idx)
+{
+  for ( hash_map<ST_IDX, ST_IDX>::iterator iter = origToCloneStIdxMap.begin();
+        iter != origToCloneStIdxMap.end(); iter++ ) {
+    ST_IDX orig_st_idx  = iter->first;
+    ST_IDX clone_st_idx = iter->second;
+    if ( clone_st_idx == clone_idx ) {
+      return orig_st_idx;
+    }
+  }
+  return ST_IDX_ZERO;
+}
+
+ST_IDX 
+ConstraintGraph::getOrigCloneStIdx(ST_IDX orig_idx)
+{
+  hash_map<ST_IDX, ST_IDX>::iterator iter = origToCloneStIdxMap.find(orig_idx);
+  if ( iter != origToCloneStIdxMap.end() )
+    return iter->second;
+  return ST_IDX_ZERO;
+}
+
 void
 ConstraintGraph::updateOrigToCloneStIdxMap(ST_IDX orig_st_idx,
                                            ST_IDX clone_st_idx)
@@ -4011,6 +4110,56 @@ ConstraintGraphNode::copy(ConstraintGraphNode *node)
   //_maxAccessSize = node->_maxAccessSize;
 }
 
+
+// copy node's points to set to this.
+void 
+ConstraintGraphNode::copyPointsTo(ConstraintGraphNode *node)
+{
+  if ( repParent() != NULL && repParent() != this )
+    return;
+  
+  _pointsToList = _revPointsToList = NULL;
+  // copy node's points_to to this.
+  // add revPointsTo for the pointed node
+  for ( PointsToIterator pti(node); pti != 0; ++pti ) {
+    CGEdgeQual qual = pti.qual();
+    PointsTo &pointsTo = _getPointsTo(qual, Pts);
+    pointsTo = *pti;
+    for ( PointsTo::SparseBitSetIterator iter(&pointsTo,0); iter != 0; iter++ ) {
+      CGNodeId nodeId = *iter;
+      ConstraintGraph::cgNode(nodeId)->_addRevPointsTo(id(), qual);
+    }
+  }
+
+  // for nodes which points to input node, also points to this
+  for ( PointsToIterator pti(node, PtsRev); pti != 0; ++pti ) {
+    CGEdgeQual qual = pti.qual();
+    PointsTo &pointsTo = _getPointsTo(qual, PtsRev);
+    pointsTo = *pti;
+    for ( PointsTo::SparseBitSetIterator iter(&pointsTo,0); iter != 0; iter++ ) {
+      CGNodeId nodeId = *iter;
+      ConstraintGraph::cgNode(nodeId)->_addPointsTo(id(), qual);
+    }
+  }
+}
+
+
+// exclude nodes in exclude sets from this node's points to set
+void 
+ConstraintGraphNode::excludePointsTo(PointsTo &exclude)
+{
+  for ( PointsTo::SparseBitSetIterator iter(&exclude,0); iter != 0; iter++ ) {
+    CGNodeId nodeId = *iter;
+    ConstraintGraphNode *ptNode = ConstraintGraph::cgNode(nodeId);
+    for ( PointsToIterator pti(this); pti != 0; ++pti ) {
+      if(_checkPointsTo(nodeId, pti.qual())) {
+        removePointsTo(nodeId, pti.qual());
+        ptNode->removeRevPointsTo(id(), pti.qual());
+      }
+    }
+  }
+}
+
 // Create a new ConstraintGraphNode with new_cg_st_idx, but the old node's id
 // and offset. The new node is added to this CG using the new_cg_st_idx.
 ConstraintGraphNode *
@@ -4031,6 +4180,22 @@ ConstraintGraph::cloneCGNode(ConstraintGraphNode *node, CG_ST_IDX new_cg_st_idx)
             node->cg()->name(), printCGStIdx(newCGNode->cg_st_idx(), buf2, 128),
             newCGNode->offset(), name());
   return newCGNode;
+}
+
+
+// create a new node id for node, update maps use node id.
+void 
+ConstraintGraph::newNodeId(ConstraintGraphNode *node)
+{
+#ifdef Is_True_On
+  CGNodeToIdMapIterator cgIter = _cgNodeToIdMap.find(node);
+  Is_True(cgIter != _cgNodeToIdMap.end(), ("node not in current graph\n"));
+#endif
+  
+  node->setId(nextCGNodeId);
+  _cgNodeToIdMap[node] = nextCGNodeId;
+  cgIdToNodeMap[nextCGNodeId] = node;
+  nextCGNodeId++;
 }
 
 // Remap node to this CG using new cg_st_idx
