@@ -1319,6 +1319,14 @@ Configure (void)
     Aggregate_Alignment = 16;
   if ( !Vcast_Complex_Set && Opt_Level > 1 )
     Vcast_Complex = TRUE;
+  if (Opt_Level > 2) {
+    // 
+    // Enabling malloc_algorithm at O3  
+    // 
+    if (!OPT_Malloc_Alg_Set)
+        OPT_Malloc_Alg = 1;
+  }
+
 #endif
 }
 
@@ -1634,7 +1642,8 @@ Configure_Source ( char	*filename )
 #if defined(TARG_IA64) || defined(TARG_LOONGSON)
     Roundoff_Level = ROUNDOFF_ASSOC;
 #else
-    Roundoff_Level = ROUNDOFF_SIMPLE;
+    // Enabling OPT:RO=2 at O3
+    Roundoff_Level = ROUNDOFF_ASSOC;
 #endif
 #endif
   }
