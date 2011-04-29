@@ -2912,11 +2912,6 @@ ETABLE::Bottom_up_cr(STMTREP *stmt, INT stmt_kid_num, CODEREP *cr,
 	}
 	if (cr->Opr() == OPR_ILOADX)
 	  Warn_todo("ETABLE::Bottom_up_cr: Indexed load.");
-#ifdef TARG_SL
-        if (cr->Dtyp() == MTYPE_I2 && cr->Dsctyp() == MTYPE_I2) {
-            cr->Set_dtyp(MTYPE_I4);
-        } 
-#endif        
 	if (!is_istore) {
 	  CODEREP *ivar_vsym = cr->Get_ivar_vsym();
 	  if (cr->Ilod_base()->Is_non_volatile_terminal(Opt_stab()) &&

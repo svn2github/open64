@@ -515,8 +515,10 @@ I-fini%s		;		CC	ld	"-fini %s"
         "Set CPU type"
 -n32    toggle(&abi,ABI_N32);   ALL     PFA     "-n32" "-TARG:abi=n32"
         "Compile for 32-bit ABI"
--mips4  toggle(&isa,ISA_MIPS4);         ALL     as      "-mips4" "-TARG:isa=mips4"
+-mips4  toggle(&isa,ISA_MIPS4);         ALL     as      "-mips4" 
         "compile for mips4 instruction set"
+-mips64  toggle(&isa,ISA_MIPS64);         ALL     as      "-mips64" 
+        "compile for mips64 instruction set"
 -sl1_dsp   toggle(&use_sl1_dsp,TRUE); 	ALL	 NONE	"-CG:dsp_thread=on -TARG:processor=sl1_dsp -march=sl1"
 	""
 -sl1_pcore toggle(&use_sl1_pcore,TRUE);	ALL  NONE   "-TARG:processor=sl1_pcore -march=sl1"
@@ -1297,10 +1299,12 @@ I-u%s		;		Cc	ld	"-u %s"
 -fcond-mismatch	;		Cc	f	self
 	""
 #ifdef KEY
+#ifndef TARG_SL
 -fcxx-openmp	toggle(&fcxx_openmp,1);		Cc	NONE	self -LANG:cxx_openmp=on
 	"Do OpenMP processing under C++"
 -fno-cxx-openmp	toggle(&fcxx_openmp,0);		Cc	NONE	self -LANG:cxx_openmp=off
 	"Do not handle OpenMP under C++"
+#endif
 #endif
 -fasm	;		Cc	f	self
 	""

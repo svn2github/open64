@@ -249,6 +249,9 @@ extern INT32 WOPT_Enable_Simple_If_Conv; /* enable simple if-conversion at CFG b
 extern INT32 WOPT_Enable_If_Conv_Limit; /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 extern BOOL WOPT_Enable_If_Conv_For_Istore; /* if-conversion is applied if lhs is istore */
+#if defined(TARG_SL)
+extern BOOL WOPT_Enable_If_Conv_For_Iload;  /* if-conversion is applied if rhs is iload */
+#endif
 extern char *WOPT_Enable_Skip;
 extern struct option_list *WOPT_Skip;	/* Skip option list */
 extern struct skiplist *WOPT_Skip_List;	/* Preprocessed skip list */

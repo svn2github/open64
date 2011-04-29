@@ -1293,7 +1293,11 @@ WGEN_Start_Function(gs_t fndecl)
 	   (gs_decl_lang_specific (fndecl) &&
 	    gs_decl_implicit_instantiation (fndecl) &&
 	    gs_decl_namespace_scope_p (fndecl))))
+#ifndef TARG_SL
 	    eclass = EXPORT_INTERNAL; // bug 7550
+#else
+           eclass = EXPORT_PREEMPTIBLE;
+#endif
       else if (gs_tree_public(fndecl) || gs_decl_weak(fndecl)) {
         if (!gs_decl_declared_inline_p(fndecl)) {
           // global non-inline function has to be preemptible
@@ -1321,7 +1325,11 @@ WGEN_Start_Function(gs_t fndecl)
             eclass = EXPORT_PREEMPTIBLE;
           }
           else {
+#ifndef TARG_SL
             eclass = EXPORT_HIDDEN;
+#else 
+            eclass = EXPORT_PREEMPTIBLE;
+#endif
           }
 	} 
       }
