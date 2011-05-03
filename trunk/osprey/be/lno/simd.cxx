@@ -122,7 +122,11 @@ static INT Last_Vectorizable_Loop_Id = 0;
 
 static BOOL Too_Few_Iterations(INT64 iters, WN *body)
 {
-   if(iters < Iteration_Count_Threshold) //watch performance
+   UINT32 iter_threshold = Iteration_Count_Threshold;
+   if(LNO_Iter_threshold)
+     iter_threshold = LNO_Iter_threshold;
+
+   if(iters < iter_threshold) //watch performance
     return TRUE;
    if(iters >= 16) //should always be fine, not too few
     return FALSE;
@@ -464,6 +468,7 @@ static BOOL Is_Under_Array(WN *wn)
  * (2) If the SIMD operand size is < 8 bytes.
  */
 static BOOL Simd_Benefit (WN* wn) {
+  int store_granular_size = (LNO_Iter_threshold) ? 8 : 4;
 
   if (LNO_Run_Simd == 0)
     return FALSE;
@@ -492,7 +497,7 @@ static BOOL Simd_Benefit (WN* wn) {
     return TRUE;
 
   if (OPCODE_is_store(WN_opcode(wn)) &&
-      (MTYPE_byte_size(WN_desc(wn)) < 8 || //bug 5582 stid is fine
+      (MTYPE_byte_size(WN_desc(wn)) <= store_granular_size || //bug 5582 stid is fine
        MTYPE_is_complex(WN_desc(wn)) || opr == OPR_STID))
     return TRUE;
 
@@ -5568,6 +5573,7 @@ static INT Simd(WN* innerloop)
    if (simd_op_last_in_loop[i])
       Simd_Finalize_Loops(innerloop, remainderloop, vect, reduction_node);
   }
+  dli->Loop_Vectorized = TRUE;
  }
  MEM_POOL_Pop(&SIMD_default_pool);
 
@@ -5595,8 +5601,11 @@ static void Simd_Walk(WN* wn) {
   else if (opc==OPC_DO_LOOP) {
     if (Do_Loop_Is_Good(wn) && Do_Loop_Is_Inner(wn) && !Do_Loop_Has_Calls(wn)
 	&& !Do_Loop_Has_Gotos(wn)) {
-      if (Simd(wn))
+      if (Simd(wn)) {
         Simd_Align = TRUE;
+        WN *loop_info = WN_do_loop_info(wn);
+        WN_Set_Vectorized(loop_info);
+      }
     } else
       Simd_Walk(WN_do_body(wn));
   } else if (opc==OPC_BLOCK)
