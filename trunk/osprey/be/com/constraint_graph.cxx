@@ -2128,6 +2128,11 @@ ConstraintGraph::handleMemcopy(CallSite *cs)
 
   ConstraintGraphNode *p1Node = cgNode(firstParmId);
   ConstraintGraphNode *p2Node = cgNode(secondParmId);
+  // this can happen when configure generate a file 
+  // with dummy memcpy, memmove call
+  if (p1Node == NULL || p2Node == NULL) {
+    return;
+  }
   ConstraintGraphNode *tmp = genTempCGNode();
 
   // Now, we model the semantics by inserting a read edge from
