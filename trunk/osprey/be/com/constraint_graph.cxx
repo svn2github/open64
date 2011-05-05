@@ -1036,8 +1036,8 @@ ConstraintGraph::processInitv(INITV_IDX initv_idx, PointsTo &pts)
         if (ST_is_initialized(*base_st) &&
               (_processedInitVals.find(ST_st_idx(base_st)) ==
                _processedInitVals.end())) {
-          processInitValues(ST_st_idx(base_st));
           _processedInitVals.insert(ST_st_idx(base_st));
+          processInitValues(ST_st_idx(base_st));
         }
         node = getCGNode(CG_ST_st_idx(base_st), base_offset);
       }
@@ -1182,8 +1182,8 @@ ConstraintGraph::processInitv(TY &ty, INITV_IDX initv_idx, UINT32 startOffset,
            _processedInitVals.end())) {
         if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
           fprintf(stderr, "Processing symbol value...\n");
-        processInitValues(ST_st_idx(base_st));
         _processedInitVals.insert(ST_st_idx(base_st));
+        processInitValues(ST_st_idx(base_st));
       }
       if (Get_Trace(TP_ALIAS,NYSTROM_CG_BUILD_FLAG))
         fprintf(stderr, "End processing symbol value...\n");
@@ -2548,8 +2548,8 @@ ConstraintGraph::getCGNode(WN *wn)
   // If this is the first time we encounter this symbol/node
   if (ST_is_initialized(*base_st) && 
       _processedInitVals.find(ST_st_idx(base_st)) == _processedInitVals.end()) {
-    processInitValues(ST_st_idx(base_st));
     _processedInitVals.insert(ST_st_idx(base_st));
+    processInitValues(ST_st_idx(base_st));
   }
 
   n = getCGNode(CG_ST_st_idx(base_st), base_offset);
