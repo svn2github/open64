@@ -18,8 +18,7 @@
 */
 
 #ifndef simd_util_INCLUDED
-    #error simd_util.h is for internal use only
-#endif
+#define simd_util_INCLUDED
 
 #include <list>
 
@@ -194,3 +193,5 @@ SIMD_EXPR_MGR::Get_Min_Vect_Len (void) const {
     Is_True (_min_vect_len != 0, ("_min_vect_len isn't set properly"));
     return _min_vect_len; 
 }
+
+#endif /* simd_util_INCLUDED */

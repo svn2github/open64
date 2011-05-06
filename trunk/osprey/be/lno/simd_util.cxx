@@ -23,8 +23,6 @@
 #include "cxx_memory.h"
 #include "lwn_util.h"
 #include "ff_utils.h"
-
-#define simd_util_INCLUDED
 #include "simd_util.h"
 
 /////////////////////////////////////////////////////////////////////////////

@@ -90,8 +90,6 @@ static char *rcs_id = "$Source: be/lno/SCCS/s.simd.cxx $ $Revision: 1.244 $";
 #include "lego_util.h"             // for AWN_StidIntoSym, AWN_Add
 #include "minvariant.h"            // for Minvariant_Removal
 #include "prompf.h"
-
-#define simd_util_INCLUDED
 #include "simd_util.h"
 
 #define ABS(a) ((a<0)?-(a):(a))
