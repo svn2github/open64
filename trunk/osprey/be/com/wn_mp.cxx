@@ -2766,7 +2766,9 @@ is inheriting pu_recursive OK?
     // Current_Map_Tab is update to PU_Info_maptab(parallel_pu) in PU_Info_maptab
     Is_True(PU_Info_maptab(parallel_pu) == Current_Map_Tab,
         ("parallel_pu's PU's maptab isn't parallel_pu\n"));
-    WN_MAP_Set_dont_copy(aa->aliasTagMap(), FALSE);
+    Current_Map_Tab = pmaptab;
+    WN_MAP_Set_dont_copy(aa->aliasTagMap(), TRUE);
+    Current_Map_Tab = PU_Info_maptab(parallel_pu);
   }
 
     // use hack to save csymtab using parallel_pu, so we can restore it
