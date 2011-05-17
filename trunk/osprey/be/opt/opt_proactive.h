@@ -242,8 +242,8 @@ public:
   SC_NODE * Next_sibling_of_type(SC_TYPE);
   SC_NODE * Next_in_tree();
   SC_NODE * Get_nesting_if(SC_NODE *);
-  SC_NODE * Get_nesting_if(BOOL *);
-  SC_NODE * Get_outermost_nesting_if(int *);
+  std::pair<SC_NODE *, bool> Get_nesting_if();
+  std::pair<SC_NODE *, int> Get_outermost_nesting_if();
   SC_NODE * First_kid_of_type(SC_TYPE);
   BOOL Contains(BB_NODE *);
   BB_NODE * Then();
@@ -652,7 +652,7 @@ private:
     void Init_hash();
     void Remove_adjacent_loops(SC_NODE *);
     BOOL Has_adjacent_if(SC_NODE *);
-    BOOL Has_same_nesting_level(SC_NODE *, int *);
+    std::pair<bool, int> Has_same_nesting_level(SC_NODE *);
     int Get_level_from_val(IF_CMP_VAL val);
     void Do_lock_step_normalize(SC_NODE *, SC_NODE *, UINT64);
     void Do_normalize(SC_NODE *, UINT64);

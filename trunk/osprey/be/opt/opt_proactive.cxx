@@ -270,50 +270,49 @@ SC_NODE::Get_nesting_if(SC_NODE * sc_bound)
   return ret_val;
 }
 
-// Get closest nesting SC_IF. If this node is in an else-path, return TRUE in 'is_else'.
-SC_NODE *
-SC_NODE::Get_nesting_if(BOOL * is_else)
+// Get closest nesting SC_IF and query whether this node is in an else-path.
+std::pair<SC_NODE *, bool>
+SC_NODE::Get_nesting_if()
 {
   SC_NODE * tmp = this->Parent();
+  BOOL is_else = FALSE;
 
   while (tmp) {
-    if (is_else) {
-      switch (tmp->Type()) {
-      case SC_ELSE:
-	*is_else = TRUE;
-	break;
-      case SC_THEN:
-	*is_else = FALSE;
-	break;
-      default:
+    switch (tmp->Type()) {
+    case SC_ELSE:
+      is_else = TRUE;
+      break;
+    case SC_THEN:
+      is_else = FALSE;
+      break;
+    default:
 	;
-      }
     }
 
     if (tmp->Type() == SC_IF)
-      return tmp;
+      return std::pair<SC_NODE *, bool>(tmp, is_else);
     tmp = tmp->Parent();
   }
-  return NULL;
+  return std::pair<SC_NODE *, bool> (NULL, is_else);
 }
 
-// Get outermost nesting SC_IF, return number of nesting if-conditions in 'level'.
-SC_NODE *
-SC_NODE::Get_outermost_nesting_if(int * level)
+// Get outermost nesting SC_IF and number of nesting if-conditions.
+std::pair<SC_NODE *, int>
+SC_NODE::Get_outermost_nesting_if()
 {
-  SC_NODE * sc_if = Get_nesting_if((BOOL *) NULL);
+  std::pair<SC_NODE *, bool> p_ret = Get_nesting_if();
+  SC_NODE * sc_if = p_ret.first;
   SC_NODE * sc_out = NULL;
   int count = 0;
 
   while (sc_if) {
     sc_out = sc_if;
-    sc_if = sc_if->Get_nesting_if((BOOL *) NULL);
+    p_ret = sc_if->Get_nesting_if();
+    sc_if = p_ret.first;
     count++;
   }
 
-  if (level)
-    *level = count;
-  return sc_out;
+  return std::pair<SC_NODE *, int> (sc_out, count);
 }
 
 // Return closest next sibling SC_NODE of the given type
@@ -10430,8 +10429,10 @@ PRO_LOOP_EXT_TRANS::Hash_if_conds(SC_NODE * sc)
 {
   if (sc->Type() == SC_LOOP) {
     sc->Set_next(NULL);
-    BOOL is_else;
-    SC_NODE * sc_if = sc->Get_nesting_if(&is_else);
+    std::pair<SC_NODE *, bool> p_ret = sc->Get_nesting_if();
+    SC_NODE * sc_if = p_ret.first;
+    BOOL is_else = p_ret.second;
+    
     IF_CMP_VAL val = 0;
     int level = 0;
 
@@ -10449,11 +10450,13 @@ PRO_LOOP_EXT_TRANS::Hash_if_conds(SC_NODE * sc)
 
       if (wn_cond)
 	Get_val(wn_cond, &val);
-
+      
       if (val == 0) 
 	break;
       
-      sc_if = sc_if->Get_nesting_if(&is_else);
+      p_ret = sc_if->Get_nesting_if();
+      sc_if = p_ret.first;
+      is_else = p_ret.second;
       level++;
     }
     
@@ -10639,12 +10642,15 @@ PRO_LOOP_EXT_TRANS::Remove_adjacent_loops(SC_NODE * sc)
 BOOL
 PRO_LOOP_EXT_TRANS::Has_adjacent_if(SC_NODE * sc)
 {
+  std::pair<SC_NODE *, int> p_ret;
   while (sc) {
     SC_NODE * sc_next = sc->Next();
-    SC_NODE * sc_outer1 = sc->Get_outermost_nesting_if(NULL);
+    p_ret = sc->Get_outermost_nesting_if();
+    SC_NODE * sc_outer1 = p_ret.first;
   
     if (sc_next) {
-      SC_NODE * sc_outer2 = sc_next->Get_outermost_nesting_if(NULL);
+      p_ret = sc_next->Get_outermost_nesting_if();
+      SC_NODE * sc_outer2 = p_ret.first;
       if (sc_outer1->Next_sibling() == sc_outer2)
 	return TRUE;
     }
@@ -10655,29 +10661,27 @@ PRO_LOOP_EXT_TRANS::Has_adjacent_if(SC_NODE * sc)
 }
 
 // Iterate nodes in the list threaded by the 'next' field of 'sc', check whether
-// their nesting if-conditions have the same level, if yes, return it in 'level'.
-BOOL
-PRO_LOOP_EXT_TRANS::Has_same_nesting_level(SC_NODE * sc, int * level)
+// their nesting if-conditions have the same level, if yes, also return the level.
+std::pair<bool, int>
+PRO_LOOP_EXT_TRANS::Has_same_nesting_level(SC_NODE * sc)
 {
   int level1 ;
-  sc->Get_outermost_nesting_if(&level1);
+  std::pair<SC_NODE *, int> p_ret = sc->Get_outermost_nesting_if();
+  level1 = p_ret.second;
 
   SC_NODE * sc_next = sc->Next();
   while (sc_next) {
     int level2;
-    sc_next->Get_outermost_nesting_if(&level2);
+    p_ret = sc_next->Get_outermost_nesting_if();
+    level2 = p_ret.second;
+
     if (level1 != level2) {
-      if (level)
-	*level = 0;
-      return FALSE;
+      return std::pair<bool, int> (FALSE, 0);
     }
     sc_next = sc_next->Next();
   }
   
-  if (level)
-    *level = level1;
-  
-  return TRUE;
+  return std::pair<bool, int>(TRUE, level1);
 }
 
 // Given 'va', get number of nesting levels it represents.
@@ -11085,7 +11089,8 @@ PRO_LOOP_EXT_TRANS::Do_lock_step_normalize(SC_NODE * sc1, SC_NODE * sc2, UINT64 
 void
 PRO_LOOP_EXT_TRANS::Do_normalize(SC_NODE * sc, UINT64 action)
 {
-  SC_NODE * sc_if = sc->Get_outermost_nesting_if(NULL);
+  std::pair<SC_NODE *, int> p_ret = sc->Get_outermost_nesting_if();
+  SC_NODE * sc_if = p_ret.first;
   if (!Is_invariant(sc, sc_if->Head(), 0))
     return;
 
@@ -11121,7 +11126,8 @@ PRO_LOOP_EXT_TRANS::Do_normalize(SC_NODE * sc, UINT64 action)
     if (!Do_if_cond_dist(sc_if))
       return;
 
-    sc_if = sc->Get_outermost_nesting_if(NULL);
+    p_ret = sc->Get_outermost_nesting_if();
+    sc_if = p_ret.first;
     Do_canon(sc_if, sc, HEAD_DUP | TAIL_DUP);
 
     sc_if = sc->Get_node_at_dist(sc_if, dist);
@@ -11135,7 +11141,8 @@ PRO_LOOP_EXT_TRANS::Do_normalize(SC_NODE * sc, UINT64 action)
 UINT64
 PRO_LOOP_EXT_TRANS::Encode_tree_height_reduction(SC_NODE * sc)
 {
-  SC_NODE * sc_iter = sc->Get_nesting_if((BOOL *) NULL);
+  std::pair<SC_NODE *, bool> p_ret = sc->Get_nesting_if();
+  SC_NODE * sc_iter = p_ret.first;
   UINT64 word = 0;
   while (sc_iter) {
     IF_CMP_VAL val = 0;
@@ -11153,7 +11160,8 @@ PRO_LOOP_EXT_TRANS::Encode_tree_height_reduction(SC_NODE * sc)
 	shift_cnt--;
       }
     }
-    sc_iter = sc_iter->Get_nesting_if((BOOL *) NULL);
+    p_ret = sc_iter->Get_nesting_if();
+    sc_iter = p_ret.first;
   }
   return word;
 }
@@ -11167,7 +11175,8 @@ PRO_LOOP_EXT_TRANS::Encode_tree_height_reduction(SC_NODE * sc)
 BOOL
 PRO_LOOP_EXT_TRANS::Is_candidate(SC_NODE * outer, SC_NODE * inner)
 {
-  SC_NODE * sc_n1 = inner->Get_nesting_if((BOOL *) NULL);
+  std::pair<SC_NODE *, bool> p_ret = inner->Get_nesting_if();
+  SC_NODE * sc_n1 = p_ret.first;
   SC_NODE * sc_iter = sc_n1;
   
   while (sc_iter && (sc_iter != outer)) {
@@ -11195,13 +11204,16 @@ PRO_LOOP_EXT_TRANS::Is_candidate(SC_NODE * outer, SC_NODE * inner)
 	
 	if (sc_cur == sc_iter)
 	  break;
-	sc_cur = sc_cur->Get_nesting_if((BOOL *) NULL);
+
+	p_ret = sc_cur->Get_nesting_if();
+	sc_cur = p_ret.first;
       }
       
       sc_tmp = sc_tmp->Prev_sibling();
     }
     
-    sc_iter = sc_iter->Get_nesting_if((BOOL *) NULL);
+    p_ret = sc_iter->Get_nesting_if();
+    sc_iter = p_ret.first;
   }
 
   return TRUE;
@@ -11234,9 +11246,12 @@ PRO_LOOP_EXT_TRANS::Normalize(SC_NODE * sc)
 	  Remove_adjacent_loops(sc);
 	  SC_NODE * sc_iter = sc->Next();
 	  UINT64 word = Encode_tree_height_reduction(sc);
+	  std::pair<SC_NODE *, int> p_level;
 	  while (sc_iter) {
 	    int i_level = 0;
-	    SC_NODE * sc_if = sc_iter->Get_outermost_nesting_if(&i_level);
+	    p_level = sc_iter->Get_outermost_nesting_if();
+	    SC_NODE * sc_if = p_level.first;
+	    i_level = p_level.second;
 	    if (i_level == v_level) {
 	      if_list->Push(sc_if);
 	      loop_list->Push(sc_iter);
@@ -11261,30 +11276,36 @@ PRO_LOOP_EXT_TRANS::Normalize(SC_NODE * sc)
 	    IF_CMP_VAL next_val = (val >> MAX_IF_CMP_BITS);
 	    if (next_val) {
 	      SC_NODE * cand = (SC_NODE *) _val_to_sc_map->Get_val((POINTER) next_val);
-	      int level;
+
 	      // Limit it to the case that all nodes in the list linked by the 'next'
 	      // field of 'cand' has the same nesting level.
-	      if (cand && Has_same_nesting_level(cand, &level)) {
-		SC_NODE * outermost = cand->Get_outermost_nesting_if(NULL);
-		while (sc) {
-		  SC_NODE * sc_if = sc->Get_outermost_nesting_if(NULL);
-		  if (sc_if->Parent() == outermost->Parent()) {
-		    if_list->Push(sc_if);
-		    loop_list->Push(sc);
-		    // Construct an action word to encode the portion of if-condition tree
-		    // that needs a reduction in tree-height.
-		    UINT64 word = 0;
-		    if (i != level) {
-		      word = Encode_tree_height_reduction(cand);
+	      if (cand) {
+		std::pair<bool, int> p_level = Has_same_nesting_level(cand);
+		if (p_level.first) {
+		  int level = p_level.second;
+		  std::pair<SC_NODE *, int> p_ret = cand->Get_outermost_nesting_if();
+		  SC_NODE * outermost = p_ret.first;
+		  while (sc) {
+		    p_ret = sc->Get_outermost_nesting_if();
+		    SC_NODE * sc_if = p_ret.first;
+		    if (sc_if->Parent() == outermost->Parent()) {
+		      if_list->Push(sc_if);
+		      loop_list->Push(sc);
+		      // Construct an action word to encode the portion of if-condition tree
+		      // that needs a reduction in tree-height.
+		      UINT64 word = 0;
+		      if (i != level) {
+			word = Encode_tree_height_reduction(cand);
+		      }
+		      word |= ( 1 << MAX_IF_CMP_LEVEL);
+		      action_list->Push(word);
+		      val_list->Push(next_val);
+		      // Freeze 'cand' for transformations.
+		      if (!freeze_list->Contains(cand))
+			freeze_list->Push(cand);
 		    }
-		    word |= ( 1 << MAX_IF_CMP_LEVEL);
-		    action_list->Push(word);
-		    val_list->Push(next_val);
-		    // Freeze 'cand' for transformations.
-		    if (!freeze_list->Contains(cand))
-		      freeze_list->Push(cand);
+		    sc = sc->Next();
 		  }
-		  sc = sc->Next();
 		}
 	      }
 	    }
