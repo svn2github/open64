@@ -2065,6 +2065,7 @@ get_expr_operands (tree stmt, tree *expr_p, int flags)
     case CONST_DECL:
     case OMP_PARALLEL:
     case OMP_SECTIONS:
+    case OMP_SECTION:
     case OMP_FOR:
     case OMP_SINGLE:
     case OMP_MASTER:

@@ -4876,7 +4876,7 @@ Process_Exception_Region ( WN * node, VAR_TABLE * vtab )
   case MPP_PDO:
   case MPP_PARALLEL_DO:
   case MPP_PARALLEL_REGION:
-  case MPR_TASK_REGION:
+  case MPP_TASK_REGION:
   case MPP_ORPHAN:
     break;
   default:
@@ -8794,7 +8794,6 @@ Find_Non_POD_Finalization_Code(WN *wn, WN **final_if_parent)
   return NULL;  // didn't find it
 }
 
-
 /*  Copy a tree skipping all MP pragma nodes (except CRITICAL SECTION's).  */
 /*  Copy the CG dependence graph if it exists */
 /*  Move fecc-generated finalization code for non-POD "lastprivate" vars
@@ -8837,7 +8836,7 @@ Copy_Non_MP_Tree( WN * tree )
             Current_Dep_Graph->Erase_Graph();
             Current_Dep_Graph = NULL;
             Set_PU_Info_depgraph_ptr(Current_PU_Info,Current_Dep_Graph);
-            Set_PU_Info_state(Current_PU_Info,WT_DEPGRAPH,Subsect_InMem);
+           Set_PU_Info_state(Current_PU_Info,WT_DEPGRAPH,Subsect_InMem);
 
             return result;
           }
@@ -9036,6 +9035,8 @@ Copy_Non_MP_Tree_Rec ( WN * tree , V_STACK *mp_vertices,
             REGION_new_wn(new_kid, kid);
             WN_set_region_id(kid, New_Region_Id());
             REGION_clone(new_kid, kid, NULL);
+            while (RID_type(RID_parent(rid)) == RID_TYPE_mp)
+              RID_parent(rid) = RID_parent(RID_parent(rid));
           }
 
         }
