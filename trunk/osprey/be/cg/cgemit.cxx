@@ -4531,15 +4531,6 @@ Emit_Loop_Note(BB *bb, FILE *file)
   }
 
   if (bb == head) {
-#ifdef TARG_X8664
-    if (CG_p2align) 
-      fputs ("\t.p2align 6,,7\n", file);
-    else if (CG_loop32) {
-      if (BB_innermost(bb) && (Is_Target_Barcelona() || Is_Target_Orochi())) {
-        fputs ("\t.p2align 5,,\n", file);
-      }
-    }
-#endif
     SRCPOS srcpos = BB_Loop_Srcpos(bb);
     INT32 lineno = SRCPOS_linenum(srcpos);
 
@@ -4705,6 +4696,8 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
   if (!BB_entry(bb)) {
     float fall_thru_freq = 0.0;
     float branch_in_freq = 0.0;
+    int fall_thru_preds = 0;
+    int branch_in_preds = 0;
     BBLIST *edge;
     BB *fall_thru_pred = BB_Fall_Thru_Predecessor(bb);
     FOR_ALL_BB_PREDS(bb, edge) {
@@ -4713,28 +4706,72 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
       FmtAssert(succ_edge != NULL, ("EMT_Assemble_BB: succ bb not found"));
       if (pred == fall_thru_pred) {
 	fall_thru_freq = BB_freq(pred) * BBLIST_prob(succ_edge);
+	fall_thru_preds = 1;
       } else {
 	branch_in_freq += BB_freq(pred) * BBLIST_prob(succ_edge);
+	branch_in_preds ++;
       }
     }
 
-    int max_skip_bytes = CG_p2align_max_skip_bytes;
     float branch_in_ratio = branch_in_freq / fall_thru_freq;
-    bool add_p2align = FALSE;
 
+    if (fall_thru_freq == 0.0 && branch_in_freq > 0.0)
+      branch_in_ratio = 100;
+    else if (fall_thru_freq == 0.0 && branch_in_freq == 0.0){
+      if (fall_thru_preds == 0 && branch_in_preds > 0)
+	branch_in_ratio = 0.4;
+      else 
+	branch_in_ratio = 0.0;
+    }
+    if (!(Is_Target_Barcelona() || Is_Target_Orochi() || Is_Target_Wolfdale()) || !CG_p2align)
+    {
     // bug 2191
     if (branch_in_freq > 100000000.0 &&
-	branch_in_ratio > 50.0) {
-      max_skip_bytes = 15;
-      add_p2align = TRUE;
+       branch_in_ratio > 50.0) 
+          fprintf(Asm_File, "\t.p2align 4,,\n");
+    }
+    else if (branch_in_ratio > 0.0)
+    {
+      int max_skip_bytes;
+   
+      if (CG_p2align == 2){ 
+      if (branch_in_ratio > 50.0)
+        max_skip_bytes = 31;
+      else if (branch_in_ratio > 3.5)
+        max_skip_bytes = 20;
+      else if (branch_in_ratio > 0.5)
+	max_skip_bytes = 10;
+      else if (branch_in_ratio > 0.3)
+	max_skip_bytes = 3;
+      else 
+        max_skip_bytes = 0;
+      } else if (CG_p2align == 1)
+      {
+        if(branch_in_ratio > 50.0)
+          max_skip_bytes = 31;
+        else if (branch_in_ratio > 0.5)
+          max_skip_bytes = 3;
+        else max_skip_bytes = 0;
+      }
+/*  loop head are not aligned specificially anymore, as
+ *  1. If it is the first BB of the loop, the loop head is already honored with 
+ *     high branch in rate;
+ *  2. the loop head can be placed by CFLOW-OPT in the middle of the loop code, 
+ *     when there is none biased jump on condition instructions inside. If so, 
+ *     it is not desirable to align the loop head. 
+ */      
+      if(max_skip_bytes > 0)
+      {
+        if(!Is_Target_Barcelona() && !Is_Target_Orochi() || CG_p2align != 2){
+          if (max_skip_bytes > 15)
+	    max_skip_bytes = 15;	
+          fprintf(Asm_File, "\t.p2align 4,,%d\n", max_skip_bytes);
+        }
+        else 
+          fprintf(Asm_File, "\t.p2align 5,,%d\n", max_skip_bytes);
+      }
     }
 
-    if (add_p2align ||
-	(CG_p2align_freq > 0 &&
-	  branch_in_freq > CG_p2align_freq &&
-	 branch_in_ratio > 0.5)) {
-      fprintf(Asm_File, "\t.p2align 4,,%d\n", max_skip_bytes);
-    }
   }
 #endif
 
@@ -4827,6 +4864,8 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
 		// alt-entry
       		if ( Assembly ) {
 			fprintf ( Asm_File, "\t%s\t%s\n", AS_AENT, ST_name(entry_sym)); // KEY
+			if (CG_p2align != 0)
+				fputs ("\t.p2align 5,,\n", Asm_File);
 			Print_Label (Asm_File, entry_sym, 0 );
       		}
 		EMT_Put_Elf_Symbol (entry_sym);
@@ -8743,7 +8782,7 @@ EMT_Emit_PU ( ST *pu, DST_IDX pu_dst, WN *rwn )
   if ( Assembly ) {
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
     if (CG_p2align) 
-      fputs ("\t.p2align 4,,15\n", Asm_File);
+      fputs ("\t.p2align 5,,\n", Asm_File);
     else if (PU_src_lang (Get_Current_PU()) & PU_CXX_LANG) {
       // g++ requires a minimum alignment because it uses the least significant
       // bit of function pointers to store the virtual bit.

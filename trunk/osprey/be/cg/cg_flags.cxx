@@ -522,7 +522,11 @@ INT32 CG_sse_cse_regs = INT32_MAX - 1000;
 INT32 CG_sse_load_execute = 0;
 INT32 CG_load_execute = 1;
 BOOL CG_loadbw_execute = FALSE;
-BOOL CG_p2align = FALSE;
+#if defined(TARG_X8664)
+INT32 CG_p2align = 2;
+#else
+INT32 CG_p2align = 0;
+#endif
 BOOL CG_loop32 = FALSE;
 BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;

@@ -868,7 +868,7 @@ extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;
 extern BOOL CG_loadbw_execute;
 extern BOOL CG_Movext_ICMP;
-extern BOOL CG_p2align;
+extern INT32 CG_p2align;
 extern BOOL CG_loop32;
 extern BOOL CG_compute_to;
 extern UINT64 CG_p2align_freq;
