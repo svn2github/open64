@@ -1801,6 +1801,8 @@ WN_get_val(WN * wn, int * val, const WN_MAP& wn_map)
 {
   int val1, val2;
   OPERATOR opr = WN_operator(wn);
+  WN * op1;
+  WN * op2;
 
   if (opr == OPR_INTCONST) {
     *val = WN_const_val(wn);
@@ -1820,7 +1822,24 @@ WN_get_val(WN * wn, int * val, const WN_MAP& wn_map)
       return TRUE;
     }
     break;
+  case OPR_MPY:
+    op1 = WN_kid(wn, 0);
+    op2 = WN_kid(wn, 1);
     
+    if (WN_get_val(op1, &val1, wn_map)
+	&& WN_get_val(op2, &val2, wn_map)
+	&& (val1 > 0)
+	&& (val2 > 0)
+	&& ((WN_operator(op1) == OPR_INTCONST)
+	    || (WN_operator(op2) == OPR_INTCONST))) {
+      // Note that we evaluate "c0 * b" based on ""b <= c1"
+      // Or "b >= c2", where c0, c1, c2 are constants.
+      // The inferred value can be incorrect if either "c0",
+      // "c1" or "c2" is non-positive.
+      *val = val1 * val2;
+      return TRUE;
+    }
+    break;
   default:
     ;
   }

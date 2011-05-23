@@ -10742,6 +10742,7 @@ PRO_LOOP_EXT_TRANS::Find_cand(SC_NODE * sc, SC_NODE ** cand1, SC_NODE ** cand2)
   *cand1 = NULL;
   *cand2 = NULL;
 
+  CFG * cfg = Get_cu()->Cfg();
   SC_LIST_ITER kids_iter;
   SC_NODE * tmp;
   
@@ -10776,6 +10777,92 @@ PRO_LOOP_EXT_TRANS::Find_cand(SC_NODE * sc, SC_NODE ** cand1, SC_NODE ** cand2)
 	Set_pass(s_pass);
 	return tmp;
       }
+      else {
+	WN * cond1 = prev->Get_cond(); 
+	WN * cond2 = next->Get_cond();
+	if ((WN_operator(cond1) == WN_operator(cond2))
+	    && (WN_kid_count(cond1) == 2)
+	    && (WN_Simp_Compare_Trees(WN_kid1(cond1), WN_kid1(cond2)) == 0)
+	    && ((WN_operator(cond1) == OPR_NE) || (WN_operator(cond1) == OPR_EQ))
+	    && (WN_operator(WN_kid1(cond1)) == OPR_INTCONST)
+	    && (WN_const_val(WN_kid1(cond1)) == 0)) {
+	  cond1 = WN_kid0(cond1);
+	  cond2 = WN_kid0(cond2);
+	  // match patterns like: "(a bitop (1 << cnt)) == 0" or
+	  // "(a bitop (1 << cnt)) != 0", 
+	  // where 'a' is a 4-byte, one of 'cond1' and 'cond2' is a 8 byte, and 
+	  // the other one is a 4-byte.
+	  if ((WN_operator(cond1) == WN_operator(cond2))
+	      && WN_is_bit_op(cond1)) {
+	    SC_NODE * sc_l = NULL;
+	    SC_NODE * sc_s = NULL;
+
+	    if (MTYPE_byte_size(WN_rtype(cond1)) == 8)
+	      sc_l = prev;
+	    else if (MTYPE_byte_size(WN_rtype(cond2)) == 8)
+	      sc_l = next;
+
+	    if (MTYPE_byte_size(WN_rtype(cond1)) == 4)
+	      sc_s = prev;
+	    else if (MTYPE_byte_size(WN_rtype(cond2)) == 4)
+	      sc_s = next;
+
+	    if (sc_l && sc_s) {
+	      WN * op1 = WN_kid0(cond1);
+	      WN * op2 = WN_kid0(cond2);
+	      op1 = (WN_operator(op1) == OPR_CVT) ? WN_kid0(op1) : op1;
+	      op2 = (WN_operator(op2) == OPR_CVT) ? WN_kid0(op2) : op2;
+	      if ((WN_Simp_Compare_Trees(op1, op2) == 0)
+		  && (MTYPE_byte_size(WN_desc(op1)) == 4)) {
+		op1 = WN_kid1(cond1);
+		op2 = WN_kid1(cond2);
+		if (WN_is_power_of_2(op1) && WN_is_power_of_2(op2)
+		    && (WN_operator(op1) == OPR_SHL)) {
+		  op1 = WN_get_bit_from_expr(op1);
+		  op2 = WN_get_bit_from_expr(op2);
+		  // Create a new SC_IF with comparision expression "if (cnt < 32)"
+		  // and wrap it around 'prev' and 'next'.
+		  if (op1 && op2 && (WN_Simp_Compare_Trees(op1, op2) == 0)
+		      && !Has_dependency(prev, op1)
+		      && !Has_dependency(next, op2)) {
+		    for (int i = 0; i < 2; i++) {
+		      // Create a comparison expression 'if (cnt < 32)'.
+		      WN * wn_tmp = WN_COPY_Tree_With_Map((i == 0) ? op1 : op2);
+		      wn_tmp = WN_CreateExp2(OPR_LT, MTYPE_I4, MTYPE_I4, wn_tmp,
+					     WN_CreateIntconst(OPR_INTCONST, MTYPE_I4, MTYPE_V, 32));
+		      // Create a CFG block to host 'wn_tmp'.
+		      BB_NODE * bb_new = NULL;
+		      SC_NODE * sc_cur = ( i == 0) ? prev : next;
+		      cfg->Clone_bbs(sc_cur->Head(), sc_cur->Head(), &bb_new, &bb_new, TRUE, 1.0);
+		      WN * wn_branch = bb_new->Laststmt();
+		      WN_kid0(wn_branch) = wn_tmp;
+		      // Insert a new if-region before 'prev'.
+		      SC_NODE * sc_tmp = cfg->Insert_if_before(sc_cur, bb_new);
+		      Do_tail_duplication(sc_cur, sc_tmp);
+		      if (i == 0)
+			*cand1 = sc_tmp;
+		      else
+			*cand2 = sc_tmp;
+
+		      if (sc_cur == sc_l) {
+			sc_tmp = sc_tmp->Find_kid_of_type(SC_THEN);
+			sc_tmp = sc_tmp->Find_kid_of_type(SC_IF);
+			FmtAssert(sc_tmp, ("Expect a SC_IF"));
+			WN * branch_l = sc_tmp->Head()->Branch_wn();
+			WN * branch_s = sc_s->Head()->Branch_wn();
+			WN_kid0(branch_l) = WN_COPY_Tree_With_Map(WN_kid0(branch_s));
+		      }
+		    }
+		    Set_pass(s_pass);
+		    return tmp;
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+      }
+
       Set_pass(s_pass);
       break;
     case  SC_LOOP:
@@ -11655,14 +11742,33 @@ CFG_TRANS::Infer_shift_count_val(WN  * wn, SC_NODE * sc_loop)
       WN * op1 = WN_kid0(wn_tmp);
       WN * op2 = WN_kid1(wn_tmp);
       int val;
-      if ((WN_operator(op2) == OPR_INTCONST)
-	  && (OPERATOR_is_scalar_load(WN_operator(op1)))
-	  && Is_invariant(sc_loop, op1, 0)
-	  ) {
-	val = WN_const_val(op2);
+      WN * wn_tmp;
+      if (WN_operator(op2) == OPR_INTCONST) {
+	val = WN_const_val(op2);	
 	if (opr == OPR_ADD)
 	  val = val * -1;
-	Set_lo(_low_map, op1, val);
+	if (Is_invariant(sc_loop, op1, 0)) {
+	  opr = WN_operator(op1);
+	  switch (opr) {
+	  case OPR_LDID:
+	    Set_lo(_low_map, op1, val);
+	    break;
+	  case OPR_MPY:
+	    wn_tmp = WN_kid1(op1);
+	    if ((WN_operator(wn_tmp) == OPR_INTCONST)
+		&& (val > 0)
+		&& (val < WN_const_val(wn_tmp))) {
+	      // From pattern: c1 * x >= c2, where c1 > 0, c2 > 0 and c1 > c2,
+	      // we can infer that x >= 1.
+	      wn_tmp = WN_kid0(op1);
+	      if (WN_operator(wn_tmp) == OPR_LDID)
+		Set_lo(_low_map, wn_tmp, 1);
+	    }
+	    break;
+	  default:
+	    ;
+	  }
+	}
       }
     }
     else if (OPERATOR_is_scalar_load(opr)
@@ -11743,6 +11849,7 @@ CFG_TRANS::Infer_val_range(SC_NODE * sc1, SC_NODE * sc2)
     _low_map = WN_MAP_Create(_pool);
     _high_map = WN_MAP_Create(_pool);
     _def_wn_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);
+    SC_NODE * nesting_lp = NULL;
 
     while (sc_lcp) {
       SC_TYPE type = sc_lcp->Type();
@@ -11769,8 +11876,14 @@ CFG_TRANS::Infer_val_range(SC_NODE * sc1, SC_NODE * sc2)
 	    && sc_lcp->Is_pred_in_tree(_current_scope)) {
 	  Infer_lp_bound_val(_current_scope);
 	}
+	nesting_lp = sc_lcp;
       }
       sc_lcp = sc_lcp->Parent();
+    }
+
+    if (nesting_lp) {
+      WN * wn_cond = sc1->Get_cond();
+      Infer_shift_count_val(wn_cond, nesting_lp);
     }
   }
 }

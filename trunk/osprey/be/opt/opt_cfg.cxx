@@ -6548,6 +6548,93 @@ CFG::Insert_block_before(SC_NODE * sc)
   return sc_new;
 }
 
+// Insert a SC_IF before 'sc_insert', 'bb_head' is the new SC_IF's head.
+SC_NODE *
+CFG::Insert_if_before(SC_NODE * sc_insert, BB_NODE * bb_head)
+{
+  SC_NODE * sc_prev = sc_insert->Prev_sibling();
+  BB_NODE * bb_then = Create_and_allocate_bb(BB_GOTO);
+  BB_NODE * bb_else = Create_and_allocate_bb(BB_GOTO);
+  BB_NODE * bb_merge = sc_insert->First_bb();
+
+  bb_head->Append_succ(bb_else, _mem_pool);
+  bb_head->Append_succ(bb_then, _mem_pool);
+  bb_then->Append_pred(bb_head, _mem_pool);
+  bb_else->Append_pred(bb_head, _mem_pool);
+  bb_then->Append_succ(bb_merge, _mem_pool);
+  bb_else->Append_succ(bb_merge, _mem_pool);
+  
+  BB_NODE * bb_tmp;
+  BB_LIST_ITER bb_list_iter;
+  FOR_ALL_ELEM(bb_tmp, bb_list_iter, Init(bb_merge->Pred())) {
+    bb_tmp->Replace_succ(bb_merge, bb_head);
+    if (bb_tmp->Is_branch_to(bb_merge)) {
+      WN * branch_wn = bb_tmp->Branch_wn();
+      Add_label_with_wn(bb_head);
+      WN_label_number(branch_wn) = bb_head->Labnam();
+    }
+    if (Feedback())
+      Feedback()->Move_edge_dest(bb_tmp->Id(), bb_merge->Id(), bb_head->Id());
+  }
+
+  bb_head->Set_pred(bb_merge->Pred());
+  bb_merge->Set_pred(NULL);
+  bb_merge->Append_pred(bb_then, _mem_pool);
+  bb_merge->Append_pred(bb_else, _mem_pool);
+  
+  bb_tmp = bb_merge->Prev();
+  if (bb_tmp) {
+    bb_tmp->Set_next(bb_head);
+    bb_head->Set_prev(bb_tmp);
+  }
+  
+  bb_head->Set_next(bb_then);
+  bb_then->Set_prev(bb_head);
+  bb_then->Set_next(bb_else);
+  bb_else->Set_prev(bb_then);
+  bb_else->Set_next(bb_merge);
+  bb_merge->Set_prev(bb_else);
+
+  Add_label_with_wn(bb_else);
+  WN * wn_tmp = bb_head->Branch_wn();
+  WN_label_number(wn_tmp) = bb_else->Labnam();
+
+  SC_NODE * sc_if = Create_sc(SC_IF);
+  SC_NODE * sc_then = Create_sc(SC_THEN);
+  SC_NODE * sc_else = Create_sc(SC_ELSE);
+  SC_NODE * sc_b1 = Create_sc(SC_BLOCK);
+  SC_NODE * sc_b2 = Create_sc(SC_BLOCK);
+  
+  sc_if->Set_bb_rep(bb_head);
+  sc_b1->Append_bbs(bb_then);
+  sc_b2->Append_bbs(bb_else);
+  
+  BB_IFINFO * ifinfo = bb_head->Ifinfo();
+  ifinfo->Set_cond(bb_head);
+  ifinfo->Set_merge(bb_merge);
+  ifinfo->Set_then(bb_then);
+  ifinfo->Set_else(bb_else);
+
+  sc_if->Append_kid(sc_then);
+  sc_if->Append_kid(sc_else);
+  sc_then->Set_parent(sc_if);
+  sc_else->Set_parent(sc_if);
+  sc_then->Append_kid(sc_b1);
+  sc_else->Append_kid(sc_b2);
+  sc_b1->Set_parent(sc_then);
+  sc_b2->Set_parent(sc_else);
+
+  sc_insert->Insert_before(sc_if);
+  
+  if (sc_prev) 
+    Fix_info(sc_prev);
+
+  Fix_info(sc_insert->Get_real_parent());
+  Invalidate_and_update_aux_info(FALSE);
+  Invalidate_loops();
+  return sc_if;
+}
+
 // Obtained cloned equivalent of given bb
 BB_NODE * 
 CFG::Get_cloned_bb(BB_NODE * bb)
