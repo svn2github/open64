@@ -226,6 +226,32 @@ CFG::Remove_bb(BB_NODE *bb)
     pred->Remove_succ( bb, Mem_pool() );
   }
 
+  if (bb->EH_region() && bb->Rid()) {
+    // If bb is in a EH region, walk up Prev() link to find the region start.
+    // If bb is the region end, make its Prev() node to be the new
+    // region end.
+    INT id = RID_id(bb->Rid());
+    STACK<INT> * stk = CXX_NEW(STACK<INT> (Mem_pool()), Mem_pool());
+    stk->Push(id);
+    BB_NODE * bb_iter = bb;
+    while (bb_iter && bb_iter->Rid() && !stk->Is_Empty()) {
+      INT iter_id = RID_id(bb_iter->Rid());
+      if (stk->Top() != iter_id) {
+	stk->Push(iter_id);
+      }
+      else if (bb_iter->Kind() == BB_REGIONSTART) {
+	BB_REGION * region = bb_iter->Regioninfo();
+	if (region && (region->Region_end() == bb)) {
+	  BB_NODE * bb_prev = bb->Prev();
+	  region->Set_region_end(bb_prev);
+	}
+	stk->Pop();
+      }
+      bb_iter = bb_iter->Prev();
+    }
+    CXX_DELETE(stk, Mem_pool());
+  }
+
   if (bb->Is_first())
     _first_bb = bb->Next();
   if (bb->Is_last())
