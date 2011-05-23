@@ -11544,7 +11544,7 @@ CFG_TRANS::Delete_val_range_maps()
 // Get a WHIRL that represents an integer constant of the given value
 // from _const_wn_map.
 WN *
-CFG_TRANS::Get_const_wn(long long val)
+CFG_TRANS::Get_const_wn(INT64 val)
 {
   if (!_const_wn_map)
     _const_wn_map = CXX_NEW(MAP(CFG_BB_TAB_SIZE, _pool), _pool);
@@ -11676,7 +11676,7 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
 	    p_val = WN_get_val(wn_tmp, _low_map);
 	    val = p_val.second;	    
 	    if (p_val.first) {
-	      long long new_val = -1 * WN_const_val(op2) + val;
+	      INT64 new_val = -1 * WN_const_val(op2) + val;
 	      wn_tmp = Get_const_wn(new_val);
 	      Set_map(_low_map, op1, wn_tmp);
 	      Infer_val_range(op1, TRUE, TRUE);
@@ -11691,7 +11691,7 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
 	    p_val =  WN_get_val(wn_tmp,  _high_map);
 	    val = p_val.second;
 	    if (p_val.first) {
-	      long long new_val = -1 * WN_const_val(op2) + val;
+	      INT64 new_val = -1 * WN_const_val(op2) + val;
 	      wn_tmp = Get_const_wn(new_val);
 	      Set_map(_high_map, op1, wn_tmp);
 	      Infer_val_range(op1, TRUE, TRUE);
@@ -11720,7 +11720,7 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
 	      p_val = WN_get_val(op2, _low_map);
 	      val2 = p_val.second;
 	      if  (p_val.first) {
-		long long new_val = val2 + val;
+		INT64 new_val = val2 + val;
 		wn_tmp = Get_const_wn(new_val);
 		Set_map(_low_map, op1, wn_tmp);
 		Infer_val_range(op1, TRUE, TRUE);
@@ -11743,7 +11743,7 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
 	      p_val = WN_get_val(op2,  _high_map);
 	      val2 = p_val.second;
 	      if (p_val.first) {
-		long long new_val = val2 + val;
+		INT64 new_val = val2 + val;
 		wn_tmp = Get_const_wn(new_val);
 		Set_map(_high_map, op1, wn_tmp);
 		Infer_val_range(op1, TRUE, TRUE);
