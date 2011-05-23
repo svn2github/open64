@@ -11571,9 +11571,13 @@ CFG_TRANS::Set_lo(WN_MAP & map, WN * wn_key, int val)
   WN * wn_tmp = (WN *) WN_MAP_Get(map, wn_key);
   int val_tmp;
 
-  if (wn_tmp && WN_get_val(wn_key, &val_tmp, map)
-      && (val_tmp < val))
-    return;
+  if (wn_tmp) {
+    std::pair<bool,int> p_val = WN_get_val(wn_key, map);
+    val_tmp = p_val.second;
+    if (p_val.first
+	&& (val_tmp < val))
+      return;
+  }
 
   Set_map(map, wn_key, Get_const_wn(val));
 }
@@ -11620,13 +11624,16 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
     WN * wn_tmp;
     int val;
     int val2;
+    std::pair<bool,int> p_val;
 
     switch (opr) {
     case OPR_GT:
       op1 = WN_kid(wn, 0);
       op2 = WN_kid(wn, 1);
+      p_val = WN_get_val(op2, _low_map);
+      val = p_val.second;
 
-      if (WN_get_val(op2, &val, _low_map)) {
+      if (p_val.first) {
 	Set_map(_low_map, op1, op2);
 	Infer_val_range(op1, TRUE, TRUE);
       }
@@ -11636,8 +11643,10 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
     case OPR_LT:
       op1 = WN_kid(wn, 0);
       op2 = WN_kid(wn, 1);
-
-      if (WN_get_val(op1, &val, _low_map)) {
+      p_val = WN_get_val(op1, _low_map);
+      val = p_val.second;
+      
+      if (p_val.first) {
 	Set_map(_low_map, op2, op1);
 	Infer_val_range(op2, TRUE, TRUE);
       }
@@ -11646,8 +11655,10 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
     case OPR_LE:
       op1 = WN_kid(wn, 0);
       op2 = WN_kid(wn, 1);
+      p_val = WN_get_val(op1, _low_map);
+      val = p_val.second;
 
-      if (WN_get_val(op1, &val, _low_map)) {
+      if (p_val.first) {
 	wn_tmp = Get_const_wn(val - 1);
 	Set_map(_low_map, op2, wn_tmp);
 	Infer_val_range(op2, TRUE, TRUE);
@@ -11661,23 +11672,30 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
       if (WN_operator(op2) == OPR_INTCONST) {
 	if (_low_map) {
 	  wn_tmp = (WN *) WN_MAP_Get(_low_map, wn);
-
-	  if (wn_tmp && WN_get_val(wn_tmp, &val, _low_map)) {
-	    long long new_val = -1 * WN_const_val(op2) + val;
-	    wn_tmp = Get_const_wn(new_val);
-	    Set_map(_low_map, op1, wn_tmp);
-	    Infer_val_range(op1, TRUE, TRUE);
+	  if (wn_tmp) {
+	    p_val = WN_get_val(wn_tmp, _low_map);
+	    val = p_val.second;	    
+	    if (p_val.first) {
+	      long long new_val = -1 * WN_const_val(op2) + val;
+	      wn_tmp = Get_const_wn(new_val);
+	      Set_map(_low_map, op1, wn_tmp);
+	      Infer_val_range(op1, TRUE, TRUE);
+	    }
 	  }
 	}
 	
 	if (_high_map) {
 	  wn_tmp = (WN *) WN_MAP_Get(_high_map, wn);
 
-	  if (wn_tmp && WN_get_val(wn_tmp, &val, _high_map)) {
-	    long long new_val = -1 * WN_const_val(op2) + val;
-	    wn_tmp = Get_const_wn(new_val);
-	    Set_map(_high_map, op1, wn_tmp);
-	    Infer_val_range(op1, TRUE, TRUE);
+	  if (wn_tmp) {
+	    p_val =  WN_get_val(wn_tmp,  _high_map);
+	    val = p_val.second;
+	    if (p_val.first) {
+	      long long new_val = -1 * WN_const_val(op2) + val;
+	      wn_tmp = Get_const_wn(new_val);
+	      Set_map(_high_map, op1, wn_tmp);
+	      Infer_val_range(op1, TRUE, TRUE);
+	    }
 	  }
 	}
       }
@@ -11692,14 +11710,22 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
       if (_low_map) {
 	wn_tmp = (WN * ) WN_MAP_Get(_low_map, wn);
 
-	if (wn_tmp && WN_get_val(wn_tmp, &val, _low_map)) {
-	  wn_tmp = (WN *) WN_MAP_Get(_low_map, op2);
-
-	  if (wn_tmp && WN_get_val(op2, &val2, _low_map)) {
-	    long long new_val = val2 + val;
-	    wn_tmp = Get_const_wn(new_val);
-	    Set_map(_low_map, op1, wn_tmp);
-	    Infer_val_range(op1, TRUE, TRUE);
+	if (wn_tmp) {
+	  p_val = WN_get_val(wn_tmp,  _low_map);
+	  val = p_val.second;
+	  if (p_val.first) {
+	    wn_tmp = (WN *) WN_MAP_Get(_low_map, op2);
+	    
+	    if (wn_tmp) {
+	      p_val = WN_get_val(op2, _low_map);
+	      val2 = p_val.second;
+	      if  (p_val.first) {
+		long long new_val = val2 + val;
+		wn_tmp = Get_const_wn(new_val);
+		Set_map(_low_map, op1, wn_tmp);
+		Infer_val_range(op1, TRUE, TRUE);
+	      }
+	    }
 	  }
 	}
       }
@@ -11707,14 +11733,22 @@ CFG_TRANS::Infer_val_range(WN * wn, BOOL set_high, BOOL set_low)
       if (_high_map) {
 	wn_tmp = (WN * ) WN_MAP_Get(_high_map, wn);
 
-	if (wn_tmp && WN_get_val(wn_tmp, &val, _high_map)) {
-	  wn_tmp = (WN *) WN_MAP_Get(_high_map, op2);
+	if (wn_tmp) {
+	  p_val = WN_get_val(wn_tmp,  _high_map);
+	  val = p_val.second;
+	  if (p_val.first) {
+	    wn_tmp = (WN *) WN_MAP_Get(_high_map, op2);
 	  
-	  if (wn_tmp && WN_get_val(op2, &val2, _high_map)) {
-	    long long new_val = val2 + val;
-	    wn_tmp = Get_const_wn(new_val);
-	    Set_map(_high_map, op1, wn_tmp);
-	    Infer_val_range(op1, TRUE, TRUE);
+	    if (wn_tmp) {
+	      p_val = WN_get_val(op2,  _high_map);
+	      val2 = p_val.second;
+	      if (p_val.first) {
+		long long new_val = val2 + val;
+		wn_tmp = Get_const_wn(new_val);
+		Set_map(_high_map, op1, wn_tmp);
+		Infer_val_range(op1, TRUE, TRUE);
+	      }
+	    }
 	  }
 	}
       }
@@ -11812,8 +11846,10 @@ CFG_TRANS::Infer_lp_bound_val(SC_NODE * sc_lcp)
 	  && wn_load && OPERATOR_is_scalar_load(WN_operator(wn_load))
 	  && (WN_aux(wn_load) == WN_aux(wn_step))
 	  && (WN_operator(wn_add) == OPR_ADD)) {
-	int val;
-	if (WN_get_val(WN_kid(wn_add,1), &val, _low_map)) {
+	std::pair<bool, int> p_val = WN_get_val(WN_kid(wn_add,1),_low_map);
+	int val = p_val.second;
+
+	if (p_val.first) {
 	  if (val > 0)
 	    set_low = TRUE;
 	  else
