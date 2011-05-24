@@ -91,6 +91,7 @@ static char *rcs_id = "$Source: be/lno/SCCS/s.simd.cxx $ $Revision: 1.244 $";
 #include "minvariant.h"            // for Minvariant_Removal
 #include "prompf.h"
 #include "simd_util.h"
+#include "small_trips.h"           // for Remove_Unity_Trip_Loop
 
 #define ABS(a) ((a<0)?-(a):(a))
 
@@ -5065,6 +5066,122 @@ static BOOL Simd_Simplify_LB_UB (WN* vect_loop, WN* remainder, INT vect)
   return TRUE;  
 }
 
+// Simd_Remove_Unity_Remainder() is to remove the remainder loop if the number
+// of its iteration is one or at most one.
+//
+// In the case when the iteration number is provably one, the remainder loop
+// construct is removed; otherwise, we guard the remainder loop with 
+// a condition and remove the loop construct.
+//
+// return TRUE iff loop construct is removed.
+//
+static BOOL Simd_Remove_Unity_Remainder 
+    (WN* remainder, BOOL provable_unity, BOOL one_iter_at_most) {
+    
+    if (!LNO_Simd_Rm_Unity_Remainder) 
+        return FALSE;
+
+    // case 1: the remainder loop may have more than one iterations
+    //
+    if (!provable_unity && !one_iter_at_most) {
+        return FALSE;
+    }
+
+    INT64 src_pos = WN_Get_Linenum (remainder);
+
+    // case 2: the remainder loop is provable unity.
+    //
+    if (provable_unity) {
+      WN* wn_first_dumy, *wn_last_dumy;
+      Remove_Unity_Trip_Loop (remainder, FALSE, &wn_first_dumy, 
+                              &wn_last_dumy, adg, Du_Mgr, FALSE);
+      if (debug || LNO_Simd_Verbose) {
+        printf ("SIMD: (%s:%d) remove unity remainder loop\n", 
+                 Src_File_Name, Srcpos_To_Line(src_pos));
+      }
+      return TRUE;
+    }
+
+    // case 3: The remainder loop ain't provable. But, compiler know it 
+    // has at most one iteration.
+    //
+    // Suppose the remander loop is "for (i = LB; i <= UB; i++) {}". 
+    // We guard the loop with "if (LB <= UB)" resulting the as following:
+    //     if (LB <= UB) {
+    //        for (....) {}    
+    //     }
+    // Then Remove_Unity_Trip_Loop() is called to get rid of the loop 
+    // construct. 
+    //
+    
+    // step 1: construct the test-condition
+    // 
+    WN* test = WN_end(remainder);
+    if (SYMBOL (WN_kid0(test)) != SYMBOL(WN_index (remainder))) {
+        // Oops, the condition isn't in the form of "idx < UB"
+        return FALSE;
+    }
+
+    WN* cond = LWN_Copy_Tree (test);
+    LWN_Copy_Def_Use (test, cond, Du_Mgr);
+    LWN_Copy_Frequency_Tree (cond, test);
+
+    // change "idx < UB" to "LB < UB". 
+    //
+    Replace_Ldid_With_Exp_Copy (WN_index (remainder), cond, 
+                                WN_kid0(WN_start (remainder)), Du_Mgr);
+                                
+    // step 2: create empty else-clause
+    //
+    WN* else_clause = WN_CreateBlock ();
+
+    // step 3: create then-clause, and put the remainder in the then clause
+    //
+    WN* then_clause = WN_CreateBlock ();
+    WN* insert_after = WN_prev (remainder);
+    WN* insert_block = LWN_Get_Parent(remainder);
+    FmtAssert((WN_operator(insert_block) == OPR_BLOCK), 
+      ("weird tree encountered"));
+    LWN_Extract_From_Block (remainder);
+    LWN_Insert_Block_Before (then_clause, NULL, remainder);
+
+    // step 4: create the if-construct
+    //
+    WN* if_stmt = LWN_CreateIf (cond, then_clause, else_clause);
+    LWN_Insert_Block_After (insert_block, insert_after, if_stmt);
+
+    // step 5: create IF_INFO for the if-construct
+    //
+    {
+        IF_INFO *ii = CXX_NEW (IF_INFO(&LNO_default_pool, 
+                               TRUE, // contain DO loop
+                               Find_SCF_Inside (remainder, OPC_REGION) != NULL), 
+                               &LNO_default_pool);
+        WN_MAP_Set (LNO_Info_Map, if_stmt, (void *)ii);
+
+        DOLOOP_STACK *stack;
+        stack = CXX_NEW (DOLOOP_STACK (&LNO_local_pool), &LNO_local_pool);
+        Build_Doloop_Stack(if_stmt, stack);
+        LNO_Build_If_Access(if_stmt, stack);
+        CXX_DELETE(stack, &LNO_local_pool);
+    }
+
+    // step 6: remove the unity loop
+    //
+    {
+        WN* dummy_first, *dummy_last;
+        Remove_Unity_Trip_Loop (remainder, FALSE, &dummy_first, &dummy_last, 
+                                adg, Du_Mgr, FALSE);
+    }
+
+    if (debug || LNO_Simd_Verbose) {
+        printf ("SIMD: (%s:%d) remainder loop is changed to if-stmt\n", 
+                 Src_File_Name, Srcpos_To_Line(src_pos));
+    }
+
+    return TRUE;
+}
+
 static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *reduction_node)
 {
 
@@ -5333,6 +5450,8 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
           WN_kid0(loop_start_rloop_tmp));
     }
 
+    BOOL remainder_is_unity = FALSE;
+
     // Bug 2516 - eliminate redundant remainder loop if it is possible to
     // simplify the symbolic (non-constant) expression (loop_end - loop_start).
     // This loop should be eliminated later on but there is no point in
@@ -5347,10 +5466,15 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
                                 WN_kid1(rloop_end),
                                 WN_kid0(rloop_start));
       WN* simpdiff = WN_Simplify_Tree(diff);
-      if (WN_operator(simpdiff) == OPR_INTCONST &&
-          WN_const_val(simpdiff) < 0)
-        rloop_needed = FALSE;
+      if (WN_operator(simpdiff) == OPR_INTCONST) {
+          if (WN_const_val(simpdiff) < 0)
+            rloop_needed = FALSE;
+         
+          if (WN_const_val(simpdiff) == 0)
+            remainder_is_unity = TRUE;
+      }
     }
+
     // Update def use for new loop end for innerloop
     Simd_Update_Index_Def_Use(innerloop,innerloop,WN_end(innerloop), symbol);
     LWN_Set_Parent(WN_end(innerloop),innerloop);
@@ -5517,6 +5641,11 @@ static void Simd_Finalize_Loops(WN *innerloop, WN *remainderloop, INT vect, WN *
    
     Simd_Simplify_LB_UB (innerloop, rloop_needed ? remainderloop : NULL, vect);
     adg->Fission_Dep_Update(innerloop, 1);
+
+    if (rloop_needed && (remainder_is_unity || vect == 2) && 
+       LNO_Simd_Rm_Unity_Remainder) {
+      Simd_Remove_Unity_Remainder (remainderloop, remainder_is_unity, TRUE); 
+    }
 }
 
 // Vectorize an innerloop
