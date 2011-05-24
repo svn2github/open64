@@ -4946,6 +4946,8 @@ CFG_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
   MAP_LIST * map_lst;
   SC_NODE * sc_blk;
   WN * branch_wn;
+  BB_NODE *pred;
+  BB_LIST_ITER bb_iter;
 
   switch (type) {
   case SC_LOOP:
@@ -5102,7 +5104,11 @@ CFG_TRANS::Do_tail_duplication(SC_NODE * sc_src, SC_NODE * sc_dst)
 
     if (cfg->Feedback())
       cfg->Feedback()->Delete_edge(old_exit->Id(), tmp2->Id());
-    
+
+    FOR_ALL_ELEM (pred, bb_iter, Init(tmp2->Pred())) {
+      pred->Set_succ(pred->Succ()->Remove(tmp2, pool));
+    }
+
     bb_list = tmp2->Pred();
     while (bb_list) {
       bb_list = bb_list->Remove(bb_list->Node(), pool);
