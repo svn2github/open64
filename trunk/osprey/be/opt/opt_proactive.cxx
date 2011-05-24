@@ -10433,7 +10433,11 @@ PRO_LOOP_EXT_TRANS::Get_inverted_cond(SC_NODE * sc_if)
 void 
 PRO_LOOP_EXT_TRANS::Hash_if_conds(SC_NODE * sc)
 {
-  if (sc->Type() == SC_LOOP) {
+  // Skip loops that are not flagged LOOP_PRE_DO since the 
+  // the CFG transformation infrastructure does not support
+  // these loops at this moment.
+  if ((sc->Type() == SC_LOOP) 
+      && sc->Loopinfo()->Is_flag_set(LOOP_PRE_DO)) {
     sc->Set_next(NULL);
     std::pair<SC_NODE *, bool> p_ret = sc->Get_nesting_if();
     SC_NODE * sc_if = p_ret.first;
