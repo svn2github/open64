@@ -947,8 +947,13 @@ static void Child_Loop_Fusion_Walk(WN * wn, FIZ_FUSE_INFO* ffi, WN2UINT *wn2ffi)
 		  if (Move_Adjacent(WN_prev(wn_dep), last_use, TRUE)) {
 		    // Fuse loops starting from wn_dep, and flag No_Fusion bit.
 		    Outer_Loop_Fusion_Walk(wn_dep, ffi, wn2ffi); 
-		    DO_LOOP_INFO * dli_dep = Get_Do_Loop_Info(wn_dep);
-		    dli_dep->No_Fusion = TRUE;
+		    if (WN_operator(wn_dep) == OPR_DO_LOOP) {
+		      DO_LOOP_INFO * dli_dep = Get_Do_Loop_Info(wn_dep);
+		      dli_dep->No_Fusion = TRUE;
+		    }
+		    else {
+		      DevWarn("Loop may be deleted");
+		    }
 		  }
 		}
 	      }
