@@ -11271,6 +11271,9 @@ PRO_LOOP_EXT_TRANS::Is_candidate(SC_NODE * outer, SC_NODE * inner)
   std::pair<SC_NODE *, bool> p_ret = inner->Get_nesting_if();
   SC_NODE * sc_n1 = p_ret.first;
   SC_NODE * sc_iter = sc_n1;
+
+  if (sc_iter == outer)
+    return FALSE;
   
   while (sc_iter && (sc_iter != outer)) {
     if (!sc_iter->Is_well_behaved())

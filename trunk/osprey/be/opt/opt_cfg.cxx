@@ -6534,8 +6534,9 @@ CFG::Insert_block_before(SC_NODE * sc)
   BB_NODE * bb_new = Create_and_allocate_bb(BB_GOTO);
   SC_NODE * sc_new = Create_sc(SC_BLOCK);
   sc_new->Append_bbs(bb_new);
+  
+  BB_NODE * bb_head = sc->First_bb();
 
-  BB_NODE * bb_head = sc->Get_bb_rep();
   BB_NODE * bb_prev = bb_head->Prev();
   BB_LIST_ITER bb_list_iter;
   BB_NODE * bb_tmp;
