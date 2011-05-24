@@ -5828,15 +5828,16 @@ PRO_LOOP_INTERCHANGE_TRANS::Top_down_trans(SC_NODE * sc)
     _local_stack->Push(sc);
   }
 
-  SC_NODE * child;
-  SC_LIST_ITER sc_iter;
-
-  FOR_ALL_ELEM(child, sc_iter, Init(sc->Kids())) {
+  SC_NODE * child = sc->First_kid();
+  SC_NODE * next;
+  while (child) {
+    next = child->Next_sibling();
     if (Top_down_trans(child)) {
       return FALSE;
     }
+    child = next;
   }
-
+  
   BOOL do_restart = FALSE;
 
   if (sc->Type() == SC_LOOP) {
