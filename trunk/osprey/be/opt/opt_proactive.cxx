@@ -10357,7 +10357,7 @@ PRO_LOOP_EXT_TRANS::Get_val(WN * wn_cond, IF_CMP_VAL * val)
   UINT32 key;
   STACK<WN *> * stk;
 
-  IF_CMP_VAL ret_val = (IF_CMP_VAL) _wn_to_val_num_map->Get_val((POINTER) wn_cond);  
+  IF_CMP_VAL ret_val = (IF_CMP_VAL)(INTPTR) _wn_to_val_num_map->Get_val((POINTER) wn_cond);  
   if (ret_val) {
     *val = ((*val) << MAX_IF_CMP_BITS) + ret_val;
     return;
@@ -10373,7 +10373,7 @@ PRO_LOOP_EXT_TRANS::Get_val(WN * wn_cond, IF_CMP_VAL * val)
       for (int i = 0; i < stk->Elements(); i++) {
 	WN * wn_iter = stk->Top_nth(i);
 	if ((wn_cond == wn_iter) || (WN_Simp_Compare_Trees(wn_cond, wn_iter) == 0)) {
-	  ret_val = (IF_CMP_VAL) _wn_to_val_num_map->Get_val((POINTER) wn_iter);
+	  ret_val = (IF_CMP_VAL)(INTPTR) _wn_to_val_num_map->Get_val((POINTER) wn_iter);
 	  break;
 	}
       }
