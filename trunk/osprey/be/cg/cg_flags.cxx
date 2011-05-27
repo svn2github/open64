@@ -531,6 +531,8 @@ BOOL CG_loop32 = FALSE;
 BOOL CG_compute_to = FALSE;
 BOOL CG_valgrind_friendly = TRUE;
 BOOL CG_Movext_ICMP = TRUE;
+#else
+INT32 CG_p2align = 0;
 #endif
 #ifdef TARG_LOONGSON
 BOOL CGEXP_float_use_madd = FALSE;
