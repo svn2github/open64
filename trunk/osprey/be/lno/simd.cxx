@@ -124,6 +124,17 @@ static void Simd_Mark_Code (WN* wn);
 static INT Last_Vectorizable_Loop_Id = 0;
 SIMD_VECTOR_CONF Simd_vect_conf;
 
+typedef struct {
+    INT unroll_times;
+    INT add_to_base;
+    INT base_incr;
+    WN  *innerloop;
+    WN  *vec_index_preg_store;
+    TYPE_ID index_type;
+} UNROLL_PARAMS;
+
+static WN_MAP unroll_map; 
+
 // Return TRUE iff there are too few iterations to generate a single 
 // vectorized iteration.
 //
@@ -2409,12 +2420,10 @@ static INT Simd_Compute_Best_Align (INT offset, INT fn, INT size)
 }
 
 // Have we created a vector type preg to create unroll copies for the use of 
-// induction variable. Note that the index variable can only be updated by 
-// factors : 1, 2, 4, 8. So, we only need to create these 4 types of pregs 
-// utmost and can reuse every time the loop induction variable is used inside
-// the loop.
-BOOL vec_unroll_preg_created[4]; 
-WN *vec_unroll_preg_store[4]; 
+// induction variable. 
+// So far, the maximum unroll times is 128/8 = 16 times
+BOOL vec_unroll_preg_created[16]; 
+WN *vec_unroll_preg_store[16]; 
 
 // Descend unroll copy and update the index into the last dimension for all 
 // arrays. Assumes all operators inside WN copy are vectorizable.
@@ -2479,13 +2488,10 @@ Create_Unroll_Copy(WN* copy, INT add_to_base,
       TYPE_ID vec_type = WN_desc(copy);
       INT unroll_type;
 
-      switch(add_to_base) {
-      case 1: unroll_type = 0; break;
-      case 2: unroll_type = 1; break;
-      case 4: unroll_type = 2; break;
-      case 8: unroll_type = 3; break;
-      default: FmtAssert(FALSE, ("NYI"));
-      }
+      FmtAssert((add_to_base < 16),
+              ("Loop unrolled more than 16 times, need to expand vec_unroll_preg_created array"));
+
+      unroll_type = add_to_base;
 
       if (!vec_unroll_preg_created[unroll_type]) {
 	WN* body = WN_do_body(loop);
@@ -3434,6 +3440,11 @@ static BOOL Simd_Analysis(WN *innerloop, char *verbose_msg)
       return FALSE;
     }
   }
+
+  // at this point, we know that the loop can be vectorized
+  // reorder the loop statement according to their dependencies
+  toplogical_reordering(innerloop, 1, adg);
+
   // separate the loop and expand scalars which is expandable and has
   // references in different fissions loops
   if (needs_scalar_expansion)
@@ -4402,8 +4413,19 @@ static void Simd_Unroll_Statement( INT unroll_times, INT add_to_base,
       // Parentize copy
       LWN_Parentize(copy);
 
-      // Now, insert the new copy of the istore after istore inside innerloop.
-      LWN_Insert_Block_After(LWN_Get_Parent(istore),istore,copy);
+      // Now, insert the new copy of the istore at the end of current loop
+      // current loop should not be empty since we are performing vectorization on it
+      WN *body = WN_do_body(innerloop);
+      Is_True((body && WN_last(body)),
+              ("Loop body should not be empty for unrolling"));
+      if (vec_index_preg_store != NULL &&
+              SYMBOL(WN_last(body)) == SYMBOL(vec_index_preg_store)) {
+          Is_True((WN_first(body) != WN_last(body)),
+                  ("Loop body was empty before we inserted an increment operation in Simd_Vectorize_Induction_Variables"));
+          LWN_Insert_Block_After(body, WN_prev(WN_last(body)), copy);
+      } else {
+          LWN_Insert_Block_After(body, WN_last(body),copy);
+      }
 
       // Add the vertices of copy to array dependence graph.
       Add_Vertices(copy);
@@ -4428,6 +4450,35 @@ static void Simd_Unroll_Statement( INT unroll_times, INT add_to_base,
     }
 }
 
+// unroll statements that are necessary according to their appearance
+// in the loop to keep the dependencies
+static void Simd_Unroll_Necessary_Loop_Statements(WN *wn)
+{
+    Is_True((WN_opcode(wn) == OPC_BLOCK),
+            ("This function should only be called with do loop body"));
+    BOOL changed = FALSE; 
+
+    do {
+        changed = FALSE;
+        WN *kid = WN_first(wn);
+        while (kid) {
+            if (WN_MAP_Get(unroll_map, kid) != NULL) {
+                // we need to unroll this wn
+                UNROLL_PARAMS *params = (UNROLL_PARAMS*) WN_MAP_Get(unroll_map, kid);
+                if (params->unroll_times > 1) {
+                    Simd_Unroll_Statement(2, params->add_to_base, kid, params->vec_index_preg_store,
+                            params->innerloop, params->index_type);
+                    params->unroll_times -= 1;
+                    params->add_to_base += params->base_incr;
+                } else {
+                    WN_MAP_Set(unroll_map, kid, NULL);
+                }
+                changed = TRUE;
+            }
+            kid = WN_next(kid);
+        }
+    } while(changed);
+}
 
 static BOOL Simd_Good_Reduction_Load(WN *innerloop, WN *load)
 {
@@ -5774,10 +5825,8 @@ static INT Simd(WN* innerloop)
 //START: Vectorization Module 
   WN* reduction_node= NULL;
   WN *vec_index_preg_store = NULL;
-  for(INT ii=0; ii<4; ii++){
-    vec_unroll_preg_created[ii] = FALSE;
-    vec_unroll_preg_store[ii] = NULL;
-  }
+
+  unroll_map = WN_MAP_Create(&SIMD_default_pool);
 
   for (INT i=vec_simd_ops->Elements()-1; i >= 0; i--){
     simd_op=vec_simd_ops->Top_nth(i); 
@@ -5877,17 +5926,31 @@ static INT Simd(WN* innerloop)
   INT unroll_times = vect/stmt_unroll; //copies of statement needed
   INT add_to_base = unroll_times>1?vect/unroll_times:0; //dim index incr
   
-  if(unroll_times > 1 && WN_operator(istore) == OPR_ISTORE)
-     Simd_Unroll_Statement( unroll_times, add_to_base,
-                            istore,
-                            vec_index_preg_store,
-                            innerloop, index_type);
+  if(unroll_times > 1 && WN_operator(istore) == OPR_ISTORE) {
+      //record unroll parameters for now, use them later
+      //so that we don't depend on which direction we use to perform vectorization for the loop statements
+      UNROLL_PARAMS *params = TYPE_MEM_POOL_ALLOC(UNROLL_PARAMS, &SIMD_default_pool);
+
+      params->unroll_times = unroll_times;
+      params->add_to_base = add_to_base;
+      params->base_incr   = add_to_base;
+      params->innerloop = innerloop;
+      params->vec_index_preg_store = vec_index_preg_store;
+      params->index_type = index_type;
+
+      WN_MAP_Set(unroll_map, istore, params);
+  }
  
   //Finalize innerloop and remainderloop
    if (simd_op_last_in_loop[i])
       Simd_Finalize_Loops(innerloop, remainderloop, vect, reduction_node);
   }
+
+  Simd_Unroll_Necessary_Loop_Statements(WN_do_body(innerloop));
+
   dli->Loop_Vectorized = TRUE;
+
+  WN_MAP_Delete(unroll_map);
  }
  MEM_POOL_Pop(&SIMD_default_pool);
 
