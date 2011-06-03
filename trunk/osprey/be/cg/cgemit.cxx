@@ -1787,6 +1787,27 @@ static void r_assemble_list (
   INT lc = 0;
   BOOL add_name = FALSE;
 
+#ifdef TARG_X8664
+  if (Is_Target_Orochi()) 
+  {
+    if (OP_noop(op)) 
+    {
+      switch(OP_dpadd(op)) 
+      {
+        case 1:
+          fputs ("\t.p2align 3,,\n", Asm_File);
+          break;
+        case 2:
+          fputs ("\t.p2align 5,,\n", Asm_File);
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+  }
+#endif
+
   Emit_Unwind_Directives_For_OP(op, Asm_File);
 
 #if defined(GAS_TAGS_WORKED) || defined(TARG_SL)
@@ -2538,9 +2559,31 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
   }
 
   if (OP_code(op) == TOP_noop) {
-    DevWarn("Noop not removed in BB:%d (PC=0x%x)", BB_id(OP_bb(op)), PC);
-    if (TFile != stdout) {	/* only print to .t file */
-      Print_OP_No_SrcLine(op);
+#ifdef TARG_X8664
+    if (Is_Target_Orochi() == TRUE)
+    {
+      switch (OP_dpadd(op))
+      {
+        case 1:
+        case 2:
+          break;
+        default:
+        {
+          DevWarn("Noop not removed in BB:%d (PC=0x%x)", BB_id(OP_bb(op)), PC);
+          if (TFile != stdout) {	/* only print to .t file */
+            Print_OP_No_SrcLine(op);
+          }
+          break;
+        }
+      }
+    }
+    else
+#endif
+    {
+      DevWarn("Noop not removed in BB:%d (PC=0x%x)", BB_id(OP_bb(op)), PC);
+      if (TFile != stdout) {	/* only print to .t file */
+        Print_OP_No_SrcLine(op);
+      }
     }
   }
 }
@@ -9183,7 +9226,11 @@ static void Enumerate_Insts(void)
 	ei[nenums] = i;
 	++nenums;
       } else {
+#if defined(TARG_X8664)
+        BOOL qp = false;
+#else
         BOOL qp = (i == OP_PREDICATE_OPND && TOP_is_predicated(top));
+#endif
         opnd[i] = buf + cursor;
         cursor += format_operand(buf + cursor, i, qp, vtype);
       }
