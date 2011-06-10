@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -3121,6 +3121,14 @@ run_ld (void)
 	    add_string(args, "-m elf_x86_64");
 	}
 #endif
+
+#ifdef BUILD_SKIP_IPA
+        if (ipa == TRUE) {
+            error("IPA support is not enabled in this compiler.");
+            return;
+        }
+#endif
+
 	if (ipa == TRUE) {
 	    char *str;
 	    ldpath = get_phase_dir (ldphase);
