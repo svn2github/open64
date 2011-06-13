@@ -100,11 +100,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
     _Base_ptr		_M_left;
     _Base_ptr		_M_right;
 
-#ifdef __OPEN64_FAST_SET
-    _Base_ptr           _M_prev;
-    _Base_ptr           _M_next;
-#endif
-
     static _Base_ptr
     _S_minimum(_Base_ptr __x)
     {
@@ -185,11 +180,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       _Self&
       operator++()
       {
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_next;
-#else
 	_M_node = _Rb_tree_increment(_M_node);
-#endif
 	return *this;
       }
 
@@ -197,23 +188,14 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       operator++(int)
       {
 	_Self __tmp = *this;
-
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_next;
-#else
 	_M_node = _Rb_tree_increment(_M_node);
-#endif
 	return __tmp;
       }
 
       _Self&
       operator--()
       {
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_prev;
-#else
 	_M_node = _Rb_tree_decrement(_M_node);
-#endif
 	return *this;
       }
 
@@ -221,12 +203,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       operator--(int)
       {
 	_Self __tmp = *this;
-
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_prev;
-#else
 	_M_node = _Rb_tree_decrement(_M_node);
-#endif
 	return __tmp;
       }
 
@@ -278,11 +255,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       _Self&
       operator++()
       {
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_next;
-#else
 	_M_node = _Rb_tree_increment(_M_node);
-#endif
 	return *this;
       }
 
@@ -290,23 +263,14 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       operator++(int)
       {
 	_Self __tmp = *this;
-
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_next;
-#else
 	_M_node = _Rb_tree_increment(_M_node);
-#endif
 	return __tmp;
       }
 
       _Self&
       operator--()
       {
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_prev;
-#else
 	_M_node = _Rb_tree_decrement(_M_node);
-#endif
 	return *this;
       }
 
@@ -314,12 +278,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
       operator--(int)
       {
 	_Self __tmp = *this;
-
-#ifdef __OPEN64_FAST_SET
-        _M_node = _M_node->_M_prev;
-#else
 	_M_node = _Rb_tree_decrement(_M_node);
-#endif
 	return __tmp;
       }
 
@@ -364,16 +323,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
   _Rb_tree_rebalance_for_erase(_Rb_tree_node_base* const __z,
 			       _Rb_tree_node_base& __header);
 
-
-#ifdef __OPEN64_FAST_SET
-  void
-  _Rb_tree_insert_into_sorted_list(const bool __insert_left,
-                                _Rb_tree_node_base* __x,
-                                _Rb_tree_node_base* __p,
-                                _Rb_tree_node_base& __header);
-  void
-  _Rb_tree_recreate_sorted_list(_Rb_tree_node_base& __header);
-#endif
 
   template<typename _Key, typename _Val, typename _KeyOfValue,
            typename _Compare, typename _Alloc = allocator<_Val> >
@@ -442,12 +391,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	__tmp->_M_color = __x->_M_color;
 	__tmp->_M_left = 0;
 	__tmp->_M_right = 0;
-	
-#ifdef __OPEN64_FAST_SET
-        __tmp->_M_prev = __tmp;
-        __tmp->_M_next = __tmp;
-#endif
-
 	return __tmp;
       }
 
@@ -476,11 +419,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	    this->_M_header._M_parent = 0;
 	    this->_M_header._M_left = &this->_M_header;
 	    this->_M_header._M_right = &this->_M_header;
-
-#ifdef __OPEN64_FAST_SET
-	    this->_M_header._M_prev = &this->_M_header;
-	    this->_M_header._M_next = &this->_M_header;
-#endif
 	  }
 	};
 
@@ -502,12 +440,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	    this->_M_header._M_parent = 0;
 	    this->_M_header._M_left = &this->_M_header;
 	    this->_M_header._M_right = &this->_M_header;
-
-#ifdef __OPEN64_FAST_SET
-	    this->_M_header._M_prev = &this->_M_header;
-	    this->_M_header._M_next = &this->_M_header;
-#endif
-
 	  }
 	};
 
@@ -653,10 +585,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	    _M_leftmost() = _S_minimum(_M_root());
 	    _M_rightmost() = _S_maximum(_M_root());
 	    _M_impl._M_node_count = __x._M_impl._M_node_count;
-
-#ifdef __OPEN64_FAST_SET
-            _Rb_tree_recreate_sorted_list(this->_M_impl._M_header);
-#endif
 	  }
       }
 
@@ -785,11 +713,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
         _M_root() = 0;
         _M_rightmost() = _M_end();
         _M_impl._M_node_count = 0;
-
-#ifdef __OPEN64_FAST_SET
-        _M_end()->_M_next = _M_end();
-        _M_end()->_M_prev = _M_end();
-#endif
       }
 
       // Set operations.
@@ -897,10 +820,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	      _M_leftmost() = _S_minimum(_M_root());
 	      _M_rightmost() = _S_maximum(_M_root());
 	      _M_impl._M_node_count = __x._M_impl._M_node_count;
-
-#ifdef __OPEN64_FAST_SET
-             _Rb_tree_recreate_sorted_list(this->_M_impl._M_header);
-#endif
 	    }
 	}
       return *this;
@@ -918,10 +837,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 
       _Link_type __z = _M_create_node(__v);
 
-#ifdef __OPEN64_FAST_SET
-      _Rb_tree_insert_into_sorted_list(__insert_left, __z, __p,
-                                       this->_M_impl._M_header);
-#endif
       _Rb_tree_insert_and_rebalance(__insert_left, __z, __p,  
 				    this->_M_impl._M_header);
       ++_M_impl._M_node_count;
@@ -940,10 +855,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 
       _Link_type __z = _M_create_node(__v);
 
-#ifdef __OPEN64_FAST_SET
-      _Rb_tree_insert_into_sorted_list(__insert_left, __z, __p,
-                                       this->_M_impl._M_header);
-#endif
       _Rb_tree_insert_and_rebalance(__insert_left, __z, __p,  
 				    this->_M_impl._M_header);
       ++_M_impl._M_node_count;
@@ -962,11 +873,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 
       _Link_type __z = _M_create_node(__v);
 
-#ifdef __OPEN64_FAST_SET
-      _Rb_tree_insert_into_sorted_list(__insert_left, __z,
-				    const_cast<_Base_ptr>(__p),  
-				    this->_M_impl._M_header);
-#endif
       _Rb_tree_insert_and_rebalance(__insert_left, __z,
 				    const_cast<_Base_ptr>(__p),  
 				    this->_M_impl._M_header);
@@ -1022,23 +928,10 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	      _M_leftmost() = __t._M_leftmost();
 	      _M_rightmost() = __t._M_rightmost();
 	      _M_root()->_M_parent = _M_end();
-
-#ifdef __OPEN64_FAST_SET
-             _M_end()->_M_next = _M_leftmost();
-             _M_leftmost()->_M_prev = _M_end();
-             _M_end()->_M_prev = _M_rightmost();
-             _M_rightmost()->_M_next = _M_end();
-#endif
 	      
 	      __t._M_root() = 0;
 	      __t._M_leftmost() = __t._M_end();
 	      __t._M_rightmost() = __t._M_end();
-
-#ifdef __OPEN64_FAST_SET
-	     __t._M_end()->_M_prev = __t._M_end();
-	     __t._M_end()->_M_next = __t._M_end();
-#endif
-
 	    }
 	}
       else if (__t._M_root() == 0)
@@ -1047,24 +940,10 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	  __t._M_leftmost() = _M_leftmost();
 	  __t._M_rightmost() = _M_rightmost();
 	  __t._M_root()->_M_parent = __t._M_end();
-
-#ifdef __OPEN64_FAST_SET
-             __t._M_end()->_M_next = __t._M_leftmost();
-             __t._M_leftmost()->_M_prev = __t._M_end();
-             __t._M_end()->_M_prev = __t._M_rightmost();
-             __t._M_rightmost()->_M_next = __t._M_end();
-#endif
 	  
-
 	  _M_root() = 0;
 	  _M_leftmost() = _M_end();
 	  _M_rightmost() = _M_end();
-
-#ifdef __OPEN64_FAST_SET
-	 _M_end()->_M_prev = _M_end();
-	 _M_end()->_M_next = _M_end();
-#endif
-
 	}
       else
 	{
@@ -1074,19 +953,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	  
 	  _M_root()->_M_parent = _M_end();
 	  __t._M_root()->_M_parent = __t._M_end();
-
-#ifdef __OPEN64_FAST_SET
-        _M_end()->_M_next = _M_leftmost();
-        _M_leftmost()->_M_prev = _M_end();
-        _M_end()->_M_prev = _M_rightmost();
-        _M_rightmost()->_M_next = _M_end();
-        __t._M_end()->_M_next = __t._M_leftmost();
-        __t._M_leftmost()->_M_prev = __t._M_end();
-        __t._M_end()->_M_prev = __t._M_rightmost();
-        __t._M_rightmost()->_M_next = __t._M_end();
-#endif
-
-
 	}
       // No need to swap header's color as it does not change.
       std::swap(this->_M_impl._M_node_count, __t._M_impl._M_node_count);
@@ -1379,12 +1245,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	static_cast<_Link_type>(_Rb_tree_rebalance_for_erase
 				(__position._M_node,
 				 this->_M_impl._M_header));
-
-#ifdef __OPEN64_FAST_SET
-      __y->_M_prev->_M_next = __y->_M_next;
-      __y->_M_next->_M_prev = __y->_M_prev;
-#endif
-
       _M_destroy_node(__y);
       --_M_impl._M_node_count;
     }
@@ -1399,11 +1259,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	static_cast<_Link_type>(_Rb_tree_rebalance_for_erase
 				(const_cast<_Base_ptr>(__position._M_node),
 				 this->_M_impl._M_header));
-#ifdef __OPEN64_FAST_SET
-      __y->_M_prev->_M_next = __y->_M_next;
-      __y->_M_next->_M_prev = __y->_M_prev;
-#endif
-
       _M_destroy_node(__y);
       --_M_impl._M_node_count;
     }
@@ -1426,7 +1281,7 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
     _Rb_tree<_Key, _Val, _KoV, _Compare, _Alloc>::
     _M_copy(_Const_Link_type __x, _Link_type __p)
     {
-
+      // Structural copy.  __x and __p must be non-null.
       _Link_type __top = _M_clone_node(__x);
       __top->_M_parent = __p;
 
@@ -1434,10 +1289,8 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	{
 	  if (__x->_M_right)
 	    __top->_M_right = _M_copy(_S_right(__x), __top);
-
 	  __p = __top;
 	  __x = _S_left(__x);
-
 
 	  while (__x != 0)
 	    {
@@ -1446,7 +1299,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	      __y->_M_parent = __p;
 	      if (__x->_M_right)
 		__y->_M_right = _M_copy(_S_right(__x), __y);
-
 	      __p = __y;
 	      __x = _S_left(__x);
 	    }
@@ -1470,11 +1322,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	{
 	  _M_erase(_S_right(__x));
 	  _Link_type __y = _S_left(__x);
-
-#ifdef __OPEN64_FAST_SET
-          __x->_M_prev->_M_next = __x->_M_next;
-          __x->_M_next->_M_prev = __x->_M_prev;
-#endif
 	  _M_destroy_node(__x);
 	  __x = __y;
 	}
@@ -1704,49 +1551,6 @@ _GLIBCXX_BEGIN_NAMESPACE(std)
 	return false;
       return true;
     }
-
-#ifdef __OPEN64_FAST_SET
-inline void
-_Rb_tree_insert_into_sorted_list(const bool __insert_left,
-                                 _Rb_tree_node_base* __x,
-                                 _Rb_tree_node_base* __p,
-                                 _Rb_tree_node_base& __header )
-{
-    if ( __insert_left)
-    {
-        __x->_M_next = __p;
-        __x->_M_prev = __p->_M_prev;
-        __p->_M_prev->_M_next = __x;
-        __p->_M_prev = __x; 
-    }
-    else {
-        __x->_M_prev = __p;
-        __x->_M_next = __p->_M_next;
-        __p->_M_next->_M_prev = __x;
-        __p->_M_next = __x;
-    }
-}
-inline void
-_Rb_tree_recreate_sorted_list(_Rb_tree_node_base& __header )
-{
-    _Rb_tree_node_base *__x, *__y, *__rightmost;
-
-    __rightmost = __header._M_right;
-    __x = __header._M_left;
-    __x->_M_prev = &__header;
-    __header._M_next = __x;
-
-   while ( __x != __rightmost )
-   {
-       __y = _Rb_tree_increment(__x);
-       __x->_M_next = __y;
-       __y->_M_prev = __x;
-       __x = __y;
-   }
-   __rightmost->_M_next = &__header;
-   __header._M_prev = __rightmost;
-}
-#endif
 
 _GLIBCXX_END_NAMESPACE
 
