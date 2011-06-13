@@ -1967,7 +1967,7 @@ Preorder_Process_PUs (PU_Info *current_pu)
         Pu_Table [ST_pu (St_Table [PU_Info_proc_sym (current_pu)])];
 
     // C++ PU having exception regions, or with -g
-    if ((PU_cxx_lang (func) && PU_has_region (func)) || Debug_Level > 0
+    if (Debug_Level > 0 
 #ifdef KEY
         || PU_has_goto_outer_block(func)
 #endif
@@ -2251,6 +2251,7 @@ main (INT argc, char **argv)
 	// Proactive loop nest transformation interferes with branch profiling.
 	WOPT_Enable_Pro_Loop_Fusion_Trans = FALSE;
 	WOPT_Enable_Pro_Loop_Interchange_Trans = FALSE;
+	WOPT_Enable_Pro_Loop_Ext_Trans = FALSE;
 	
 	Instrumentation_Phase_Num = PROFILE_PHASE_NONE;
       }

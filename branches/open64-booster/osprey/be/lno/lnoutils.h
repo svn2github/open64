@@ -844,6 +844,7 @@ extern OPCODE Matching_Load_Opcode(OPCODE store_op);
 extern WN* Create_ILoad_From_IStore(WN* wn_store, DU_MANAGER* du,
   ARRAY_DIRECTED_GRAPH16* dg);
 extern BOOL Is_Local_Array_Reference(WN* array);
+extern BOOL Is_Global_As_Local(ST *);
 extern BOOL Is_Mp_Region(WN *wn);
 #ifdef KEY
 extern BOOL Is_Eh_Or_Try_Region(WN *wn);
@@ -891,6 +892,8 @@ extern WN* Messy_Subscript(WN* wn_array);
 extern void Replace_Index_Variable(WN* loop, WN* cp_loop, const char prefix[]);
 extern WN* Enclosing_Proper_Do_Loop(WN* wn_ref);
 extern void Create_Single_Region(WN* wn_parent, WN* wn_single, WN* wn_end); 
+extern BOOL Dominates(WN *wn1, WN *wn2);
+extern WN * Find_Containing_Store(WN *);
 
 #ifdef Is_True_On
 extern void LNO_Check_Du(WN* orig);
@@ -904,6 +907,11 @@ extern WN *Inductive_Base_Addr_Const_Stride(WN *array, WN *loop, WN **base,
 
 extern WN *Simple_Invariant_Stride_Access(WN *array, WN *loop, BOOL ck_induc_base,
                                   BOOL *inductive_use, BOOL *indirect_use);
+#endif
+
+#ifdef TARG_X8664
+extern BOOL Is_Vectorizable_Inner_Loop(WN* loop);
+extern BOOL Is_Vectorizable_Outer_Loop(WN* loop);
 #endif
 
 #endif // LNOUTILS_DECLARE

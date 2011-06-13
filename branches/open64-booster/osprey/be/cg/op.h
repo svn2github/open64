@@ -346,6 +346,7 @@ typedef struct op {
   mINT16	scycle;		/* Start cycle */
 #ifdef TARG_X8664
   mINT16	d_group;	/* Dispatch group */
+  mUINT8        p_size;         /* padding size, if any */
 #endif
   mTOP		opr;		/* Opcode. topcode.h */
   mUINT8	unrolling;	/* which unrolled replication (if any) */
@@ -403,6 +404,7 @@ typedef struct op {
 #define OP_scycle(o)	((o)->scycle)
 #ifdef TARG_X8664
 #define OP_dgroup(o)	((o)->d_group)
+#define OP_dpadd(o)	((o)->p_size)
 #endif
 #define OP_flags(o)	((o)->flags)
 #ifdef TARG_IA64
@@ -531,6 +533,7 @@ enum OP_COND_DEF_KIND {
 
 #ifdef TARG_X8664
 #define OP_MASK_MEMORY_HI     0x00040000 /* Is OP load/store the high 32-bit? */
+#define OP_RES_NORENAME       0x00080000 /* lock result tn as non renamable */
 #define OP_MASK_COMPUTES_GOT  0x00100000 /* Does OP compute GOT ? */
 #define OP_MASK_PREFIX_LOCK   0x01000000
 #endif
@@ -675,6 +678,9 @@ enum OP_COND_DEF_KIND {
 #endif
 
 #ifdef TARG_X8664
+# define OP_res_norename(o)	(OP_flags(o) & OP_RES_NORENAME)
+# define Set_OP_res_norename(o)	(OP_flags(o) |= OP_RES_NORENAME)
+# define Reset_OP_res_norename(o)	(OP_flags(o) &= ~OP_RES_NORENAME)
 # define OP_memory_hi(o)	(OP_flags(o) & OP_MASK_MEMORY_HI)
 # define Set_OP_memory_hi(o)	(OP_flags(o) |= OP_MASK_MEMORY_HI)
 # define Reset_OP_memory_hi(o)	(OP_flags(o) &= ~OP_MASK_MEMORY_HI)
@@ -724,13 +730,18 @@ extern BOOL OP_use_return_value(OP*);
 #else
 #define OP_memory(o)		(OP_load(o) | OP_store(o) | OP_prefetch(o))
 #endif
+#if defined(TARG_X8664)
+#define OP_mem_fill_type(o)     (0)
+#define OP_likely(o)		(0)
+#else
 #define OP_mem_fill_type(o)     (TOP_is_mem_fill_type(OP_code(o)))
+#define OP_likely(o)		(TOP_is_likely(OP_code(o)))
+#endif
 #define OP_call(o)		(TOP_is_call(OP_code(o)))
 #if defined(TARG_X8664) || defined(TARG_SL) || defined(TARG_NVISA) || defined(TARG_MIPS) || defined(TARG_PPC32) || defined(TARG_LOONGSON)
 #define OP_xfer(o)		(TOP_is_xfer(OP_code(o)))
 #endif
 #define OP_cond(o)		(TOP_is_cond(OP_code(o)))
-#define OP_likely(o)		(TOP_is_likely(OP_code(o)))
 #define OP_dummy(o)		(TOP_is_dummy(OP_code(o)))
 #define OP_flop(o)		(TOP_is_flop(OP_code(o)))
 #define OP_sse5(o)		(TOP_is_non_destructive(OP_code(o)))
@@ -754,7 +765,11 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_mmalu(o)		(TOP_is_mmalu(OP_code(o)))
 #define OP_select(o)		(TOP_is_select(OP_code(o)))
 #define OP_cond_move(o)		(TOP_is_cond_move(OP_code(o)))
+#if defined(TARG_X8664)
+#define OP_uniq_res(o)		(0)
+#else
 #define OP_uniq_res(o)		(TOP_is_uniq_res(OP_code(o)))
+#endif
 #define OP_unalign_ld(o)	(TOP_is_unalign_ld(OP_code(o)))
 #define OP_unalign_store(o)	(TOP_is_unalign_store(OP_code(o)))
 #define OP_unalign_mem(o)	(OP_unalign_ld(o) | OP_unalign_store(o))
@@ -770,10 +785,16 @@ extern BOOL OP_use_return_value(OP*);
 #define OP_l_group(o)           (TOP_is_l_group(OP_code(o)))
 #define OP_privileged(o)        (TOP_is_privileged(OP_code(o)))
 #define OP_simulated(o)		(TOP_is_simulated(OP_code(o)))
+#if defined(TARG_X8664)
+#define OP_has_predicate(o)	(0)
+#define OP_access_reg_bank(o)	(0)
+#define OP_branch_predict(o)	(0)
+#else
 #define OP_has_predicate(o)	(TOP_is_predicated(OP_code(o)))
 #define OP_access_reg_bank(o)	(TOP_is_access_reg_bank(OP_code(o)))
-#define OP_side_effects(o)	(TOP_is_side_effects(OP_code(o)))
 #define OP_branch_predict(o)	(TOP_is_branch_predict(OP_code(o)))
+#endif
+#define OP_side_effects(o)	(TOP_is_side_effects(OP_code(o)))
 #define OP_var_opnds(o)		(TOP_is_var_opnds(OP_code(o)))
 #define OP_uncond(o)            (OP_xfer(o) && !OP_cond(o))
 #ifdef TARG_X8664

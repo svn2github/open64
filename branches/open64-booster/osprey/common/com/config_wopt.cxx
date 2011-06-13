@@ -207,6 +207,7 @@ BOOL  WOPT_Enable_Move_Intrinsicop = TRUE;
 BOOL  WOPT_Enable_MP_varref = TRUE;
 const BOOL  WOPT_Enable_MP_Const_Prop = TRUE;
 BOOL  WOPT_Enable_New_SR = TRUE;
+BOOL  WOPT_Enable_SIB = FALSE;
 INT32 WOPT_Enable_New_SR_Limit = 0;
 BOOL  WOPT_Enable_Output_Copy = TRUE;
 INT32 WOPT_Enable_Ocopy_Lookupstmt = 2;
@@ -254,6 +255,9 @@ INT32  WOPT_Enable_Simple_If_Conv = 1;   /* simple if-conversion at CFG build ti
 INT32 WOPT_Enable_If_Conv_Limit = 6;    /* max number of leaf nodes allowed in a
 					   simple expr in simple if conv */
 BOOL  WOPT_Enable_If_Conv_For_Istore = TRUE;   /* if-conversion is applied if lhs is istore */
+#if defined(TARG_SL)
+BOOL  WOPT_Enable_If_Conv_For_Iload = FALSE;   /* if-conversion is applied if rhs is iload */
+#endif
 BOOL  WOPT_Enable_Speculation_Defeats_LFTR = TRUE;
 BOOL  WOPT_Enable_Str_Red_Use_Context = TRUE; /* use loop content in SR decision */
 BOOL  WOPT_Enable_SSA_Minimization = TRUE; /* SSA minimization in SSAPRE */
@@ -332,8 +336,11 @@ INT32 WOPT_Enable_Pro_Loop_Fusion_Func_Limit = -1; // Enable proactive loop fusi
                                                   // functions within the limit.
 INT32 WOPT_Enable_Pro_Loop_Interchange_Func_Limit = -1; // Enable proactive loop interchange for 
                                                         // functions within the limit.
+INT32 WOPT_Enable_Pro_Loop_Ext_Func_Limit = -1; // Enable proactive loop extended transformation for
+                                                // functions within the limit.
 BOOL  WOPT_Enable_Pro_Loop_Fusion_Trans = TRUE;  // Enables proactive loop fusion transformation
 BOOL  WOPT_Enable_Pro_Loop_Interchange_Trans = TRUE; // Enables proactive loop interchange transformation
+BOOL WOPT_Enable_Pro_Loop_Ext_Trans = TRUE; // Enables proactive loop extended transformation.
 BOOL  WOPT_Simplify_Bit_Op = TRUE; // Enable specialized bit operation optimizations.
 BOOL  WOPT_Enable_Reassociation_CSE = TRUE;  // Enables Reassociation based CSE
 
@@ -587,6 +594,8 @@ static OPTION_DESC Options_WOPT[] = {
 #endif
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "new_sr",		"",
     0, 0, 0,	&WOPT_Enable_New_SR, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	FALSE, "sib",		"sib",
+    0, 0, 0,	&WOPT_Enable_SIB, NULL },
   { OVK_INT32,	OV_VISIBLE,	TRUE, "new_sr_limit",		"new_sr_limit",
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_New_SR_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ocopy",		"ocopy",
@@ -705,6 +714,10 @@ static OPTION_DESC Options_WOPT[] = {
     INT32_MAX, 0, INT32_MAX,	&WOPT_Enable_If_Conv_Limit, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "ifconv_for_istore",		"",
     0, 0, 0,	&WOPT_Enable_If_Conv_For_Istore, NULL },
+#if defined(TARG_SL)
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "ifconv_for_iload",		"",
+    0, 0, 0,	&WOPT_Enable_If_Conv_For_Iload, NULL },
+#endif
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "tail_recursion",	"tail",
     0, 0, 0,	&WOPT_Enable_Tail_Recur, &WOPT_Enable_Tail_Recur_Set },
   { OVK_BOOL,   OV_VISIBLE,	TRUE, "edge_placement",	"edge",
@@ -777,6 +790,8 @@ static OPTION_DESC Options_WOPT[] = {
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Fusion_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "pro_loop_interchange_trans", "pro_loop_interchange_trans",
     FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Interchange_Trans, NULL },
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "pro_loop_ext_trans", "pro_loop_ext_trans",
+    FALSE, 0, 1, &WOPT_Enable_Pro_Loop_Ext_Trans, NULL },
   { OVK_BOOL,	OV_VISIBLE, TRUE, "simp_bit_op", "simp_bit_op",
     FALSE, 0, 1, &WOPT_Simplify_Bit_Op, NULL },
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "reasso_cse", "reasso_cse",
@@ -791,6 +806,8 @@ static OPTION_DESC Options_WOPT[] = {
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Fusion_Func_Limit, NULL },
   { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_interchange_func_limit",              "",
     INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Interchange_Func_Limit, NULL },
+  { OVK_INT32,  OV_VISIBLE,    FALSE, "pro_loop_ext_func_limit",              "",
+    INT32_MAX, 0, INT32_MAX,    &WOPT_Enable_Pro_Loop_Ext_Func_Limit, NULL },
 
 #ifdef KEY
   { OVK_BOOL,	OV_VISIBLE,	TRUE, "mem_opnds", "mem_opnds",

@@ -47,7 +47,7 @@ AliasAnalyzer::Create_Alias_Analyzer(ALIAS_CONTEXT &ac, WN *tree)
 
   // What alias analyzer are we going to use?
   if ( Alias_Nystrom_Analyzer ) {
-    if (FILE_INFO_ipa(File_info))
+    if (FILE_INFO_ipa(File_info) && !PU_mp(Get_Current_PU ()) )
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree, true);
     else
       _alias_analyzer = new NystromAliasAnalyzer(ac, tree);

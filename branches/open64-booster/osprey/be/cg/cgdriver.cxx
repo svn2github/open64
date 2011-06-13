@@ -475,6 +475,10 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_branch_fuse, NULL },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "strcmp_expand", "",
     0, 0, 0,    &CG_strcmp_expand, NULL },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "merge_counters_x86", "",
+    0, 0, 0,    &CG_merge_counters_x86, NULL },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "interior_ptrs", "",
+    0, 0, 0,    &CG_interior_ptrs_x86, NULL },
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
@@ -925,6 +929,8 @@ static OPTION_DESC Options_CG[] = {
 
   { OVK_BOOL,	OV_INTERNAL, TRUE,"local_scheduler", "local_sched",
     0, 0, 0, &LOCS_Enable_Scheduling, NULL },
+  { OVK_INT32,	OV_INTERNAL, TRUE,"pre_minreg_level", "pre_minreg_level",
+    0, 1, 2, &LOCS_PRE_Enable_Minreg_Level, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"pre_local_scheduler", "pre_local_sched",
     0, 0, 0, &LOCS_PRE_Enable_Scheduling, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"post_local_scheduler", "post_local_sched",
@@ -1207,8 +1213,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0, &CG_use_setcc, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE,"short_form", "",
     0, 0, 0, &CG_use_short_form, NULL },
-  { OVK_BOOL,	OV_INTERNAL, TRUE, "p2align", "p2align",
-    0, 0, 0,	&CG_p2align, NULL },
+  { OVK_INT32,	OV_VISIBLE, TRUE, "p2align", "p2align",
+    2, 0, 2,	&CG_p2align, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "loop32", "loop32",
     0, 0, 0,	&CG_loop32, NULL },
   { OVK_BOOL,	OV_INTERNAL, TRUE, "compute_to", "compute_to",
@@ -2023,6 +2029,16 @@ Configure_CG_Options(void)
   CG_LOOP_unrolled_size_max = OPT_unroll_size;
   CG_LOOP_unroll_level = OPT_unroll_level;
 
+#if defined(TARG_X8664)
+  // set reg pressure hueristic flags for prescheduling
+  switch (LOCS_PRE_Enable_Minreg_Level) {
+  case 1: LOCS_PRE_Enable_General_RegPressure_Sched = TRUE; break;
+  case 2: LOCS_PRE_Enable_Unroll_RegPressure_Sched = TRUE; break;
+  default:
+    break;
+  }
+#endif
+
   CG_LOOP_ooo_unroll_heuristics = PROC_is_out_of_order();
 
   if (OPT_Space)
@@ -2178,7 +2194,7 @@ Configure_CG_Options(void)
   if (OPT_Space && !CG_use_xortozero_Set)	// Bug 9717
     CG_use_xortozero = TRUE;
 
-  if (((Target == TARGET_barcelona) || (Target == TARGET_orochi)) && 
+  if ((Target == TARGET_barcelona) && 
       !CG_push_pop_int_saved_regs_Set)
     CG_push_pop_int_saved_regs = TRUE;
 #endif
@@ -2617,6 +2633,14 @@ CG_Init (void)
       //       we have binutils support
       if (CG_loop32 == FALSE)
         CG_loop32 = TRUE; 
+    }
+    if (Is_Target_Orochi() || Is_Target_Barcelona()) {
+      if (CG_interior_ptrs_x86) {
+        // Enable sib translation and scheduling for register pressure
+        // for unrolled loops.
+        CG_merge_counters_x86 = TRUE;
+        LOCS_PRE_Enable_Unroll_RegPressure_Sched = TRUE;
+      }
     }
 #endif //TARG_X8664
 #endif // KEY

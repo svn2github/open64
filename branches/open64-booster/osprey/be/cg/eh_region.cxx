@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1122,7 +1122,7 @@ static void flatten_regions (void)
           last_child = first_child = i;
         if ( first_child != no_child && i != last_child )
         {
-          EH_RANGE new_range (range_list[i].rid);
+          EH_RANGE new_range (range_list[j].rid);
           new_range.start_label = range_list[last_child].end_label;
           new_range.end_label = range_list[i].start_label;
           new_range.end_bb = Get_Label_BB(range_list[i].start_label);
@@ -2245,11 +2245,10 @@ EH_Write_Range_Table(WN * wn)
 #endif // KEY
 
   fix_mask_ranges();
-  reorder_range_list();
 #ifdef KEY
   flatten_regions();
-  reorder_range_list();
 #endif
+  reorder_range_list();
 
   ST * st = ST_For_Range_Table(wn);
   eh_pu_range_st = st;

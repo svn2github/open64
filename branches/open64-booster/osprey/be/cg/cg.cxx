@@ -748,11 +748,13 @@ CG_Generate_Code(
   Set_Error_Phase( "Code Generation" );
   Start_Timer( T_CodeGen_CU );
 
+
 #ifdef TARG_X8664
 // Cannot enable emit_unwind_info if Force_Frame_Pointer is not set
 // Need this flag set for C++ exceptions and for -g
   if (!CG_emit_unwind_info_Set)
-  	CG_emit_unwind_info = Force_Frame_Pointer;
+  	CG_emit_unwind_info = (Force_Frame_Pointer 
+	  || (PU_cxx_lang (Get_Current_PU()) && PU_has_region (Get_Current_PU())));
 
   // Don't eliminate prologue OPs in main because they guide cgemit.cxx on
   // where to insert OPs to set up the control registers.  Bug 8141.
@@ -1489,6 +1491,18 @@ extern void Generate_Return_Address(void);
   GRA_LIVE_Rename_TNs();
 #if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
+#ifdef TARG_X8664
+  void Counter_Merge (char*);
+  if (CG_merge_counters_x86 == TRUE && CG_opt_level > 1) {
+    if (Enable_CG_Peephole) {
+      Set_Error_Phase ( "SIB counter merging" );
+      GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+      GRA_LIVE_Rename_TNs ();
+      Counter_Merge (Cur_PU_Name);
+    }
+  }
+#endif
+
 #endif 
 
 #endif // TARG_SL

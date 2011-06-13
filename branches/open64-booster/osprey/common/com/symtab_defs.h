@@ -214,6 +214,8 @@ enum ST_FLAGS_EXT
     ST_IS_VBUF_OFFSET = 0x8000,  // represent this symbol means offset instead of a absolute address
     ST_IS_SBUF_OFFSET = 0x10000, // same as above and will be deleted for we don't have sbuf in the future.
 #endif     
+    ST_IS_GLOBAL_AS_LOCAL = 0x20000, // Is a global variable that can be treated as a local variable.
+    ST_IS_VTABLE = 0x40000,        //st is a vtalbe
 }; // ST_FLAGS_EXT
 #endif
 
@@ -228,11 +230,7 @@ public:
 
     mUINT32 flags;			// misc. attributes
 
-#if defined(TARG_SL)
     mUINT32 flags_ext;			// more attributes
-#else
-    mUINT16 flags_ext;			// more attributes
-#endif
 
     ST_CLASS sym_class : 8;		// class info
     ST_SCLASS storage_class : 8;	// storage info
@@ -258,6 +256,8 @@ public:
     ST_IDX base_idx;			// base of the allocated block
 
     ST_IDX st_idx;			// my own st_idx
+
+    TY_IDX vtable_ty_idx;
 
     // operations
     
@@ -291,6 +291,7 @@ enum FLD_FLAGS
     FLD_IS_BIT_FIELD	= 0x0040,	// is bit field
     FLD_IS_ANONYMOUS    = 0x0080,       // is anonymous field
     FLD_IS_BASE_CLASS   = 0x0100,       // is a field of base class type
+    FLD_IS_VIRTUAL      = 0x0200,       // is virutal (base class) field
 };
 
 struct FLD
@@ -620,6 +621,8 @@ public:
 	ST_IDX copy_constructor;	// copy constructor X(X&) (record only)
 #endif
     } u2;
+	
+    ST_IDX vtable;
 
     // access function for unions
 
@@ -657,6 +660,15 @@ public:
       }
     void Set_copy_constructor (ST_IDX idx)	{ u2.copy_constructor = idx; }
 #endif	// KEY
+
+    ST_IDX Vtable () const
+      {
+	Is_True(kind == KIND_STRUCT,
+		("non-KIND_STRUCT type has no vtable"));
+	return vtable;
+      }
+    void Set_vtable (ST_IDX idx)	{ vtable = idx; }
+
 
     PU_IDX Pu_flags () const		{ return u2.pu_flags; }
     void Set_pu_flag (TY_PU_FLAGS f)	{ u2.pu_flags |= f; }
@@ -752,6 +764,7 @@ public:
 #define PU_IS_CDECL             0x0002000000000000LL // __attribute__((cdecl)) semantic
 #define PU_NOTHROW              0x0004000000000000LL // doesn't throw, e.g. decl as "void foo() throw()".
 #define PU_HAS_APPLY_ARGS       0x0008000000000000LL // __builtin_apply_args
+#define PU_SIMPLE_EH_RANGE      0x0010000000000000LL // there is a single eh range in PU, no clean-up or catch
 
 enum PU_SRC_LANG_FLAGS
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -283,6 +283,8 @@ OPTION_LIST *Feedback_Option = NULL;
 BOOL Outlining_Enabled = FALSE;
 BOOL Instrumentation_Enabled_Before = FALSE;
 
+INT32  Optimize_exception_ranges = 1;
+BOOL   Optimize_exception_ranges_set = FALSE;
 #ifdef KEY
 INT32  OPT_Cyg_Instrument = 0;
 BOOL   Asm_Memory = FALSE;
@@ -334,6 +336,16 @@ BOOL Early_Goto_Conversion_Set = FALSE;
 
 BOOL OPT_Enable_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 BOOL OPT_Enable_BUILD_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
+
+// alias analyzer triage value
+// all alias tag value less than AA_force_tag_alias_before_dim1 is 
+// aliased with all other alias tags.
+// all alias tag value less than AA_force_tag_alias_before_dim2 is 
+// aliased with tag[AA_force_tag_alias_before_dim1-1]
+// 
+// triage is find the first error alias tag pair.
+UINT32 AA_force_tag_alias_before_dim1 = 0;
+UINT32 AA_force_tag_alias_before_dim2 = UINT32_MAX;
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -875,6 +887,10 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,  &LANG_Ansi_Setjmp_On,   &LANG_Ansi_Setjmp_Set,
     "C/C++: enable optimization of functions with calls to setjmp" },
 
+  { OVK_INT32, OV_VISIBLE,     1, "exception_range_opt",           "",
+    1, 0, 2,  &Optimize_exception_ranges,   &Optimize_exception_ranges_set,
+    "Enable control flow optimization for exception ranges" },
+
 #if defined(__linux__) || defined(BUILD_OS_DARWIN)
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wfe_dfe",	"wfe_dfe",
     0, 0, 0,	&Enable_WFE_DFE,	NULL,
@@ -888,6 +904,14 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	FALSE, "wssa_build",	NULL,
     0, 0, 0,	&OPT_Enable_BUILD_WHIRL_SSA,	NULL,
     "Enable building WHIRL SSA directly on WHIRL" },
+
+  { OVK_UINT32,  OV_INTERNAL,	TRUE, "aa_force_alias_dim1",		"",
+    0, 1, UINT32_MAX,	&AA_force_tag_alias_before_dim1, NULL,
+    "Triage option for alias analyzer" },
+
+  { OVK_UINT32,  OV_INTERNAL,	TRUE, "aa_force_alias_dim2",		"",
+    0, 0, UINT32_MAX,	&AA_force_tag_alias_before_dim2, NULL,
+    "Triage option for alias analyzer" },
 
   /* Obsolete options: */
 

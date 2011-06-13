@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -71,7 +71,8 @@
 #include "fiz_fuse.h"
 #include "forward.h"
 #include "prompf.h"
- 
+#include "small_trips.h"
+
 #include "ir_reader.h"
 
 //-----------------------------------------------------------------------
@@ -315,7 +316,8 @@ extern void Remove_Unity_Trip_Loop(WN* wn_loop,
 				   WN** wn_first, 
 				   WN** wn_last, 
 				   ARRAY_DIRECTED_GRAPH16* dg, 
-				   DU_MANAGER* du)
+				   DU_MANAGER* du,
+				   BOOL verify_trip_count)
 {
   // Don't try this on doacross nests. 
   if (Is_Nested_Doacross(wn_loop)) {
@@ -367,9 +369,11 @@ extern void Remove_Unity_Trip_Loop(WN* wn_loop,
   // If known, there better be 1 iteration
   // It's possible that the caller knows there is 1 even if Iterations
   // isn't smart enough to figure it out
-  INT64 iter = Iterations(wn_loop, &LNO_local_pool);
-  FmtAssert((iter == 1) || (iter == -1),
-    ("Loop not unity trip."));
+  if (verify_trip_count) {
+  	INT64 iter = Iterations(wn_loop, &LNO_local_pool);
+  	FmtAssert((iter == 1) || (iter == -1),
+    		("Loop not unity trip."));
+  }
 
   // Replace the induction variable with the lower bound.
   WN* kid = NULL;
@@ -449,6 +453,9 @@ extern void Remove_Unity_Trip_Loop(WN* wn_loop,
 	*wn_first = WN_next(*wn_first);
 	if (*wn_first == NULL)
 	  *wn_last = NULL; 
+	else if ((*wn_last) && (WN_next(*wn_last) == *wn_first))
+	  *wn_last = *wn_first;
+
 	LWN_Delete_Tree(lb);
       }
     }

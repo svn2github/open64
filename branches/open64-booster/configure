@@ -273,7 +273,7 @@ PACKAGE_BUGREPORT=''
 
 ac_subdirs_all="$ac_subdirs_all osprey/cygnus"
 ac_subdirs_all="$ac_subdirs_all osprey-gcc-4.2.0"
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os MACHINE_TYPE BUILD_ABI BUILD_ARCH BUILD_HOST BUILD_TARGET BUILD_VENDOR BUILD_OPTIMIZE BUILD_LIB_OPTIMIZE BUILD_COMPILER BUILD_BOTH LIB_MACHINE_TYPE LIB_BUILD_TARGET LIB_BUILD_ABI LIB_BUILD_ARCH LIB_BUILD_HOST LIB2_MACHINE_TYPE LIB2_BUILD_TARGET LIB2_BUILD_ABI LIB2_BUILD_ARCH LIB2_BUILD_HOST BUILD_MULTILIB COMPILER_TARG_DIR TARG_INFO_NAME BUILD_GNU3 BUILD_FORTRAN GCC_CONFIGURE_TARG GCC_DIR LIBLIST subdirs LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os MACHINE_TYPE BUILD_ABI BUILD_ARCH BUILD_HOST BUILD_TARGET BUILD_VENDOR BUILD_OPTIMIZE BUILD_LIB_OPTIMIZE BUILD_COMPILER BUILD_BOTH LIB_MACHINE_TYPE LIB_BUILD_TARGET LIB_BUILD_ABI LIB_BUILD_ARCH LIB_BUILD_HOST LIB2_MACHINE_TYPE LIB2_BUILD_TARGET LIB2_BUILD_ABI LIB2_BUILD_ARCH LIB2_BUILD_HOST BUILD_MULTILIB COMPILER_TARG_DIR TARG_INFO_NAME BUILD_GNU3 BUILD_FORTRAN BUILD_SKIP_IPA GCC_CONFIGURE_TARG GCC_DIR LIBLIST subdirs LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -793,6 +793,7 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-gnu3           Enable GNU3-based C/C++ frontend
   --disable-fortran       Disable Fortran language support
+  --disable-ipa           Disable IPA compilation support (EXPERIMENTAL)
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1482,6 +1483,20 @@ if test "x$enable_fortran" != "xno"; then
 fi
 
 
+# Set whether to skip IPA support (default NO).
+# Check whether --enable-ipa or --disable-ipa was given.
+if test "${enable_ipa+set}" = set; then
+  enableval="$enable_ipa"
+
+fi;
+
+if test "x$enable_ipa" = "xno"; then
+
+  BUILD_SKIP_IPA=YES
+
+fi
+
+
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
 TARG_INFO_NAME=targ_info
@@ -1590,8 +1605,8 @@ case "$target" in
 		GCC_CONFIGURE_HOST=mips-redhat-linux
 		CYGNUS_CONFIGURE_TARG=mipsel-elf-linux
 		GCC_CONFIGURE_TARG=mips-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_SL"
-		CYGNUS_CONFIGURE_CFLAGS="-m32"
+		GCC_CONFIGURE_CFLAGS+=" -m32 -DTARG_SL"
+		CYGNUS_CONFIGURE_CFLAGS=" -m32"
 		BUILD_MULTILIB=NO
 		;;
 	*)
@@ -1600,6 +1615,11 @@ echo "$as_me: error: \"open64 is not supported on $target\"" >&2;}
    { (exit 1); exit 1; }; }
 		;;
 esac
+
+if test "${BUILD_TARGET}" = "SL"; then
+   BUILD_GNU3="YES"
+   BUILD_FORTRAN="NO"
+fi
 
 UNAME_MACHINE=`uname -m`
 if test "$UNAME_MACHINE" = "x86_64"; then
@@ -1678,6 +1698,7 @@ export GCC_CONFIGURE_CFLAGS
 
 
 
+
 # List of configurable files to create in object directory.
                                                                                                                                                                                                                                                                                                   ac_config_files="$ac_config_files Makefile osprey/Makefile.gsetup osprey/targdir/libspin/Makefile osprey/targdir/libspin_4_2_0/Makefile osprey/targdir/include/Makefile osprey/targdir/driver/Makefile osprey/targdir/libiberty/Makefile osprey/targdir/targ_info/Makefile osprey/targdir/be/Makefile osprey/targdir/libelf/Makefile osprey/targdir/libelfutil/Makefile osprey/targdir/libdwarf/Makefile osprey/targdir/libunwindP/Makefile osprey/targdir/cg/Makefile osprey/targdir/wopt/Makefile osprey/targdir/ipl/Makefile osprey/targdir/lno/Makefile osprey/targdir/lw_inline/Makefile osprey/targdir/ipa/Makefile osprey/targdir/whirl2c/Makefile osprey/targdir/libcomutil/Makefile osprey/targdir/ir_tools/Makefile osprey/targdir/libcmplrs/Makefile osprey/targdir/wgen/Makefile osprey/targdir/libcif/Makefile osprey/targdir/arith/Makefile osprey/targdir/orc_ict/Makefile osprey/targdir/orc_intel/Makefile osprey/targdir/libkapi/Makefile"
 
@@ -1712,8 +1733,16 @@ else
   fi
 fi
 
-                                                  ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libhugetlbfs/Makefile osprey/targdir_lib/libmv/Makefile"
+                    ac_config_files="$ac_config_files osprey/targdir_lib/Makefile osprey/targdir_lib/include/Makefile"
 
+
+if test "${BUILD_TARGET}" = "SL"; then
+          ac_config_files="$ac_config_files osprey/targdir_lib/libinstr/Makefile:osprey/targdir_lib/libinstr2/Makefile.in"
+
+else
+                              ac_config_files="$ac_config_files osprey/targdir_lib/libopenmp/Makefile osprey/targdir_lib/libhugetlbfs/Makefile osprey/targdir_lib/libmv/Makefile"
+
+fi
 
 if test "${BUILD_FORTRAN}" = "YES"; then
                        ac_config_files="$ac_config_files osprey/targdir_lib/libfortran/Makefile osprey/targdir_lib/libu/Makefile"
@@ -2343,6 +2372,7 @@ do
   "osprey/targdir/g++fe/gnu/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir/g++fe/gnu/Makefile" ;;
   "osprey/targdir_lib/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/Makefile" ;;
   "osprey/targdir_lib/include/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/include/Makefile" ;;
+  "osprey/targdir_lib/libinstr/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libinstr/Makefile:osprey/targdir_lib/libinstr2/Makefile.in" ;;
   "osprey/targdir_lib/libopenmp/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libopenmp/Makefile" ;;
   "osprey/targdir_lib/libhugetlbfs/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libhugetlbfs/Makefile" ;;
   "osprey/targdir_lib/libmv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libmv/Makefile" ;;
@@ -2481,6 +2511,7 @@ s,@COMPILER_TARG_DIR@,$COMPILER_TARG_DIR,;t t
 s,@TARG_INFO_NAME@,$TARG_INFO_NAME,;t t
 s,@BUILD_GNU3@,$BUILD_GNU3,;t t
 s,@BUILD_FORTRAN@,$BUILD_FORTRAN,;t t
+s,@BUILD_SKIP_IPA@,$BUILD_SKIP_IPA,;t t
 s,@GCC_CONFIGURE_TARG@,$GCC_CONFIGURE_TARG,;t t
 s,@GCC_DIR@,$GCC_DIR,;t t
 s,@LIBLIST@,$LIBLIST,;t t

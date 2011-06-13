@@ -244,10 +244,14 @@ typedef struct lno_flags {
   BOOL	Run_fiz_fuse;
   UINT32 Fission;
   BOOL  Serial_distribute;
+  UINT32  Iter_threshold;
   UINT32 Fission_inner_register_limit;
   BOOL	Forward_substitution;
   UINT32 Fusion;
+  UINT32 Aggressive_fusion_limit;
+  UINT32 Sclrze_dse_limit;    
   UINT32 Fusion_peeling_limit;
+  UINT32 Fusion_ddep_limit;    
   UINT32 Gather_Scatter;
   UINT32 Graph_capacity;
   BOOL	Hoist_messy_bounds;
@@ -257,6 +261,7 @@ typedef struct lno_flags {
   BOOL	Run_lego_set;
   BOOL	Run_lego_localizer;
   BOOL	Loop_finalization;
+  BOOL  Loop_model_simd; 
   UINT32 Max_do_loop_depth_strict;
   BOOL	Mem_sim;
   BOOL	Minvar;
@@ -317,6 +322,7 @@ typedef struct lno_flags {
   BOOL 	  Simd_Verbose;
   BOOL 	  Simd_Reduction;
   BOOL 	  Simd_Avoid_Fusion;
+  BOOL    Simd_Rm_Unity_Remainder;
   BOOL    Run_hoistif;
   BOOL    Ignore_Feedback;
   BOOL    Run_unswitch;
@@ -486,11 +492,15 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Run_Fiz_Fuse		Current_LNO->Run_fiz_fuse
 #define LNO_Fission			Current_LNO->Fission
 #define LNO_Serial_Distribute		Current_LNO->Serial_distribute
+#define LNO_Iter_threshold		Current_LNO->Iter_threshold
 #define LNO_Fission_Inner_Register_Limit	\
 	Current_LNO->Fission_inner_register_limit
 #define LNO_Forward_Substitution	Current_LNO->Forward_substitution
 #define LNO_Fusion			Current_LNO->Fusion
+#define LNO_Aggressive_Fusion_Limit     Current_LNO->Aggressive_fusion_limit;
+#define LNO_Sclrze_Dse_Limit            Current_LNO->Sclrze_dse_limit;
 #define LNO_Fusion_Peeling_Limit	Current_LNO->Fusion_peeling_limit
+#define LNO_Fusion_Ddep_Limit	        Current_LNO->Fusion_ddep_limit
 #define LNO_Gather_Scatter		Current_LNO->Gather_Scatter
 #define LNO_Graph_Capacity		Current_LNO->Graph_capacity
 #define LNO_Hoist_Messy_Bounds		Current_LNO->Hoist_messy_bounds
@@ -500,6 +510,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Run_Lego_Set		Current_LNO->Run_lego_set
 #define LNO_Run_Lego_Localizer		Current_LNO->Run_lego_localizer
 #define LNO_Loop_Finalization		Current_LNO->Loop_finalization
+#define LNO_Loop_Model_Simd		Current_LNO->Loop_model_simd
 #define LNO_Max_Do_Loop_Depth_Strict	Current_LNO->Max_do_loop_depth_strict
 #define LNO_Mem_Sim			Current_LNO->Mem_sim
 #define LNO_Minvar			Current_LNO->Minvar
@@ -563,6 +574,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Simd_Verbose		Current_LNO->Simd_Verbose
 #define LNO_Simd_Reduction		Current_LNO->Simd_Reduction
 #define LNO_Simd_Avoid_Fusion		Current_LNO->Simd_Avoid_Fusion
+#define LNO_Simd_Rm_Unity_Remainder	Current_LNO->Simd_Rm_Unity_Remainder
 #define LNO_Run_hoistif                 Current_LNO->Run_hoistif
 #define LNO_Ignore_Feedback             Current_LNO->Ignore_Feedback
 #define LNO_Run_Unswitch                Current_LNO->Run_unswitch

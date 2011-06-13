@@ -380,6 +380,15 @@ HB_Schedule::Update_Regs_For_OP (OP *op)
     if (!REG_ENTRY_reg_assigned(reginfo)) {
       ISA_REGISTER_CLASS cl = TN_register_class(opnd_tn);
       _Cur_Regs_Avail[cl]--;
+#ifdef TARG_X8664
+      // mark any excess register pressure by class
+      if (HBS_Before_GRA() && HBS_Before_LRA()) {
+        if (_Cur_Regs_Avail[cl] == 1) {
+          if (BB_regpressure(op->bb,cl) == false)
+            Set_BB_regpressure(op->bb, true, cl);
+        }
+      }
+#endif
       REG_ENTRY_reg_assigned(reginfo) = TRUE;
       hTN_MAP_Set (_regs_map, opnd_tn, REG_ENTRY_ptr(reginfo));
     }
@@ -1425,9 +1434,8 @@ HB_Schedule::Add_OP_To_Sched_Vector (OP *op, BOOL is_fwd)
 
   // Adjust the resource table to account for this OP. Change 'Clock' 
   // to be the scycle of this OP.
-  if (!OP_dummy(op)) Set_Resource_Usage (op);
-
-  if (HBS_Minimize_Regs() && !OP_dummy(op)) {
+  if (!OP_dummy(op)) { 
+    Set_Resource_Usage (op);
     Update_Regs_For_OP (op);
   }
 
@@ -2835,9 +2843,8 @@ HB_Schedule::Schedule_Block (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 		HBS_Balance_Ready_Types() || HBS_Balance_Unsched_Types(),
 		scheduling_algorithm /* 1 is fwd */);
 
-  if (HBS_Minimize_Regs()) {
-    Init_Register_Map (bb);
-  }
+  // Always init, but only use the pressure heuristics with the flags
+  Init_Register_Map (bb);
 
   Priority_Selector *priority_fn;
   Cycle_Selector *cycle_fn;
@@ -3093,9 +3100,24 @@ HB_Schedule::Init(std::list<BB*> bblist, HBS_TYPE hbs_type, mINT8 *regs_avail)
 void
 HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
 {
+#if defined(TARG_X8664)
+  bool clear_minregs_flag = false;
+#endif
+
   /* In some cases, the bb is an empty one */
   if( BB_length(bb) == 0 )
     return;
+
+#if defined(TARG_X8664)
+  // Experiment: in prescheduling schedule for reg pressure for unrolled loops
+  if (HBS_Before_GRA() && HBS_Before_LRA() && 
+      HBS_Depth_First() && !HBS_Minimize_Regs() && 
+      ((BB_unrollings(bb) && LOCS_PRE_Enable_Unroll_RegPressure_Sched) || 
+       (LOCS_PRE_Enable_General_RegPressure_Sched))) {
+    clear_minregs_flag = true;
+    _hbs_type |= HBS_MINIMIZE_REGS;
+  }
+#endif
 
   Invoke_Pre_HBS_Phase(bb);
 
@@ -3196,6 +3218,11 @@ HB_Schedule::Schedule_BB (BB *bb, BBSCH *bbsch, int scheduling_algorithm)
     }
   }
 
+#if defined(TARG_X8664)
+  if (clear_minregs_flag) {
+    _hbs_type &= ~HBS_MINIMIZE_REGS;
+  }
+#endif
 }
 
 void

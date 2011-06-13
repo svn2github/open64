@@ -533,6 +533,8 @@ extern BOOL CG_dispatch_schedule;
 extern BOOL CG_128bitstore;
 extern BOOL CG_branch_fuse;
 extern BOOL CG_strcmp_expand;
+extern BOOL CG_merge_counters_x86;
+extern BOOL CG_interior_ptrs_x86;  // enable,disable interior pointer trans
 #endif
 extern INT CG_opt_level;
 extern BOOL CG_localize_tns;
@@ -640,6 +642,9 @@ extern BOOL CGSPILL_Enable_Force_Rematerialization;
 
 /* GCM, LOCS and IGLS */
 
+extern UINT32 LOCS_PRE_Enable_Minreg_Level;
+extern BOOL LOCS_PRE_Enable_General_RegPressure_Sched;
+extern BOOL LOCS_PRE_Enable_Unroll_RegPressure_Sched;
 extern BOOL LOCS_PRE_Enable_Scheduling;
 extern BOOL LOCS_POST_Enable_Scheduling;
 extern BOOL LOCS_Enable_Bundle_Formation;
@@ -855,6 +860,7 @@ extern BOOL LOCS_Balance_Unsched_Fp_set;
 extern BOOL LOCS_Reduce_Prefetch;
 extern BOOL LOCS_Reduce_Prefetch_set;
 #endif
+extern INT32 CG_p2align;
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
 extern INT32 CG_sse_load_execute;
 extern INT32 CG_load_execute;
@@ -863,7 +869,6 @@ extern BOOL CG_use_setcc;
 extern BOOL CG_use_short_form;
 extern BOOL CG_loadbw_execute;
 extern BOOL CG_Movext_ICMP;
-extern BOOL CG_p2align;
 extern BOOL CG_loop32;
 extern BOOL CG_compute_to;
 extern UINT64 CG_p2align_freq;

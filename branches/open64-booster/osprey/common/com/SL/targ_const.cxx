@@ -59,6 +59,7 @@
 
 
 #define USE_STANDARD_TYPES 1
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <limits.h>
 #include <fp_class.h>
@@ -737,7 +738,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 63)) {
         TCON_I8(c0) <<= TCON_I8U8I4U4(c1);
       } else {
-        TCON_I8(c0) = 0;
+        if (ARCH_mask_shift_counts)
+          TCON_I8(c0) <<= (TCON_I8U8I4U4(c1) & 63);
+        else
+          TCON_I8(c0) = 0;
       }
       break;
     case OPC_I4SHL:
@@ -746,7 +750,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 31)) {
         TCON_I4(c0) <<= TCON_I8U8I4U4(c1);
       } else {
-        TCON_I4(c0) = 0;
+        if (ARCH_mask_shift_counts)
+          TCON_I4(c0) <<= (TCON_I8U8I4U4(c1) & 31);
+        else
+          TCON_I4(c0) = 0;
       }
       break;
 
@@ -756,7 +763,10 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 63)) {
         TCON_U8(c0) >>= TCON_I8U8I4U4(c1);
       } else {
-        TCON_U8(c0) = 0;
+        if (ARCH_mask_shift_counts)
+          TCON_U8(c0) >>= (TCON_I8U8I4U4(c1) & 63);
+        else
+          TCON_U8(c0) = 0;
       }
       break;
     case OPC_I4LSHR:
@@ -765,19 +775,36 @@ Targ_WhirlOp ( OPCODE op, TCON c0, TCON c1, BOOL *folded )
       if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 31)) {
         TCON_U4(c0) >>= TCON_I8U8I4U4(c1);
       } else {
-        TCON_U4(c0) = 0;
+        if (ARCH_mask_shift_counts)
+          TCON_U4(c0) >>= (TCON_I8U8I4U4(c1) & 31);
+        else
+          TCON_U4(c0) = 0;
       }
       break;
 
     case OPC_I8ASHR:
     case OPC_U8ASHR:
       c0 = Targ_Conv(optype, c0);
-      TCON_I8(c0) >>= ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 63)) ? TCON_I8U8I4U4(c1) : 63;
+      if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 63)) {
+        TCON_I8(c0) >>= TCON_I8U8I4U4(c1);
+      } else {
+        if (ARCH_mask_shift_counts)
+          TCON_I8(c0) >>= (TCON_I8U8I4U4(c1) & 63);
+        else
+          TCON_I8(c0) >>= 63;
+      }
       break;
     case OPC_I4ASHR:
     case OPC_U4ASHR:
       c0 = Targ_Conv(optype, c0);
-      TCON_I4(c0) >>= ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 31)) ? TCON_I8U8I4U4(c1) : 31;
+      if ((TCON_I8U8I4U4(c1) >= 0) && (TCON_I8U8I4U4(c1) <= 63)) {
+        TCON_I4(c0) >>= TCON_I8U8I4U4(c1);
+      } else {
+        if (ARCH_mask_shift_counts)
+          TCON_I4(c0) >>= (TCON_I8U8I4U4(c1) & 63);
+        else
+          TCON_I4(c0) >>= 63;
+      }
       break;
 
     case OPC_F4F8CVT:

@@ -115,6 +115,7 @@ static const char source_file[] = __FILE__;
 #ifdef TARG_X8664
 #include "opt_alias_interface.h"
 #include "opt_alias_mgr.h"
+#include "lra.h"
 #endif
 
 #include "ebo.h"
@@ -125,6 +126,15 @@ static const char source_file[] = __FILE__;
 #include "dominate.h"
 
 #include "config_lno.h"
+
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <set>
+#include <vector>
+#include <list>
+#include <deque>
+#include <map>
 
 extern BOOL TN_live_out_of( TN*, BB* );
 extern void Set_flags_strcmp_expand();
@@ -148,9 +158,11 @@ static INT32 fixed_branch_cost, taken_branch_cost;
 static BOOL Convert_Imm_And( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Mul( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Or( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
-static BOOL Convert_Imm_Add( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
+static BOOL Convert_Imm_Add( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo, BOOL simplify_iadd );
 static BOOL Convert_Imm_Xor( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
 static BOOL Convert_Imm_Cmp( OP* op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo );
+
+static BB_MAP dfo_map;
 
 enum ADDR_MODE { REG_MODE = 0,     /* reg                      */
 		 BASE_MODE,	   /* offset(base)             */
@@ -1477,7 +1489,8 @@ static TOP TOP_with_Imm_Opnd( OP* op, int opnd, INT64 imm_val )
 /* Attempt to convert an add of 'tn' + 'imm_val' into an addi. Return
    TRUE if we succeed, FALSE otherwise. */
 static BOOL
-Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
+Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, 
+                 EBO_TN_INFO *tninfo, BOOL simplify_iadd)
 {
 #if Is_True_On
   if (!(EBO_Opt_Mask & EBO_CONVERT_IMM_ADD)) return FALSE;
@@ -1501,11 +1514,26 @@ Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
     new_op = Mk_OP(new_opcode, tnr, tn);
 
   } else if (ISA_LC_Value_In_Class ( imm_val, LC_simm32)) {
-    if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ||
-	 OP_code(op) == TOP_lea32 || OP_code(op) == TOP_lea64 )
+    // Use simplify_iadd to guard against inc/dec forms which
+    // come from addi-addi combinations.
+    if ( simplify_iadd ) {
+      if ( OP_code(op) == TOP_lea32 || OP_code(op) == TOP_lea64 ) {
+        return FALSE;
+      } else if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ) {
+        if ( ( imm_val != 1 ) && ( imm_val != -1 ) )
+          return FALSE;
+        else if ( Is_Target_32bit() ) 
+          return FALSE;
+      }
+    } else if ( OP_code(op) == TOP_addi32 || OP_code(op) == TOP_addi64 ||
+                OP_code(op) == TOP_lea32  || OP_code(op) == TOP_lea64 ) {
       return FALSE;
+    }
     new_opcode = is_64bit ? TOP_addi64 : TOP_addi32;
     BOOL rflags_read = FALSE;
+    if ( simplify_iadd )
+      new_opcode = OP_code(op);
+
     // If there is an instruction that is awaiting a rflags update then, 
     // do not convert the current op.
     for( OP* next_op = OP_next(op); next_op != NULL;
@@ -1534,6 +1562,17 @@ Convert_Imm_Add (OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO *tninfo)
 	  (!TOP_is_change_rflags( new_opcode ) && 
 	   TOP_is_change_rflags( OP_code(op) )))))
       return FALSE;
+
+    if ( simplify_iadd ) {
+      bool valid_inc_dec = true;
+      if ( is_64bit && (OP_code(op) != TOP_addi64))
+        valid_inc_dec = false;
+      else if (!is_64bit && (OP_code(op) != TOP_addi32))
+        valid_inc_dec = false;
+
+      if (valid_inc_dec == false)
+        return FALSE;
+    }
 
     if (new_opcode != TOP_inc32 && new_opcode != TOP_inc64 &&
 	new_opcode != TOP_dec32 && new_opcode != TOP_dec64)
@@ -1617,7 +1656,8 @@ Constant_Operand0 (OP *op,
       opcode == TOP_add64 ||
       opcode == TOP_lea32 ||
       opcode == TOP_lea64)
-    return Convert_Imm_Add(op, tnr, tn1, TN_value(tn0), opnd_tninfo[o1_idx]);
+    return Convert_Imm_Add(op, tnr, tn1, TN_value(tn0), 
+                           opnd_tninfo[o1_idx], false);
 
   return FALSE;
 }
@@ -1850,6 +1890,17 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   return TRUE;
 }
 
+BOOL OP_iadd_inc(OP* op)
+{
+  if (OP_iadd(op)) return TRUE;
+  TOP top = OP_code(op);
+  if (top == TOP_inc32 || top == TOP_inc64 ||
+      top == TOP_dec32 || top == TOP_dec64)
+	 return TRUE;
+  return FALSE; 
+
+}
+
 
 /*
  * Look at an exression that has a constant second operand and attempt to
@@ -1886,6 +1937,11 @@ Constant_Operand1 (OP *op,
 
   TN *tn0 = opnd_tn[o0_idx];
   TN *tn1 = opnd_tn[o1_idx];
+  if (OP_code(op) == TOP_inc32 || OP_code(op) == TOP_inc64)
+    tn1 = Gen_Literal_TN(1, 4);
+  else if (OP_code(op) == TOP_dec32 || OP_code(op) == TOP_dec64)
+    tn1 = Gen_Literal_TN(-1, 4);
+
   TN *tnr = OP_has_result(op) ? OP_result(op,0) : NULL;
 
   /* Don't mess with symbols. */
@@ -1921,7 +1977,9 @@ Constant_Operand1 (OP *op,
       opcode == TOP_add64 ||
       opcode == TOP_lea32 || 
       opcode == TOP_lea64 )
-    return Convert_Imm_Add(op, tnr, tn0, imm_val, opnd_tninfo[o0_idx]);
+    return Convert_Imm_Add( op, tnr, tn0, imm_val, 
+                            opnd_tninfo[o0_idx], false );
+
 
   if( OP_imul( op ) )
     return Convert_Imm_Mul( op, tnr, tn0, imm_val, opnd_tninfo[o0_idx] );
@@ -1943,12 +2001,16 @@ Constant_Operand1 (OP *op,
   TOP pred_opcode = OP_code(pred_op);
 
   /* Look for a sequence of two addi that can be combined. */
-  if (OP_iadd(op) && OP_iadd(pred_op))
+  if (OP_iadd_inc(op) && OP_iadd_inc(pred_op))
   {
     INT ptn0_idx = 0;
     INT ptn1_idx = 1;
     TN *ptn0 = OP_opnd(pred_op, ptn0_idx);
     TN *ptn1 = OP_opnd(pred_op, ptn1_idx);
+    if (OP_code(pred_op) == TOP_inc32 || OP_code(pred_op) == TOP_inc64)
+      ptn1 = Gen_Literal_TN(1, 4);
+    else if (OP_code(pred_op) == TOP_dec32 || OP_code(pred_op) == TOP_dec64)
+      ptn1 = Gen_Literal_TN(-1, 4);
 
     if (TN_is_constant(ptn1) && !TN_is_symbol(ptn1))
     {
@@ -1958,7 +2020,7 @@ Constant_Operand1 (OP *op,
       if (EBO_tn_available(bb, ptn0_tninfo))
       {
 	const INT64 new_val = imm_val + TN_value(ptn1);
-	if (Convert_Imm_Add(op, tnr, ptn0, new_val, ptn0_tninfo))
+	if (Convert_Imm_Add(op, tnr, ptn0, new_val, ptn0_tninfo, false))
 	{
 	  if (EBO_Trace_Optimization)
 	    fprintf(TFile,"\tcombine immediate adds\n");
@@ -1966,6 +2028,14 @@ Constant_Operand1 (OP *op,
 	  return TRUE;
 	}
       }
+    }
+  }
+
+  if ( opcode == TOP_addi32 ||
+       opcode == TOP_addi64 ) {
+    if ( ( imm_val == 1 ) || ( imm_val == -1 ) ) {
+      return Convert_Imm_Add( op, tnr, tn0, imm_val, 
+                              opnd_tninfo[o0_idx], true );
     }
   }
 
@@ -2691,6 +2761,7 @@ static BOOL move_ext_is_replaced( OP* op, const EBO_TN_INFO* tninfo )
 
   return TRUE;
 }
+static inline TN* OP_opnd_use( OP* op, ISA_OPERAND_USE use );
 
 BOOL Delete_Unwanted_Prefetches ( OP* op )
 {
@@ -2703,7 +2774,9 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   OP *incr = NULL;
   OP *as_opnd = NULL;
   OP *as_result = NULL;
+  OP *leaxx = NULL;
   OP *load_store = NULL;
+  BOOL sib = FALSE;
   BB* bb = OP_bb( op );
   OP *next = BB_first_op( bb );
 
@@ -2714,7 +2787,9 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
   if(PF_GET_KEEP_ANYWAY(WN_prefetch_flag(mem_wn)))
    return FALSE;
 #endif  
-  if (OP_find_opnd_use( op, OU_base ) >= 0)
+  if (OP_find_opnd_use( op, OU_base ) >= 0 && 
+      // the prefetch instruction has passed a call of this function, so pass it.
+      Get_Top_For_Addr_Mode(OP_code(op), BASE_MODE) == OP_code(op))
     base = OP_opnd( op, OP_find_opnd_use( op, OU_base ));
   else
     return FALSE; // Can not analyze further; make safe assumption.
@@ -2729,21 +2804,43 @@ BOOL Delete_Unwanted_Prefetches ( OP* op )
 	as_result = next;
       else if (OP_opnd(next, 0) == base)
 	as_opnd = next;
-    }
+    } else if ((OP_code(next) == TOP_leax32 || OP_code(next) == TOP_leax64) 
+		    && OP_result(next, 0) == base)
+	    leaxx = next;
     
     next = OP_next(next);
   }
   
+  INT delta_base;
   if (!incr) {
-    if (!as_result && !as_opnd)
+    if (!as_result && !as_opnd && !leaxx)
       return TRUE;
-    else if (as_result)
-      incr = as_result;
+    else if (leaxx)
+    {  // further analyze the two terms for RPR
+      TN* term;
+      term = OP_opnd_use(leaxx, OU_index);
+
+      OP *w_incr;
+        for (w_incr = BB_first_op(bb); w_incr != NULL; w_incr = OP_next(w_incr))
+	{
+          if (((OP_code(w_incr) == TOP_addi32 || OP_code(w_incr) == TOP_addi64)) &&
+            (OP_results(w_incr) != 0 && OP_result(w_incr, 0) == term && 
+             OP_opnd(w_incr, 0) == term))
+	  break;
+	}
+      if (w_incr != NULL){
+	sib = TRUE;
+        delta_base = TN_value(OP_opnd(w_incr,1)) * (TN_value(OP_opnd_use(leaxx,OU_scale)));
+      } else
+        return TRUE;
+    } else if (as_result)
+	    incr = as_result;
     else 
       incr = as_opnd;
   }
   
-  INT delta_base = TN_value(OP_opnd(incr, 1));
+  if (!sib) 
+    delta_base = TN_value(OP_opnd(incr, 1));
 
   next = BB_first_op( bb );
   while (next && !load_store) {
@@ -4110,12 +4207,21 @@ static BOOL Compose_Addr( OP* mem_op, EBO_TN_INFO* pt_tninfo,
     break;
 
   case TOP_addi32:
+  case TOP_inc32:
+  case TOP_dec32:
     if( Is_Target_64bit() )
       return FALSE;
     // fall thru
   case TOP_addi64:
+  case TOP_inc64:
+  case TOP_dec64:
     a.base = OP_opnd( addr_op, 0 );
-    a.offset = OP_opnd( addr_op, 1 );
+    if (top == TOP_inc32 || top == TOP_inc64)
+      a.offset = Gen_Literal_TN(1, 4);
+    else if (top == TOP_dec32 || top == TOP_dec64)
+      a.offset = Gen_Literal_TN(-1, 4);
+    else
+      a.offset = OP_opnd( addr_op, 1 );
     break;
 
   case TOP_mov32:
@@ -4439,6 +4545,7 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_ldsd,	TOP_ldsdx,	TOP_ldsdxx,	TOP_ldsd_n32},
   {TOP_UNDEFINED, TOP_lddqa,	TOP_lddqax,	TOP_lddqaxx,	TOP_lddqa_n32},
   {TOP_UNDEFINED, TOP_ldupd,	TOP_ldupdx,	TOP_ldupdxx,	TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_ldups,	TOP_ldupsx,	TOP_ldupsxx,	TOP_ldups_n32},
   {TOP_UNDEFINED, TOP_lddqu,	TOP_lddqux,	TOP_lddquxx,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_ldlps,	TOP_ldlpsx,	TOP_ldlpsxx,	TOP_ldlps_n32},
   {TOP_UNDEFINED, TOP_ldlpd,	TOP_ldlpdx,	TOP_ldlpdxx,	TOP_UNDEFINED},
@@ -4496,6 +4603,8 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_UNDEFINED, TOP_prefetcht0, TOP_prefetcht0x, TOP_prefetcht0xx, TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_prefetcht1, TOP_prefetcht1x, TOP_prefetcht1xx, TOP_UNDEFINED},
 
+  {TOP_UNDEFINED, TOP_prefetchnta, TOP_prefetchntax, TOP_prefetchntaxx, TOP_UNDEFINED},
+  {TOP_UNDEFINED, TOP_sthpd,	TOP_sthpdx,	TOP_sthpdxx,	TOP_sthpd_n32},
   // LEA
   {TOP_UNDEFINED, TOP_lea32,	TOP_leax32,	TOP_leaxx32,	TOP_UNDEFINED},
   {TOP_UNDEFINED, TOP_lea64,	TOP_leax64,	TOP_leaxx64,	TOP_UNDEFINED},
@@ -4569,16 +4678,15 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_vcmpeq128v8,	TOP_vcmpeqx128v8,	TOP_vcmpeqxx128v8,	TOP_vcmpeqxxx128v8,	TOP_UNDEFINED},
   {TOP_vcmpeq128v16,	TOP_vcmpeqx128v16,	TOP_vcmpeqxx128v16,	TOP_vcmpeqxxx128v16,	TOP_UNDEFINED},
   {TOP_vcmpeq128v32,	TOP_vcmpeqx128v32,	TOP_vcmpeqxx128v32,	TOP_vcmpeqxxx128v32,	TOP_UNDEFINED},
-  {TOP_max128v8,	TOP_maxx128v8,	TOP_maxxx128v8,	TOP_maxxxx128v8,	TOP_UNDEFINED},
-  {TOP_max128v16,	TOP_maxx128v16,	TOP_maxxx128v16, TOP_maxxxx128v16,	TOP_UNDEFINED},
-  {TOP_min128v8,	TOP_minx128v8,	TOP_minxx128v8,	TOP_minxxx128v8,	TOP_UNDEFINED},
-  {TOP_min128v16,	TOP_minx128v16,	TOP_minxx128v16, TOP_minxxx128v16,	TOP_UNDEFINED},
   {TOP_vmaxs128v8,	TOP_vmaxsx128v8,	TOP_vmaxsxx128v8,	TOP_vmaxsxxx128v8,	TOP_UNDEFINED},
   {TOP_vmaxs128v16,	TOP_vmaxsx128v16,	TOP_vmaxsxx128v16,	TOP_vmaxsxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmaxs128v32,	TOP_vmaxsx128v32,	TOP_vmaxsxx128v32,	TOP_vmaxsxxx128v32,	TOP_UNDEFINED},
   {TOP_vmins128v8,	TOP_vminsx128v8,	TOP_vminsxx128v8,	TOP_vminsxxx128v8,	TOP_UNDEFINED},
   {TOP_vmins128v16,	TOP_vminsx128v16,	TOP_vminsxx128v16,	TOP_vminsxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmins128v32,	TOP_vminsx128v32,	TOP_vminsxx128v32,	TOP_vminsxxx128v32,	TOP_UNDEFINED},
   {TOP_vmaxu128v8,	TOP_vmaxux128v8,	TOP_vmaxuxx128v8,	TOP_vmaxuxxx128v8,	TOP_UNDEFINED},
   {TOP_vmaxu128v16,	TOP_vmaxux128v16,	TOP_vmaxuxx128v16,	TOP_vmaxuxxx128v16,	TOP_UNDEFINED},
+  {TOP_vmaxu128v32,	TOP_vmaxux128v32,	TOP_vmaxuxx128v32,	TOP_vmaxuxxx128v32,	TOP_UNDEFINED},
   {TOP_vminu128v8,	TOP_vminux128v8,	TOP_vminuxx128v8,	TOP_vminuxxx128v8,	TOP_UNDEFINED},
   {TOP_vminu128v16,	TOP_vminux128v16,	TOP_vminuxx128v16,	TOP_vminuxxx128v16,	TOP_UNDEFINED},
   {TOP_divss,	TOP_divxss,	TOP_divxxss,	TOP_divxxxss,	TOP_UNDEFINED},
@@ -4749,10 +4857,14 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_fblendv128v64,  TOP_fblendvx128v64,  TOP_fblendvxx128v64,  TOP_fblendvxxx128v64,     TOP_UNDEFINED},
   {TOP_blendv128v8,    TOP_blendvx128v8,    TOP_blendvxx128v8,    TOP_blendvxxx128v8,       TOP_UNDEFINED},
   {TOP_blend128v16,    TOP_blendx128v16,    TOP_blendxx128v16,    TOP_blendxxx128v16,       TOP_UNDEFINED},
+  {TOP_minu128v8,      TOP_minux128v8,      TOP_minuxx128v8,      TOP_minuxxx128v8,         TOP_UNDEFINED},
   {TOP_mins128v8,      TOP_minsx128v8,      TOP_minsxx128v8,      TOP_minsxxx128v8,         TOP_UNDEFINED},
+  {TOP_maxu128v8,      TOP_maxux128v8,      TOP_maxuxx128v8,      TOP_maxuxxx128v8,         TOP_UNDEFINED},
   {TOP_maxs128v8,      TOP_maxsx128v8,      TOP_maxsxx128v8,      TOP_maxsxxx128v8,         TOP_UNDEFINED},
   {TOP_minu128v16,     TOP_minux128v16,     TOP_minuxx128v16,     TOP_minuxxx128v16,        TOP_UNDEFINED},
   {TOP_maxu128v16,     TOP_maxux128v16,     TOP_maxuxx128v16,     TOP_maxuxxx128v16,        TOP_UNDEFINED},
+  {TOP_mins128v16,     TOP_minsx128v16,     TOP_minsxx128v16,     TOP_minsxxx128v16,        TOP_UNDEFINED},
+  {TOP_maxs128v16,     TOP_maxsx128v16,     TOP_maxsxx128v16,     TOP_maxsxxx128v16,        TOP_UNDEFINED},
   {TOP_minu128v32,     TOP_minux128v32,     TOP_minuxx128v32,     TOP_minuxxx128v32,        TOP_UNDEFINED},
   {TOP_maxu128v32,     TOP_maxux128v32,     TOP_maxuxx128v32,     TOP_maxuxxx128v32,        TOP_UNDEFINED},
   {TOP_mins128v32,     TOP_minsx128v32,     TOP_minsxx128v32,     TOP_minsxxx128v32,        TOP_UNDEFINED},
@@ -5027,6 +5139,2352 @@ Get_Top_For_Addr_Mode (TOP top, ADDR_MODE mode)
     FmtAssert(FALSE, ("Get_Top_For_Addr_Mode: address mode not handled"));
   }
   return TOP_UNDEFINED;
+}
+
+bool 
+Test_if_base_mode (OP* op) {
+  //function that banks on the number of operands to figure
+  // out if the BASE MODE is being used
+  ADDR_MODE mode = BASE_MODE;
+  const TOP new_top = Get_Top_For_Addr_Mode(OP_code(op), mode);
+  if (new_top == OP_code(op)) {
+      if (OP_store(op) || OP_load(op) || OP_prefetch(op))
+          return true;
+
+      if (OP_load_exe(op)) {
+          if (OP_icmp(op)) { 
+              // Some integer compares are not easy to convert to SIB
+              return false;
+          } 
+          if (OP_opnds(op) > 3) {
+              return false;
+          } else if (OP_opnds(op) == 2 || OP_opnds(op) == 3) {
+              if (OP_results(op) == 1) {
+                  return true;
+              } else {
+                  return false;
+              }
+          } else {
+              return false;
+          }
+      } else {
+          return false;
+      }
+  } else {
+      return false;
+  }
+}
+
+OP *
+Compose_Mem_Base_Index_Mode ( OP* op, TN* index, TN* offset, TN* scale, TN* base )
+{
+    // Based on existing function
+  Is_True( offset != NULL, ("Compose_Mem_Base_Index_Mode: offset is NULL") );
+  Is_True( index != NULL, ("Compose_Mem_Base_Index_Mode: index is NULL") );
+  Is_True( scale != NULL, ("Compose_Mem_Base_Index_Mode: scale is NULL") );
+  Is_True( base != NULL, ("Compose_Mem_Base_Index_Mode: base is NULL") );
+  OP* new_op = NULL;
+  ADDR_MODE mode = BASE_INDEX_MODE;
+  const TOP new_top = Get_Top_For_Addr_Mode(OP_code(op), mode);
+  FmtAssert( new_top != TOP_UNDEFINED, ("Compose_Mem_Op: unknown top") );
+  if( TOP_is_prefetch( new_top ) ){
+      new_op = Mk_OP( new_top, OP_opnd( op, 0 ), base, offset, index, scale );
+  } else {
+    TN* storeval = NULL;
+
+    if( TOP_is_store(new_top) ){
+      storeval = OP_opnd( op, OP_find_opnd_use( op, OU_storeval ) );
+    } else {
+      storeval = OP_result( op, 0 );
+    }
+    if (OP_load(op) || OP_store(op) || OP_prefetch(op)) {
+        new_op = Mk_OP( new_top, storeval, base, offset, index, scale );
+    } else if (OP_load_exe(op)) {
+        if (OP_opnds(op) == 2) {
+            FmtAssert ((storeval != NULL), 
+                    ("Unsupported storeval with operands == 2 || == 1"));
+            new_op = Mk_OP( new_top, storeval, base, index, scale, offset );
+            return new_op;
+        } else if (OP_opnds(op) == 3) {
+            FmtAssert ((storeval != NULL), 
+                    ("Unsupported storeval with operands >2"));
+            new_op = Mk_OP( new_top, storeval, 
+                        OP_opnd(op,0), base, index, scale, offset );
+            return new_op;
+        }
+        FmtAssert(0,("Unsupported for Compose_Mem_Base_Index_Mode\n"));
+    } else {
+        FmtAssert(0,("Unsupported for Compose_Mem_Base_Index_Mode\n"));
+    }
+  }
+  Copy_WN_For_Memory_OP(new_op, op);
+  if (OP_volatile(op)) // Bug 4245 - copy "volatile" flag
+    Set_OP_volatile(new_op);
+  OP_srcpos(new_op) = OP_srcpos(op);
+
+  Set_OP_unrolling(new_op, OP_unrolling(op));
+  Set_OP_orig_idx(new_op, OP_map_idx(op));
+  Set_OP_unroll_bb(new_op, OP_unroll_bb(op));
+
+  return new_op;
+}
+
+//
+// interior pointer translation
+//
+// This implementation utilizes discovery of similar address expressions
+// on a collection of variables to answer the question of can these 
+// expressions share index resources in SIB form, reducing the number
+// of unique address components needed to provide array accesses.
+//
+
+// Do we have more base registers in flight than we have physregs or
+// do we have local register pressure on gpr regs.
+static bool have_basereg_pressure(std::set<TN*>& counted_base_regs,
+                                  BB *lhead) {
+  bool have_gpr_reg_pressure = false;
+  INT num_br = counted_base_regs.size();
+  INT num_pr = REGISTER_CLASS_register_count(ISA_REGISTER_CLASS_integer) - 3;
+
+  // Two contraints, if we actually found register pressure during
+  // scheduling or if we have more base regs than we have physicial gpr regs
+  // to grant.  We are removing 1 reg for the RSP.
+  if (BB_regpressure(lhead,ISA_REGISTER_CLASS_integer) ||
+      (num_pr < num_br)) {
+    have_gpr_reg_pressure = true;
+  }
+
+  if ((CG_PU_Has_Feedback) && (have_gpr_reg_pressure)) {
+    // Find the loop epilog, the loop has 2 successors, the
+    // loop head and the loop epilog.
+    BB *epilog = NULL;
+    BBLIST *lst;
+    for ( lst = BB_succs(lhead); lst != NULL;
+        lst = BBLIST_next(lst) ) {
+      BB *bb = BBLIST_item(lst);
+      if (bb != lhead) {
+        epilog = bb;
+        break;
+      }
+    }
+
+    // If we are fdo optimized, and this loop is not executed much more
+    // frequently than the loop epilog, do nothing
+    if (BB_freq_fb_based(lhead) && BB_freq_fb_based(epilog)) {
+      if (BB_freq(lhead) < (BB_freq(epilog) * 20.0))
+        have_gpr_reg_pressure = false;
+    }
+  }
+
+  return have_gpr_reg_pressure;
+}
+
+// find last def of tn in a given block
+static OP* find_def_in_bb(BB *bb, TN *tn) {
+  OP *def_op = NULL;
+  OP *op;
+  FOR_ALL_BB_OPs_REV(bb, op){
+    for (INT i = 0; i < OP_results(op); ++i) {
+      TN *res_tn = OP_result (op,i);
+      if (TN_is_register(res_tn)) {
+        if (TNs_Are_Equivalent(res_tn, tn)) {
+          REGISTER reg1 = TN_register(res_tn);
+          REGISTER reg2 = TN_register(tn);
+          if (reg1 == reg2) {
+            def_op = op;
+            break;
+          }
+        }
+      }
+    }
+    if (def_op != NULL) break;
+  }
+
+  return def_op;
+}
+
+static bool tn_has_no_def(TN *tn, TN_MAP def_map) {
+  OP *def_op = (OP*)TN_MAP_Get(def_map, tn);
+  return (def_op == NULL);
+}
+
+// find a given op in the visited queue
+static bool op_find(std::deque<OP*>& ops_visited, OP *op)
+{
+  bool found = false;
+  std::deque<OP*>::iterator visited_ops_it;
+  for (visited_ops_it = ops_visited.begin();
+       visited_ops_it != ops_visited.end();
+       ++visited_ops_it) {
+    OP* cur_op = *visited_ops_it;
+    if (cur_op == op) {
+      found = true;
+      break;
+    }
+  }
+  return found;
+}
+
+// compare two def trees and mark attributes concerning input tn's tree
+static void compare_def_tree(TN *tn,
+                             INT *num,
+                             bool count_marked,
+                             INT  *total_marked,
+                             std::deque<OP*>& diff_ops,
+                             std::map<BB*,std::deque<OP*> >& bb_ops_visited_map,
+                             std::map<BB*,std::deque<OP*> >& bb_ops_compare_map,
+                             TN_MAP def_map) {
+  INT i;
+  bool skip_cover = false;
+
+  if (tn_has_no_def(tn, def_map) == false) {
+    std::deque<OP*> ops_visited;
+    OP *def_op = (OP*)TN_MAP_Get(def_map, tn);
+    *num = *num + 1;
+
+    // mark the current def_op if we have not done so
+    ops_visited = bb_ops_visited_map[def_op->bb];
+    if (op_find(ops_visited, def_op) == false) {
+      if (count_marked) {
+        // ignore covering register transfers
+        if ((*num == 1) &&
+            ((OP_code(def_op) == TOP_mov32) ||
+             (OP_code(def_op) == TOP_mov64))) {
+          skip_cover = true;
+        } else {
+          *total_marked = *total_marked + 1;
+          diff_ops.push_front(def_op);
+        }
+      }
+    }
+
+    if (EBO_Trace_Optimization && skip_cover) {
+      fprintf( TFile, "covering register mov skipped for this compare tree\n");
+    }
+
+    // mark the current def_op if we have not done so
+    std::deque<OP*> ops_compared;
+    ops_compared = bb_ops_compare_map[def_op->bb];
+    if (op_find(ops_compared, def_op) == false) {
+      ops_compared.push_front(def_op);
+      bb_ops_compare_map[def_op->bb] = ops_compared;
+
+      for (i = 0; i < OP_opnds(def_op); i++) {
+        TN *opnd_tn = OP_opnd(def_op,i);
+        if (TN_is_register(opnd_tn) && !TN_is_dedicated(opnd_tn)) {
+          compare_def_tree(opnd_tn, num, count_marked, total_marked,
+                           diff_ops, bb_ops_visited_map, 
+                           bb_ops_compare_map, def_map);
+        }
+      }
+    }
+  }
+}
+
+// mark the visited components of tn's tree to minimize compares
+static void mark_def_tree(TN *tn,
+                          INT *num,
+                          bool count_marked,
+                          INT  *total_marked,
+                          std::map<BB*,std::deque<OP*> >& bb_ops_visited_map,
+                          TN_MAP def_map) {
+  INT i;
+
+  if (tn_has_no_def(tn, def_map) == false) {
+    std::deque<OP*> ops_visited;
+    OP *def_op = (OP*)TN_MAP_Get(def_map, tn);
+    *num = *num + 1;
+
+    // mark the current def_op if we have not done so
+    ops_visited = bb_ops_visited_map[def_op->bb];
+    if (op_find(ops_visited, def_op) == false) {
+      if (count_marked)
+        *total_marked = *total_marked + 1;
+      ops_visited.push_front(def_op);
+      bb_ops_visited_map[def_op->bb] = ops_visited;
+
+      for (i = 0; i < OP_opnds(def_op); i++) {
+        TN *opnd_tn = OP_opnd(def_op,i);
+        if (TN_is_register(opnd_tn) && !TN_is_dedicated(opnd_tn)) {
+          mark_def_tree(opnd_tn, num, count_marked, total_marked,
+                        bb_ops_visited_map, def_map);
+        }
+      }
+    }
+  }
+}
+
+// find the given load_op if it exists in the current queue
+static bool is_load_in_queue(OP* load_op,
+                             std::deque<OP*>& load_ops) {
+  bool load_in_queue = false;
+  std::deque<OP*>::iterator load_ops_it;
+  for (load_ops_it = load_ops.begin();
+       load_ops_it != load_ops.end();
+       ++load_ops_it) {
+    OP* op = *load_ops_it;
+    if (load_op == op) {
+      load_in_queue = true;
+      break;
+    }
+  }
+  return load_in_queue;
+}
+
+// determine if this load expression contains only our target load
+static bool single_load_expression(std::deque<OP*>& diff_ops,
+                                   std::deque<OP*>& load_ops) {
+  // a walk from a load through our load based expression will
+  // be a sequence in this def pattern
+  OP *last_op = NULL;
+  INT i;
+  bool expr_ok = true;
+  bool no_more_load_expr = false;
+  std::deque<OP*>::iterator diff_ops_it;
+  for (diff_ops_it = diff_ops.begin();
+       diff_ops_it != diff_ops.end();
+       ++diff_ops_it) {
+    OP* diff_op = *diff_ops_it;
+
+    // Check to see if we have a 2nd load, it will not be in load_ops
+    if (OP_load(diff_op) && !is_load_in_queue(diff_op, load_ops)) {
+      expr_ok = false;
+      break;
+    }
+
+    if (no_more_load_expr) {
+      if (OP_load_exe(diff_op)) {
+        expr_ok = false;
+        break;
+      }
+    }
+
+    // TODO: are there other patterns?
+    if ((last_op != NULL) &&
+        (TOP_is_move_ext(OP_code(diff_op)) || TOP_is_move(OP_code(diff_op)))) {
+      // any move must include that last diff_op
+      bool found_reg = false;
+      for (i = 0; i < OP_opnds(diff_op); i++) {
+        TN *opnd_tn = OP_opnd(diff_op,i);
+        if (TN_is_register(opnd_tn)) {
+          TN *res_tn = OP_result (last_op,0);
+          REGISTER reg1 = TN_register(res_tn);
+          REGISTER reg2 = TN_register(opnd_tn);
+          if (reg1 == reg2) {
+            found_reg = true;
+            last_op = diff_op;
+            break;
+          }
+        }
+      }
+      expr_ok = found_reg;
+    } else if (last_op) {
+      // this is the tail insn, it must include the def of last_op
+      bool found_reg = false;
+      for (i = 0; i < OP_opnds(diff_op); i++) {
+        TN *opnd_tn = OP_opnd(diff_op,i);
+        if (TN_is_register(opnd_tn)) {
+          TN *res_tn = OP_result (last_op,0);
+          REGISTER reg1 = TN_register(res_tn);
+          REGISTER reg2 = TN_register(opnd_tn);
+          if (reg1 == reg2) {
+            found_reg = true;
+            break;
+          }
+        }
+      }
+      expr_ok = found_reg;
+      no_more_load_expr = true;
+    }
+
+    if (OP_load(diff_op))
+      last_op = diff_op;
+  }
+
+  return expr_ok;
+}
+
+// Compare two marked trees to see if they are initially similar.
+static bool bidirection_diff(TN *tn1,
+                             TN *tn2,
+                             std::deque<OP*>& diff_ops_tn1_mark,
+                             std::deque<OP*>& diff_ops_tn2_mark,
+                             TN_MAP def_map) {
+  INT total_marked[2];
+  INT defs_seen[2];
+  INT similar_threshold;
+  INT i;
+  bool is_consistant = true;
+
+  for (i = 0; i < 2; i++) {
+    total_marked[i] = 0;
+    defs_seen[i] = 0;
+  }
+
+  // first mark the tn1 tree, then compare tn2 to tn1
+  {
+    std::map<BB*, std::deque<OP*> > bb_ops_visited_map;
+    std::map<BB*, std::deque<OP*> > bb_ops_compare_map;
+    mark_def_tree(tn1, &defs_seen[0], true, &total_marked[0],
+                  bb_ops_visited_map, def_map);
+    similar_threshold = (total_marked[0] / 4) + 2;
+    compare_def_tree(tn2, &defs_seen[1], true, &total_marked[1],
+                     diff_ops_tn1_mark, bb_ops_visited_map, 
+                     bb_ops_compare_map, def_map);
+  }
+  // rule of thumb, slightly less than 75% is similar
+  if (similar_threshold < total_marked[1])
+    is_consistant = false;
+
+  // Hueristic: limit the def chain size
+  if ((defs_seen[0] > 100) || (defs_seen[1] > 100))
+    is_consistant = false;
+
+  for (i = 0; i < 2; i++) {
+    total_marked[i] = 0;
+    defs_seen[i] = 0;
+  }
+
+  // first mark the tn2 tree, then compare tn1 to tn2
+  {
+    std::map<BB*, std::deque<OP*> > bb_ops_visited_map;
+    std::map<BB*, std::deque<OP*> > bb_ops_compare_map;
+    mark_def_tree(tn2, &defs_seen[0], true, &total_marked[0],
+                  bb_ops_visited_map, def_map);
+    similar_threshold = (total_marked[0] / 4) + 2;
+    compare_def_tree(tn1, &defs_seen[1], true, &total_marked[1],
+                     diff_ops_tn2_mark, bb_ops_visited_map, 
+                     bb_ops_compare_map, def_map);
+  }
+  // rule of thumb, slightly less than 75% is similar
+  if (similar_threshold < total_marked[1])
+    is_consistant = false;
+
+  // Hueristic: limit the def chain size
+  if ((defs_seen[0] > 100) || (defs_seen[1] > 100))
+    is_consistant = false;
+
+  return is_consistant;
+}
+
+// find the sub expression load and add it to load_ops
+static bool diff_ops_find_load(std::deque<OP*>& diff_ops,
+                               std::deque<OP*>& load_ops) {
+  OP *diff_op = NULL;
+  bool has_load = false;
+  std::deque<OP*>::iterator diff_ops_it;
+  for (diff_ops_it = diff_ops.begin();
+       diff_ops_it != diff_ops.end();
+       ++diff_ops_it) {
+    diff_op = *diff_ops_it;
+    if (OP_load(diff_op)) {
+      load_ops.push_front(diff_op);
+      has_load = true;
+      break;
+    }
+  }
+  return has_load;
+}
+
+// do our sub expressions match
+static bool diff_ops_same(std::deque<OP*>& diff1_ops,
+                          std::deque<OP*>& diff2_ops) {
+  OP *op1 = NULL;
+  OP *op2 = NULL;
+  bool ops_same = true;
+  std::deque<OP*>::iterator diff_ops1_it;
+  std::deque<OP*>::iterator diff_ops2_it;
+  diff_ops1_it = diff1_ops.begin();
+  diff_ops2_it = diff2_ops.begin();
+  while (diff_ops1_it != diff1_ops.end() &&
+         diff_ops2_it != diff2_ops.end()) {
+    op1 = *diff_ops1_it;
+    op2 = *diff_ops2_it;
+    if (OP_code(op1) != OP_code(op2)) {
+      ops_same = false;
+      break;
+    }
+    ++diff_ops1_it;
+    ++diff_ops2_it;
+  }
+  return ops_same;
+}
+
+// Process the correlated ST queues and compare the address expressions.
+// Place the matched queues in the symbol map for our address expressions
+static void process_queues(std::set<ST*>& counted_addr_sts,
+                           std::map<ST*,std::deque<TN*> >& symbol_addr_map,
+                           TN_MAP def_map) {
+  std::map<BB*, std::deque<OP*> > bb_ops_visited_map;
+  std::set<ST*>::const_iterator counted_addr_sts_it;
+  INT total_marked[2];
+  INT defs_seen[2];
+  INT similar_threshold;
+  TN *tn1;
+  TN *tn2;
+
+  // Walk ST based unique tn queues.
+  //
+  // The resultant output are changes in symbol_addr_map on a
+  // symbol by symbol basis, where only paired tn lists persist.
+  //
+  // We have built all the def_maps we can see for this loop.
+  // Next we look at the candidates where number of TNs mapped to a ST
+  // meets the following criteria:
+  //
+  // 2: automatic pair, determine address ordering
+  // > 4: pair if possible closely matching accesses, else prune
+
+  for (counted_addr_sts_it = counted_addr_sts.begin();
+       counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+    INT tn_count;
+    std::deque<TN*> st_tns;
+    std::deque<TN*> matched_pairs;
+
+    st_tns = symbol_addr_map[*counted_addr_sts_it];
+    tn_count = st_tns.size();
+
+    if (tn_count == 0) continue;
+
+    if (tn_count == 2) {
+      INT i;
+      std::deque<OP*> diff_ops_tn1_mark;
+      std::deque<OP*> diff_ops_tn2_mark;
+      std::deque<TN*>::iterator st_tns_iter;
+      bool is_consistant = true;
+
+      st_tns_iter = st_tns.begin();
+      for (i = 0; i < 2; i++, ++st_tns_iter) {
+        switch (i) {
+        case 0: tn1 = *st_tns_iter; break;
+        case 1: tn2 = *st_tns_iter; break;
+        }
+      }
+
+      // configure initial consistancy and diff queues
+      is_consistant = bidirection_diff(tn1, tn2, diff_ops_tn1_mark,
+                                       diff_ops_tn2_mark, def_map);
+
+      // We are looking at things like J and J+1 for array access patterns,
+      // if the diff_ops lists are of different size.  We then take
+      // note of how they differ, as they should be highly similar to compare.
+      OP *diff_op1 = NULL;
+      OP *diff_op2 = NULL;
+      bool is_tn1_major = false;
+      bool is_tn2_major = false;
+      std::deque<OP*>::reverse_iterator diff_ops_it1;
+      std::deque<OP*>::reverse_iterator diff_ops_it2;
+      INT size_of_diff_ops1 = diff_ops_tn1_mark.size();
+      INT size_of_diff_ops2 = diff_ops_tn2_mark.size();
+
+      // Only allow a single difference in size of the diff ops
+      if (is_consistant) {
+        if (size_of_diff_ops1 > size_of_diff_ops2) {
+          if ((size_of_diff_ops1 - size_of_diff_ops2) != 1)
+            is_consistant = false;
+        } else if (size_of_diff_ops2 > size_of_diff_ops1) {
+          if ((size_of_diff_ops2 - size_of_diff_ops1) != 1)
+            is_consistant = false;
+        } else {
+          is_consistant = false;
+        }
+      }
+
+      diff_ops_it1 = diff_ops_tn1_mark.rbegin();
+      diff_ops_it2 = diff_ops_tn2_mark.rbegin();
+      while(1 && is_consistant) {
+        if (diff_ops_it1 == diff_ops_tn1_mark.rend())
+          break;
+        if (diff_ops_it2 == diff_ops_tn2_mark.rend())
+          break;
+
+        diff_op1 = *diff_ops_it1;
+        diff_op2 = *diff_ops_it2;
+        if (OP_code(diff_op1) != OP_code(diff_op2)) {
+          is_consistant = false;
+          break;
+        }
+
+        diff_ops_it1++;
+        diff_ops_it2++;
+      }
+
+      if (is_consistant) {
+        ST *st = NULL;
+        // the interior most of the longer diff chain is the determining op
+        if (diff_ops_it1 != diff_ops_tn1_mark.rend()) {
+          diff_op1 = *diff_ops_it1;
+          if (OP_iadd(diff_op1) || OP_isub(diff_op1) || OP_imul(diff_op1)) {
+            if (OP_isub(diff_op1))
+              is_tn2_major = true;
+            else
+              is_tn1_major = true;
+          }
+        } else if (diff_ops_it2 != diff_ops_tn2_mark.rend()) {
+          diff_op2 = *diff_ops_it2;
+          if (OP_iadd(diff_op2) || OP_isub(diff_op2) || OP_imul(diff_op2)) {
+            if (OP_isub(diff_op2))
+              is_tn1_major = true;
+            else
+              is_tn2_major = true;
+          }
+        }
+
+        st = *counted_addr_sts_it;
+        if (is_tn1_major) {
+          matched_pairs.push_back(tn1);
+          matched_pairs.push_back(tn2);
+        } else if (is_tn2_major) {
+          matched_pairs.push_back(tn2);
+          matched_pairs.push_back(tn1);
+        }
+      }
+
+      diff_ops_tn1_mark.clear();
+      diff_ops_tn2_mark.clear();
+      symbol_addr_map[*counted_addr_sts_it].clear();
+      if (!matched_pairs.empty()) {
+        // Now copy the ordered pairs of tns back
+        symbol_addr_map[*counted_addr_sts_it] = matched_pairs;
+      }
+    } else if (tn_count == 3) {
+      // Ordering the sort of the arity index values is non-trivial.
+      symbol_addr_map[*counted_addr_sts_it].clear();
+    } else {
+      bool have_pair;
+      std::deque<TN*>::iterator st_tns_iter1;
+      std::deque<TN*>::iterator st_tns_iter2;
+      std::deque<OP*> diff_ops_tn1_mark;
+      std::deque<OP*> diff_ops_tn2_mark;
+      std::deque<OP*> load_ops;
+      bool first_time = true;
+      bool load_scenario = false;
+      bool lea_scenario = false;
+      bool changed = true;
+      OP *first_ld = NULL;
+      OP *second_ld = NULL;
+
+      while (changed) {
+        changed = false;
+        // In this case we are looking for base regs which
+        // have addr calcs that differ by a single load based expression while
+        // attempting to match pairs like v(i,j,k,m) and v(i,j,k,n)
+        for (st_tns_iter1 = st_tns.begin();
+             st_tns_iter1 != st_tns.end();
+             ++st_tns_iter1) {
+
+          tn1 = *st_tns_iter1;
+          have_pair = false;
+
+          // For this collection, the differing load
+          // must be the same, this is why load_ops is used.
+          for (st_tns_iter2 = st_tns.begin();
+               st_tns_iter2 != st_tns.end();
+               ++st_tns_iter2) {
+            bool is_consistant;
+            tn2 = *st_tns_iter2;
+            if (tn1 == tn2) continue;
+
+            // configure initial consistancy and diff queues
+            is_consistant = bidirection_diff(tn1, tn2, diff_ops_tn1_mark,
+                                             diff_ops_tn2_mark, def_map);
+
+            // Check if we have but 1 load different in each diff and
+            // that the loads are mutually exclusive, and that only those
+            // 2 loads are shared as pairs thoughout the group.
+            if (is_consistant &&
+                (lea_scenario == false) &&
+                diff_ops_find_load(diff_ops_tn1_mark, load_ops)) {
+              if (single_load_expression(diff_ops_tn1_mark, load_ops) &&
+                  !single_load_expression(diff_ops_tn2_mark, load_ops)) {
+                if (first_time) {
+                  first_ld = *load_ops.begin();
+                }
+                load_ops.clear();
+                if (diff_ops_find_load(diff_ops_tn2_mark, load_ops)) {
+                  if (single_load_expression(diff_ops_tn2_mark, load_ops) &&
+                      !single_load_expression(diff_ops_tn1_mark, load_ops)) {
+                    if (first_time) {
+                      second_ld = *load_ops.begin();
+                      first_time = false;
+                      load_scenario = true;
+                      have_pair = true;
+                    } else if (is_load_in_queue(first_ld, diff_ops_tn1_mark) &&
+                               is_load_in_queue(second_ld, diff_ops_tn2_mark)) {                      have_pair = true;
+                    }
+                    if (have_pair) {
+                      // tn2 contains the target load, so its in front
+                      matched_pairs.push_back(tn2);
+                      matched_pairs.push_back(tn1);
+                      st_tns_iter2 = st_tns.erase(st_tns_iter2);
+                    }
+                  }
+                }
+              }
+              load_ops.clear();
+            }
+
+            // If we did not match the load_scenerio try the lea
+            // scenario for close offset calcs
+            if (load_scenario == false) {
+              if (diff_ops_tn1_mark.size() == diff_ops_tn2_mark.size()) {
+                if (diff_ops_same(diff_ops_tn1_mark, diff_ops_tn2_mark)) {
+                  OP *diff_op1 = *diff_ops_tn1_mark.begin();
+                  OP *diff_op2 = *diff_ops_tn2_mark.begin();
+                  // only allowing delta of 1 in addr calc for
+                  // lea based offset, the lea is the inner most part of the
+                  // def queue(front)
+                  if (((OP_code(diff_op1) == TOP_lea32) &&
+                       (OP_code(diff_op2) == TOP_lea32)) ||
+                      ((OP_code(diff_op1) == TOP_lea64) &&
+                       (OP_code(diff_op2) == TOP_lea64))) {
+                    int diff_off_loc1 = OP_find_opnd_use( diff_op1, OU_offset );                    int diff_off_loc2 = OP_find_opnd_use( diff_op2, OU_offset );                    if ((diff_off_loc1 != -1) && (diff_off_loc2 != -1)) {
+                      TN *offset_tn2 = OP_opnd( diff_op1, diff_off_loc1 );
+                      TN *offset_tn1 = OP_opnd( diff_op2, diff_off_loc2 );
+                      // Remember the diff ops contains the compared pair
+                      // tn addr expression, i.e. diff_op1 contains part of
+                      // tn2's address expression.
+                      INT64 val2 = TN_value(offset_tn2);
+                      INT64 val1 = TN_value(offset_tn1);
+                      // order the pair by larger value
+                      if (val2 > val1) {
+                        if ((val2 - val1) == 1)
+                          have_pair = true;
+                      }
+                      if (have_pair) {
+                        matched_pairs.push_back(tn2);
+                        matched_pairs.push_back(tn1);
+                        st_tns_iter2 = st_tns.erase(st_tns_iter2);
+                        lea_scenario = true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            diff_ops_tn1_mark.clear();
+            diff_ops_tn2_mark.clear();
+            if (have_pair)
+              break;
+          }
+          if (have_pair) {
+            st_tns_iter1 = st_tns.erase(st_tns_iter1);
+            changed = true;
+            break;
+          }
+        }
+      }
+      // Clear the current work list, its has changed context
+      symbol_addr_map[*counted_addr_sts_it].clear();
+      if (!matched_pairs.empty() &&
+          (tn_count == matched_pairs.size())) {
+        symbol_addr_map[*counted_addr_sts_it] = matched_pairs;
+      }
+    }
+    // Do some cleanup
+    matched_pairs.clear();
+  }
+}
+
+// dump a given def tree
+static void dump_def_tree(TN *tn,
+                          TN_MAP def_map,
+                          int indent_idx)
+{
+  INT i;
+  if (tn_has_no_def(tn, def_map) == false) {
+    std::deque<OP*> def_ops;
+    OP *def_op = (OP*)TN_MAP_Get(def_map, tn);
+    for (i = 0; i < indent_idx; i++)
+      printf(" ");
+
+    Print_OP_No_SrcLine(def_op);
+    for (i = 0; i < OP_opnds(def_op); i++) {
+      TN *opnd_tn = OP_opnd(def_op,i);
+      if (TN_is_register(opnd_tn) && !TN_is_dedicated(tn))
+        dump_def_tree(opnd_tn, def_map, indent_idx+2);
+    }
+  }
+}
+
+// build a def tree for each base register
+static bool build_base_def_trees (TN *tn,
+                                  BB *bb_defreach,
+                                  TN_MAP def_map,
+                                  BS *def_set) {
+  INT i;
+  bool ret_val = true;
+  BB *def_bb = NULL;
+  OP *def_op = NULL;
+  std::map<INT, BB*> block_map;
+  INT32 bb_dfo_id, last_def_bb_dfo_id, bb_defreach_dfo_id;
+
+  bb_defreach_dfo_id = BB_MAP32_Get(dfo_map, bb_defreach);
+
+  // First find all the defs and put them into the bb def_set,
+  // then find the nearest def, then add the def op to the def_map.
+  if (TN_is_register(tn) && TN_is_global_reg(tn)) {
+    BB *bb1, *bb2;
+    for (bb1 = REGION_First_BB; bb1 != NULL; bb1 = BB_next(bb1)) {
+      block_map[bb1->id] = bb1;
+      if (GTN_SET_MemberP(BB_live_def(bb1), tn))
+        BS_Union1D(def_set, bb1->id, NULL);
+    }
+    if (!BS_EmptyP(def_set)) {
+      BS_ELT id1, id2, last_id;
+      last_def_bb_dfo_id = 0;
+      last_id = BS_Choose(def_set);
+      for (id1 = BS_Choose(def_set); id1 != BS_CHOOSE_FAILURE;
+           id1 = BS_Choose_Next(def_set,id1)) {
+        for (id2 = BS_Choose(def_set); id2 != BS_CHOOSE_FAILURE;
+             id2 = BS_Choose_Next(def_set,id2)) {
+          if (id1 == id2) continue;
+          bb1 = block_map[id1];
+          bb_dfo_id = BB_MAP32_Get(dfo_map, bb1);
+          if ((bb_dfo_id > last_def_bb_dfo_id) &&
+              (bb_dfo_id < bb_defreach_dfo_id)) {
+            // remove exterior def blocks
+            BS_Difference1D(def_set, id1);
+            last_def_bb_dfo_id = bb_dfo_id;
+            last_id = id1;
+          }
+        }
+      }
+
+      def_bb = block_map[last_id];
+      def_op = find_def_in_bb(def_bb, tn);
+    }
+  } else if (TN_is_register(tn)) {
+    def_bb = bb_defreach;
+    def_op = find_def_in_bb(def_bb, tn);
+  }
+
+  if (!BS_EmptyP(def_set))
+    BS_ClearD(def_set);
+
+  // if we have a def, fill in the def tree leaf node
+  if (def_bb && def_op) {
+    if (OP_call(def_op) || OP_load(def_op) || TN_is_dedicated(tn)) {
+      if ((OP*)TN_MAP_Get(def_map, tn) == NULL)
+        TN_MAP_Set(def_map, tn, def_op);
+      ret_val = true;
+    } else {
+      if ((OP*)TN_MAP_Get(def_map, tn) == NULL)
+        TN_MAP_Set(def_map, tn, def_op);
+      for (i = 0; i < OP_opnds(def_op); i++) {
+        TN *opnd_tn = OP_opnd(def_op,i);
+        if (TN_is_register(opnd_tn))
+          ret_val = build_base_def_trees(opnd_tn, def_bb, def_map, def_set);
+      }
+    }
+  } else {
+    if (TN_is_dedicated(tn)) {
+      // rip regs have no def
+      if (TN_register_class(tn) != ISA_REGISTER_CLASS_rip)
+        ret_val = false;
+    } else {
+      ret_val = false;
+    }
+  }
+
+  return ret_val;
+}
+
+static ST *get_addr_symbol(OP *op)
+{
+  ST *st = NULL;
+  WN *mem_wn = (WN*) OP_MAP_Get(OP_to_WN_map, op);
+  if (mem_wn) {
+    POINTS_TO *pt = Points_to(Alias_Manager, mem_wn);
+    if (pt->Expr_kind() == EXPR_IS_ADDR && pt->Base_kind() == BASE_IS_FIXED) {
+      st = pt->Base();
+    } else if (pt->F_param() && pt->Based_sym() != NULL) {
+      st = pt->Based_sym();
+    } else if (pt->Unique_pt() && pt->Based_sym() != NULL) {
+      st = pt->Based_sym();
+    }
+  }
+  return st;
+}
+
+// Build the ST queues and compare them, then process for matches
+static void build_addr_queues (
+            std::set<ST*>& counted_addr_sts,
+            std::map<ST*,std::deque<TN*> >& symbol_addr_map,
+            std::map<TN*,std::deque<OP*> >& use_map,
+            std::set<TN*>& counted_base_regs,
+            BS* def_set) {
+  TN_MAP def_map = TN_MAP_Create();
+  std::deque<TN*> st_tns;
+  INT total_ops_count = 0;
+
+  // Hueristic: limit search size
+  if (PU_BB_Count > 2000) return;
+
+  // first build the symbol queues
+  std::set<TN*>::const_iterator counted_base_regs_it;
+  for (counted_base_regs_it = counted_base_regs.begin();
+       counted_base_regs_it != counted_base_regs.end();
+       ++counted_base_regs_it) {
+    std::deque<OP*> used_ops;
+    used_ops = use_map[(*counted_base_regs_it)];
+    std::deque<OP*>::iterator used_ops_it;
+        for (used_ops_it = used_ops.begin();
+             used_ops_it != used_ops.end();
+             ++used_ops_it) {
+      OP* cur_op = *used_ops_it;
+
+      if (OP_prefetch(cur_op)) continue;
+      if (OP_unrolling(cur_op)) continue;
+
+      // look at the orig code, excluding unroll copies and prefetch code
+      ST *st = get_addr_symbol(cur_op);
+      TN *tn = *counted_base_regs_it;
+
+      if (st == NULL)
+        continue;
+
+      if (symbol_addr_map[st].empty()) {
+        symbol_addr_map[st].push_front(tn);
+        counted_addr_sts.insert(st);
+      } else {
+        bool found_tn = false;
+        st_tns = symbol_addr_map[st];
+        std::deque<TN*>::iterator st_tns_iter;
+        for (st_tns_iter = st_tns.begin();
+             st_tns_iter != st_tns.end();
+             ++st_tns_iter) {
+          if (*st_tns_iter == tn) {
+            found_tn = true;
+            break;
+          }
+        }
+        if (found_tn == false) {
+          symbol_addr_map[st].push_front(tn);
+        }
+      }
+    }
+  }
+
+  // prune out the cases we cannot handle
+  std::set<ST*>::const_iterator counted_addr_sts_it;
+  for (counted_addr_sts_it = counted_addr_sts.begin();
+       counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+    st_tns = symbol_addr_map[*counted_addr_sts_it];
+    INT tn_count = st_tns.size();
+
+    // currently only fielding 2 to 3 divergent base reg accesses
+    switch (tn_count) {
+    case 2:
+    case 3:
+      break;
+    default:
+      if ((tn_count & 0x1) == 0x1)
+        symbol_addr_map[*counted_addr_sts_it].clear();
+      else if (tn_count > 8)
+        symbol_addr_map[*counted_addr_sts_it].clear();
+    }
+  }
+
+  // now process them
+  for (counted_addr_sts_it = counted_addr_sts.begin();
+       counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+    st_tns = symbol_addr_map[*counted_addr_sts_it];
+    std::deque<TN*>::iterator st_tns_iter;
+    for (st_tns_iter = st_tns.begin();
+         st_tns_iter != st_tns.end();
+         ++st_tns_iter) {
+      std::deque<OP*> used_ops;
+      used_ops = use_map[(*st_tns_iter)];
+      std::deque<OP*>::iterator used_ops_it;
+      for (used_ops_it = used_ops.begin();
+           used_ops_it != used_ops.end();
+           ++used_ops_it) {
+        OP* cur_op = *used_ops_it;
+
+        if (OP_prefetch(cur_op)) continue;
+        if (OP_unrolling(cur_op)) continue;
+
+        TN *tn = *st_tns_iter;
+        if (build_base_def_trees(tn, cur_op->bb, def_map, def_set)) {
+          if (EBO_Trace_Optimization)
+            dump_def_tree(tn, def_map, 0);
+        }
+
+        // stop on first successful map - we only need one
+        break;
+      }
+    }
+  }
+
+  process_queues(counted_addr_sts, symbol_addr_map, def_map);
+  TN_MAP_Delete(def_map);
+}
+
+// After building interior pointers candidates, remove
+// all the effected counted_base_regs from SIB processing so
+// that we do not translate them in SIB translation.
+static bool remove_cands_from_sib_gen_and_correlate(
+            std::deque<INT>& size_queue,
+            std::set<ST*>& counted_addr_sts,
+            std::map<INT,std::deque<ST*> >& correlated_addr_map,
+            std::map<ST*,std::deque<TN*> >& symbol_addr_map,
+            std::set<TN*>& counted_base_regs,
+            BB *lhead,
+            bool loop_vectorized,
+            MEM_POOL *pool) {
+  INT num_cands = 0;
+  INT num_regs = 0;
+  INT min_reclaimable = 3;
+  INT num_ranges_mitigated = 0;
+  INT num_pr = REGISTER_CLASS_register_count(ISA_REGISTER_CLASS_integer);
+  bool clear_all = false;
+
+  // Iterate on the st bases tn lists to determine if we
+  // need to remove the interior pointer cands from the
+  // counted_base_regs set which is used to drive SIB translation.
+  // Also figure out how many registers we reduced the new code by.
+  std::set<ST*>::const_iterator counted_addr_sts_it;
+  for (counted_addr_sts_it = counted_addr_sts.begin();
+       counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+    std::deque<TN*> st_tns;
+    st_tns = symbol_addr_map[*counted_addr_sts_it];
+
+    // Skip the non interior pointer cands
+    if (st_tns.empty()) continue;
+
+    // we will use this to iterate over the correlated_addr_map with
+    if (correlated_addr_map[st_tns.size()].empty())
+      size_queue.push_front(st_tns.size());
+
+    correlated_addr_map[st_tns.size()].push_front(*counted_addr_sts_it);
+  }
+
+  // pick largest pattern
+  INT max_pattern = 0;
+  std::deque<INT>::const_iterator size_queue_iter;
+  for (size_queue_iter = size_queue.begin();
+       size_queue_iter != size_queue.end();
+       ++size_queue_iter) {
+    INT cor_addr_index = *size_queue_iter;
+    INT cur_size = 0;
+    INT new_size = 0;
+    if (!correlated_addr_map[max_pattern].empty()) {
+      std::deque<ST*> st_queue = correlated_addr_map[max_pattern];
+      cur_size = st_queue.size() * max_pattern;
+    }
+    if (!correlated_addr_map[cor_addr_index].empty()) {
+      std::deque<ST*> st_queue = correlated_addr_map[cor_addr_index];
+      new_size = st_queue.size() * cor_addr_index;
+    }
+    if (new_size > cur_size)
+      max_pattern = cor_addr_index;
+  }
+
+  if (max_pattern) {
+    TN_MAP orig_conflict_map;
+    TN_MAP new_conflict_map;
+    mINT8 fatpoint[ISA_REGISTER_CLASS_MAX+1];
+    const INT len = BB_length(lhead);
+    INT* regs_in_use = (INT *)alloca(sizeof(INT) * (len+1));
+
+    MEM_POOL_Push(pool);
+
+    // Calculate the current live ranges
+    LRA_Estimate_Fat_Points(lhead, fatpoint, regs_in_use, pool);
+    orig_conflict_map = Calculate_All_Conflicts(ISA_REGISTER_CLASS_integer);
+
+    // Merge all pairs live ranges on the minor basereg
+    bool first_time = true;
+    for (counted_addr_sts_it = counted_addr_sts.begin();
+         counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+      std::deque<TN*> st_tns;
+      st_tns = symbol_addr_map[*counted_addr_sts_it];
+
+      // Skip the non interior pointer cands
+      if (st_tns.empty()) continue;
+
+      INT cor_addr_index = st_tns.size();
+      if (cor_addr_index != max_pattern) continue;
+
+      if (!correlated_addr_map[cor_addr_index].empty()) {
+        switch (cor_addr_index) {
+          case 2:
+            num_regs++;
+            num_cands++;
+            break;
+          case 3:
+            break;
+          default:
+            num_regs += (cor_addr_index / 2);
+            num_cands++;
+            break;
+        }
+
+        std::deque<TN*>::iterator st_tns_iter;
+        for (st_tns_iter = st_tns.begin();
+             st_tns_iter != st_tns.end();
+             ++st_tns_iter) {
+          TN *tn1 = *st_tns_iter;
+          ++st_tns_iter;
+          TN *tn2 = *st_tns_iter;
+          Merge_Live_Ranges(tn1, tn2, first_time);
+          first_time = false;
+        }
+      }
+    }
+
+    // If Query_Conflicts_Improved returns with a state that indicates
+    // that introduction of interior pointers does not benefit live
+    // range pressure, we do not proceed with the allowing the translation.
+    new_conflict_map = Calculate_All_Conflicts(ISA_REGISTER_CLASS_integer);
+    if (Query_Conflicts_Improved(orig_conflict_map, 
+                                 new_conflict_map,
+                                 3,
+                                 &num_ranges_mitigated,
+                                 ISA_REGISTER_CLASS_integer) == false)
+      clear_all = true;
+
+    MEM_POOL_Pop(pool);
+  }
+
+  // If we found we can save some regs, remember we need one for the
+  // distance calc/interior pointer index reg based on the ST which 
+  // are included in max_pattern
+  if (num_regs > 0)
+    num_regs--;
+
+  // Hueristic: We need a higher constraint for singleton pairs
+  if (max_pattern == 2)
+    if (num_regs < (2 * max_pattern))
+      clear_all = true;
+
+  // Hueristic: If we have vectorized code we account
+  // for reduced loop trip by increasing the number of required
+  // reclaimable regs for translation. Else we calculate
+  // live range pressure and apply some more huerstics.
+  if (num_regs < min_reclaimable) {
+    clear_all = true;
+  } else if (clear_all == false) {
+    if (EBO_Trace_Optimization) {
+      printf("reclaim regs=%d: num base regs = %d, idx = %d, improved = %d\n",
+             num_regs, counted_base_regs.size(), 
+             max_pattern, num_ranges_mitigated);
+    }
+
+    // Hueristic: Calculate the amount of work interior pointners will remove 
+    // and the amount we leave by bypassing sib generation for 
+    // our primary candidates.  If that work is zero or less we do nothing.
+    INT reload_time = CGTARG_Latency(TOP_ldx64);
+    INT work_added = (num_cands * max_pattern) - (num_regs + 1);
+    INT work_removed = (reload_time * num_ranges_mitigated) + num_regs;
+    INT net_work = (work_removed - work_added);
+    if (net_work <= 0)
+      clear_all = true;
+
+    // Hueristic: Filter out less benefitial cases
+    if ((num_regs == 3) && 
+        (loop_vectorized) &&
+        (counted_base_regs.size() < num_pr)) {
+      if (num_ranges_mitigated < num_regs)
+        clear_all = true;
+    }
+
+    if (EBO_Trace_Optimization) {
+      if (clear_all == false)
+        printf("net work(cands=%d) = %d\n", num_cands, net_work);
+    }
+  }
+
+  // Now prune out all the validated candidates from SIB translation,
+  // so that we can apply interior pointer translation to that select
+  // set of base regsiters.
+  num_cands = 0;
+  for (counted_addr_sts_it = counted_addr_sts.begin();
+       counted_addr_sts_it != counted_addr_sts.end();
+       ++counted_addr_sts_it) {
+    std::deque<TN*> st_tns;
+    st_tns = symbol_addr_map[*counted_addr_sts_it];
+
+    // Skip the non interior pointer cands
+    if (st_tns.empty()) continue;
+
+    INT cor_addr_index = st_tns.size();
+
+    // If we failed the above hueristics we will clean up here.
+    if (clear_all) {
+      correlated_addr_map[cor_addr_index].clear();
+      continue;
+    }
+
+    // Count only the validated pattern, clear the rest.
+    if (cor_addr_index == max_pattern) {
+      num_cands++;
+    } else {
+      correlated_addr_map[cor_addr_index].clear();
+      continue;
+    }
+
+    // Only remove sib candidates which are interior pointer actionable
+    if (!correlated_addr_map[cor_addr_index].empty() &&
+        (cor_addr_index == max_pattern)) {
+      std::deque<TN*>::iterator st_tns_iter;
+      for (st_tns_iter = st_tns.begin();
+           st_tns_iter != st_tns.end();
+           ++st_tns_iter) {
+        TN *tn = *st_tns_iter;
+        counted_base_regs.erase(tn);
+      }
+    }
+  }
+  return (num_cands > 0);
+}
+
+// Translate base address expressions and adjust addresses as needed
+static void interior_pointer_translation(
+            BB *target_bb,
+            TN *distance_tn,
+            std::deque<TN*>& st_unified_tns,
+            std::map<TN*,OP*>& add_map,
+            std::map<TN*,std::deque<OP*> >& use_map) {
+  INT i, j;
+  for (i = 0; i < st_unified_tns.size(); i+=2) {
+    TN *tn1 = st_unified_tns[i];
+    TN *tn2 = st_unified_tns[i+1];
+
+    // Now key off of tn2 to replace all entries in the use_map for tn1
+    // utilizing the distance_tn in SIB form.
+    std::deque<OP*> used_ops;
+    used_ops = use_map[tn1];
+    std::deque<OP*>::iterator used_ops_it;
+    for (used_ops_it = used_ops.begin();
+         used_ops_it != used_ops.end();
+         ++used_ops_it) {
+      OP* whatnow;
+      // Note: If we ever add the 3 tuple version this will need to have
+      //       two forms of scale factor, 1 and 2.
+      TN* scale = ( Is_Target_32bit() ) ?
+                    Gen_Literal_TN(1,4) :
+                    Gen_Literal_TN(1,8);
+
+      int offset_loc = OP_find_opnd_use( *used_ops_it, OU_offset );
+      TN *offset_tn;
+      if (offset_loc >= 0) {
+        offset_tn = OP_opnd( *used_ops_it, offset_loc );
+      } else {
+        offset_tn =  ( Is_Target_32bit() ) ?
+                       Gen_Literal_TN(0,4) :
+                       Gen_Literal_TN(0,8);
+      }
+
+      // We adjust the offset depending on if tn2's add is before or
+      // after this use and tn1's add was not.
+      bool tn1_add_before = OP_Precedes(add_map[tn1], *used_ops_it);
+      bool tn2_add_before = OP_Precedes(add_map[tn2], *used_ops_it);
+      if (tn1_add_before && !tn2_add_before) {
+        OP *add_op = add_map[tn2];
+        if (OP_iadd(add_op)) {
+          TN *imm_tn = OP_opnd(add_op, 1);
+          if (TN_is_constant(imm_tn) && !TN_is_symbol(imm_tn)) {
+            INT64 val = TN_value(offset_tn) + TN_value(imm_tn);
+            offset_tn = ( Is_Target_32bit() ) ?
+                          Gen_Literal_TN(val,4) :
+                          Gen_Literal_TN(val,8);
+          }
+        }
+      } else if (!tn1_add_before && tn2_add_before) {
+        OP *add_op = add_map[tn2];
+        if (OP_iadd(add_op)) {
+          TN *imm_tn = OP_opnd(add_op, 1);
+          if (TN_is_constant(imm_tn) && !TN_is_symbol(imm_tn)) {
+            INT64 val = TN_value(offset_tn) - TN_value(imm_tn);
+            offset_tn = ( Is_Target_32bit() ) ?
+                          Gen_Literal_TN(val,4) :
+                          Gen_Literal_TN(val,8);
+          }
+        }
+      }
+
+      whatnow = Compose_Mem_Base_Index_Mode(*used_ops_it, distance_tn,
+                                            offset_tn, scale, tn2);
+      OP_scycle(whatnow) = OP_scycle(*used_ops_it);
+
+      Set_OP_unrolling(whatnow, OP_unrolling(*used_ops_it));
+      Set_OP_orig_idx(whatnow, OP_map_idx(*used_ops_it));
+      Set_OP_unroll_bb(whatnow, OP_unroll_bb(*used_ops_it));
+      BB_Insert_Op_Before(target_bb,*used_ops_it,whatnow);
+      OPS_Remove_Op(&target_bb->ops, *used_ops_it);
+    }
+    BB_Remove_Op(target_bb,add_map[tn1]);
+  }
+  GRA_LIVE_Compute_Liveness_For_BB(target_bb);
+}
+
+// Add the distance tests to the orig loop prolog and translate the interior 
+// pointer copy of the multiverioned loops.
+static void add_interior_ptr_tests_and_trans(
+            std::map<TN*,OP*>& add_map,
+            std::map<TN*,std::deque<OP*> >& use_map,
+            std::map<INT,std::deque<ST*> >& correlated_addr_map,
+            std::map<ST*,std::deque<TN*> >& symbol_addr_map,
+            std::deque<INT>& size_queue,
+            LOOP_DESCR* loop) {
+  BB *loop_head = LOOP_DESCR_loophead(loop);
+  BBLIST *lst;
+  BB *orig_loop_prolog;
+  BB *default_prolog;
+  BB *orig_loop_epilog;
+  TN *distance_tn = NULL;
+  TN *br_targ_bb_tn = NULL;
+  INT i, j;
+  INT num_maps = size_queue.size();
+  bool int_ptr_translated = false;
+
+  // First find the imm pred of the loop, this is the orig_loop_prolog
+  for ( lst = BB_preds(loop_head); lst != NULL;
+        lst = BBLIST_next(lst) ) {
+    BB *bb = BBLIST_item(lst);
+    if (bb != loop_head) {
+      orig_loop_prolog = bb;
+      break;
+    }
+  }
+
+  // Now find the default prolog, orig prolog has 2 successors, the loop head
+  // and the default prolog.
+  for ( lst = BB_succs(orig_loop_prolog); lst != NULL;
+        lst = BBLIST_next(lst) ) {
+    BB *bb = BBLIST_item(lst);
+    if (bb != loop_head) {
+      default_prolog = bb;
+      break;
+    }
+  }
+
+  // Now find the orig loop epilog, the orig loop has 2 successors, the
+  // loop head and the orig loop epilog.
+  for ( lst = BB_succs(loop_head); lst != NULL;
+        lst = BBLIST_next(lst) ) {
+    BB *bb = BBLIST_item(lst);
+    if (bb != loop_head) {
+      orig_loop_epilog = bb;
+      break;
+    }
+  }
+
+  // pick largest pattern
+  INT max_pattern = 0;
+  std::deque<INT>::const_iterator size_queue_iter;
+  for (size_queue_iter = size_queue.begin();
+       size_queue_iter != size_queue.end();
+       ++size_queue_iter) {
+    INT cor_addr_index = *size_queue_iter;
+    INT cur_size = 0;
+    INT new_size = 0;
+    if (!correlated_addr_map[max_pattern].empty()) {
+      std::deque<ST*> st_queue = correlated_addr_map[max_pattern];
+      cur_size = st_queue.size() * max_pattern;
+    }
+    if (!correlated_addr_map[cor_addr_index].empty()) {
+      std::deque<ST*> st_queue = correlated_addr_map[cor_addr_index];
+      new_size = st_queue.size() * cor_addr_index;
+    }
+    if (new_size > cur_size)
+      max_pattern = cor_addr_index;
+  }
+
+  // The overhead intailed in appending smaller distance calc ST groups
+  // offers only a marginal benefit in the loop while adding signficant
+  // overhead to the loop, so choose the largest ST group pattern.
+  if (max_pattern != 0) {
+    INT cor_addr_index = max_pattern;
+    if (!correlated_addr_map[cor_addr_index].empty()) {
+      std::deque<ST*> st_queue = correlated_addr_map[cor_addr_index];
+      std::deque<TN*> st_unified_tns;
+      bool is_internal_paired = (st_queue.size() == 1);
+      INT num_syms_mapped = st_queue.size();
+
+      std::deque<ST*>::iterator st_iter;
+      for (st_iter = st_queue.begin();
+           st_iter != st_queue.end();
+           ++st_iter) {
+        if (!symbol_addr_map[*st_iter].empty()) {
+          std::deque<TN*> st_tns;
+          st_tns = symbol_addr_map[*st_iter];
+          for (i = 0; i < cor_addr_index; i+=2) {
+            st_unified_tns.push_back(st_tns[i]);
+            st_unified_tns.push_back(st_tns[i+1]);
+          }
+        }
+      }
+
+      // Now we have a unified set of basereg pairs which look
+      // the same regardless of how they were processed.
+
+      // Build the test expression and link it to flow
+      TN *tnr = NULL;
+      TN *expr_tn = NULL;
+      TYPE_ID mtype;
+      OPS ops = OPS_EMPTY;
+      INT last_iter = st_unified_tns.size() - 2;
+      for (i = 0; i < st_unified_tns.size(); i+=2) {
+        TN *tn1 = st_unified_tns[i];
+        TN *tn2 = st_unified_tns[i+1];
+
+        if (i == 0) {
+          int_ptr_translated = true;
+          expr_tn = Build_TN_Like(tn1);
+          tnr = Build_TN_Like(tn2);
+          Reset_TN_is_global_reg(tn2);
+
+          Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32,
+                    expr_tn, tn1, &ops);
+          Set_OP_res_norename(OPS_last(&ops));
+          Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32,
+                    tnr, tn2, &ops);
+          Set_OP_res_norename(OPS_last(&ops));
+          Build_OP( Is_Target_64bit() ? TOP_sub64 : TOP_sub32,
+                    expr_tn, expr_tn, tnr, &ops);
+          Set_OP_res_norename(OPS_last(&ops));
+        } else {
+          // all other cases
+          Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32,
+                    tnr, tn1, &ops);
+          Set_OP_res_norename(OPS_last(&ops));
+          Build_OP( Is_Target_64bit() ? TOP_sub64 : TOP_sub32,
+                    tnr, tnr, tn2, &ops);
+          Set_OP_res_norename(OPS_last(&ops));
+          if (i == last_iter) {
+            Build_OP( Is_Target_64bit() ? TOP_xor64 : TOP_xor32,
+                      tnr, tnr, expr_tn, &ops);
+            Set_OP_res_norename(OPS_last(&ops));
+          } else {
+            Build_OP( Is_Target_64bit() ? TOP_or64 : TOP_or32,
+                      expr_tn, expr_tn, tnr, &ops);
+            Set_OP_res_norename(OPS_last(&ops));
+          }
+        }
+      }
+      Build_OP( Is_Target_64bit() ? TOP_test64 : TOP_test32, Rflags_TN(),
+                tnr, tnr, &ops);
+      BB_Insert_Ops_Before(orig_loop_prolog,
+                           BB_first_op(orig_loop_prolog), &ops);
+      GRA_LIVE_Compute_Liveness_For_BB(orig_loop_prolog);
+      distance_tn = expr_tn;
+
+      // Add the fixup code for the orig loop epilog to restore
+      // live out regs of the loop.
+      OPS fixup_ops = OPS_EMPTY;
+      tnr = Build_TN_Like(distance_tn);
+      Build_OP( Is_Target_64bit() ? TOP_mov64 : TOP_mov32,
+                tnr, distance_tn, &fixup_ops);
+      for (i = 0; i < st_unified_tns.size(); i+=2) {
+        TN* tn1 = st_unified_tns[i];
+        TN* tn2 = st_unified_tns[i+1];
+        TN* scale = ( Is_Target_32bit() ) ?
+                      Gen_Literal_TN(1,4) :
+                      Gen_Literal_TN(1,8);
+        TN* offset = ( Is_Target_32bit() ) ?
+                       Gen_Literal_TN(0,4) :
+                       Gen_Literal_TN(0,8);
+        Build_OP ( Is_Target_64bit() ? TOP_leax64 : TOP_leax32,
+                   tn1, tn2, tnr,
+                   scale, offset, &fixup_ops);
+        Set_OP_res_norename(OPS_last(&fixup_ops));
+      }
+
+      // This block is currently empty.
+      BB_Prepend_Ops(orig_loop_epilog, &fixup_ops);
+      GRA_LIVE_Compute_Liveness_For_BB(orig_loop_epilog);
+
+      // Now remove the initial tn1 which we made of copy of in the
+      // test from the loop so we get the physreg back
+      interior_pointer_translation(loop_head, distance_tn,
+                                   st_unified_tns, add_map, use_map);
+      st_unified_tns.clear();
+    }
+  }
+  if (int_ptr_translated && EBO_Trace_Optimization) {
+    ST *pu_name = Get_Current_PU_ST();
+    if (pu_name) {
+      printf("interior pointer trans(%s) at bb(%d)\n",
+             ST_name(pu_name), loop_head->id);
+    }
+  }
+}
+
+//
+// end interior pointer implemenation
+//
+
+static bool histogram_of_index_counters (
+    std::set<TN*> counted_base_regs,
+    std::map<int,std::list<OP*> >& val_lis_map,
+    std::map<TN*,OP*> add_map) {
+    if (counted_base_regs.size() < 3)
+        return false;
+    std::set<TN*>::const_iterator counted_base_regs_it;
+    for (counted_base_regs_it = counted_base_regs.begin();
+         counted_base_regs_it != counted_base_regs.end();
+         ++counted_base_regs_it) {
+        OP* add_op_c = add_map[*counted_base_regs_it];
+        TN* constant_tn = OP_opnd(add_op_c,1);
+        val_lis_map[TN_value(constant_tn)].push_front(add_op_c);
+    }
+
+    if (val_lis_map.size() != 1) {
+        return false;
+    } else if (val_lis_map.begin()->first < 4) {
+        return false;
+    }
+    return true;
+}
+
+static bool test_change_affects_flags (
+    std::set<TN*> counted_base_regs,
+    std::map<TN*,OP*> add_map) {
+    std::set<TN*>::const_iterator counted_base_regs_it;
+    for (counted_base_regs_it = counted_base_regs.begin();
+         counted_base_regs_it != counted_base_regs.end();
+         ++counted_base_regs_it) {
+        OP* whc = add_map[*counted_base_regs_it];
+        bool anychange = false;
+        for (OP *tesop = OP_next(whc); 
+                tesop != NULL; 
+                tesop = OP_next(tesop)) {
+	    TOP top = OP_code(tesop);
+	    if (OP_reads_rflags(tesop)) {
+	        return true;
+	    }
+	    if (TOP_is_change_rflags(top)) {
+                anychange = true;
+	        break;
+            }
+        }
+        if (anychange == false)
+            return false;
+    }
+    return false;
+}
+
+static bool collect_counters (bool pdom_header, 
+    bool compare_undo, BB *fromwhere, 
+    GTN_SET* otherliveins, std::map<TN*, bool>& avoid_table, 
+    std::set<TN*>& seen_defs, std::set<TN*>& used_at_all, 
+    std::map<TN*, OP*>& add_map, BB** add_bb,
+    std::map<TN*,std::deque<OP*> >& use_map,
+    std::map<TN*, OP*>& compare_map,
+    std::set<TN*>& compare_opnds) {
+    OP* op;
+    op = BB_first_op(fromwhere);
+    int insnum = 0;
+    while(op != NULL) {
+        // avoid_table holds operands for which 
+        // SIB is not to be done
+        // known defs tracks all defs along the
+        // traversed control flow path
+        for (INT i = 0; i < OP_opnds(op); ++i) {
+            if (avoid_table.find(OP_opnd(op,i)) == avoid_table.end()) {
+                avoid_table[OP_opnd(op,i)] = false;
+            }
+        }
+        for (INT i = 0; i < OP_results(op); ++i) {
+            if (avoid_table.find(OP_result(op,i)) == avoid_table.end()) {
+                avoid_table[OP_result(op,i)] = false;
+            }
+        }
+        std::ostringstream reason;
+        {
+            bool doesnotapply = false;
+            if (OP_load_exe(op) || OP_load(op) 
+                    || OP_store(op) || OP_prefetch(op)) {
+                if (Test_if_base_mode(op) == false) {
+                    doesnotapply = true;
+                } else if (!(TN_has_value(OP_opnd(op, 
+                                    OP_find_opnd_use(op,OU_offset))))) {
+                    doesnotapply = true;
+                }
+            } else {
+                if (pdom_header) {
+                    if (compare_undo) {
+                        if (!(OP_iadd(op) && 
+                          (OP_result(op,0) == OP_opnd(op,0) &&
+                          (TN_is_constant((OP_opnd(op,1)))))) && 
+                          !((OP_code(op) == TOP_cmp64) && 
+                            (TN_is_register(OP_opnd(op,1)) == TRUE) &&
+                          (TN_is_register(OP_opnd(op,0)) == TRUE)) &&
+                          !((OP_code(op) == TOP_cmp32) 
+                            && (TN_is_register(OP_opnd(op,1)) == TRUE) &&
+                            (TN_is_register(OP_opnd(op,0)) == TRUE))) {
+                            doesnotapply = true;
+                        }
+                    } else {
+                        if (!(OP_iadd(op) && 
+                          (OP_result(op,0) == OP_opnd(op,0) &&
+                          (TN_is_constant((OP_opnd(op,1))))))) {
+                            doesnotapply = true;
+                        }
+                    }
+                } else {
+                    doesnotapply = true;
+                }
+            }
+            if (doesnotapply) {
+                // 
+                // cases for which SIB is not applicable
+                // we need to ensure that the registers
+                // used in these cases are not used in  
+                // a SIB situation (simplifying assumption)
+                // add operands to the avoid_table
+                // 
+                for (INT i = 0; i < OP_opnds(op); ++i) {
+                    avoid_table[OP_opnd(op,i)] = true;
+                }
+                for (INT i = 0; i < OP_results(op); ++i) {
+                    avoid_table[OP_result(op,i)] = true;
+                }
+            } else {
+                if (OP_load_exe(op) || OP_load(op) 
+                        || OP_store(op) || OP_prefetch(op)) {
+                    for (INT i = 0; i < OP_results(op); ++i) {
+                        avoid_table[OP_result(op,i)] = true;
+                    }
+                    TN* which_base = OP_opnd(op,
+                            TOP_Find_Operand_Use(OP_code(op), OU_base));
+
+                    for (INT i = 0; i < OP_opnds(op); ++i) {
+                        if (OP_opnd(op,i) != which_base) {
+                            avoid_table[OP_opnd(op,i)] = true;
+                        }
+                    }
+                    if (avoid_table[which_base] == false) {
+                        used_at_all.insert(which_base);
+                        // This will not replace an exiting mapping
+                        use_map[which_base].push_front(op); 
+                    }
+                } else if (pdom_header && OP_iadd(op) 
+                            && (OP_result(op,0) == OP_opnd(op,0) 
+                            && (TN_is_constant((OP_opnd(op,1)))))) {
+                    FmtAssert((OP_results(op) == 1), 
+                                ("Add operation with more than one result"));
+                    if (avoid_table[OP_result(op,0)] == false) {
+                        if (otherliveins != NULL) {
+                            if (GTN_SET_MemberP(otherliveins, 
+                                        OP_result(op,0)) == 0) {
+                                if (*add_bb == NULL)
+                                    *add_bb = op->bb;
+                                if (*add_bb != op->bb) 
+                                    return false;
+                                add_map[OP_result(op,0)] = op;
+                                if (seen_defs.find (OP_result(op,0)) 
+                                        == seen_defs.end())
+                                    seen_defs.insert(OP_result(op,0));
+                                else 
+                                    avoid_table[OP_result(op,0)] = true;
+                            } else {
+                                // Some SIB like counters are 
+                                // used outside the loop. we need 
+                                // a special case fix for these.
+                                // as of now we don't enable 
+                                // SIB for these.
+                                reason << " reason:LiveOut variable";
+                                avoid_table[OP_result(op,0)] = true;
+                            }
+                        } else {
+                            if (*add_bb == NULL)
+                                *add_bb = op->bb;
+                            if (*add_bb != op->bb) {
+                                return false;
+                            }
+
+                            add_map[OP_result(op,0)] = op;
+                            if (seen_defs.find (OP_result(op,0)) 
+                                    == seen_defs.end())
+                                seen_defs.insert(OP_result(op,0));
+                            else 
+                                avoid_table[OP_result(op,0)] = true;
+                        }
+                    }
+                } else if (compare_undo && (OP_code(op) == TOP_cmp64
+                                || OP_code(op) == TOP_cmp32)) {
+                    for (INT i = 0; i < OP_opnds(op); ++i) {
+                        if (TN_is_register(OP_opnd(op,i))) {
+                            if (avoid_table[OP_opnd(op,i)] == false) {
+                                if (otherliveins != NULL) {
+                                    if (GTN_SET_MemberP(otherliveins, 
+                                            OP_result(op,0)) == 0) {
+                                        if (compare_map.find(OP_opnd(op,i)) == compare_map.end()) {
+                                            compare_map[OP_opnd(op,i)] = op;
+                                            compare_opnds.insert(OP_opnd(op,i));
+                                        } else {
+                                            avoid_table[OP_opnd(op,i)] = true;
+                                        }
+                                    } else {
+                                        avoid_table[OP_opnd(op,i)] = true;
+                                    }
+                                } else {
+                                    if (compare_map.find(OP_opnd(op,i)) == compare_map.end()) {
+                                        compare_map[OP_opnd(op,i)] = op;
+                                        compare_opnds.insert(OP_opnd(op,i));
+                                    } else {
+                                        avoid_table[OP_opnd(op,i)] = true;
+                                    }
+                                }
+                            } 
+                        }
+                    }
+                } else {
+                    if (pdom_header || compare_undo) {
+                        return false;
+                    } else {
+                        for (INT i = 0; i < OP_opnds(op); ++i) {
+                            avoid_table[OP_opnd(op,i)] = true;
+                        }
+                        for (INT i = 0; i < OP_results(op); ++i) {
+                            avoid_table[OP_result(op,i)] = true;
+                        }
+                    }
+                }
+            }
+        }
+        op = OP_next(op);
+        insnum++;
+    }
+    return true;
+}
+
+static void fix_base_instructions (char* Cur_PU_Name,
+        LOOP_DESCR* loop, GTN_SET* otherliveins, MEM_POOL *pool) {
+    std::map<TN*, bool> avoid_table;
+    std::set<TN*> seen_defs;
+    std::set<TN*> used_at_all;
+    std::map<TN*, OP*> add_map; 
+    std::map<TN*,std::deque<OP*> > use_map;
+    std::map<ST*,std::deque<TN*> > symbol_addr_map;
+    std::map<INT,std::deque<ST*> > correlated_addr_map;
+    std::set<ST*> counted_addr_sts;
+    std::deque<INT> size_queue;
+    std::set<OP*> dep_map;
+    std::set<TN*> counted_base_regs;
+    std::map<TN*, OP*> compare_map;
+    std::set<TN*> compare_opnds;
+    LOOPINFO *info = LOOP_DESCR_loopinfo(loop);
+    BB *lhead;
+    lhead = LOOP_DESCR_loophead(loop);
+    BB *add_bb;
+    BB *abbinloop;
+    OP *opi;
+    bool outofhere = false;
+    bool can_mv = false;
+    bool loop_vectorized = false;
+    add_bb = NULL;
+
+    if (info && LOOPINFO_vectorized(info))
+      loop_vectorized = true;
+
+    FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+        bool pdom_header = false;
+        bool compare_undo = false;
+        if (BS_MemberP(BB_pdom_set(lhead), BB_id(abbinloop))) {
+            pdom_header = true;
+        } else {
+            pdom_header = false;
+        }
+
+        if (collect_counters (pdom_header, 
+                    compare_undo && pdom_header, abbinloop, 
+                    otherliveins, avoid_table, 
+                    seen_defs, used_at_all, 
+                    add_map, &add_bb, use_map, 
+                    compare_map, compare_opnds) == false) {
+            outofhere == true;
+            break;
+        }
+    }
+
+    if (outofhere) {
+        return;
+    } else if (add_bb == NULL) {
+        return;
+    }
+
+    for (std::set<TN*>::iterator sdit = 
+        seen_defs.begin(); sdit != seen_defs.end(); ++sdit) {
+        if (avoid_table[*sdit] == false) {
+            if (used_at_all.find(*sdit) != used_at_all.end()) {
+                counted_base_regs.insert(*sdit);
+            }
+        }
+    }
+
+    //
+    // find out the implications of reordering the add instruction
+    // We do a walk on the counted_base_regs, get the use_map 
+    // for each such reg, and check if the def is either
+    // dominating or post-dominating it. If it is dominating it,
+    // we dont need compensation code for it. If it is post-dominating 
+    // and the new inc's location is not post-dominating it, 
+    // then we need compensation code for the use.
+    //
+
+    std::set<TN*>::iterator cbreg_it;
+    std::set<TN*> skip_set;
+    for (cbreg_it = counted_base_regs.begin(); 
+         cbreg_it != counted_base_regs.end();
+         ++cbreg_it) {
+        std::map<TN*, std::deque<OP*> >::iterator use_map_it;
+        if (add_map.find(*cbreg_it) == add_map.end()) {
+            skip_set.insert (*cbreg_it);
+        }
+    }
+
+    for (std::set<TN*>::iterator skip_it = skip_set.begin();
+         skip_it != skip_set.end(); ++skip_it) {
+        counted_base_regs.erase(*skip_it);
+    }
+
+    
+    for (cbreg_it = counted_base_regs.begin(); 
+         cbreg_it != counted_base_regs.end();
+         ++cbreg_it) {
+        OP* defing_ins = add_map[*cbreg_it];
+        BB* defing_bb = defing_ins->bb;
+
+        std::deque<OP*>::iterator use_deq_it;
+        for (use_deq_it = use_map[*cbreg_it].begin();
+                 use_deq_it != use_map[*cbreg_it].end();
+                 ++use_deq_it) {
+            BB* where_used = (*use_deq_it)->bb;
+            if (defing_bb == where_used) {
+                bool usefirst = true;
+                for (OP* whichop = *use_deq_it;
+                        whichop != NULL;
+                        whichop = OP_prev(whichop)) {
+                    if (whichop == defing_ins) {
+                        usefirst = false;
+                        break;
+                    }
+                }
+                if (usefirst == true) 
+                    dep_map.insert (*use_deq_it);
+            }
+        }
+    }
+
+    std::map<int,std::list<OP*> > val_lis_map;
+    if (histogram_of_index_counters (counted_base_regs, 
+              val_lis_map, add_map) == false) {
+        return;
+    }
+
+    if (test_change_affects_flags (counted_base_regs, 
+                      add_map) == true) {
+          return;
+    }
+
+    // Interior pointers keys off of loops with basereg(gpr) reg pressure
+    if (CG_interior_ptrs_x86 &&
+        (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1) &&
+        have_basereg_pressure(counted_base_regs, lhead)) {
+      // create a set to aid interior pointer analysis
+      BS *def_set = BS_Create_Empty(PU_BB_Count + 1, pool);
+
+      // Build and process interior pointers on base regs(mv case)
+      build_addr_queues (counted_addr_sts,
+              symbol_addr_map, use_map,
+              counted_base_regs, def_set);
+      // After building interior pointers candidates, remove
+      // all the effected counted_base_regs from SIB processing so
+      // that we do not translate them.
+      can_mv = remove_cands_from_sib_gen_and_correlate(size_queue,
+                                                       counted_addr_sts,
+                                                       correlated_addr_map,
+                                                       symbol_addr_map,
+                                                       counted_base_regs,
+                                                       lhead, 
+                                                       loop_vectorized,
+                                                       pool);
+    }
+
+    OP* add_template = val_lis_map.begin()->second.front();
+    if (counted_base_regs.size() == 0) {
+          return;
+    } else {
+          TN* newinc; 
+          newinc = OP_opnd(add_template,1);
+          if (TN_value(newinc) <= 0 ) {
+              return;
+          }
+    }
+    
+    TN* newinc; 
+    if (Is_Target_32bit()) {
+        newinc = Gen_Literal_TN (TN_value(OP_opnd(add_template,1)), 4);
+    } else {
+        newinc = Gen_Literal_TN (TN_value(OP_opnd(add_template,1)), 8);
+    }
+    OP* newadd;
+    TN* newres = Build_TN_Like(OP_result(add_template,0));
+    Set_TN_is_global_reg(newres);
+    TOP alea;
+    if (Is_Target_32bit()) {
+        alea = TOP_lea32;
+    } else {
+        alea = TOP_lea64;
+    }
+    newadd = Mk_OP(alea, newres, newres, newinc);
+    newadd->bb = add_bb;
+    BB_Prepend_Op(add_bb,newadd);
+    bool aft_prnt = false;
+    std::set<TN*>::const_iterator counted_base_regs_it;
+    std::set<OP*> changed_ops;
+    for (counted_base_regs_it = counted_base_regs.begin();
+         counted_base_regs_it != counted_base_regs.end();
+         ++counted_base_regs_it) {
+        std::deque<OP*> used_ops;
+        used_ops = use_map[(*counted_base_regs_it)];
+        std::deque<OP*>::iterator used_ops_it;
+        for (used_ops_it = used_ops.begin(); 
+             used_ops_it != used_ops.end();
+             ++used_ops_it) {
+            OP* whatnow;
+            OP* newadd; 
+            OP* newmovop;
+            TN *movtn; 
+            TN* scale;
+            if( Is_Target_32bit() ){
+                scale = Gen_Literal_TN(1,4);
+            } else {
+                scale = Gen_Literal_TN(1,8);
+            }
+            
+            TN* offset_d;
+            if (dep_map.find(*used_ops_it) == dep_map.end()) {
+                if (Is_Target_32bit()) {
+                    offset_d = Gen_Literal_TN (TN_value(OP_opnd(*used_ops_it,
+                          TOP_Find_Operand_Use(OP_code(*used_ops_it), 
+                      OU_offset))), 4); 
+                } else {
+                    offset_d = Gen_Literal_TN (TN_value(OP_opnd(*used_ops_it,
+                          TOP_Find_Operand_Use(OP_code(*used_ops_it), 
+                      OU_offset))), 4); 
+                }
+            } else {
+                if( Is_Target_32bit() ){
+                    offset_d = Gen_Literal_TN (
+                                TN_value(OP_opnd(*used_ops_it,
+                                  TOP_Find_Operand_Use(
+                                    OP_code(*used_ops_it), OU_offset))) 
+                                - TN_value(newinc), 4);
+                } else {
+                    offset_d = Gen_Literal_TN (
+                                TN_value(OP_opnd(*used_ops_it,
+                                    TOP_Find_Operand_Use(
+                                        OP_code(*used_ops_it), OU_offset)))
+                                - TN_value(newinc), 8);
+                }
+            }
+
+            whatnow = Compose_Mem_Base_Index_Mode(*used_ops_it,
+                  newres, offset_d, scale, 
+                  OP_opnd(*used_ops_it,
+                      TOP_Find_Operand_Use(OP_code(*used_ops_it), 
+                  OU_base)));
+            OP_scycle(whatnow) = OP_scycle(*used_ops_it);
+
+            BB_Insert_Op_Before((*used_ops_it)->bb,*used_ops_it,whatnow);
+            whatnow->bb = (*used_ops_it)->bb;
+            changed_ops.insert(whatnow);
+            OPS_Remove_Op(&((*used_ops_it)->bb->ops), *used_ops_it);
+        }
+    }
+
+    for (counted_base_regs_it = counted_base_regs.begin();
+         counted_base_regs_it != counted_base_regs.end();
+         ++counted_base_regs_it) {
+        OP* anaddop = add_map[*counted_base_regs_it];
+        BB_Remove_Op(anaddop->bb,anaddop);
+    }
+
+    std::set<OP*>::iterator changed_ops_it;
+    bool enable_large_disp_opt = false;
+    std::set<OP*> large_disp_ops;
+    if (enable_large_disp_opt) {
+        for (changed_ops_it = changed_ops.begin();
+             changed_ops_it != changed_ops.end();
+             ++changed_ops_it) {
+            TN* theofst = OP_opnd(*changed_ops_it, 
+                    TOP_Find_Operand_Use(OP_code(*changed_ops_it),
+                        OU_offset));
+            FmtAssert ((TN_is_constant(theofst)), 
+                    ("Not a constant offset\n"));
+            INT64 theval = TN_value(theofst);
+            // make a new lea op Mk_Op
+            if (theval < 127) 
+                if (theval > -128)
+                    continue;
+            TOP alea;
+            TN* zeroval;
+            if (Is_Target_32bit()) {
+                zeroval = Gen_Literal_TN (0,4);
+                alea = TOP_lea32;
+            } else {
+                zeroval = Gen_Literal_TN (0,8);
+                alea = TOP_lea64;
+            }
+            TN* thebase = OP_opnd(*changed_ops_it,
+                        TOP_Find_Operand_Use(OP_code(*changed_ops_it),
+                            OU_base));
+            TN* newgprtn = Build_TN_Like(thebase);
+            OP* thelea = Mk_OP(alea, newgprtn, thebase, theofst);
+            INT offset_loc, base_loc;
+            offset_loc = TOP_Find_Operand_Use(OP_code(*changed_ops_it),
+                        OU_offset);
+            base_loc = TOP_Find_Operand_Use(OP_code(*changed_ops_it),
+                        OU_base);
+            Set_OP_opnd(*changed_ops_it, offset_loc, zeroval);
+            Set_OP_opnd(*changed_ops_it, base_loc, newgprtn);
+            large_disp_ops.insert(thelea);
+        }
+    }
+    
+    BBLIST* predlis = BB_preds(LOOP_DESCR_loophead(loop));
+    bool inserted_some = false;
+    while (predlis) {
+        BB *pred = BBLIST_item(predlis);
+        predlis = BBLIST_next(predlis);
+        if (!BB_SET_MemberP(LOOP_DESCR_bbset(loop), pred)) {
+            inserted_some = true;
+            OP* init_co;
+            TN* zeroval;
+            TOP whichldc;
+            if( Is_Target_32bit()) {
+                zeroval = Gen_Literal_TN (0,4);
+                whichldc = TOP_ldc32;
+            } else {
+                whichldc = TOP_ldc64;
+                zeroval = Gen_Literal_TN (0,8);
+            }
+            init_co = Mk_OP (whichldc, newres, zeroval , newres);
+            if (BB_branch_op(pred)) {
+                BB_Insert_Op_Before(pred,BB_branch_op(pred),init_co);
+                init_co->bb = pred;
+                std::set<OP*>::iterator init_ops_it;
+                if (enable_large_disp_opt) {
+                    for (init_ops_it = large_disp_ops.begin();
+                       init_ops_it != large_disp_ops.end();
+                       ++init_ops_it) {
+                        OP* toinse;
+                        toinse = Mk_OP (OP_code(*init_ops_it), 
+                            OP_result (*init_ops_it,0),
+                            OP_opnd (*init_ops_it,0),
+                            OP_opnd (*init_ops_it,1));
+                        BB_Insert_Op_Before(pred,BB_branch_op(pred),toinse);
+                    }
+                }
+            } else {
+                BB_Append_Op(pred,init_co);
+                init_co->bb = pred;
+                std::set<OP*>::iterator init_ops_it;
+                if (enable_large_disp_opt) {
+                    for (init_ops_it = large_disp_ops.begin();
+                         init_ops_it != large_disp_ops.end();
+                         ++init_ops_it) {
+                        OP* toinse;
+                        toinse = Mk_OP (OP_code(*init_ops_it), 
+                                 OP_result (*init_ops_it,0),
+                                 OP_opnd (*init_ops_it,0),
+                                 OP_opnd (*init_ops_it,1));
+                        BB_Append_Op(pred,toinse);
+                    }
+                }
+            }
+        }
+    }
+
+    if (CG_interior_ptrs_x86 && can_mv) {
+      CG_LOOP_Multiversion(loop, 1, pool);
+      // Add distance and unification tests to orig loop prolog and translate
+      add_interior_ptr_tests_and_trans(add_map, use_map, correlated_addr_map,
+                                       symbol_addr_map, size_queue, loop);
+    }
+
+    FmtAssert(inserted_some == true, 
+            ("No init instruction inserted!"));
+    GRA_LIVE_Recalc_Liveness (NULL);
+}
+
+static void fix_compare_binding (LOOP_DESCR* loop, 
+        GTN_SET* otherliveins) {
+      std::map<TN*, bool> avoid_table;
+      std::set<TN*> seen_defs;
+      std::set<TN*> used_at_all;
+      std::map<TN*, OP*> add_map; 
+      std::map<TN*,std::deque<OP*> > use_map;
+      std::set<OP*> dep_map;
+      std::set<TN*> counted_base_regs;
+      std::map<TN*, OP*> compare_map;
+      std::set<TN*> compare_opnds;
+      BB *lhead;
+      lhead = LOOP_DESCR_loophead(loop);
+      BB *add_bb;
+      add_bb = NULL;
+      BB *abbinloop;
+      OP *opi;
+      bool outofhere = false;
+      FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+          bool pdom_header = false;
+          bool compare_undo = true;
+          if (BS_MemberP(BB_pdom_set(lhead), BB_id(abbinloop))) {
+              pdom_header = true;
+          } else {
+              pdom_header = false;
+          }
+
+          if (collect_counters (pdom_header, 
+                      compare_undo && pdom_header, abbinloop, 
+                      otherliveins, avoid_table, 
+                      seen_defs, used_at_all, 
+                      add_map, &add_bb, use_map, 
+                      compare_map, compare_opnds) == false) {
+              outofhere == true;
+              break;
+          }
+      }
+
+      if (outofhere) {
+          return;
+      } else if (add_bb == NULL) {
+          return;
+      }
+
+      // additional checks
+      for (std::set<TN*>::iterator sdit = 
+          seen_defs.begin(); sdit != seen_defs.end(); ++sdit) {
+          if (avoid_table[*sdit] == false) {
+              if (used_at_all.find(*sdit) != used_at_all.end()) {
+                  counted_base_regs.insert(*sdit);
+              }
+          }
+      }
+
+      //
+      // find out the implications of reordering the add instruction
+      // We do a walk on the counted_base_regs, get the use_map 
+      // for each such reg, and check if the def is either
+      // dominating or post-dominating it. If it is dominating it,
+      // we dont need compensation code for it. If it is post-dominating 
+      // and the new inc's location is not post-dominating it, 
+      // then we need compensation code for the use.
+      //
+
+      std::set<TN*>::iterator cbreg_it;
+      std::set<TN*> skip_set;
+      // additional checks
+      for (cbreg_it = counted_base_regs.begin(); 
+           cbreg_it != counted_base_regs.end();
+           ++cbreg_it) {
+          std::map<TN*, std::deque<OP*> >::iterator use_map_it;
+          if (add_map.find(*cbreg_it) == add_map.end()) {
+              skip_set.insert (*cbreg_it);
+          }
+      }
+
+      for (std::set<TN*>::iterator skip_it = skip_set.begin();
+           skip_it != skip_set.end(); ++skip_it) {
+          counted_base_regs.erase(*skip_it);
+      }
+
+      std::map<int,std::list<OP*> > val_lis_map;
+      if (histogram_of_index_counters (counted_base_regs, 
+              val_lis_map, add_map) == false) {
+          return;
+      }
+
+      if (test_change_affects_flags (counted_base_regs, 
+                      add_map) == true) {
+          return;
+      }
+
+      int cardinale = 0;
+      std::set<TN*> interset;
+      for (std::set<TN*>::iterator comit = 
+           compare_opnds.begin(); comit != compare_opnds.end(); ++comit) {
+          if (counted_base_regs.find(*comit) != counted_base_regs.end()) {
+              cardinale++;
+              interset.insert(*comit);
+          }
+      }
+
+      if (cardinale != 1) {
+          for (std::set<TN*>::iterator comit = 
+             compare_opnds.begin(); comit != compare_opnds.end(); ++comit) {
+              counted_base_regs.erase (*comit);
+          }
+      } else {
+          TN* bound_name = *(interset.begin());
+          counted_base_regs.erase (bound_name);
+          TOP whichmov;
+          TN* homing_gr;
+          if (Is_Target_32bit()) {
+              whichmov = TOP_mov32;
+          } else {
+              whichmov = TOP_mov64;
+          }
+          homing_gr = Build_TN_Like(bound_name);
+          OP* new_add_op;
+          TOP add_opcod;
+          if (Is_Target_32bit()) {
+              add_opcod = TOP_addi32;
+          } else {
+              add_opcod = TOP_addi64;
+          }
+
+          new_add_op = Mk_OP(add_opcod, homing_gr, homing_gr, 
+                OP_opnd(add_map[bound_name],1)); 
+          BB_Insert_Op_Before (add_bb, add_map[bound_name], new_add_op);
+          OP_scycle(new_add_op) = OP_scycle(add_map[bound_name]);
+          new_add_op->bb = add_bb;
+
+          FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+              FOR_ALL_BB_OPs (abbinloop,opi) {
+                  if (opi != compare_map [bound_name] 
+                          && opi != add_map[bound_name]) {
+                      for (int i = 0; i < OP_opnds(opi); i++) {
+                          if (OP_opnd(opi,i) == bound_name)
+                              Set_OP_opnd (opi, i, homing_gr);
+                      }
+                      for (int i = 0; i < OP_results(opi); i++) {
+                          if (OP_result(opi,i) == bound_name)
+                              Set_OP_result (opi, i, homing_gr);
+                      }
+                  }
+              }
+          }
+
+          use_map[homing_gr] = use_map[bound_name];
+          use_map.erase(bound_name);
+          add_map[homing_gr] = new_add_op;
+          add_map.erase(bound_name);
+          counted_base_regs.insert (homing_gr);
+          counted_base_regs.erase (bound_name);
+
+          BBLIST* predlis = BB_preds(LOOP_DESCR_loophead(loop));
+          while (predlis) {
+              BB *pred = BBLIST_item(predlis);
+              predlis = BBLIST_next(predlis);
+              if (!BB_SET_MemberP(LOOP_DESCR_bbset(loop), pred)) {
+                  if (BB_branch_op(pred)) {
+                      OP* homing_mov;
+                      homing_mov = Mk_OP(whichmov, homing_gr, bound_name);
+                      BB_Insert_Op_Before (pred, BB_branch_op(pred), homing_mov);
+                      homing_mov->bb = pred;
+                  } else {
+                      OP* homing_mov;
+                      homing_mov = Mk_OP(whichmov, homing_gr, bound_name);
+                      BB_Append_Op(pred,homing_mov);
+                      homing_mov->bb = pred;
+                  }
+              }
+          }
+          GRA_LIVE_Recalc_Liveness (NULL);
+      }
+}
+
+void Counter_Merge (char *Cur_PU_Name) {
+  GRA_LIVE_Recalc_Liveness (NULL);
+  MEM_POOL loop_descr_pool;
+  MEM_POOL_Initialize(&loop_descr_pool, "loop_descriptors", TRUE);
+  MEM_POOL_Push (&loop_descr_pool);
+  Calculate_Dominators();
+
+  LOOP_DESCR *theloops = LOOP_DESCR_Detect_Loops(&loop_descr_pool);
+  dfo_map = BB_Depth_First_Map(NULL, NULL);
+  for (LOOP_DESCR *loop = theloops; loop; loop = LOOP_DESCR_next(loop)) {
+      if (!BB_innermost(LOOP_DESCR_loophead(loop)))
+          continue;
+      BB *abbinloop;
+      OP *opi;
+      bool dontdoit = false;
+      FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+        FOR_ALL_BB_OPs (abbinloop,opi) {
+            // escape hatch for loops that hold volatile
+            // registers or have calls. calls may modify
+            // contents of SIB registers
+            if (OP_volatile(opi))
+                dontdoit = true;
+            if (OP_call(opi))
+                dontdoit = true;
+        }
+      }
+      if (dontdoit) continue;
+
+      //
+      // collect the LiveIn sets of pdoms of loop header
+      // which are not part of the loop
+      // 
+      GTN_SET* otherliveins;
+      otherliveins = NULL;
+      MEM_POOL merge_counter_pool;
+      MEM_POOL_Initialize(&merge_counter_pool, 
+            "loop_descriptors", TRUE);
+      MEM_POOL_Push (&merge_counter_pool);
+
+      // We collect the live-ins of successors of the loop BBs
+      // which are not part of the loop.
+      // We will avoid doing SIB for the variables which are 
+      // part of that live-in set
+      FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+          BBLIST* succlis = BB_succs(abbinloop);
+          while (succlis) {
+              BB *succ = BBLIST_item(succlis);
+              succlis = BBLIST_next(succlis);
+              if (!BB_SET_MemberP(LOOP_DESCR_bbset(loop), succ)) {
+                  if (otherliveins == NULL) {
+                      otherliveins = BB_live_in(succ);
+                  } else {
+                      otherliveins = GTN_SET_Union (otherliveins,
+                          BB_live_in (succ), &merge_counter_pool);
+                  }
+              }
+          }
+      }
+
+      fix_compare_binding (loop, otherliveins);
+
+      // collect otherliveins again as fix_compare_binding may have
+      // changed liveness
+      otherliveins = NULL;
+      FOR_ALL_BB_SET_members(LOOP_DESCR_bbset(loop), abbinloop) {
+          BBLIST* succlis = BB_succs(abbinloop);
+          while (succlis) {
+              BB *succ = BBLIST_item(succlis);
+              succlis = BBLIST_next(succlis);
+              if (!BB_SET_MemberP(LOOP_DESCR_bbset(loop), succ)) {
+                  if (otherliveins == NULL) {
+                      otherliveins = BB_live_in(succ);
+                  } else {
+                      otherliveins = GTN_SET_Union (otherliveins,
+                          BB_live_in (succ), &merge_counter_pool);
+                  }
+              }
+          }
+      }
+
+      fix_base_instructions (Cur_PU_Name, loop, otherliveins, 
+                             &merge_counter_pool);
+
+      MEM_POOL_Pop(&merge_counter_pool);
+  }
+
+  MEM_POOL_Pop (&loop_descr_pool);
+  MEM_POOL_Delete(&loop_descr_pool);
+  Free_Dominators_Memory ();
 }
 
 static OP *
@@ -6839,6 +9297,12 @@ BOOL EBO_Load_Execution( OP* alu_op,
       TOP_is_vector_op( OP_code(ld_op) ) ){
     return Process_Side_Effects(opnd_tn, actual_tninfo, rval, opnds_swapped);
   }
+
+  if ((OP_code(ld_op) == TOP_ldhps ||
+	OP_code(ld_op) == TOP_ldhpsx ||
+	OP_code(ld_op) == TOP_ldhpsxx) &&
+      OP_code(alu_op) == TOP_cvtps2pd)
+    return FALSE;
 
   /* Check <index> and <base> will not be re-defined between
      <ld_op> and <alu_op>, inclusive.

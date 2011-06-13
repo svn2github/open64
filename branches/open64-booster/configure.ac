@@ -135,6 +135,14 @@ AS_IF([test "x$enable_fortran" != "xno"], [
   BUILD_FORTRAN=YES
 ])
 
+# Set whether to skip IPA support (default NO).
+AC_ARG_ENABLE([ipa],
+  AS_HELP_STRING([--disable-ipa], [Disable IPA compilation support (EXPERIMENTAL)]))
+
+AS_IF([test "x$enable_ipa" = "xno"], [
+  BUILD_SKIP_IPA=YES
+])
+
 # Specify the targ_info directory under osprey/common to use.  IA64 uses
 # ipfec_targ_info instead of targ_info.
 TARG_INFO_NAME=targ_info
@@ -241,14 +249,19 @@ case "$target" in
 		GCC_CONFIGURE_HOST=mips-redhat-linux
 		CYGNUS_CONFIGURE_TARG=mipsel-elf-linux
 		GCC_CONFIGURE_TARG=mips-redhat-linux
-		GCC_CONFIGURE_CFLAGS="-m32 -DTARG_SL"
-		CYGNUS_CONFIGURE_CFLAGS="-m32"
+		GCC_CONFIGURE_CFLAGS+=" -m32 -DTARG_SL"
+		CYGNUS_CONFIGURE_CFLAGS=" -m32"
 		BUILD_MULTILIB=NO
 		;;
 	*)
 		AC_MSG_ERROR(["open64 is not supported on $target"])
 		;;
 esac
+
+if test "${BUILD_TARGET}" = "SL"; then
+   BUILD_GNU3="YES"
+   BUILD_FORTRAN="NO"
+fi
 
 UNAME_MACHINE=`uname -m`
 if test "$UNAME_MACHINE" = "x86_64"; then
@@ -324,6 +337,7 @@ AC_SUBST([COMPILER_TARG_DIR])
 AC_SUBST([TARG_INFO_NAME])
 AC_SUBST([BUILD_GNU3])
 AC_SUBST([BUILD_FORTRAN])
+AC_SUBST([BUILD_SKIP_IPA])
 AC_SUBST([GCC_CONFIGURE_TARG])
 AC_SUBST([GCC_DIR])
 
@@ -402,10 +416,19 @@ fi
 AC_CONFIG_FILES([
   osprey/targdir_lib/Makefile
   osprey/targdir_lib/include/Makefile
+])
+
+if test "${BUILD_TARGET}" = "SL"; then
+AC_CONFIG_FILES([
+  osprey/targdir_lib/libinstr/Makefile:osprey/targdir_lib/libinstr2/Makefile.in
+])
+else
+AC_CONFIG_FILES([
   osprey/targdir_lib/libopenmp/Makefile
   osprey/targdir_lib/libhugetlbfs/Makefile
   osprey/targdir_lib/libmv/Makefile
 ])
+fi
 
 if test "${BUILD_FORTRAN}" = "YES"; then
    AC_CONFIG_FILES([
