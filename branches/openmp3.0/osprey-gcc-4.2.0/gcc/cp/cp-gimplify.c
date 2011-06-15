@@ -682,19 +682,10 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
   else if (TREE_CODE (stmt) == OMP_CLAUSE)
     switch (OMP_CLAUSE_CODE (stmt))
       {
-      case OMP_CLAUSE_LASTPRIVATE:
-	/* Don't dereference an invisiref in OpenMP clauses.  */
-	if (is_invisiref_parm (OMP_CLAUSE_DECL (stmt)))
-	  {
-	    *walk_subtrees = 0;
-	    if (OMP_CLAUSE_LASTPRIVATE_STMT (stmt))
-	      cp_walk_tree (&OMP_CLAUSE_LASTPRIVATE_STMT (stmt),
-			    cp_genericize_r, p_set, NULL);
-	  }
-	break;
       case OMP_CLAUSE_PRIVATE:
       case OMP_CLAUSE_SHARED:
       case OMP_CLAUSE_FIRSTPRIVATE:
+      case OMP_CLAUSE_LASTPRIVATE:
       case OMP_CLAUSE_COPYIN:
       case OMP_CLAUSE_COPYPRIVATE:
 	/* Don't dereference an invisiref in OpenMP clauses.  */
