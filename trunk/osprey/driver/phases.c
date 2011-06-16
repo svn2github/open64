@@ -3115,10 +3115,12 @@ run_ld (void)
 #ifdef KEY
 	// Pass "-m elf_i386" and "-m elf_x86_64" to linker.  Bug 8441.
 	if (option_was_seen(O_melf_i386)) {
-	    add_string(args, "-m elf_i386");
+	    add_string(args, "-m");
+	    add_string(args, "elf_i386");
 	}
 	if (option_was_seen(O_melf_x86_64)) {
-	    add_string(args, "-m elf_x86_64");
+	    add_string(args, "-m");
+	    add_string(args, "elf_x86_64");
 	}
 #endif
 
