@@ -7988,7 +7988,13 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_ldsd, result, op1, Gen_Literal_TN (0,4), ops );
     break;
   case INTRN_LOADHPD:
-    Build_OP( TOP_ldhpd, result, op1, Gen_Literal_TN (0,4), ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()){
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_ldhpd, result, xzero, op1, Gen_Literal_TN (0,4), ops );
+    } else {
+      Build_OP( TOP_ldhpd, result, op1, Gen_Literal_TN (0,4), ops );
+    }
     break;
   case INTRN_UNPCKLPD:
     Build_OP( TOP_unpcklpd, result, op0, op1, ops );
@@ -8208,10 +8214,22 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_ldupd, result, op0, Gen_Literal_TN (0,4), ops );
     break;
   case INTRN_LOADHPS:
-    Build_OP( TOP_ldhps, result, op1, Gen_Literal_TN (0,4), ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()){
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_ldhps, result, xzero, op1, Gen_Literal_TN (0,4), ops );
+    } else {
+      Build_OP( TOP_ldhps, result, op1, Gen_Literal_TN (0,4), ops );
+    }
     break;
   case INTRN_LOADLPS:
-    Build_OP( TOP_ldlps, result, op1, Gen_Literal_TN (0,4), ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()){
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_ldlps, result, xzero, op1, Gen_Literal_TN (0,4), ops );
+    } else {
+      Build_OP( TOP_ldlps, result, op1, Gen_Literal_TN (0,4), ops );
+    }
     break;
   case INTRN_MOVMSKPS:
     Build_OP( TOP_movmskps, result, op0, ops );

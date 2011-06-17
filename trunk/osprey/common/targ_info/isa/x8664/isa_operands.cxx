@@ -1545,6 +1545,10 @@ int main()
                            TOP_vaesenclastx,
                            TOP_vaesdecx,
                            TOP_vaesdeclastx,
+                           TOP_vldhpd,
+                           TOP_vldlpd,
+                           TOP_vldhps,
+                           TOP_vldlps,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -1785,6 +1789,10 @@ int main()
                            TOP_vaesenclastxx,
                            TOP_vaesdecxx,
                            TOP_vaesdeclastxx,
+                           TOP_vldhpdx,
+                           TOP_vldhpsx,
+                           TOP_vldlpdx,
+                           TOP_vldlpsx,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -2025,6 +2033,10 @@ int main()
                            TOP_vaesenclastxxx,
                            TOP_vaesdecxxx,
                            TOP_vaesdeclastxxx,
+                           TOP_vldhpdxx,
+                           TOP_vldhpsxx,
+                           TOP_vldlpdxx,
+                           TOP_vldlpsxx,
 			   TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -4286,15 +4298,21 @@ int main()
                     TOP_vlddqa_n32,
                     TOP_vldapd_n32,
                     TOP_vldaps_n32,
-                    TOP_vldlpd_n32,
                     TOP_vldupd_n32,
                     TOP_vldups_n32,
+		    TOP_UNDEFINED);
+  Result(0, fp128);
+  Operand(0, simm32, offset);
+
+  Instruction_Group("avx float load vector w/o base or index",
                     TOP_vldhpd_n32,
+                    TOP_vldlpd_n32,
                     TOP_vldhps_n32,
                     TOP_vldlps_n32,
 		    TOP_UNDEFINED);
   Result(0, fp128);
-  Operand(0, simm32, offset);
+  Operand(0, fp128, opnd1);
+  Operand(1, simm32, offset);
 
   Instruction_Group("float load vector",
 		    TOP_lddqa,
@@ -4318,14 +4336,10 @@ int main()
                     TOP_vldntdqa,
                     TOP_vldapd,
                     TOP_vldaps,
-                    TOP_vldlpd,
                     TOP_vldss,
                     TOP_vldupd,
                     TOP_vldups,
-                    TOP_vldhpd,
-                    TOP_vldhps,
                     TOP_vldsd,
-                    TOP_vldlps,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, int64, base);
@@ -5676,14 +5690,10 @@ int main()
                     TOP_vldntdqax,
                     TOP_vldapdx,
                     TOP_vldapsx,
-                    TOP_vldlpdx,
                     TOP_vldssx,
                     TOP_vldupdx,
                     TOP_vldupsx,
-                    TOP_vldhpdx,
-                    TOP_vldhpsx,
                     TOP_vldsdx,
-                    TOP_vldlpsx,
 		    TOP_UNDEFINED);
   Result(0,  fp128);
   Operand(0, int64, base);
@@ -5745,14 +5755,10 @@ int main()
                     TOP_vldntdqaxx,
                     TOP_vldapdxx,
                     TOP_vldapsxx,
-                    TOP_vldlpdxx,
                     TOP_vldssxx,
                     TOP_vldupdxx,
                     TOP_vldupsxx,
-                    TOP_vldhpdxx,
-                    TOP_vldhpsxx,
                     TOP_vldsdxx,
-                    TOP_vldlpsxx,
 		    TOP_UNDEFINED);
   Result(0,  fp128);
   Operand(0, int64, index);
