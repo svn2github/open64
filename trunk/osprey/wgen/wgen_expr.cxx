@@ -10144,6 +10144,13 @@ WGEN_Expand_Expr (gs_t exp,
 	  else {
 	    enum X86_64_PARM_CLASS classes[MAX_CLASSES];
 	    INT n = Classify_Aggregate(ty_idx, classes);
+            // handle X87 X87UP and COMPLEX_X87 cases
+            if (n != 0 && (classes[0] == X86_64_X87_CLASS ||
+                           classes[0] == X86_64_X87UP_CLASS ||
+                           classes[0] == X86_64_COMPLEX_X87_CLASS)) {
+               // x87, x87up and complex_x87 are passed in memory
+               n = 0;
+            }
 	    if (n == 0) { /* can only pass in memory */
 	      /* increment overflow_arg_area pointer by 8 */
 	      INT delta = ((TY_size(ty_idx) + 7) / 8) * 8;
