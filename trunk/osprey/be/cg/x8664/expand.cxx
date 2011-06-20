@@ -9924,8 +9924,11 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
       Build_OP(TOP_andi64, rax_tn, rax_tn, Gen_Literal_TN(0xff,4), ops);
       INT64 num_xmms = TN_value(OP_opnd(op, 1));
       TN *r11_tn = Build_Dedicated_TN(ISA_REGISTER_CLASS_integer, R11, 8);
-      if (Is_Target_Orochi() && Is_Target_AVX()) {
-        Build_OP(TOP_vzeroupper, ops );
+      if ( Is_Target_Orochi() && Is_Target_AVX() ) {
+        // guard the addition of this insn by flag
+        if (CG_NoClear_Avx_Simd == false)
+          Build_OP(TOP_vzeroupper, ops );
+
         Build_OP(TOP_leaxx64, r11_tn, rax_tn, Gen_Literal_TN(8, 4), 
 	         Gen_Literal_TN(4*(num_xmms-8), 4), ops);
       } else {

@@ -484,6 +484,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,    &CG_merge_counters_x86, NULL },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "interior_ptrs", "",
     0, 0, 0,    &CG_interior_ptrs_x86, NULL },
+  { OVK_BOOL,   OV_VISIBLE, TRUE, "noavx_clear", "",
+    0, 0, 0,    &CG_NoClear_Avx_Simd, NULL },
 #endif
   { OVK_BOOL,	OV_INTERNAL, TRUE, "skip_local_sched", "",
     0, 0, 0,	&CG_skip_local_sched, NULL },
