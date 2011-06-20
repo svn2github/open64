@@ -7456,7 +7456,9 @@ static WN *lower_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
   // Don't do struct copy if src and dest are the same.
   if (WN_opcode(rhs) == OPC_MMLDID &&
       WN_st(rhs) == WN_st(tree) &&
-      WN_load_offset(rhs) == WN_store_offset(tree)) {
+      WN_load_offset(rhs) == WN_store_offset(tree) &&
+      !TY_is_volatile(ty_idx) &&
+      !TY_has_volatile(ty_idx)) {
     WN_Delete(tree);
     return NULL;
   }

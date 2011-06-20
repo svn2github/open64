@@ -995,7 +995,7 @@ Set_OP_To_WN_Map(WN *wn)
 {
   OP *op;
   // We don't have aliasing information at -O0 and -O1.
-  if (CG_opt_level < 2) return;
+  if (CG_opt_level < 1) return;
 
   op = Last_Mem_OP ? OP_next(Last_Mem_OP) : OPS_first(&New_OPs);
   for ( ; op != NULL; op = OP_next(op)) {
