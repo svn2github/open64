@@ -2349,10 +2349,6 @@ int main()
                            TOP_vfperm2f128,
                            TOP_vroundsd,
                            TOP_vroundss,
-                           TOP_vfshuf128v64,
-                           TOP_vfshuf128v32,
-                           TOP_vshufpd,
-                           TOP_vshufps,
                            TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
@@ -4497,6 +4493,10 @@ int main()
   Instruction_Group("shuffle",
 		    TOP_shufps,
 		    TOP_shufpd,
+		    TOP_vfshuf128v64,
+		    TOP_vfshuf128v32,
+		    TOP_vshufpd,
+		    TOP_vshufps,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128, opnd1);
