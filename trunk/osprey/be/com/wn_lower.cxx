@@ -7331,7 +7331,8 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
   ST *preg_st;
   WN *n_rhs;
   WN *wn = NULL;	// init to prevent upward-exposed use
-  RETURN_INFO return_info = Get_Return_Info(WN_ty(tree), Complex_Not_Simulated
+  RETURN_INFO return_info = Get_Return_Info(WN_ty(WN_kid0(tree)), 
+                                            Complex_Not_Simulated
 #ifdef TARG_X8664
 					    , last_call_ff2c_abi
 #endif
@@ -7353,7 +7354,7 @@ static WN *lower_return_mistore(WN *block, WN *tree, LOWER_ACTIONS actions)
     if (WN_store_offset(tree) != 0) { // generate an ADD node for the offset
       WN *iwn = WN_CreateIntconst(OPR_INTCONST, Pointer_Mtype, MTYPE_V, 
 				  WN_store_offset(tree));
-      awn = WN_CreateExp2(OPR_ADD, Pointer_Mtype, Pointer_Mtype, awn, iwn);
+      awn = WN_CreateExp2(OPR_ADD, Pointer_Mtype, MTYPE_V, awn, iwn);
     }
     awn = lower_expr(block, awn, actions);
     WN *n_call = add_fake_parm(call, awn, WN_ty(tree));
@@ -12134,25 +12135,94 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
       WN *n_rhs;
 
       // fix rhs
-      if (WN_operator(o_rhs) == OPR_LDID)
-        n_rhs = lower_mldid(block, o_rhs, LOWER_MLDID_MSTID);
-      else if (WN_operator(o_rhs) == OPR_ILOAD) 
-        n_rhs = lower_miload(block, o_rhs, LOWER_MLDID_MSTID);
-      else n_rhs = o_rhs; 		// MLOAD
-
-      // create an mstore
+ 
       WN *first_formal = WN_formal(current_function, 0);
       TY_IDX tidx = ST_type(WN_st(first_formal));
-      WN *awn = WN_CreateLdid(OPR_LDID, 
-			      TY_mtype(Ty_Table[tidx]), 
-			      TY_mtype(Ty_Table[tidx]),
-			      WN_idname_offset(first_formal), 
-			      WN_st(first_formal), 
-			      tidx);
-      WN *swn = WN_CopyNode(WN_kid1(n_rhs));
-      wn  = WN_CreateMstore (0, tidx, n_rhs, awn, swn);
-      WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
-      WN_INSERT_BlockLast (block, wn);
+      if (WN_operator(o_rhs) == OPR_LDID && 
+            WN_st(o_rhs) == Return_Val_Preg) {
+        // the Return_Val_Preg must be returned by previous call
+        // so we need to get the previous MCALL statement and 
+        // fake first parm
+        //
+        // MCALL 126 <1,51,bar9>
+        //   MMLDID -1 <1,49,.preg_return_val> T<53,.anonymous.1,1>
+        // MRETURN_VAL 
+        //
+        //  ==>
+        //
+        //     U8LDID 0 <2,3,_temp_.return...>
+        //   U8PARM 33 T<55,anon_ptr.,8>
+        // VCALL 126 <1,51,bar9>
+        // 
+        WN *call = WN_last(block);
+        if ((WN_operator(call) == OPR_CALL || WN_operator(call) == OPR_ICALL ||
+	        WN_operator(call) == OPR_PICCALL) && WN_rtype(call) == MTYPE_M) {
+          TY_IDX prototype;
+          if (WN_operator(call) == OPR_ICALL) 
+            prototype = WN_ty(call);
+          else {
+            ST_IDX func_stidx = WN_st_idx(call);
+            PU_IDX puidx = ST_pu(St_Table[func_stidx]);
+            prototype = PU_prototype(Pu_Table[puidx]);
+          }
+          WN *awn = WN_CreateLdid(OPR_LDID, 
+			        TY_mtype(Ty_Table[tidx]), 
+			        TY_mtype(Ty_Table[tidx]),
+			        WN_idname_offset(first_formal), 
+			        WN_st(first_formal), 
+			        tidx);
+          awn = lower_expr(block, awn, actions);
+          WN *n_call = add_fake_parm(call, awn, WN_ty(awn));
+          WN_DELETE_FromBlock(block, call);
+          WN_INSERT_BlockLast(block, n_call); 
+        }
+      }
+      else {
+        if (WN_operator(o_rhs) == OPR_LDID) {
+          n_rhs = lower_mldid(block, o_rhs, LOWER_MLDID_MSTID);
+        }
+        else if (WN_operator(o_rhs) == OPR_ILOAD) 
+          n_rhs = lower_miload(block, o_rhs, LOWER_MLDID_MSTID);
+        else n_rhs = o_rhs; 		// MLOAD
+  
+        // create an mstore
+        WN *awn = WN_CreateLdid(OPR_LDID, 
+			        TY_mtype(Ty_Table[tidx]), 
+			        TY_mtype(Ty_Table[tidx]),
+			        WN_idname_offset(first_formal), 
+			        WN_st(first_formal), 
+			        tidx);
+        WN *swn = WN_CopyNode(WN_kid1(n_rhs));
+        wn  = WN_CreateMstore (0, tidx, n_rhs, awn, swn);
+        WN_Set_Linenum(wn, current_srcpos);  // Bug 1268
+        WN_INSERT_BlockLast (block, wn);
+      }
+#ifdef TARG_X8664
+      // x86-64 ABI
+      // on return %rax will contain the address that has been 
+      // passed in by the caller in %rdi
+      // for 32 bit, the return address is in %eax
+      //
+      //   U8U8LDID 0 <2,3,_temp_.return...>
+      // U8STID 1 <1,5,.preg_I8>  T<5,.predef_I8,8> # $r1
+      // 
+ 
+      mtype = Is_Target_64bit() ? MTYPE_U8 : MTYPE_U4;
+      WN *ld = WN_CreateLdid(OPR_LDID, 
+                          TY_mtype(Ty_Table[tidx]), 
+                          TY_mtype(Ty_Table[tidx]),
+                          WN_idname_offset(first_formal), 
+                          WN_st(first_formal), 
+                          tidx);
+      WN *stid = WN_Stid( mtype, First_Int_Preg_Return_Offset,
+        Int_Preg, ST_type(Int_Preg), ld );
+      WN_Set_Linenum(stid, current_srcpos);
+      WN_INSERT_BlockLast( block, stid );
+      if (traceMload) {
+        fprintf(TFile, "Return_val lower [Return_Val_Preg]\n");
+        fdump_tree(TFile, block);
+      }
+#endif
     }
     else { // return in return registers
       INT32 i;
@@ -12263,6 +12333,10 @@ static WN *lower_return_val(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
   }
 
+  // lastly make a normal return statement
+  //
+  // RETURN 
+  //  
   WN *wn_return = WN_CreateReturn ();
   WN_Set_Linenum(wn_return, current_srcpos);  // Bug 1268
   if ( Cur_PU_Feedback )
