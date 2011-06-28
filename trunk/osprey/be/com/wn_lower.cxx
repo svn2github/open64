@@ -7239,7 +7239,12 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
   ST *preg_st;
   WN *n_rhs;
   WN *wn = NULL;	// init to prevent upward-exposed use
-  RETURN_INFO return_info = Get_Return_Info(WN_ty(tree), Complex_Not_Simulated
+  TY_IDX ty_idx  = WN_ty(tree);
+
+  if (WN_field_id (tree) != 0)
+    ty_idx = get_field_type (ty_idx, WN_field_id (tree));
+
+  RETURN_INFO return_info = Get_Return_Info(ty_idx, Complex_Not_Simulated
 #ifdef TARG_X8664
 					    , last_call_ff2c_abi
 #endif
@@ -7260,7 +7265,7 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 #endif
     WN *awn = WN_CreateLda(OPR_LDA, Pointer_Mtype, MTYPE_V, 
 			   WN_store_offset(tree), 
-			   Make_Pointer_Type(WN_ty(tree)), WN_st_idx(tree));
+			   Make_Pointer_Type(ty_idx), WN_st_idx(tree));
     awn = lower_expr(block, awn, actions);
     WN *n_call = add_fake_parm(call, awn, WN_ty(awn));
     WN_DELETE_FromBlock(block, call);
@@ -7277,9 +7282,9 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
       mtype = RETURN_INFO_mtype(return_info, i);
       desc = mtype;
 #ifdef KEY
-      if (MTYPE_byte_size(mtype) > TY_size(WN_ty(tree)) && !MTYPE_float(mtype)){
+      if (MTYPE_byte_size(mtype) > TY_size(ty_idx) && !MTYPE_float(mtype)){
 	desc = Mtype_AlignmentClass(1, MTYPE_type_class(mtype));
-	while (MTYPE_byte_size(desc) < TY_size(WN_ty(tree)))
+	while (MTYPE_byte_size(desc) < TY_size(ty_idx))
 	  desc = Mtype_next_alignment(desc);
       }
 #endif
@@ -7287,7 +7292,7 @@ static WN *lower_return_mstid(WN *block, WN *tree, LOWER_ACTIONS actions)
 
 #if defined(TARG_PPC32)
       if (preg_st == Int_Preg) {
-        UINT rem = TY_size(WN_ty(tree)) - i * 4;
+        UINT rem = TY_size(ty_idx) - i * 4;
         if (1 == rem) desc = MTYPE_I1;
         if (2 == rem) desc = MTYPE_I2;
       }
