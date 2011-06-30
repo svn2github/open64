@@ -1139,6 +1139,7 @@ static void Init_OP_Name()
   OP_Name[TOP_extrx128v16] = "pextrw";
   OP_Name[TOP_extrxx128v16] = "pextrw";
   OP_Name[TOP_extrxxx128v16] = "pextrw";
+  OP_Name[TOP_extr128v32] = "pextrd";
   OP_Name[TOP_extrx128v32] = "pextrd";
   OP_Name[TOP_extrxx128v32] = "pextrd";
   OP_Name[TOP_extrxxx128v32] = "pextrd";

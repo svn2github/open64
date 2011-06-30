@@ -1412,11 +1412,6 @@ int main()
                            TOP_fblend128v64,
                            TOP_fdp128v32,
                            TOP_fdp128v64,
-                           TOP_extr128v8,
-                           TOP_extr128v16,
-                           TOP_extr128v32,
-                           TOP_extr128v64,
-                           TOP_fextr128v32,
                            TOP_insr128v8,
                            TOP_insr128v16,
                            TOP_insr128v32,
@@ -1598,6 +1593,12 @@ int main()
   Operand(0);
   Result(0);
   Instruction_Print_Group( vropop,
+                           /* SSE 4.1 instruction */
+                           TOP_extr128v8,
+                           TOP_extr128v16,
+                           TOP_extr128v32,
+                           TOP_extr128v64,
+                           TOP_fextr128v32,
                            /* AES instruction */
                            TOP_aeskeygenassist,
                            /* XOP instruction */
@@ -1997,6 +1998,12 @@ int main()
   Operand(0);
   Result(0);
   Instruction_Print_Group( vrmemop,
+                           /* SSE 4.1 instruction */
+                           TOP_extrx128v8,
+                           TOP_extrx128v16,
+                           TOP_extrx128v32,
+                           TOP_extrx128v64,
+                           TOP_fextrx128v32,
                            /* XOP instruction */
                            TOP_vprotbx,
                            TOP_vprotdx,
@@ -2219,6 +2226,12 @@ int main()
   Operand(2);
   Result(0);
   Instruction_Print_Group( vrmemindexop,
+                           /* SSE 4.1 instruction */
+                           TOP_extrxx128v8,
+                           TOP_extrxx128v16,
+                           TOP_extrxx128v32,
+                           TOP_extrxx128v64,
+                           TOP_fextrxx128v32,
                            /* XOP instruction */
                            TOP_vprotbxx,
                            TOP_vprotdxx,
@@ -2439,6 +2452,12 @@ int main()
   Operand(1);
   Result(0);
   Instruction_Print_Group( vropmemindex,
+                           /* SSE 4.1 instruction */
+                           TOP_extrxxx128v8,
+                           TOP_extrxxx128v16,
+                           TOP_extrxxx128v32,
+                           TOP_extrxxx128v64,
+                           TOP_fextrxxx128v32,
                            /* XOP instruction */
                            TOP_vprotbxxx,
                            TOP_vprotdxxx,

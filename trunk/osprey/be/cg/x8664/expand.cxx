@@ -7550,6 +7550,24 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     op1 = Gen_Literal_TN (3, 4);
     Build_OP( TOP_pextrw, result, op0, op1, ops );
     break;
+  case INTRN_PEXTRB:
+    Build_OP( TOP_extr128v8, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRW:
+    Build_OP( TOP_extr128v16, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRD:
+    Build_OP( TOP_extr128v32, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRQ:
+    Build_OP( TOP_extr128v64, result, op0, op1, ops);
+    break;
+  case INTRN_EXTRPS:
+    Build_OP( TOP_fextr128v32, result, op0, op1, ops);
+    break;
+  case INTRN_EXTRPD:
+    FmtAssert(FALSE, ("TODO: support fextr128v64"));
+    break;
   case INTRN_PINSRW0:
     Is_True (op2 == NULL, ("Imm operand should be null"));
     op2 = Gen_Literal_TN (0, 4);
@@ -7569,6 +7587,24 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Is_True (op2 == NULL, ("Imm operand should be null"));
     op2 = Gen_Literal_TN (3, 4);
     Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PINSRB:
+    Build_OP( TOP_insr128v8, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRW:
+    Build_OP( TOP_insr128v16, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRD:
+    Build_OP( TOP_insr128v32, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRQ:
+    Build_OP( TOP_insr128v64, result, op0, op1, op2, ops);
+    break;
+  case INTRN_INSRPS:
+    Build_OP( TOP_finsr128v32, result, op0, op1, op2, ops);
+    break;
+  case INTRN_INSRPD:
+    FmtAssert(FALSE, ("TODO: support finsr128v64"));
     break;
   case INTRN_PMOVMSKB:
     Build_OP( TOP_pmovmskb, result, op0, ops );
