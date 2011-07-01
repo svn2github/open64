@@ -538,6 +538,7 @@ extern BOOL CG_128bitstore;
 extern BOOL CG_branch_fuse;
 extern BOOL CG_strcmp_expand;
 extern BOOL CG_merge_counters_x86;
+extern BOOL CG_merge_counters_x86_set;
 extern BOOL CG_interior_ptrs_x86;  // enable,disable interior pointer trans
 extern BOOL CG_NoClear_Avx_Simd;
 #endif
