@@ -8196,7 +8196,13 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       Build_OP( TOP_movx2g, tmp0, op0, ops );
       op0 = tmp0;
     }
-    Build_OP( TOP_cvtsi2ss, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsi2ss, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsi2ss, result, op0, ops );
+    }
     break;
   case INTRN_CVTSI642SS:
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
@@ -8204,7 +8210,13 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       Build_OP( TOP_movx2g64, tmp0, op0, ops );
       op0 = tmp0;
     }
-    Build_OP( TOP_cvtsi2ssq, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsi2ssq, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsi2ssq, result, op0, ops );
+    }
     break;
   case INTRN_CVTSS2SI:
     Build_OP( TOP_cvtss2si, result, op0, ops );
@@ -8283,10 +8295,22 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_cvtps2pd, result, op0, ops );
     break;
   case INTRN_CVTSD2SS:
-    Build_OP( TOP_cvtsd2ss, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsd2ss, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsd2ss, result, op0, ops );
+    }
     break;
   case INTRN_CVTSS2SD:
-    Build_OP( TOP_cvtss2sd, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtss2sd, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtss2sd, result, op0, ops );
+    }
     break;
   case INTRN_LOADUPS:
     Build_OP( TOP_ldups, result, op0, Gen_Literal_TN (0,4), ops );
@@ -8590,10 +8614,10 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP(TOP_vfcmp128v32, result, op0, op1, op2, ops );
     break;
    case INTRN_CMPSD:
-    Build_OP(TOP_vfcmpsd, result, op0, op1, op2, ops );
+    Build_OP(TOP_vcmpsd, result, op0, op1, op2, ops );
     break;
    case INTRN_CMPSS:
-    Build_OP(TOP_vfcmpss, result, op0, op1, op2, ops );
+    Build_OP(TOP_vcmpss, result, op0, op1, op2, ops );
     break;
    case INTRN_CVTDQ2PD256:
     Build_OP(TOP_vcvtdq2pd, result, op0, ops );
