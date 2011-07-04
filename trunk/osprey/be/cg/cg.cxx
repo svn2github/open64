@@ -1487,8 +1487,10 @@ extern void Generate_Return_Address(void);
   Check_for_Dump_ALL ( TP_CGEXP, NULL, "Pre LIS" );
 
 #else
-  GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
-  GRA_LIVE_Rename_TNs();
+  if (!CG_localize_tns) {
+    GRA_LIVE_Recalc_Liveness(region ? REGION_get_rid( rwn) : NULL);
+    GRA_LIVE_Rename_TNs();
+  }
 #if !defined(TARG_PPC32)    //  PPC IGLS_Schedule_Region bugs
   IGLS_Schedule_Region (TRUE /* before register allocation */);
 #ifdef TARG_X8664
