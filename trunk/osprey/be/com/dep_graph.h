@@ -852,6 +852,7 @@ public:
   }
   void Add_Scalar(WN *wn, UINT snumber);
   void Add_Scalar(WN *wn_call, SYMBOL* symbol, UINT snumber);
+  void Remove_Scalar(WN *wn);
   void Print(FILE *fp);
   void Clear() { _stack->Clear(); };
   INT Elements() const { return _stack->Elements(); };

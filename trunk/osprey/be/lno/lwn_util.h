@@ -217,6 +217,9 @@
  * extern void LWN_Delete_Tree(WN *wn);
  *   Delete the node and all its descendants.
  *
+ * extern void LWN_Delete_SR(WN *wn);
+ *  Delete CALL_INFO nodes' scalar references associated with wn
+ *
  * extern void LWN_Delete_DU(WN *wn)
  *  Delete the DU chain associated with wn
  *
@@ -455,6 +458,7 @@ extern void LWN_Copy_Map(WN *, WN *, WN_MAP);
 extern void LWN_Copy_Def_Use_Node(WN*, WN*, DU_MANAGER*);
 extern void LWN_Copy_Def_Use(WN*, WN*, DU_MANAGER*);
 extern void LWN_Delete_DU(WN *wn);
+extern void LWN_Delete_SR(WN *wn);
 extern void LWN_Delete_LNO_dep_graph(WN *wn);
 extern void LWN_Delete_CG_dep_graph(WN *wn);
 extern void LWN_Delete_Name_Manager(WN *wn);

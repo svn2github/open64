@@ -229,11 +229,9 @@ public:
        for (int iter = idx; iter < _lastidx; iter++) {
           _array[idx] = _array[idx+1];
        }
-       _array[_lastidx] = NULL;
        Decidx();
     }
     else if (idx == _lastidx) {
-        _array[idx] = NULL;
         Decidx();
     }
   }

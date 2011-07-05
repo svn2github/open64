@@ -1192,6 +1192,8 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
   ROUNDOFF Roundoff_Level_Save = Roundoff_Level;
 
   Du_Mgr = du_mgr;
+  if(Run_autopar)
+    WN_Register_Delete_Cleanup_Function(LWN_Delete_SR);
   WN_Register_Delete_Cleanup_Function(LWN_Delete_DU);
   VINDEX16 save_graph_capacity = GRAPH16_CAPACITY; 
   GRAPH16_CAPACITY = LNO_Graph_Capacity;
@@ -1759,6 +1761,8 @@ return_point:
   MEM_POOL_Pop(&SNL_local_pool);
   MEM_POOL_Pop_Unfreeze(&LNO_default_pool);
 
+  if(Run_autopar)
+    WN_Remove_Delete_Cleanup_Function(LWN_Delete_SR);
   WN_Remove_Delete_Cleanup_Function(LWN_Delete_DU);
   GRAPH16_CAPACITY = save_graph_capacity; 
 
