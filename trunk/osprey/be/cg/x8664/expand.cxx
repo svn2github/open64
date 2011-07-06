@@ -4233,6 +4233,11 @@ Expand_Select (
   BOOL float_cond,
   OPS *ops)
 {
+  if (mtype == MTYPE_V16I1) {
+    Expand_Select_To_Blend(mtype, dest_tn, cond_tn, true_tn, false_tn, ops);
+    return;
+  }
+
   Is_True( TN_register_class(cond_tn) == ISA_REGISTER_CLASS_integer,
 	   ("Handle this case in Expand_Select") );
   const BOOL non_sse2_fp = MTYPE_is_F10(mtype) ||
@@ -4314,6 +4319,53 @@ Expand_Select (
   }
 }
   
+//Vector type SELECT are expanded to *blend* operation.
+//For now we only handle vector type V16I1.
+void
+Expand_Select_To_Blend (TYPE_ID mtype, TN* result, TN* op0, TN* op1, TN* op2, OPS *ops)
+{
+  FmtAssert(mtype == MTYPE_V16I1, ("Non-vector type passed to Expand_Select_To_Blend"));
+  TN* xmm0;
+  if( Trace_Exp ) {
+    fprintf(TFile, "expand %s: ", mtype == MTYPE_V16I1? OPCODE_name(OPC_V16I1V16I1SELECT): "***Unsupported opcode***");
+    if (result) Print_TN(result,FALSE);
+    fprintf(TFile, " :- ");
+    if (op0) Print_TN(op0,FALSE);
+    fprintf(TFile, " ");
+    if (op1) Print_TN(op1,FALSE);
+    fprintf(TFile, " ");
+    if (op2) Print_TN(op2,FALSE);
+    fprintf(TFile, " ");
+    fprintf(TFile, "\n");
+  }
+
+  if (!Is_Target_AVX()) {
+    //pblendvb (non-AVX) uses the 'xmm0' register as an implicit argument containing the mask.
+    //To build a TN dedicated to reg xmm0, pass value "1" to Build_Dedicated_TN
+    //instead of "XMM0(enum value of 17)". This avoids a bug in out of bound access
+    //of the array 'v16_ded_tns' which is size 17. Need to file this bug.
+    xmm0 = Build_Dedicated_TN(ISA_REGISTER_CLASS_float,1,16);
+    Exp_COPY(xmm0, op2, ops);
+    Set_TN_is_global_reg(xmm0);
+  }
+  switch(mtype) {
+  case MTYPE_V16I1:
+    if (Is_Target_Orochi() && Is_Target_AVX())
+      Build_OP(TOP_blendv128v8, result, op0, op1, op2, ops);
+    else
+      Build_OP(TOP_blendv128v8, result, op0, xmm0, op1, ops);
+    break;
+  default:
+    FmtAssert(FALSE,
+              ("Expand_Select_To_Blend: Unsupported mtype (%d)", mtype));
+  }
+
+  if (Trace_Exp) {
+    //Print_OPS appears to be printing extra characters at end of string  "into  ||| ..."
+    fprintf(TFile, " into "); Print_OPS (ops);
+  }
+}
+
 void
 Expand_Min (TN *dest, TN *src1, TN *src2, TYPE_ID mtype, OPS *ops)
 {

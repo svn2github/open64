@@ -3166,8 +3166,17 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
   WN	*compare;
   VARIANT variant;
 
+  if (opcode == OPC_V16I1V16I1SELECT) {
+    TN* op1 = Expand_Expr(WN_kid0(select), select, NULL);
+    TN* op2 = Expand_Expr(WN_kid1(select), select, NULL);
+    TN* op3 = Expand_Expr(WN_kid2(select), select, NULL);
 
-
+    if (result == NULL) 
+      result = Allocate_Result_TN (select, NULL);
+  
+    Expand_Select(result, op1, op2, op3, MTYPE_V16I1, FALSE, &New_OPs); //FALSE passed as dummy arg
+    return result;
+  }
 
  /*
   *  Expand the true/false before the condition
