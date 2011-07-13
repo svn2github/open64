@@ -1863,6 +1863,7 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_xor128v16,         TOP_vxor128v16},
     {TOP_xor128v32,         TOP_vxor128v32},
     {TOP_xor128v64,         TOP_vxor128v64},
+    {TOP_pxor,              TOP_vxor128v8},
     {TOP_fxor128v32,        TOP_vfxor128v32},
     {TOP_fxor128v64,        TOP_vfxor128v64},
     {TOP_andps,             TOP_vandps},

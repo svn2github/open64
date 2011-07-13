@@ -3610,6 +3610,7 @@ int main()
   /* One result / one mem opnd with scaled-index with base */
   ISA_PRINT_TYPE rmemindex =  ISA_Print_Type_Create("rmemindex", "%s %s%s(%s,%s,%s),%s");
   Name();
+  Segment(); 
   Operand(3);
   Operand(0);
   Operand(1);
@@ -3693,6 +3694,7 @@ int main()
   /* One result / one mem opnd with scaled-index w/o base */
   ISA_PRINT_TYPE rmemindexx =  ISA_Print_Type_Create("rmemindexx", "%s %s%s(,%s,%s),%s");
   Name();
+  Segment(); 
   Operand(2);
   Operand(0);
   Operand(1);

@@ -6227,14 +6227,23 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
     ST* st = Gen_Temp_Symbol( ty, "movd" );
     Allocate_Temp_To_Memory( st );
     Exp_Store( MTYPE_I8, op1, st, 0, ops, 0);
-    Exp_Load( MTYPE_F8, MTYPE_F8, tmp, st, 0, ops, 0);
-    Expand_Copy(result, tmp, MTYPE_F8, ops);
-    Build_OP(TOP_unpcklpd, result, result, tmp, ops);
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      Exp_Load( MTYPE_F8, MTYPE_F8, tmp, st, 0, ops, 0);
+      Build_OP(TOP_fmovddup, result, tmp, tmp, ops);
+    } else {
+      Exp_Load( MTYPE_F8, MTYPE_F8, tmp, st, 0, ops, 0);
+      Expand_Copy(result, tmp, MTYPE_F8, ops);
+      Build_OP(TOP_unpcklpd, result, result, tmp, ops);
+    }
     break;
   }
   case OPC_V16F8F8REPLICA:
-    Expand_Copy(result, op1, MTYPE_F8, ops);
-    Build_OP(TOP_unpcklpd, result, result, op1, ops);
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      Build_OP(TOP_fmovddup, result, op1, op1, ops);
+    } else {
+      Expand_Copy(result, op1, MTYPE_F8, ops);
+      Build_OP(TOP_unpcklpd, result, result, op1, ops);
+    }
     break;
   case OPC_V16I4I4REPLICA:
   {
@@ -6242,16 +6251,27 @@ Expand_Replicate (OPCODE op, TN *result, TN *op1, OPS *ops)
     ST* st = Gen_Temp_Symbol( ty, "movd" );
     Allocate_Temp_To_Memory( st );
     Exp_Store( MTYPE_I4, op1, st, 0, ops, 0);
-    Exp_Load( MTYPE_F4, MTYPE_F4, tmp, st, 0, ops, 0);
-    Expand_Copy(result, tmp, MTYPE_F4, ops);
-    Build_OP(TOP_unpcklps, result, result, tmp, ops);
-    Build_OP(TOP_unpcklps, result, result, result, ops);
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      Exp_Load( MTYPE_F4, MTYPE_F4, tmp, st, 0, ops, 0);
+      Build_OP(TOP_unpcklps, result, tmp, tmp, ops);
+      Build_OP(TOP_unpcklps, result, result, result, ops);
+    } else {
+      Exp_Load( MTYPE_F4, MTYPE_F4, tmp, st, 0, ops, 0);
+      Expand_Copy(result, tmp, MTYPE_F4, ops);
+      Build_OP(TOP_unpcklps, result, result, tmp, ops);
+      Build_OP(TOP_unpcklps, result, result, result, ops);
+    }
     break;
   }
   case OPC_V16F4F4REPLICA:
-    Expand_Copy(result, op1, MTYPE_F4, ops);
-    Build_OP(TOP_unpcklps, result, result, op1, ops);
-    Build_OP(TOP_unpcklps, result, result, result, ops);
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      Build_OP(TOP_unpcklps, result, op1, op1, ops);
+      Build_OP(TOP_unpcklps, result, result, result, ops);
+    } else {
+      Expand_Copy(result, op1, MTYPE_F4, ops);
+      Build_OP(TOP_unpcklps, result, result, op1, ops);
+      Build_OP(TOP_unpcklps, result, result, result, ops);
+    }
     break;
   case OPC_V16I2I2REPLICA:     
   {
@@ -10115,8 +10135,10 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
         if (CG_NoClear_Avx_Simd == false)
           Build_OP(TOP_vzeroupper, ops );
 
-        Build_OP(TOP_leaxx64, r11_tn, rax_tn, Gen_Literal_TN(8, 4), 
-	         Gen_Literal_TN(4*(num_xmms-8), 4), ops);
+        // The insn size for vstaps is 5 bytes, note that
+        // leaq 0(%rax,%rax,4) is (5 * %rax)
+        Build_OP(TOP_leax64, r11_tn, rax_tn, rax_tn, Gen_Literal_TN(4, 4), 
+	         Gen_Literal_TN(5*(num_xmms-8), 4), ops);
       } else {
         Build_OP(TOP_leaxx64, r11_tn, rax_tn, Gen_Literal_TN(4, 4), 
 	         Gen_Literal_TN(4*(num_xmms-8), 4), ops);
@@ -10134,21 +10156,10 @@ void Exp_Simulated_Op(const OP *op, OPS *ops, INT pc_value)
       }
       Build_OP(TOP_lea64, rax_tn, OP_opnd(op, 2), OP_opnd(op, 3), ops);
       Build_OP(TOP_ijmp, r11_tn, ops);
-      if (Is_Target_Orochi() && Is_Target_AVX()) {
-        // The insn size for vstaps is 5 bytes, so we need the 3 byte nop
-        // below to pad for the scale of 8 in the jump table.
-        for (INT i = 1; i <= num_xmms; i++) {
-          Build_OP(TOP_staps, PREG_To_TN(Int_Preg, XMM0+(8-i)), 
-	           rax_tn, Gen_Literal_TN(16 * (num_xmms-i) + 1, 4), ops);
-          Build_OP( TOP_mov64, rax_tn, rax_tn, ops );
-        }
-      } else {
-        for (INT i = 1; i <= num_xmms; i++) {
-          Build_OP(TOP_staps, PREG_To_TN(Int_Preg, XMM0+(8-i)), 
-	           rax_tn, Gen_Literal_TN(16 * (num_xmms-i) + 1, 4), ops);
-        }
+      for (INT i = 1; i <= num_xmms; i++) {
+        Build_OP(TOP_staps, PREG_To_TN(Int_Preg, XMM0+(8-i)), 
+	         rax_tn, Gen_Literal_TN(16 * (num_xmms-i) + 1, 4), ops);
       }
-      
       break;
     }
   default:
