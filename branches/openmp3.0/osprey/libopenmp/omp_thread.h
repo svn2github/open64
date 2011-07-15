@@ -29,6 +29,8 @@
   
 */
 
+/* Copyright (C) 2006-2011 University of Houston.  */
+
 /*
  * File: omp_thread.h
  * Abstract: routines for thread management
@@ -84,7 +86,7 @@ inline int __ompc_get_nested(void)
   return __omp_nested;
 }
 
-inline int __omp_get_cpu_num()
+static inline int __omp_get_cpu_num()
 {
 #ifndef TARG_LOONGSON
   cpu_set_t cpuset;
@@ -163,6 +165,7 @@ static inline void __ompc_insert_into_hash_table(omp_u_thread_t * new_u_thread)
   hash_index = HASH_IDX(uthread_id);
 	
   pthread_mutex_lock(&__omp_hash_table_lock);
+
   u_thread_temp = __omp_uthread_hash_table[hash_index];
   /* maybe NULL */
   __omp_uthread_hash_table[hash_index] = new_u_thread;
@@ -177,6 +180,7 @@ static inline void __ompc_remove_from_hash_table(pthread_t uthread_id)
 
   hash_index = HASH_IDX(uthread_id);
   pthread_mutex_lock(&__omp_hash_table_lock);
+
   uthread_temp = __omp_uthread_hash_table[hash_index];
   Is_True( uthread_temp != NULL, ("No such pthread in hash table"));
   if (uthread_temp->uthread_id == uthread_id)
@@ -208,17 +212,22 @@ inline omp_u_thread_t * __ompc_get_current_u_thread()
 	  ("RTL data structures haven't been initialized yet!"));
 
   current_uthread_id = pthread_self();
+
   uthread_temp = __omp_uthread_hash_table[HASH_IDX(current_uthread_id)];
+
   Is_True(uthread_temp != NULL, ("This pThread is not in hash table!"));
 
   if (uthread_temp->uthread_id == current_uthread_id)
     return uthread_temp;
+
   else {
     do {
+      /* is mutual exclusion necessary here? */
       uthread_temp = uthread_temp->hash_next;
       Is_True(uthread_temp != NULL, 
 	      ("This pThread is not in hash table!"));
     } while (uthread_temp->uthread_id != current_uthread_id);
+
     return uthread_temp;
   }
 }
@@ -236,6 +245,7 @@ inline omp_v_thread_t * __ompc_get_current_v_thread()
 inline omp_v_thread_t * __ompc_get_v_thread_by_num( int vthread_id )
 {
   omp_v_thread_t *v_thread_temp;
+
   /* maybe first we should make sure the vthread_id is right,
    * TODO: check the validity of vthread_id. csc
    */
@@ -248,7 +258,10 @@ inline omp_v_thread_t * __ompc_get_v_thread_by_num( int vthread_id )
   } else if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL) {
     return &__omp_root_v_thread;
   } else {
-    return __ompc_get_current_v_thread();
+    /* use TLS variable here instead since current pthread id may not be in
+     * hash table */
+    return __omp_current_v_thread;
+    /* return __ompc_get_current_v_thread(); */
   }
 }
 
@@ -295,40 +308,52 @@ inline void __ompc_barrier_wait(omp_team_t *team)
 {
   /*Warning: This implementation may cause cache problems*/
   int barrier_flag;
-  int reset_barrier = 0;
+  int reset_barrier;
   int new_count;
   int i;
-  volatile int *barrier_flag_p = &(team->barrier_flag);
-  omp_task_t *next;
+  volatile int *barrier_flag_p;
+  omp_task_t *next, *current_task;
+  omp_task_pool_t *pool;
 
+  reset_barrier = 0;
+  barrier_flag_p = &(team->barrier_flag);
   barrier_flag = *barrier_flag_p;
 
-  __ompc_atomic_dec(&__omp_level_1_team_manager.num_tasks);
+  pool = team->task_pool;
+  current_task = __omp_current_task;
 
-  while(__omp_level_1_team_manager.num_tasks != 0) {
-    __ompc_task_schedule(&next);
+  __ompc_task_set_state(current_task, OMP_TASK_IN_BARRIER);
+
+  __ompc_atomic_inc(&team->barrier_count);
+
+  /* why not use pthread_cond_wait instead of a busy wait? */
+  while(__ompc_task_pool_num_pending_tasks(pool) ||
+        team->barrier_count != team->team_size) {
+    next = __ompc_remove_task_from_pool(pool);
     if(next != NULL) {
-      __ompc_task_switch(__omp_level_1_team_tasks[__omp_myid], next);
+      __ompc_task_switch(next);
     }
   }
 
-  new_count = __ompc_atomic_inc(&team->barrier_count);
+  new_count = __ompc_atomic_inc(&team->barrier_count2);
 
   if (new_count == team->team_size) {
     /* The last one reset flags*/
-    __omp_level_1_team_manager.num_tasks += new_count;
-    team->barrier_count = 0;
     team->barrier_flag = barrier_flag ^ 1; /* Xor: toggle*/
+    team->barrier_count = 0;
+    team->barrier_count2 = 0;
+
     pthread_mutex_lock(&(team->barrier_lock));
     pthread_cond_broadcast(&(team->barrier_cond));
     pthread_mutex_unlock(&(team->barrier_lock));
+
   } else {
     /* Wait for the last to reset te barrier*/
     /* We must make sure that every waiting thread get this
      * signal */
     for (i = 0; i < __omp_spin_count; i++)
       if ((*barrier_flag_p) != barrier_flag) {
-	return;
+        return;
       }
     pthread_mutex_lock(&(team->barrier_lock));
     while (team->barrier_flag == barrier_flag) {
@@ -336,6 +361,8 @@ inline void __ompc_barrier_wait(omp_team_t *team)
     }
     pthread_mutex_unlock(&(team->barrier_lock));
   }
+
+  __ompc_task_set_state(current_task, OMP_TASK_RUNNING);
 
 }
 
@@ -372,7 +399,7 @@ inline void __ompc_barrier(void)
   __ompc_set_state(THR_WORK_STATE);
 }
 
-inline void __ompc_ebarrier(void)
+void __ompc_ebarrier(void)
 {
   omp_v_thread_t *temp_v_thread;
   omp_v_thread_t *p_vthread = __ompc_get_v_thread_by_num( __omp_myid);
@@ -414,8 +441,13 @@ inline void __ompc_flush(void *p)
 /* stuff function. Required by legacy code for Guide*/
 inline int __ompc_can_fork(void)
 {
-  /* always return true currently*/
-  return 1;
+	if (__omp_exe_mode & OMP_EXE_MODE_SEQUENTIAL)
+		return 1;
+	else if (__omp_exe_mode & OMP_EXE_MODE_NORMAL && __omp_nested == 1)
+		return 1;
+	else if (__omp_exe_mode & OMP_EXE_MODE_NESTED )
+		return 1;
+	else return 0;
 }
 
 inline void __ompc_begin(void)
@@ -429,7 +461,7 @@ inline void __ompc_end(void)
 }
 
 #ifndef TARG_LOONGSON
-inline void __omp_get_available_processors()
+static inline void __omp_get_available_processors()
 {
   cpu_set_t cpuset;
   int return_val, i, cur_count=0;
@@ -476,7 +508,7 @@ inline void __omp_get_available_processors()
 static int cur_cpu_to_bind;
 
 /* bind the pthread to a specific cpu */
-inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
+static inline void __ompc_bind_pthread_to_cpu(pthread_t thread)
 {
   cpu_set_t cpuset;
   int return_val;

@@ -143,10 +143,16 @@ extern omp_int32 __ompc_copyin_thdprv(int num,...);
 extern omp_int32 __ompc_copyprivate(omp_int32 mpsp_status, void *cppriv, void(*cp)(void* src, void* dst));
 
 
-extern int __ompc_task_create(omp_task_func func, void *args, int may_delay, int is_tied);
-extern void __ompc_task_wait();
-extern void __ompc_task_exit();
-extern omp_cond_func __ompc_task_create_cond;
+/* external tasking API for compiler */
+  extern int __ompc_task_will_defer(int may_delay);
+  extern void __ompc_task_create(omp_task_func taskfunc, void *frame_pointer,
+                void *firstprivates, int may_delay, int is_tied, int blocks_parent);
+  extern void __ompc_task_wait();
+  extern void __ompc_task_exit();
+
+  extern void __ompc_task_firstprivates_alloc(void **firstprivates, int size);
+  extern void __ompc_task_firstprivates_free(void *firstprivates);
+
 
 #ifdef __cplusplus
 }

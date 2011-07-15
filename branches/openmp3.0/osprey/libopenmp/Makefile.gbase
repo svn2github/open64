@@ -67,6 +67,9 @@ CFLAGS += -DTARG_$(BUILD_TARGET)
 CXXFLAGS += -DTARG_$(BUILD_TARGET)
 #CFLAGS += -fgnu89-inline
 
+# enable UH modifications to PCL library
+CFLAGS += -DUH_PCL
+
 CFILES = \
 	omp_collector_validation.c \
 	omp_lib.c \
@@ -74,10 +77,14 @@ CFILES = \
 	omp_runtime.c\
 	omp_thread.c\
 	omp_util.c \
-	omp_queue.c \
-	omp_task.c \
 	pcl.c \
 	omp_collector_util.c \
+	omp_queue.c \
+	omp_task.c \
+	omp_task_pool.c \
+	omp_task_pool_per_thread1.c \
+	omp_task_pool_per_thread2.c \
+	omp_task_pool_global.c
 
 CXXFILES = \
 	omp_init.cxx \

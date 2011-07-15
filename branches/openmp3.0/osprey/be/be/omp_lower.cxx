@@ -296,17 +296,19 @@ WN *OMP_Prelower(PU_Info *current_pu, WN *pu)
   Is_True(rename_common_stack.Elements() == 1,
           ("OMP_Prelower(): rename_common_stack.Elements() != 1"));
 
-# ifdef KEY
-  RENAMING_SCOPE rename_common(NULL, &omp_pool);
-  RENAMING_SCOPE rename_common_blk(NULL, &omp_pool);
-  RENAMING_STACK rename_scope_stack(&omp_pool);
-  rename_scope_stack.Push(CXX_NEW(RENAMING_SCOPE(NULL, &omp_pool),
-                                   &omp_pool));
-  Rename_Threadprivate_COMMON(pu, pu, pu, 
-                             &rename_scope_stack, 
-                             &rename_common,
-                             &rename_common_blk);
-# endif
+  // don't do threadprivate renaming if its a nested MP PU
+  if (!(PU_mp( Get_Current_PU()) && PU_is_nested_func( Get_Current_PU()))) {
+
+    RENAMING_SCOPE rename_common(NULL, &omp_pool);
+    RENAMING_SCOPE rename_common_blk(NULL, &omp_pool);
+    RENAMING_STACK rename_scope_stack(&omp_pool);
+    rename_scope_stack.Push(CXX_NEW(RENAMING_SCOPE(NULL, &omp_pool),
+                                     &omp_pool));
+    Rename_Threadprivate_COMMON(pu, pu, pu, 
+                               &rename_scope_stack, 
+                               &rename_common,
+                               &rename_common_blk);
+  }
 
     // create parent map
   Omp_Parent_Map = WN_MAP_Create(&omp_pool);

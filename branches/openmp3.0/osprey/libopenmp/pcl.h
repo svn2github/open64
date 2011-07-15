@@ -19,6 +19,9 @@
  *  Davide Libenzi <davidel@xmailserver.org>
  *
  */
+
+/* Copyright (C) 2008-2011 University of Houston. */
+
 #include <stdint.h>
 
 #if !defined(PCL_H)
@@ -43,14 +46,6 @@ typedef ucontext_t co_core_ctx_t;
 typedef jmp_buf co_core_ctx_t;
 #endif
 
-
-typedef enum {
-  OMP_TASK_DEFAULT,
-  OMP_TASK_SUSPENDED,
-  OMP_TASK_EXIT
-} omp_task_state_t;
-
-
 typedef struct s_co_ctx {
   co_core_ctx_t cc;
 } co_ctx_t;
@@ -60,29 +55,22 @@ typedef struct s_coroutine {
   int alloc;
   struct s_coroutine *caller;
   struct s_coroutine *restarget;
+#ifdef UH_PCL
+  void (*func)(void *, void *);
+  void *slink;
+#else
   void (*func)(void *);
+#endif
   void *data;
-
-  struct s_coroutine *next;
-  struct s_coroutine *prev;
-
-  struct s_coroutine *creator;
-  volatile uint32_t num_children;
-  int is_parallel_task;
-  int is_tied;
-  int started;
-  volatile omp_task_state_t state;
-  volatile int safe_to_enqueue;
-  int depth;
-  int pdepth;
-  volatile int context_flag;
-  int threadid;
-  pthread_mutex_t lock;
 } coroutine;
 
 typedef coroutine * coroutine_t;
 
+#ifdef UH_PCL
+coroutine_t co_create(void (*func)(void *, void *), void *data, void *slink, void *stack, int size);
+#else
 coroutine_t co_create(void (*func)(void *), void *data, void *stack, int size);
+#endif
 void co_delete(coroutine_t coro);
 void co_call(coroutine_t coro);
 void co_resume(void);
