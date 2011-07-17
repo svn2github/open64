@@ -5896,7 +5896,7 @@ static void Expand_Complex_Divide( OPCODE opcode, TN *result,
     Build_OP(TOP_shufpd, tmp7, tmp1, tmp1, Gen_Literal_TN(1, 1), ops);
     if ((CG_opt_level > 1) && Is_Target_Orochi() &&
         Is_Target_AVX() && Is_Target_FMA4()) {
-      Build_OP(TOP_fhadd128v64, tmp9, tmp3, tmp3, ops);
+      Expand_Reduce_Add(OPC_F8V16F8REDUCE_ADD, tmp9, tmp3, ops);
       Build_OP(TOP_shufps, tmp10, src1, src1, Gen_Literal_TN(238, 1), ops);
       Build_OP(TOP_cvtps2pd, tmp11, tmp10, ops);
       Build_OP(TOP_vfmaddsubpd, tmp12, tmp7, tmp4, tmp6, ops);
@@ -5919,7 +5919,7 @@ static void Expand_Complex_Divide( OPCODE opcode, TN *result,
     Build_OP(TOP_shufpd, tmp22, tmp11, tmp11, Gen_Literal_TN(1, 1), ops);
     if ((CG_opt_level > 1) && Is_Target_Orochi() &&
         Is_Target_AVX() && Is_Target_FMA4()) {
-      Build_OP(TOP_fhadd128v64, tmp24, tmp18, tmp18, ops);
+      Expand_Reduce_Add(OPC_F8V16F8REDUCE_ADD, tmp25, tmp18, ops);
       Build_OP(TOP_vfmaddsubpd, tmp25, tmp22, tmp19, tmp21, ops);
     } else {
       Build_OP(TOP_fmul128v64, tmp23, tmp22, tmp19, ops);
@@ -6306,7 +6306,7 @@ Expand_Reduce_Add (OPCODE op, TN *result, TN *op1, OPS *ops)
   {
     TN* tmp = Build_TN_Like(op1);
     Build_OP(TOP_movapd, tmp, op1, ops);
-    if ( Is_Target_SSE3() ) {
+    if ( Is_Target_SSE3() && !Is_Target_Orochi() ) {
       Build_OP(TOP_fhadd128v64, result, tmp, tmp, ops);
     } else {
       TN* tmp_a = Build_TN_Like(op1);
@@ -6319,7 +6319,7 @@ Expand_Reduce_Add (OPCODE op, TN *result, TN *op1, OPS *ops)
   {
     TN* tmp = Build_TN_Like(op1);
     Build_OP(TOP_movaps, tmp, op1, ops);
-    if ( Is_Target_SSE3() ) {
+    if ( Is_Target_SSE3() && !Is_Target_Orochi() ) {
       Build_OP(TOP_fhadd128v32, tmp, op1, op1, ops);
       Build_OP(TOP_fhadd128v32, result, tmp, tmp, ops);
     } else {
@@ -6795,16 +6795,33 @@ Exp_COPY_Ext (TOP opcode, TN *tgt_tn, TN *src_tn, OPS *ops)
   case TOP_fmovsldupxxx:
     new_op = TOP_fmovsldup;
     break;
+  case TOP_vmovsldup:
+  case TOP_vmovsldupx:
+  case TOP_vmovsldupxx:
+  case TOP_vmovsldupxxx:
+    new_op = TOP_vmovsldup;
+    break;
   case TOP_fmovshdup:
   case TOP_fmovshdupx:
   case TOP_fmovshdupxx:
   case TOP_fmovshdupxxx:
     new_op = TOP_fmovshdup;
     break;
+  case TOP_vmovshdup:
+  case TOP_vmovshdupx:
+  case TOP_vmovshdupxx:
+  case TOP_vmovshdupxxx:
+    new_op = TOP_vmovshdup;
+    break;
   case TOP_fmovddupx:
   case TOP_fmovddupxx:
   case TOP_fmovddupxxx:
     new_op = TOP_fmovddup;
+    break;
+  case TOP_vmovddupx:
+  case TOP_vmovddupxx:
+  case TOP_vmovddupxxx:
+    new_op = TOP_vmovddup;
     break;
 
   default:

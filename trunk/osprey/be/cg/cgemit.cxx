@@ -4805,9 +4805,11 @@ EMT_Assemble_BB ( BB *bb, WN *rwn )
  */      
       if(max_skip_bytes > 0)
       {
-        if(!Is_Target_Barcelona() && !Is_Target_Orochi() || CG_p2align != 2){
+        if(!Is_Target_Barcelona() || CG_p2align != 2){
           if (max_skip_bytes > 15)
 	    max_skip_bytes = 15;	
+          if(Is_Target_Orochi())
+            fprintf(Asm_File, "\t.p2align 3,,\n");
           fprintf(Asm_File, "\t.p2align 4,,%d\n", max_skip_bytes);
         }
         else 

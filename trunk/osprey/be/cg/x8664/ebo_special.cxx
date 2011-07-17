@@ -4827,6 +4827,22 @@ static Addr_Mode_Group Addr_Mode_Group_Table[] = {
   {TOP_vfmsubaddpd,    TOP_vfmsubaddxpd,    TOP_vfmsubaddxxpd, 	  TOP_vfmsubaddxxxpd,       TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubaddxrps,   TOP_vfmsubaddxxrps,   TOP_vfmsubaddxxxrps,      TOP_UNDEFINED},
   {TOP_UNDEFINED,      TOP_vfmsubaddxrpd,   TOP_vfmsubaddxxrpd,   TOP_vfmsubaddxxxrpd,      TOP_UNDEFINED},
+  {TOP_vfnmaddss,      TOP_vfnmaddxss,	    TOP_vfnmaddxxss,	  TOP_vfnmaddxxxss,         TOP_UNDEFINED},
+  {TOP_vfnmaddsd,      TOP_vfnmaddxsd,	    TOP_vfnmaddxxsd,	  TOP_vfnmaddxxxsd,         TOP_UNDEFINED},
+  {TOP_vfnmaddps,      TOP_vfnmaddxps,	    TOP_vfnmaddxxps,	  TOP_vfnmaddxxxps,         TOP_UNDEFINED},
+  {TOP_vfnmaddpd,      TOP_vfnmaddxpd,      TOP_vfnmaddxxpd,	  TOP_vfnmaddxxxpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmaddxrss,     TOP_vfnmaddxxrss,     TOP_vfnmaddxxxrss,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmaddxrsd,     TOP_vfnmaddxxrsd,     TOP_vfnmaddxxxrsd,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmaddxrps,     TOP_vfnmaddxxrps,     TOP_vfnmaddxxxrps,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmaddxrpd,     TOP_vfnmaddxxrpd,     TOP_vfnmaddxxxrpd,        TOP_UNDEFINED},
+  {TOP_vfnmsubss,      TOP_vfnmsubxss,	    TOP_vfnmsubxxss,	  TOP_vfnmsubxxxss,         TOP_UNDEFINED},
+  {TOP_vfnmsubsd,      TOP_vfnmsubxsd,	    TOP_vfnmsubxxsd,	  TOP_vfnmsubxxxsd,         TOP_UNDEFINED},
+  {TOP_vfnmsubps,      TOP_vfnmsubxps,	    TOP_vfnmsubxxps,	  TOP_vfnmsubxxxps,         TOP_UNDEFINED},
+  {TOP_vfnmsubpd,      TOP_vfnmsubxpd,      TOP_vfnmsubxxpd, 	  TOP_vfnmsubxxxpd,         TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmsubxrss,     TOP_vfnmsubxxrss,     TOP_vfnmsubxxxrss,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmsubxrsd,     TOP_vfnmsubxxrsd,     TOP_vfnmsubxxxrsd,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmsubxrps,     TOP_vfnmsubxxrps,     TOP_vfnmsubxxxrps,        TOP_UNDEFINED},
+  {TOP_UNDEFINED,      TOP_vfnmsubxrpd,     TOP_vfnmsubxxrpd,     TOP_vfnmsubxxxrpd,        TOP_UNDEFINED},
   {TOP_icall,	       TOP_icallx,	    TOP_icallxx,	  TOP_icallxxx,	            TOP_UNDEFINED},
   {TOP_ijmp,	       TOP_ijmpx,	    TOP_ijmpxx,	          TOP_ijmpxxx,	            TOP_UNDEFINED},
   {TOP_cvtsd2ss,       TOP_cvtsd2ss_x,	    TOP_cvtsd2ss_xx,	  TOP_cvtsd2ss_xxx,	    TOP_UNDEFINED},
@@ -9218,6 +9234,42 @@ BOOL EBO_Is_FMA4( OP* alu_op)
   case TOP_vfmsubaddpd:
     ret_val = TRUE;
     break;
+  case TOP_vfnmaddss:
+  case TOP_vfnmaddsd:
+  case TOP_vfnmaddps:
+  case TOP_vfnmaddpd:
+  case TOP_vfnmsubss:
+  case TOP_vfnmsubsd:
+  case TOP_vfnmsubps:
+  case TOP_vfnmsubpd:
+    ret_val = TRUE;
+    break;
+
+  default:
+    ret_val = FALSE;
+    break;
+  }
+
+  return ret_val;
+}
+
+BOOL EBO_Is_FMA4_NEG( OP* alu_op)
+{
+  const TOP top = OP_code(alu_op);
+  BOOL ret_val;
+
+  switch (top) {
+  case TOP_vfnmaddss:
+  case TOP_vfnmaddsd:
+  case TOP_vfnmaddps:
+  case TOP_vfnmaddpd:
+  case TOP_vfnmsubss:
+  case TOP_vfnmsubsd:
+  case TOP_vfnmsubps:
+  case TOP_vfnmsubpd:
+    ret_val = TRUE;
+    break;
+
   default:
     ret_val = FALSE;
     break;
@@ -9305,18 +9357,22 @@ static void Get_Disassociated_FMA_TOP_Codes( OP *alu_op,
     break;
 
   // fused multiply-subs
+  case TOP_vfnmaddss:
   case TOP_vfmsubss:
     new_mul_top = TOP_vmulss; 
     new_arith_top = TOP_vsubss; 
     break;
+  case TOP_vfnmaddsd:
   case TOP_vfmsubsd:
     new_mul_top = TOP_vmulsd; 
     new_arith_top = TOP_vsubsd; 
     break;
+  case TOP_vfnmaddps:
   case TOP_vfmsubps:
     new_mul_top = TOP_vfmul128v32; 
     new_arith_top = TOP_vfsub128v32; 
     break;
+  case TOP_vfnmaddpd:
   case TOP_vfmsubpd:
     new_mul_top = TOP_vfmul128v64; 
     new_arith_top = TOP_vfsub128v64; 
@@ -9453,7 +9509,11 @@ BOOL EBO_Disassociate_FMA( OP* alu_op )
         ( arith_top != TOP_UNDEFINED ) ){
       TN *mul_result = Build_TN_Like(result);
       OP *mul_op = Mk_OP( mul_top, mul_result, mul_opnd1, mul_opnd2 );
-      OP *arith_op = Mk_OP( arith_top, result, mul_result, arith_opnd );
+      OP *arith_op;
+      if( EBO_Is_FMA4_NEG( alu_op ) )
+        arith_op = Mk_OP( arith_top, result, arith_opnd, mul_result );
+      else
+        arith_op = Mk_OP( arith_top, result, mul_result, arith_opnd );
 
       // Add the mul component of the fma
       Set_OP_unrolling( mul_op, OP_unrolling(alu_op) );

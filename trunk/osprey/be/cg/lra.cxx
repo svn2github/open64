@@ -1008,7 +1008,8 @@ Is_TN_Sdsu(TN *tn)
   LIVE_RANGE *lr = LR_For_TN(tn);
   if ((LR_def_cnt(lr) == 1) && (LR_upward_exposed_use(lr) == 0)) {
     if (LR_use_cnt(lr) == 1) {
-      has_sdsu = true;
+      // globals are not simple live ranges
+      has_sdsu = (TN_is_global_reg(tn)) ? has_sdsu : true;
     }
   }
   

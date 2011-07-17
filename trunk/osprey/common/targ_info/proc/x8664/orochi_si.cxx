@@ -1609,6 +1609,8 @@ void Generate_Orochi (void)
                     TOP_vfaddsub128v32,
                     TOP_vfadd128v64,
                     TOP_vfadd128v32,
+                    TOP_vfsub128v64,
+                    TOP_vfsub128v32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(5);
@@ -1658,6 +1660,12 @@ void Generate_Orochi (void)
                     TOP_vfaddx128v32,
                     TOP_vfaddxx128v32,
                     TOP_vfaddxxx128v32,
+                    TOP_vfsubx128v64,
+                    TOP_vfsubxx128v64,
+                    TOP_vfsubxxx128v64,
+                    TOP_vfsubx128v32,
+                    TOP_vfsubxx128v32,
+                    TOP_vfsubxxx128v32,
 		    TOP_UNDEFINED);
   Any_Operand_Access_Time(0);
   Any_Result_Available_Time(10);
@@ -4940,8 +4948,6 @@ void Generate_Orochi (void)
                         TOP_vfshuf128v64,
                         TOP_vshufps,
                         TOP_vfshuf128v32,
-                        TOP_vfsub128v64,
-                        TOP_vfsub128v32,
                         TOP_vunpckh128v64,
                         TOP_vunpckh128v32,
                         TOP_vunpckl128v64,
@@ -5118,12 +5124,6 @@ void Generate_Orochi (void)
   Resource_Requirement(res_fstore, 0);
 
   Instruction_Group( "avx fp arith mem opnd 4",
-                        TOP_vfsubx128v64,
-                        TOP_vfsubxx128v64,
-                        TOP_vfsubxxx128v64,
-                        TOP_vfsubx128v32,
-                        TOP_vfsubxx128v32,
-                        TOP_vfsubxxx128v32,
                         TOP_vfrcpx128v32,
                         TOP_vfrcpxx128v32,
                         TOP_vfrcpxxx128v32,
