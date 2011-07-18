@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -346,6 +346,11 @@ BOOL OPT_Enable_BUILD_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 // triage is find the first error alias tag pair.
 UINT32 AA_force_tag_alias_before_dim1 = 0;
 UINT32 AA_force_tag_alias_before_dim2 = UINT32_MAX;
+
+// enable control flow optimization for the program with EH regions
+// by default it is only enabled in mainopt
+BOOL  OPT_Enable_EH_CFG_OPT = FALSE;
+BOOL  OPT_Enable_EH_CFG_OPT_Set = FALSE;
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -912,6 +917,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32,  OV_INTERNAL,	TRUE, "aa_force_alias_dim2",		"",
     0, 0, UINT32_MAX,	&AA_force_tag_alias_before_dim2, NULL,
     "Triage option for alias analyzer" },
+
+  { OVK_BOOL,   OV_INTERNAL,     TRUE, "eh_cfg_opt",        "",
+    0, 0, 0,    &OPT_Enable_EH_CFG_OPT, &OPT_Enable_EH_CFG_OPT_Set, 
+    "Enable CFO for EH regions"},
 
   /* Obsolete options: */
 

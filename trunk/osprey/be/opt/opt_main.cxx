@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 //-*-c++-*-
@@ -546,6 +546,7 @@ private:
   BOOL _no_return;
   BOOL _nothrow;
   BOOL _simp_if_conv;
+  BOOL _eh_cfg_opt;
 
   WOPT_SWITCHES(const WOPT_SWITCHES&);
   WOPT_SWITCHES& operator = (const WOPT_SWITCHES&);
@@ -672,6 +673,8 @@ private:
           OPT_Enable_WHIRL_SSA)
 	WOPT_Enable_Zero_Version = FALSE;
 
+      if (!OPT_Enable_EH_CFG_OPT_Set)
+        OPT_Enable_EH_CFG_OPT = TRUE;
       break; // end MAINOPT_PHASE
 
 #ifdef TARG_NVISA
@@ -819,6 +822,7 @@ private:
       WOPT_Enable_Generate_Trip_Count = _trip;
       WOPT_Enable_LNO_Copy_Propagate  = _lno_copy;
       WOPT_Enable_Zero_Version   = _zero_version;
+      OPT_Enable_EH_CFG_OPT = _eh_cfg_opt;
       break;
 #ifdef TARG_NVISA
     case PREOPT_CMC_PHASE:
@@ -959,6 +963,7 @@ public:
     _no_return = WOPT_Enable_Noreturn_Attr_Opt;
     _nothrow = WOPT_Enable_Nothrow_Opt;
     _simp_if_conv = WOPT_Enable_Simple_If_Conv;
+    _eh_cfg_opt = OPT_Enable_EH_CFG_OPT;
 
     Adjust_Optimization();
   }

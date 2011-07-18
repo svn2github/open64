@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -2698,7 +2698,7 @@ CFG::Add_one_region( WN *wn, END_BLOCK *ends_bb )
   }
 #endif
 
-  if (REGION_is_EH(wn)) 
+  if (OPT_Enable_EH_CFG_OPT && REGION_is_EH(wn)) 
   {
     if (_current_bb->Succ() ||
         _current_bb->Kind() == BB_EXIT)
@@ -3914,7 +3914,8 @@ CFG::Create(WN *func_wn, BOOL lower_fully, BOOL calls_break,
     opt_tail.Mutate();
   }
 
-  Ident_eh_regions();
+  if (OPT_Enable_EH_CFG_OPT)
+    Ident_eh_regions();
  
   Process_multi_entryexit( TRUE/*is_whirl*/ );
 
