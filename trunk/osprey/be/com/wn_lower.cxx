@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -118,6 +118,7 @@
 #include "targ_const_private.h" // for TCON_R4, TCON_R8, ..
 #endif
 #include "be_memop_annot.h"
+#include "config_wopt.h"        // for WOPT_Enable_Simple_If_Conv
 
 #ifdef TARG_X8664
 #include <ext/hash_set>
@@ -13694,6 +13695,96 @@ static INT tree_has_cand_cior (WN *tree)
 }
 #endif
 
+/* Similar to above tree_has_cand_cior, but more specialized.  Check if:
+ * - tree's op is a CAND
+ * - tree has no other nested cand/cor/cselect
+ */
+static BOOL tree_has_only_one_cand (WN *tree)
+{
+  WN_ITER *wni;
+  WN *wn;
+  INT count = 0;
+
+  if (WN_operator(tree) != OPR_CAND)
+      return 0;
+  for (wni = WN_WALK_TreeIter (tree); 
+       wni != NULL;
+       wni = WN_WALK_TreeNext (wni))
+  {
+    wn = WN_ITER_wn (wni);
+    if (WN_operator_is(wn, OPR_CAND))
+	++count;
+    if (WN_operator_is(wn, OPR_CIOR)	||
+	WN_operator_is(wn, OPR_CSELECT))
+        return 0;
+  }
+  return (count == 1);
+}
+
+/* ===================================================================
+ * In order to enable if-conversion in WOPT, tranform:
+ *
+ * From:
+ * if (a && b) {
+ *   x = ...
+ * }
+ * else {
+ *   <empty>
+ * }
+ *
+ * To:
+ * if (a) {
+ *   if (b) {
+ *     x = ...
+ *   }
+ *   else {
+ *      <empty>
+ *   }
+ * }
+ * else {
+ *   <empty>
+ * }
+ * ==================================================================
+ */
+static void lower_split_single_cand(WN * tree, LOWER_ACTIONS actions)
+{
+  FmtAssert(WN_operator(tree) == OPR_IF, ("Expect a if-condition"));
+
+  if (WN_block_nonempty(WN_then(tree)) &&
+      !WN_block_nonempty(WN_else(tree)) &&
+      tree_has_only_one_cand(WN_if_test(tree)) &&
+      WN_is_assign(WN_then(tree)))
+  {
+    WN *outer_then = WN_then(tree);
+    INT64 if_line = WN_Get_Linenum(tree);
+    INT64 then_line = WN_Get_Linenum(WN_then(tree));
+    INT64 else_line = WN_Get_Linenum(WN_else(tree));
+    WN *outer_cond = lower_copy_tree(WN_kid0(WN_if_test(tree)), actions);
+    WN *inner_cond = lower_copy_tree(WN_kid1(WN_if_test(tree)), actions);
+    WN_DELETE_Tree(WN_if_test(tree));
+    WN_if_test(tree) = outer_cond;
+    WN *inner_then_block = WN_CreateBlock();
+    WN_Set_Linenum(inner_then_block, if_line);
+    WN *inner_else_block = WN_CreateBlock();
+    WN_Set_Linenum(inner_else_block, else_line);
+    WN *inner_if = WN_CreateIf(inner_cond, inner_then_block, inner_else_block);
+    WN_Set_Linenum(inner_if, if_line);
+    WN * wn_next;
+    // Move statements from outer-then clause to new inner-then clause.
+    for (WN * wn_tmp = WN_first(outer_then); wn_tmp; wn_tmp = wn_next)
+    {
+      wn_next = WN_next(wn_tmp);
+      WN_INSERT_BlockLast(inner_then_block, lower_copy_tree(wn_tmp, actions));
+      WN_DELETE_FromBlock(outer_then, wn_tmp);
+    }
+    WN_INSERT_BlockLast(outer_then, inner_if);
+    if (Cur_PU_Feedback)
+    {
+      Cur_PU_Feedback->FB_split_cand_if( tree, inner_if );
+    }
+  }
+}
+
 /* ====================================================================
  *
  * WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
@@ -13739,7 +13830,17 @@ static WN *lower_if(WN *block, WN *tree, LOWER_ACTIONS actions, WN ** ret_next)
       lower_simp_if_flip(tree, actions, ret_next);
       lower_simp_bit_and(tree, actions);
   }
-  
+
+  // Check for special case, to enable more if-conversion.  Do not check if:
+  // - disabled (OPT_Lower_Splitsinglecand == 0)
+  // or
+  // - if-conversion not enabled (WOPT_Enable_Simple_If_Conv < 1)
+  if (Action(LOWER_SHORTCIRCUIT) && 
+      OPT_Lower_Splitsinglecand && WOPT_Enable_Simple_If_Conv >= 1)
+  {
+    lower_split_single_cand(tree, actions);
+  }
+    
 #ifndef SHORTCIRCUIT_HACK
   if (Action(LOWER_IF))
 #else
