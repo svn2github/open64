@@ -995,7 +995,7 @@ Set_OP_To_WN_Map(WN *wn)
 {
   OP *op;
   // We don't have aliasing information at -O0 and -O1.
-  if (CG_opt_level < 2) return;
+  if (CG_opt_level < 1) return;
 
   op = Last_Mem_OP ? OP_next(Last_Mem_OP) : OPS_first(&New_OPs);
   for ( ; op != NULL; op = OP_next(op)) {
@@ -4693,7 +4693,7 @@ Handle_Fma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
   opnd2 = Expand_Expr(add_wn, expr,  NULL); 
   opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
   opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
- 
+
   if(result == NULL) 
     result = Allocate_Result_TN(expr, NULL); 
 
@@ -5348,12 +5348,22 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
   case OPR_ADD:
     if ((CG_opt_level > 1) && Is_Target_Orochi() && 
         Is_Target_AVX() && Is_Target_FMA4()) {
+      BOOL expr_is_complex = FALSE;
       TYPE_ID rtype = OPCODE_rtype(opcode);
       WN *mul_wn = NULL;
+      if ((rtype == MTYPE_V16C4) ||
+          (rtype == MTYPE_V16C8)) {
+        expr_is_complex = TRUE;
+      }
+      
       // Looking for a fm{a/s} candidate via FMA4 insns
-      if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
+      if ( (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) &&
+           (expr_is_complex == FALSE) ) {
         if ((WN_operator(mul_wn = WN_kid(expr, 0)) == OPR_MPY) &&
-            (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY) ) {
+            (WN_opcode(mul_wn) != OPC_V16C8MPY) &&
+            (WN_opcode(mul_wn) != OPC_V16C4MPY) &&
+            (WN_opcode(mul_wn) != OPC_FQMPY) && 
+            (WN_opcode(mul_wn) != OPC_F10MPY) ) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
           if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
@@ -5363,7 +5373,10 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
             }
           }
         } else if ((WN_operator(mul_wn = WN_kid(expr, 1)) == OPR_MPY) &&
-                   (WN_opcode(mul_wn) != OPC_FQMPY) && (WN_opcode(mul_wn) != OPC_F10MPY)) {
+                   (WN_opcode(mul_wn) != OPC_V16C8MPY) &&
+                   (WN_opcode(mul_wn) != OPC_V16C4MPY) &&
+                   (WN_opcode(mul_wn) != OPC_FQMPY) && 
+                   (WN_opcode(mul_wn) != OPC_F10MPY)) {
           rtype = OPCODE_rtype(WN_opcode (mul_wn));
           if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {

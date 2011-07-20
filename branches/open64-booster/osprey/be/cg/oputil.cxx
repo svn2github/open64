@@ -2172,7 +2172,7 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_movhlps,           TOP_vmovhlps},
     {TOP_movlhps,           TOP_vmovlhps},
     {TOP_psrldq,            TOP_vpsrldq},
-    {TOP_psrlq128v64,       TOP_vpsrlq},
+    {TOP_psrlq128v64,       TOP_vpsrlqi},
     {TOP_pslldq,            TOP_vpslldq},
     {TOP_psllw,             TOP_vpsllw},
     {TOP_pslld,             TOP_vpslld},
@@ -2495,6 +2495,18 @@ static Top_Trans_Group Top_SSE_To_Vex_Mode_Group_Table[] = {
     {TOP_phaddsx128v16,      TOP_vphaddsx128v16},
     {TOP_phaddsxx128v16,     TOP_vphaddsxx128v16},
     {TOP_phaddsxxx128v16,    TOP_vphaddsxxx128v16},
+    {TOP_fmovddup,           TOP_vmovddup},
+    {TOP_fmovddupx,          TOP_vmovddupx},
+    {TOP_fmovddupxx,         TOP_vmovddupxx},
+    {TOP_fmovddupxxx,        TOP_vmovddupxxx},
+    {TOP_fmovshdup,          TOP_vmovshdup},
+    {TOP_fmovshdupx,         TOP_vmovshdupx},
+    {TOP_fmovshdupxx,        TOP_vmovshdupxx},
+    {TOP_fmovshdupxxx,       TOP_vmovshdupxxx},
+    {TOP_fmovsldup,          TOP_vmovsldup},
+    {TOP_fmovsldupx,         TOP_vmovsldupx},
+    {TOP_fmovsldupxx,        TOP_vmovsldupxx},
+    {TOP_fmovsldupxxx,       TOP_vmovsldupxxx},
 };
 
 void Init_LegacySSE_To_Vex_Group(void)
