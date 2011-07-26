@@ -1188,17 +1188,12 @@ Expand_Copy (TN *result, TN *src, TYPE_ID mtype, OPS *ops)
 
   } else if( MTYPE_is_float(mtype) ){
     if( Is_Target_SSE2() ) {
-      if (Is_Target_Orochi() && Is_Target_AVX()) {
-        if ( is_128bit ) {
-          Build_OP( TOP_movdq, result, src, ops );
-        } else {
-          Build_OP( (mtype == MTYPE_F8) ? TOP_movsd : TOP_movss, 
-                    result, src, src, ops );
-        }
+      if( Is_Target_Barcelona() || Is_Target_EM64T() || 
+          Is_Target_Wolfdale()  || Is_Target_Core()  ||
+          Is_Target_Orochi() ){
+        Build_OP( TOP_movaps, result, src, ops );
       } else {
-        Build_OP( is_128bit ? TOP_movdq: 
-		  (mtype == MTYPE_F8 ? TOP_movsd : TOP_movss), 
-                  result, src, ops );
+        Build_OP( TOP_movdq, result, src, ops );
       }
     } else
       Build_OP( TOP_fmov, result, src, ops );
@@ -3715,11 +3710,12 @@ static void Expand_Unsigned_Int_To_Float_m32( TN* dest,
   }
 
   Cur_BB = bb_exit;
-  if (Is_Target_Orochi() && Is_Target_AVX()) {
-    Build_OP( is_double ? TOP_movsd : TOP_movss, 
-              dest, tmp_dest, tmp_dest, ops );
+  if( Is_Target_Barcelona() || Is_Target_EM64T() ||
+      Is_Target_Wolfdale()  || Is_Target_Core()  ||
+      Is_Target_Orochi() ){
+    Build_OP( TOP_movaps, dest, tmp_dest, ops );
   } else {
-    Build_OP( is_double ? TOP_movsd : TOP_movss, dest, tmp_dest, ops );
+    Build_OP( TOP_movdq, dest, tmp_dest, ops );
   }
 }
 
@@ -3823,12 +3819,12 @@ static void Expand_Unsigned_Long_To_Float( TN* dest, TN* src, TYPE_ID mtype, OPS
   }
 
   if( tmp_dest != dest ){
-    if (Is_Target_Orochi() && Is_Target_AVX()) {
-      Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, 
-                dest, tmp_dest, tmp_dest, ops );
+    if( Is_Target_Barcelona() || Is_Target_EM64T() ||
+        Is_Target_Wolfdale()  || Is_Target_Core()  ||
+        Is_Target_Orochi() ){
+      Build_OP( TOP_movaps, dest, tmp_dest, ops );
     } else {
-      Build_OP( mtype == MTYPE_F8 ? TOP_movsd : TOP_movss, 
-                dest, tmp_dest, ops );
+      Build_OP( TOP_movdq, dest, tmp_dest, ops );
     }
   }
 
@@ -5688,7 +5684,13 @@ void Expand_Complex( OPCODE opcode, TN *result,
 }
 void Expand_Firstpart( OPCODE opcode, TN *result, 
 		     TN *src1, OPS *ops ){
-    Build_OP(TOP_movsd, result, src1, ops);
+    if( Is_Target_Barcelona() || Is_Target_EM64T() ||
+        Is_Target_Wolfdale()  || Is_Target_Core()  ||
+        Is_Target_Orochi() ){
+      Build_OP( TOP_movaps, result, src1, ops );
+    } else {
+      Build_OP( TOP_movdq, result, src1, ops );
+    }
 }
 void Expand_Secondpart( OPCODE opcode, TN *result, 
 		     TN *src1, OPS *ops ){
@@ -6893,16 +6895,12 @@ Exp_COPY (TN *tgt_tn, TN *src_tn, OPS *ops, BOOL copy_pair)
       }
     } else if (tgt_rc == src_rc && tgt_rc == ISA_REGISTER_CLASS_float) {
       /* dedicated TNs always have size 8, so need to check both TNs */
-      if (Is_Target_Orochi() && Is_Target_AVX()) {
-        if (is_128bit) {
-          Build_OP(TOP_movdq, tgt_tn, src_tn, ops);
-        } else {
-          Build_OP(is_64bit ? TOP_movsd : TOP_movss, 
-	           tgt_tn, src_tn, src_tn, ops);
-        }
+      if( Is_Target_Barcelona() || Is_Target_EM64T() ||
+          Is_Target_Wolfdale()  || Is_Target_Core()  ||
+          Is_Target_Orochi() ){
+        Build_OP(TOP_movaps, tgt_tn, src_tn, ops);
       } else {
-        Build_OP(is_128bit ? TOP_movdq: (is_64bit ? TOP_movsd : TOP_movss), 
-	         tgt_tn, src_tn, ops);
+        Build_OP( TOP_movdq, tgt_tn, src_tn, ops);
       }
       Set_OP_copy (OPS_last(ops));
 

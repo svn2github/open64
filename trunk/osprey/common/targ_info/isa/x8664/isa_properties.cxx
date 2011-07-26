@@ -14147,6 +14147,8 @@ int main()
 		     TOP_lock_xchg16,
 		     TOP_lock_xchg32,
 		     TOP_lock_xchg64,
+                     TOP_movsd,
+                     TOP_movss,
 		     TOP_addsd,
 		     TOP_addss,
 		     TOP_addxsd,

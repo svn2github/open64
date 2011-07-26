@@ -1575,7 +1575,15 @@ Op_has_side_effect(OP *op)
   TN *tn1 = OP_result(op,0);
   TN *tn2 = OP_opnd(op,CGTARG_Copy_Operand(op));
   
-  if ( TN_size(tn1) != TN_size(tn2) ) 
+  // check for merge copy case
+  if ((OP_code(op) == TOP_movss) ||
+      (OP_code(op) == TOP_movsd) ||
+      (OP_code(op) == TOP_vmovss) || 
+      (OP_code(op) == TOP_vmovsd))
+    if (OP_opnd(op,0) != OP_opnd(op,1))
+      return true;
+
+  if ( TN_size(tn1) != TN_size(tn2) )
      return true;
 
   if (Is_Target_64bit() && TN_is_int_retrun_register(tn2)) {
