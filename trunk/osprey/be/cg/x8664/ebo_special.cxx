@@ -1814,7 +1814,7 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   OP *new_op = NULL;
   const BOOL is_64bit = (TN_size(tnr) == 8);
   const TYPE_ID mtype = is_64bit ? MTYPE_I8 : MTYPE_I4;
-  INT64 val = imm_val < 0 ? -imm_val : imm_val;
+  UINT64 val = imm_val < 0 ? -imm_val : imm_val;
   OPS ops = OPS_EMPTY;
 
   if( imm_val == 0 ){
@@ -1840,6 +1840,8 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
 
   bool need_an_add = false;
 
+  /* Check for an unsigned power of two + 1. */
+  
   if( val >= 2 &&
       ( (val-1) & (val-2) ) == 0 ){
     val--;
@@ -1847,7 +1849,7 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
   }
 
   /* Check whether it can carry an imm opnd. */
-
+  /* Check for unsigned power of two. */
   if( ( val & ( val - 1 ) ) != 0 ){
     const TOP new_top = TOP_with_Imm_Opnd( op, 1, imm_val );
 
@@ -1871,6 +1873,8 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
     tn = tmp;
   }
 
+  /* determine the power of val. */
+  
   int power = 0;
   while( val != 1 ){
     power++;
@@ -1883,7 +1887,7 @@ static BOOL Convert_Imm_Mul( OP *op, TN *tnr, TN *tn, INT64 imm_val, EBO_TN_INFO
     Expand_Add( tnr, tnr, tn, mtype, &ops );
   }
 
-  if( imm_val < 0 )
+  if( imm_val < 0 && imm_val != INT64_MIN )
     Expand_Neg( tnr, tnr, mtype, &ops );
 
   BB_Insert_Ops_After( OP_bb(op), op, &ops );
