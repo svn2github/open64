@@ -1,7 +1,0 @@
-#! /bin/bash
-
-# Clobber everything except ptools-controlled files
-
-rm -rf [a-z]*
-rm -f  Makefile
-
