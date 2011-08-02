@@ -1,1 +1,0 @@
-SUBDIRS = targ_info
