@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -47,6 +51,13 @@
 #include <stdarg.h>
 #include <cmplrs/rcodes.h>
 #include "defs.h"
+
+#if !defined(SHARED_BUILD)
+/* no weak version, so need stub to compile (real version is in libwopt) */
+#include "wn.h"
+#include "opt_defs.h"
+AUX_ID WN_aux (const WN*) { return 0; }
+#endif
 
 
 char path[PATH_MAX];

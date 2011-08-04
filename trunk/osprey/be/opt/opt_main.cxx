@@ -367,6 +367,8 @@
 
 #include "wssa_utils.h"   // WHIRL SSA
 
+#include "../opt/init.cxx"          // force include of Wopt_Initializer
+
 extern "C" void
 Perform_Procedure_Summary_Phase (WN* w, struct DU_MANAGER *du_mgr,
 				 struct ALIAS_MANAGER *alias_mgr,

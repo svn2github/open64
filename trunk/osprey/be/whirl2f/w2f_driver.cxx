@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -81,6 +85,22 @@ static char *rcs_id = "$Source: /depot/CVSROOT/javi/src/sw/cmplr/be/whirl2f/w2f_
 #include "st2f.h"
 #include "wn2f.h"
 #include "wn2f_stmt.h"
+
+#include "../whirl2f/init.cxx"      /* force include of W2F_Initializer */
+
+#if !defined(SHARED_BUILD)
+/* no weak version, so need stub to compile (real version is in libwopt) */
+#include "opt_defs.h"
+AUX_ID WN_aux (const WN*) { return 0; }
+
+/* from whirl2c */
+extern "C" {
+void W2C_Cleanup(void) {}
+void W2C_Push_PU(const WN* a, WN* b) {}
+void W2C_Pop_PU(void) {}
+void W2C_Translate_Wn(FILE* a, const WN* b) {}
+}
+#endif
 
 /* Avoid errors due to uses of "int" in stdio.h macros.
  */

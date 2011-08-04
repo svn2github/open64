@@ -231,7 +231,6 @@ BE_OPT_CXX_SRCS = \
   opt_mtype_b.cxx	\
   opt_revise_ssa.cxx	\
   wodriver.cxx          \
-  init.cxx              \
   opt_lclsc.cxx         \
   opt_misc.cxx          \
   opt_lmv.cxx           \
