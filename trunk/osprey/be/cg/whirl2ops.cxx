@@ -3166,6 +3166,7 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
   WN	*compare;
   VARIANT variant;
 
+#ifdef TARG_X8664
   if (opcode == OPC_V16I1V16I1SELECT) {
     TN* op1 = Expand_Expr(WN_kid0(select), select, NULL);
     TN* op2 = Expand_Expr(WN_kid1(select), select, NULL);
@@ -3177,6 +3178,7 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
     Expand_Select(result, op1, op2, op3, MTYPE_V16I1, FALSE, &New_OPs); //FALSE passed as dummy arg
     return result;
   }
+#endif
 
  /*
   *  Expand the true/false before the condition

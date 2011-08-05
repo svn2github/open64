@@ -4287,9 +4287,11 @@ Spill_Live_Range (
       local_spills++;global_spills++;
 
       BOOL uses_destructive_dest = FALSE;
+#ifdef TARG_X8664
       if( Is_Target_Orochi() && OP_sse5( op ) ){
         uses_destructive_dest = check_uses_destructive_dest(prev_tn, bb);
       }
+#endif
 
       if ((OP_same_res(op)
 #ifdef TARG_X8664
