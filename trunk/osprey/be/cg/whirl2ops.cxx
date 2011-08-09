@@ -2894,12 +2894,24 @@ Handle_STBITS (WN *stbits)
     result = field_tn;
   } else {
     variant = Memop_Variant(stbits);
-    field_tn = Allocate_Result_TN (kid, NULL);
+    //       U4CONSTANT 1
+    // for U8STBITS
+    // allocate a larger TN if bit deposit may run out of range
+    if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid)))
+      field_tn = Build_TN_Of_Mtype (rtype);
+    else
+      field_tn = Allocate_Result_TN (kid, NULL);
     Last_Mem_OP = OPS_last(&New_OPs);
     Exp_Load(rtype, desc, field_tn, WN_st(stbits), WN_load_offset(stbits),
 	     &New_OPs, variant); // must do an unsigned load
     Set_OP_To_WN_Map(stbits);
-    result = Allocate_Result_TN (kid, NULL);
+    //       U4CONSTANT 1
+    // for U8STBITS
+    // allocate a larger TN if bit deposit may run out of range
+    if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid)))
+      result = Build_TN_Of_Mtype (rtype);
+    else
+      result = Allocate_Result_TN (kid, NULL);
   }
 
 #ifdef TARG_PPC32
@@ -3105,10 +3117,21 @@ Handle_ISTBITS (WN *istbits)
   WN *kid0 = WN_kid0(istbits);
   WN *kid1 = WN_kid1(istbits);
   TN *bits_tn = Expand_Expr (kid0, istbits, NULL);
-  TN *field_tn = Allocate_Result_TN (kid0, NULL);
-  TN *result = Allocate_Result_TN (kid0, NULL);
+  TN *field_tn;
+  TN *result;
   TYPE_ID desc = Mtype_TransferSign(MTYPE_U4, WN_desc(istbits));
   TYPE_ID rtype = desc;
+  //       U4CONSTANT 1
+  //       Addr
+  // for U8ISTBITS
+  // allocate larger TNs if bit deposit may run out of range
+  if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid0))) {
+    result = Build_TN_Of_Mtype (rtype);
+    field_tn = Build_TN_Of_Mtype (rtype);
+  }else{
+    result = Allocate_Result_TN (kid0, NULL);
+    field_tn = Allocate_Result_TN (kid0, NULL);
+  }
 
   // guard against U1MPY or U2MPY
   if (MTYPE_byte_size(rtype) < 4)
