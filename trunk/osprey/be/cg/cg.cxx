@@ -114,6 +114,7 @@
 #include "hb.h"
 #include "pqs_cg.h"
 #include "tag.h"
+#include <sstream>
 #ifdef TARG_IA64
 #include "ipfec.h"
 #include "ipfec_defs.h"
@@ -226,6 +227,8 @@ extern BOOL fat_self_recursive;
 #if defined(TARG_SL) || defined(TARG_MIPS)
 REGISTER_SET caller_saved_regs_used[ISA_REGISTER_CLASS_MAX+1];
 #endif
+
+extern void draw_vcg_flow_graph(const char* fname);
 
 /* Stuff that needs to be done at the start of each PU in cg. */
 void
@@ -2077,6 +2080,33 @@ Trace_IR(
 #endif    	
   }
 }
+  
+static void
+Trace_VCG (
+  INT phase,            /* Phase after which we're printing */
+  const char *pname )   /* Print name for phase */
+{
+  if ( Get_Trace ( TKIND_VCG, phase ) ) {
+    std::stringstream vcg_title_ss;
+    char *proc_name = Get_Procedure_Name();
+    if (proc_name) 
+      vcg_title_ss << proc_name << ".";
+    else
+      vcg_title_ss << "noname" << "."; 
+    char *phase_id = Get_Trace_Phase_Id(phase);
+    if (phase_id)
+      vcg_title_ss << phase_id << ".vcg";
+    else
+      vcg_title_ss << phase << ".vcg";
+    MEM_POOL temp_pool;
+    MEM_POOL_Initialize(&temp_pool, "temp pool", FALSE);
+    char* vcg_title =
+      (char *) MEM_POOL_Alloc(&temp_pool, vcg_title_ss.str().size()+1);
+    strcpy(vcg_title, vcg_title_ss.str().c_str());
+    draw_vcg_flow_graph(vcg_title);
+    MEM_POOL_Delete(&temp_pool);
+  }
+}
 
 static void
 Trace_TN (
@@ -2138,6 +2168,10 @@ Check_for_Dump ( INT32 pass, BB *bb )
      */
     Trace_IR ( pass, s, bb );
 
+    /* Check to see if we should create a VCG of the CFG.
+     */
+    Trace_VCG ( pass, s );
+    
     /* Check to see if we should give a memory allocation trace.
      */
     Trace_Memory_Allocation ( pass, s );

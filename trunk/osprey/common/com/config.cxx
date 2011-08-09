@@ -2214,6 +2214,17 @@ Process_Trace_Option ( char *option )
 	break;
 #endif
 
+    case 'V':
+	if (strcmp(cp, "a") == 0) {
+	  Set_All_Trace( TKIND_VCG );
+	  cp++;
+	}
+	else {
+	  Set_Trace (TKIND_VCG,
+		     Get_Trace_Phase_Number ( &cp, option ) );
+	}
+	break;
+
     case 0:   
 	ErrMsg ( EC_Trace_Flag, '?', option );
 	return FALSE;
