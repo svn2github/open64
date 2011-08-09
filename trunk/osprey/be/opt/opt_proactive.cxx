@@ -3357,6 +3357,9 @@ IF_MERGE_TRANS::Is_candidate(SC_NODE * sc1, SC_NODE * sc2, BOOL do_query)
       return FALSE;
     else if (_action == DO_IFFLIP)
       return FALSE;
+    // Make sure sc1 and sc2 are control equivalent if they are not adjacent to each other.
+    else if ((count > 0) && !sc1->Is_ctrl_equiv(sc2))
+      return FALSE;
     else
       return TRUE;
   }
