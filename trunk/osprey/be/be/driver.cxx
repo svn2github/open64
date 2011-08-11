@@ -3,7 +3,7 @@
  */
 
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -502,7 +502,6 @@ load_components (INT argc, char **argv)
       Get_Phase_Args (PHASE_IPL, &phase_argc, &phase_argv);
       load_so ("ipl.so", Ipl_Path, Show_Progress);
       ipl_main (phase_argc, phase_argv);
-      Set_Error_Descriptor (EP_BE, EDESC_BE);
     }
 
     if (Run_lno || Run_autopar) {
@@ -2171,6 +2170,8 @@ main (INT argc, char **argv)
   Set_Error_Line ( ERROR_LINE_UNKNOWN );
   Set_Error_File ( NULL );
   Set_Error_Phase ( "Back End Driver" );
+  Set_Error_Descriptor (EP_BE, EDESC_BE);
+  Set_Error_Descriptor (EP_CG, EDESC_CG);
 
   Preconfigure ();
   Process_Command_Line (argc, argv);
@@ -2317,12 +2318,6 @@ main (INT argc, char **argv)
   }
 
   Phase_Init ();
-
-  if (Run_preopt || Run_wopt || Run_lno || Run_Distr_Array || Run_autopar 
-	|| Run_cg) {
-    Set_Error_Descriptor (EP_BE, EDESC_BE);
-    Set_Error_Descriptor (EP_CG, EDESC_CG);
-  }
 
   if (Tlog_File)
     Print_Tlog_Header(argc, argv);
