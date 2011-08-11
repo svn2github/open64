@@ -453,7 +453,8 @@ inline BOOL WN_Is_Volatile_Mem(const WN *wn)
 	OPCODE_operator(opc) == OPR_MSTORE) {
       TY_IDX pointed = TY_pointed (Ty_Table[WN_ty (wn)]);
       DevAssert(pointed, ("TY_pointed of ISTORE/MSTORE type is NULL"));
-      return TY_is_volatile(pointed);
+      return TY_is_volatile(pointed) ||       
+             TY_is_volatile(WN_object_ty(wn));
     } else {
       return TY_is_volatile(WN_ty(wn)) ||
         TY_is_volatile(WN_object_ty(wn)) ||
