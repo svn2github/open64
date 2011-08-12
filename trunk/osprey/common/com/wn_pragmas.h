@@ -224,11 +224,6 @@ typedef enum {
   WN_PRAGMA_NORECURRENCE,
   WN_PRAGMA_NEXT_SCALAR,
 
-  /* purple pragmas */
-
-  WN_PRAGMA_PURPLE_CONDITIONAL,
-  WN_PRAGMA_PURPLE_UNCONDITIONAL,
-
   /* wopt pragmas */
   
   WN_PRAGMA_WOPT_FINISHED_OPT,
@@ -426,7 +421,6 @@ typedef enum {
   PUSER_CG	= 0x8,
   PUSER_MP	= 0x10,
   PUSER_NONE	= 0x20,
-  PUSER_PURPLE  = 0x40,
   PUSER_W2C     = 0x80,
   PUSER_W2F     = 0x100,
   PUSER_REGION  = 0x200
