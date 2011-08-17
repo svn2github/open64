@@ -473,11 +473,10 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 
 		/* need to setenv COMPILER_PATH for collect to find ld */
 
-#ifdef KEY	// gcc will invoke the cc1 in the COMPILER_PATH directory,
+                // gcc will invoke the cc1 in the COMPILER_PATH directory,
 		// which is not what we want when we invoke gcc for
 		// preprocessing.  Bug 10164.
 		if (!is_matching_phase(get_phase_mask(P_any_cpp), phase))
-#endif
 		my_putenv ("COMPILER_PATH", "%s", get_phase_dir(P_collect));
 
 		/* Tell IPA where to find the driver. */
@@ -564,7 +563,6 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 
 			switch (status) {
 			case RC_OKAY:
-#ifdef KEY
 				// If the command line has explicit inline
 				// setting, follow it; else follow the
 				// front-end request.  Bug 11325.
@@ -581,20 +579,15 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				  }
 				  break;
 				}
-#endif
 				if (inline_t == UNDEFINED
 				    && is_matching_phase(
 					get_phase_mask(phase), P_any_fe) )
 				{
-#ifdef KEY
 					run_inline = FALSE;	// bug 11325
-#else
-					inline_t = FALSE;
-#endif
 				}
 				break;
 			case RC_NEED_INLINER:
-#ifdef KEY			// If the command line has explicit inline
+                                // If the command line has explicit inline
 				// setting, follow it; else follow the
 				// front-end request.  Bug 11325.
 				if (inline_t != UNDEFINED) {
@@ -610,16 +603,11 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				  }
 				  break;
 				}
-#endif
 				if (inline_t == UNDEFINED
 				    && is_matching_phase(
 					get_phase_mask(phase), P_any_fe) )
 				{
-#ifdef KEY
 					run_inline = TRUE;	// bug 11325
-#else
-					inline_t = TRUE;
-#endif
 				}
 				/* completed successfully */
 				break;
@@ -642,9 +630,7 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 				}
 				internal_err = TRUE;
 				break;
-#ifdef KEY
 			case RC_GCC_INTERNAL_ERROR:
-#endif
 			case RC_INTERNAL_ERROR:
 				internal_err = TRUE;
 				break;
@@ -654,13 +640,11 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 			} 
 			if (internal_err) {
 				if (phase == P_ld || phase == P_ldplus ||
-#ifdef KEY
 				    phase == P_gas ||	// bug 4846
 				    phase == P_f_coco ||	// bug 9058
 				    phase == P_spin_cc1 ||
 				    phase == P_spin_cc1plus ||
 				    status == RC_GCC_INTERNAL_ERROR ||  //bug 9637
-#endif
 				    phase == P_gcpp || phase == P_gcpp_plus) {
 					if (phase == P_gas ||
 					    status == RC_GCC_INTERNAL_ERROR) {
@@ -677,11 +661,9 @@ run_phase (phases_t phase, char *name, string_list_t *args)
 			else if (user_err) {
 				/* assume phase will print diagnostics */
 				if (phase == P_c_gfe || phase == P_cplus_gfe
-#ifdef KEY
 				    || phase == P_wgen
 				    || phase == P_spin_cc1
 				    || phase == P_spin_cc1plus
-#endif
 				   ) {
 					nomsg_error(RC_INTERNAL_ERROR);
 				}
