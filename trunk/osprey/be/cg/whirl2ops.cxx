@@ -919,7 +919,6 @@ Process_OPs_For_Stmt (void)
 
 }
 
-
 /* Create a new result TN for the WHIRL node wn. We pass in the opnd_tn
  * array that contains the TNs allocated for each operand. This could
  * used to do value numbering if desired.
@@ -931,32 +930,8 @@ TN *
 Allocate_Result_TN (WN *wn, TN **opnd_tn)
 {
 #ifdef TARG_SL
-
-#ifdef EMULATE_LONGLONG
-  TYPE_ID mtype = WN_rtype(wn);
-  if (MTYPE_is_longlong(mtype)) {
-    TYPE_ID new_mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
-    TN *tn  = Build_TN_Of_Mtype (new_mtype);
-    TN *tn2 = Build_TN_Of_Mtype (new_mtype);
-    Add_TN_Pair (tn, tn2);
-    return tn;
-  }
-#endif
-
-#ifdef EMULATE_FLOAT_POINT
-  if (mtype == MTYPE_F8) {
-    TN *tn   = Build_TN_Of_Mtype(MTYPE_U4);
-    TN *pair = Build_TN_Of_Mtype(MTYPE_U4);
-    Add_TN_Pair (tn, pair);
-    return tn;
-  } else if (mtype = MTYPE_F4) {
-    return Build_TN_Of_Mtype(MTYPE_U4);
-  }
-#endif 
-
-  return Build_TN_Of_Mtype (mtype);
-
-#else // !defined(TARG_SL)
+  return Build_TN_Of_Mtype(WN_rtype(wn));
+#else
 
 #ifdef EMULATE_LONGLONG
 
@@ -1301,27 +1276,6 @@ PREG_To_TN (TY_IDX preg_ty, PREG_NUM preg_num)
       } else {
         tn = Build_TN_Of_Mtype (mtype);
       }
-#elif defined(TARG_SL)
-
-#ifdef EMULATE_LONGLONG
-      if (mtype == MTYPE_I8 || mtype == MTYPE_U8) {
-        mtype = (mtype == MTYPE_I8 ? MTYPE_I4 : MTYPE_U4);
-        tn = Build_TN_Of_Mtype(mtype);
-        Add_TN_Pair(tn, Build_TN_Of_Mtype(mtype));
-      } else 
-#endif      
-
-#ifdef EMULATE_FLOAT_POINT 
-      if (mtype == MTYPE_F8) {
-        TN* pair = Build_TN_Of_Mtype(MTYPE_U4);
-        tn = Build_TN_Of_Mtype(MTYPE_U4);
-        Add_TN_Pair(tn, pair);
-      } else if (mtype == MTYPE_F4) {
-        tn = Build_TN_Of_Mtype(MTYPE_U4);
-      } else       
-#endif
-    	tn = Build_TN_Of_Mtype (mtype);
-
 #else
 #ifdef TARG_X8664
       if( OP_NEED_PAIR(mtype) ){
@@ -2898,9 +2852,9 @@ Handle_STBITS (WN *stbits)
     // for U8STBITS
     // allocate a larger TN if bit deposit may run out of range
     if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid)))
-      field_tn = Build_TN_Of_Mtype (rtype);
+      field_tn = Build_TN_Of_Mtype(rtype);
     else
-      field_tn = Allocate_Result_TN (kid, NULL);
+      field_tn = Allocate_Result_TN(kid, NULL);
     Last_Mem_OP = OPS_last(&New_OPs);
     Exp_Load(rtype, desc, field_tn, WN_st(stbits), WN_load_offset(stbits),
 	     &New_OPs, variant); // must do an unsigned load
@@ -2909,9 +2863,9 @@ Handle_STBITS (WN *stbits)
     // for U8STBITS
     // allocate a larger TN if bit deposit may run out of range
     if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid)))
-      result = Build_TN_Of_Mtype (rtype);
+      result = Build_TN_Of_Mtype(rtype);
     else
-      result = Allocate_Result_TN (kid, NULL);
+      result = Allocate_Result_TN(kid, NULL);
   }
 
 #ifdef TARG_PPC32
@@ -3126,11 +3080,11 @@ Handle_ISTBITS (WN *istbits)
   // for U8ISTBITS
   // allocate larger TNs if bit deposit may run out of range
   if(MTYPE_byte_size(rtype) > MTYPE_byte_size(WN_rtype(kid0))) {
-    result = Build_TN_Of_Mtype (rtype);
-    field_tn = Build_TN_Of_Mtype (rtype);
+    result = Build_TN_Of_Mtype(rtype);
+    field_tn = Build_TN_Of_Mtype(rtype);
   }else{
-    result = Allocate_Result_TN (kid0, NULL);
-    field_tn = Allocate_Result_TN (kid0, NULL);
+    result = Allocate_Result_TN(kid0, NULL);
+    field_tn = Allocate_Result_TN(kid0, NULL);
   }
 
   // guard against U1MPY or U2MPY
