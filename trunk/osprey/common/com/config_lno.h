@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -177,6 +177,9 @@ typedef enum {
 
 /* We reference a memory hierarchy descriptor from config_cache.* */
 struct MHD;
+
+struct skiplist;
+struct option_list;
 
 typedef struct lno_flags {
   /* Support a stack of structs, e.g. for region support.
@@ -367,7 +370,8 @@ typedef struct lno_flags {
   UINT32 IfMinMax_Limit;
   UINT32 IfMinMax_Fix_Cond_Limit;
   UINT32 IfMinMax_Trace; // 0: disable; 1: minimal; 2: normal; 3: maximum
-  BOOL   Struct_Array_Copy;
+  option_list *Sac_Skip;  	/* Raw list */
+  skiplist *Sac_Skip_List;	/* Processed list */
   
   /* This buffer area allows references to new fields to be added in
    * later revisions, from other DSOs, without requiring a new be.so
@@ -640,7 +644,6 @@ Current_LNO->Full_unrolling_loop_size_limit
 #define LNO_Parallel_per_proc_overhead  Current_LNO->Parallel_per_proc_overhead
 #define LNO_Apo_use_feedback  		Current_LNO->Apo_use_feedback
 #endif
-#define LNO_Struct_Array_Copy           Current_LNO->Struct_Array_Copy
 
 /* Initialize the current top of stack to defaults: */
 extern void LNO_Init_Config ( void );

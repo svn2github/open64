@@ -497,6 +497,10 @@ extern "C" void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
                                           BOOL make_compiler_generated);
 
 extern void WN_collect_iloads(std::list<WN*>*, WN*);
+extern BOOL WN_is_multiple_of_size(const WN*, const INT64);
+extern BOOL WN_is_constant(const WN*);
+extern BOOL WN_is_constant_val(const WN*, INT64);
+extern UINT64 WN_get_constant_val(const WN*);
 
 #endif /* __cplusplus */
 
