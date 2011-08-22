@@ -1805,8 +1805,8 @@ CFG::if_convert(WN *wn)
   BOOL empty_then = !then_wn || !WN_first(then_wn);    
   BOOL empty_else = !else_wn || !WN_first(else_wn);
   
-	FmtAssert(!(empty_then && empty_else), 
-	       ("Screen_cand: Both then_stmt and else_stmt are NULL"));
+  FmtAssert(!(empty_then && empty_else), 
+       ("Screen_cand: Both then_stmt and else_stmt are NULL"));
 
   if (Screen_cand(wn))
     return wn_bk;
