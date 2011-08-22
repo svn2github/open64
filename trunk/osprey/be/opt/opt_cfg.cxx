@@ -1799,14 +1799,17 @@ CFG::if_convert(WN *wn)
     if (WN_prev(WN_last(else_wn)))
       WN_INSERT_BlockFirst(else_block, WN_prev(WN_last(else_wn)));
     else_wn     = else_block;
-    WN_then(wn) = else_block;
+    WN_else(wn) = else_wn;
   }
-
-  if (Screen_cand(wn))
-    return wn_bk;
 
   BOOL empty_then = !then_wn || !WN_first(then_wn);    
   BOOL empty_else = !else_wn || !WN_first(else_wn);
+  
+	FmtAssert(!(empty_then && empty_else), 
+	       ("Screen_cand: Both then_stmt and else_stmt are NULL"));
+
+  if (Screen_cand(wn))
+    return wn_bk;
   
   // Get the store from either the first statement of the non-empty block
   WN *stmt = WN_first(empty_then ? else_wn : then_wn);
