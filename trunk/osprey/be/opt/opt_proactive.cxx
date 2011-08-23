@@ -1352,6 +1352,8 @@ SC_NODE::Get_bounds(WN ** p_start, WN ** p_end, WN ** p_step)
   *p_start = wn_start;
   *p_end = wn_end;
   *p_step = wn_step;
+
+  return TRUE;
 }
 
 // Get upper bound of 'sc'.
