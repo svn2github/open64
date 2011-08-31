@@ -129,6 +129,11 @@ Adjusted_Alignment(ST *sym)
       return align;
     }
 
+    if (TY_is_user_align(ty_idx))
+    {
+      return align;
+    }
+
     switch(ST_sclass(sym))
     {
     case SCLASS_AUTO:
