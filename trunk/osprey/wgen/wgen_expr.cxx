@@ -9200,12 +9200,27 @@ WGEN_Expand_Expr (gs_t exp,
 	        intrinsic_op = TRUE;
 	        break;
                
+#ifdef TARG_X8664
+	      case GSBI_BUILT_IN_POPCOUNT:
+	        iopc = INTRN_I4POPCNT;
+		intrinsic_op = TRUE;
+		break;
+	      case GSBI_BUILT_IN_POPCOUNTL:
+	        iopc = INTRN_I8POPCNT;
+		intrinsic_op = TRUE;
+		break;
+	      case GSBI_BUILT_IN_POPCOUNTLL:
+	        iopc = INTRN_POPCOUNT;
+		intrinsic_op = TRUE;
+		break;
+#else
 	      case GSBI_BUILT_IN_POPCOUNT:
 	      case GSBI_BUILT_IN_POPCOUNTL:
 	      case GSBI_BUILT_IN_POPCOUNTLL:
 	        iopc = INTRN_POPCOUNT;
 		intrinsic_op = TRUE;
 		break;
+#endif
 	
 	      case GSBI_BUILT_IN_PARITY:
 	      case GSBI_BUILT_IN_PARITYL:

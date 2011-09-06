@@ -5911,13 +5911,16 @@ static WN *lower_expr(WN *block, WN *tree, LOWER_ACTIONS actions)
     }
     if( ( (INTRINSIC)WN_intrinsic(tree) == INTRN_I2POPCNT ||
           (INTRINSIC)WN_intrinsic(tree) == INTRN_I4POPCNT ) &&
-        ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
-      // SSE4.2(Intel) and SSE4a(AMD) supports I2 and I4 popcnt
+        ( Is_Target_SSE42() || Is_Target_Barcelona() 
+          || Is_Target_Orochi()) ) {
+      // Support for POPCNT is available with AMD
+      //  Barcelona onwards and Intel Nehalem onwards
       break;
     }
     if( (INTRINSIC)WN_intrinsic(tree) == INTRN_I8POPCNT &&
-        Is_Target_64bit() && ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
-      // SSE4.2(Intel) and SSE4a(AMD) supports I8 popcnt in 64-bit mode
+        Is_Target_64bit() && ( Is_Target_SSE42() || Is_Target_Barcelona() ) ) {
+      // Support for POPCNT is available with AMD
+      //  Barcelona onwards and Intel Nehalem onwards
       break;
     }
 #endif
