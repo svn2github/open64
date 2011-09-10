@@ -1548,6 +1548,8 @@ extern BOOL WN_has_compatible_iter_space(WN *, WN *, int *, int *, BOOL);
 
 extern BOOL WN_is_assign(WN *);
 extern BOOL WN_is_assign_return(WN *);
+
+extern WN *WN_CreateZDLBr(INT32 label_number);
  
 #if defined(TARG_SL)
 extern WN* WN_CreateFork(INT32 label_number, BOOL major);

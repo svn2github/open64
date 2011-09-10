@@ -1036,6 +1036,17 @@ WN *WN_CreateTruebr(INT32 label_number, WN *exp)
   return(wn);
 }
 
+
+WN *WN_CreateZDLBr(INT32 label_number) {
+  WN *wn;
+  
+  wn = WN_Create(OPC_ZDLBR, 0);
+  WN_label_number(wn) = label_number;
+  
+  return(wn);
+}
+
+
 WN *WN_CreateFalsebr(INT32 label_number, WN *exp)
 {
   WN *wn;

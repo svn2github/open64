@@ -8062,6 +8062,7 @@ gcc2gs (int code)
    case WITH_SIZE_EXPR: return GS_WITH_SIZE_EXPR;
    case TEMPLATE_TEMPLATE_PARM: return GS_TEMPLATE_TEMPLATE_PARM;
    case FREQ_HINT_STMT: return GS_FREQ_HINT_STMT;
+   case ZDL_STMT: return GS_ZDL_STMT;
  }
  gcc_assert(0);
  return (gs_code_t) 0;

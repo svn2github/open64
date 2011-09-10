@@ -655,16 +655,8 @@ static OPTION_DESC Options_CG[] = {
     0, 0, 0,	&CG_LOOP_cloop, NULL },
 #endif
 #if defined(TARG_SL)
-  { OVK_BOOL,	OV_INTERNAL, FALSE, "zero_delay_loop", "zero_delay_loop",
-    0, 0, 0,	&CG_enable_zero_delay_loop, NULL },
   { OVK_INT32, OV_INTERNAL, TRUE, "zdl_enabled_level", "",
     INT32_MAX, 0, INT32_MAX, &CG_zdl_enabled_level, NULL },
-  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_e", "",
-    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_e, NULL },
-  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_a", "",
-    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_a, NULL },
-  { OVK_INT32, OV_INTERNAL, TRUE, "zdl_skip_b", "",
-    INT32_MAX, 0, INT32_MAX, &CG_zdl_skip_b, NULL },
   { OVK_BOOL,  OV_INTERNAL, TRUE, "opt_condmv", "",
     0, 0, 0,   &CG_enable_opt_condmv, NULL},
   { OVK_BOOL,  OV_INTERNAL, TRUE, "CBUS_workaround", "",

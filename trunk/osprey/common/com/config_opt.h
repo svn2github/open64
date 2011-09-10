@@ -123,6 +123,10 @@ extern BOOL Alias_Common_Scalar;        /* Distinguish scalar from other array
 extern BOOL  Alias_F90_Pointer_Unaliased;  /* Are F90 pointers unaliased? */
 extern BOOL Alias_Nystrom_Analyzer;     /* Are we using Nystrom alias analysis? */
 
+/** lower zdl stuff **/
+extern BOOL OPT_Lower_ZDL;
+extern BOOL OPT_Lower_ZDL_Set;
+
 /***** Expression folding options *****/
 extern BOOL Enable_Cfold_Float;		/* FP constant folding? */
 extern BOOL Enable_Cfold_Reassociate;	/* Re-association allowed? */
