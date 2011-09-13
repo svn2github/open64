@@ -295,11 +295,11 @@ typedef enum {
   OPERATOR_LAST = 142
 #else
   OPR_PURE_CALL_OP = 139,
-  OPR_ZDLBR = 140
+  OPR_ZDLBR = 140,
   OPERATOR_LAST = 140
 #endif
 #else
-  OPR_ZDLBR = 139
+  OPR_ZDLBR = 139,
   OPERATOR_LAST = 139
 #endif /* TARG_X8664 */
 } OPERATOR;
