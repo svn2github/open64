@@ -701,8 +701,17 @@ static void process_local_classes()
 {
 }
 
+static void WGEN_Assemble_Asm(char *asm_string);
+
 void WGEN_Expand_Decl(gs_t decl, BOOL can_skip)
 {
+  if (decl != NULL && gs_code(decl) == GS_STRING_CST) {
+    char *asm_string = gs_tree_string_pointer(decl);
+    Set_FILE_INFO_has_global_asm(File_info);
+    WGEN_Assemble_Asm (asm_string);
+    return;
+  }
+
   Is_True(decl != NULL && gs_tree_code_class(decl) == GS_TCC_DECLARATION,
           ("Argument to WGEN_Expand_Decl isn't a decl node"));
 /*

@@ -9714,7 +9714,7 @@ int processing_global_namespace = 0;
 gs_t gs_x (tree node);
 gs_t gs_x_func_decl (tree node);
 void gspin_gxx_emits_decl (tree t);
-void gspin_gxx_emits_asm (char *str);
+void gspin_gxx_emits_asm (tree str);
 void gspin_write (void);
 void gspin_init (void);
 void gspin_init_global_trees_list (void);
@@ -12026,22 +12026,20 @@ gspin_gxx_emits_thunk_decl (tree t)
 
 /* Add T to list of asms emitted by g++. */
 void
-gspin_gxx_emits_asm (char *str)
+gspin_gxx_emits_asm (tree t)
 {
-  gs_t asm_string_node, asm_list;
+  gs_t decl, decl_list;
+  decl = gs_x(t);
 
-  asm_string_node = __gs(IB_STRING);
-  _gs_s(asm_string_node, (gs_string_t) str, strlen(str) + 1);
-
-  if (gs_code(gxx_emitted_asms_dot) == EMPTY) {
-    _gs_code(gxx_emitted_asms_dot, CONS);
-    gs_set_operand(gxx_emitted_asms_dot, 0, asm_string_node);
-    gs_set_operand(gxx_emitted_asms_dot, 1, __gs(EMPTY));
+  if (gs_code(program_decls_dot) == EMPTY) {
+    _gs_code(program_decls_dot, CONS);
+    gs_set_operand(program_decls_dot, 0, decl);
+    gs_set_operand(program_decls_dot, 1, __gs(EMPTY));
     return;
   }
-  asm_list = gs_cons(asm_string_node, gs_operand(gxx_emitted_asms_dot, 1));
-  gs_set_operand(gxx_emitted_asms_dot, 1, asm_list);
-  gxx_emitted_asms_dot = asm_list;
+  decl_list = gs_cons(decl, gs_operand(program_decls_dot, 1));
+  gs_set_operand(program_decls_dot, 1, decl_list);
+  program_decls_dot = decl_list;
 }
 
 void
