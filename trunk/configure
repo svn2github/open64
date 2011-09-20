@@ -1775,6 +1775,11 @@ if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
                                 ac_config_files="$ac_config_files osprey/targdir_lib/libopen64rt/Makefile osprey/targdir_lib/libinstr2/Makefile osprey/targdir_lib/libacml_mv/Makefile"
 
 fi
+if test "${BUILD_TARGET}" = "IA64" ; then
+  LIBLIST="$LIBLIST init"
+            ac_config_files="$ac_config_files osprey/targdir_lib/init/Makefile:osprey/targdir_lib/init/Makefile.in"
+
+fi
 
 if test $BUILD_MULTILIB = "YES"; then
                                                     ac_config_files="$ac_config_files osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in osprey/targdir_lib2/libhugetlbfs/Makefile:osprey/targdir_lib/libhugetlbfs/Makefile.in osprey/targdir_lib2/libmv/Makefile:osprey/targdir_lib/libmv/Makefile.in"
@@ -2402,6 +2407,7 @@ do
   "osprey/targdir_lib/libopen64rt/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libopen64rt/Makefile" ;;
   "osprey/targdir_lib/libinstr2/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libinstr2/Makefile" ;;
   "osprey/targdir_lib/libacml_mv/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/libacml_mv/Makefile" ;;
+  "osprey/targdir_lib/init/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib/init/Makefile:osprey/targdir_lib/init/Makefile.in" ;;
   "osprey/targdir_lib2/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/Makefile:osprey/targdir_lib/Makefile.in" ;;
   "osprey/targdir_lib2/include/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/include/Makefile:osprey/targdir_lib/include/Makefile.in" ;;
   "osprey/targdir_lib2/libopenmp/Makefile" ) CONFIG_FILES="$CONFIG_FILES osprey/targdir_lib2/libopenmp/Makefile:osprey/targdir_lib/libopenmp/Makefile.in" ;;
