@@ -10917,6 +10917,15 @@ gs_x_1 (tree t, HOST_WIDE_INT seq_num)
 	      /* bug 12598: Try to fold OBJ_TYPE_REF if it is present
 	         under the CALL_EXPR. Code adapted from fold_stmt() . */
 	      tree callee = get_callee_fndecl (t);
+              if (callee && TREE_CODE(callee) == FUNCTION_DECL)
+              {
+                 /* we need to emit the function be calleed, no matter 
+                    if the call is removed later by gcc cfg cleanup, so 
+                    the open64 backend wouldn't be surprised by missing
+                    function definition. */
+                 TREE_SYMBOL_REFERENCED (DECL_ASSEMBLER_NAME (callee)) = 1;
+                 mark_decl_referenced(callee);
+              }
 	      if (!(callee && DECL_BUILT_IN(callee)))
 	      {
 		callee = TREE_OPERAND(t,0);
