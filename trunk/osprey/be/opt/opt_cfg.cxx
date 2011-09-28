@@ -3100,6 +3100,18 @@ CFG::Add_one_stmt( WN *wn, END_BLOCK *ends_bb )
       *ends_bb = END_BREAK;
     break;
 
+  case OPR_ZDLBR:
+    label_bb = Get_bb_from_label(WN_label_number(wn));
+    FmtAssert(label_bb != NULL, ("CFG::Add_one_stmt: ZDLBR does not have a label_bb"));
+
+    Connect_predsucc(_current_bb, label_bb);
+    Append_wn_in(_current_bb, wn); 
+    _current_bb->Set_kind(BB_LOGIF);
+
+    if (ends_bb)
+      *ends_bb = END_FALLTHRU;
+    break;
+
   case OPR_FALSEBR:
   case OPR_TRUEBR:
     label_bb = Get_bb_from_label( WN_label_number(wn) );
