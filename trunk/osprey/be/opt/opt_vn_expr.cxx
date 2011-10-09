@@ -651,6 +651,9 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 	 else if (this_mty == MTYPE_F4 && 
 	          TCON_R4(other_tcon) == 0 && TCON_R4(_tcon) == 0)
 	    truth = TCON_word0(other_tcon) == TCON_word0(_tcon);
+	 else if (this_mty == MTYPE_F10 && 
+	          TCON_R10(other_tcon) == 0 && TCON_R10(_tcon) == 0)
+	    truth = TCON_v2(other_tcon) == TCON_v2(_tcon);
 #endif
          else {
 	    BOOL folded;
