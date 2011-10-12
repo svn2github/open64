@@ -645,15 +645,10 @@ VN_LITERAL_EXPR::is_equal_to(CONST_PTR expr) const
 	 // fix bug 2691: when both are floating-point zero, use integer
 	 // comparison so +0 and -0 will be regarded as different for value
 	 // numbering purpose
-	 else if (this_mty == MTYPE_F8 && 
-	          TCON_R8(other_tcon) == 0 && TCON_R8(_tcon) == 0)
-	    truth = TCON_v1(other_tcon) == TCON_v1(_tcon);
-	 else if (this_mty == MTYPE_F4 && 
-	          TCON_R4(other_tcon) == 0 && TCON_R4(_tcon) == 0)
-	    truth = TCON_word0(other_tcon) == TCON_word0(_tcon);
-	 else if (this_mty == MTYPE_F10 && 
-	          TCON_R10(other_tcon) == 0 && TCON_R10(_tcon) == 0)
-	    truth = TCON_v2(other_tcon) == TCON_v2(_tcon);
+	 else if (Targ_Is_Zero(other_tcon))
+            truth = Targ_Is_Zero(_tcon);
+	 else if (Targ_Is_Neg_Zero(other_tcon))
+            truth = Targ_Is_Neg_Zero(_tcon);
 #endif
          else {
 	    BOOL folded;
