@@ -257,6 +257,62 @@ namespace eval C_CLASS {
 	return 0
     }
 
+    proc TestMkSource { find_rule {pattern ""} } {
+	global sim
+	global curdir all_runtests
+	global C_CLASS::err_build C_CLASS::pass_build
+	global C_CLASS::err_run C_CLASS::pass_run
+	set err_build 0
+	set pass_build 0
+	set err_run 0
+	set pass_run 0
+
+	set test_limited 0
+	if [info exists all_runtests] {
+	    foreach x [array names all_runtests] {
+		if { $all_runtests($x) != ""} {
+		    #allow "," to be spearator in addition to space
+		    set testlists [split $all_runtests($x) ","]
+		    foreach testname $testlists {
+			if { $testname == ""} {
+			    continue
+			}
+			set test_found($testname) 1
+		    }
+		    set test_limited 1
+		}
+	    }
+	}
+
+	set files [eval "exec find $find_rule" ]
+	set files [split $files "\n"]
+	set files [lsort -dictionary $files]
+	foreach file $files {
+	    if { [file isfile $file] } {
+		set file_exp [file rootname $file]
+		if {$test_limited == 1} {
+		    if {![info exists test_found([file tail $file_exp])]} {
+			verbose "ignore testcase:$file" 2
+			continue
+		    }
+		}
+		append file_exp ".exp"
+		if { [file exists $file_exp] } {
+		    continue
+		}  
+		if { $pattern != ""} {
+		    if { [string match $pattern $file ]} {
+			TestMkCase [lindex $file 0] $sim
+		    }
+		} else { 
+		    TestMkCase [lindex $file 0] $sim
+		}  
+		cd $curdir
+	    }
+	}
+	return 0
+    }
+
     #
     # Decide the file type and corresponding variables of a testcase
     #
@@ -365,10 +421,8 @@ namespace eval C_CLASS {
 	set runres 0
 	set cmpres 0
 	set cmd ""
+        
 
-	if {[file exist [file join $case_dir $basename.mk] ]} {
-	    set cmd "make -e BIN=[file join $target_dir $basename] BUILD_ROOT=$testhome -f [file join $case_dir $basename.mk]"
-	} else {
 	    set casefile [open $testcase RDONLY]
 	    set commandlist [list]
 	    set flags "" 
@@ -440,71 +494,215 @@ namespace eval C_CLASS {
 	    regsub "\\\$\\\(CFLAGS\\\)" $cmd $flags cmd
 	    regsub "\\\$\\\(CXXFLAGS\\\)" $cmd $flags cmd
 	    regsub "\\\$\\\(FFLAGS\\\)" $cmd $flags cmd
-	}
-	# elf file required be in the directory where invoke fsim
-	cd $target_dir 
 
-	set timeout $::max_timeout 
-	spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
-	expect {
+            # elf file required be in the directory where invoke fsim
+            cd $target_dir 
+
+            set timeout $::max_timeout 
+            spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
+            expect {
+                do_cmd_succeed { set buildres 0}
+                do_cmd_failed { set buildres -1}
+                default { set buildres 2}
+            }
+            expect eof
+            # The expressions above and under have the same effect.
+            #exp_close
+            exp_wait
+            # run 
+            if { $buildres == 0 } {
+                incr pass_build
+                if { $needexec == 1 } {
+                #run it in simulator
+                    set cmd "$simulator $target_file"
+                    set timeout $::max_timeout
+                    spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
+                    expect {
+                        do_cmd_succeed { set runres 0 }
+                        do_cmd_failed { set runres -1 }
+                        default { set runres 2}
+                    }
+                    expect eof
+                    #exp_close
+                    exp_wait
+                    #output file compare : may be different for different test file        
+                    if { $runres } {
+                        incr err_run
+                    } else {
+                        #If you want a special result verification method, please change here
+                        if { [file exists $case_output_file ] } {
+                            set cmpres [ ReadOutputFile $case_output_file ]
+                        } elseif { [file exist $correct_file] } {
+                            if {[file exist $target_file.out]} {
+                                set cmpres [ CompareResult "$target_file.out" $correct_file $basename ]
+                            } else {
+                                set cmpres [ CompareResult $run_log_file $correct_file $basename ]
+                            }
+                            if { $cmpres == 0 } {
+                                incr pass_run
+                            } else {
+                                incr err_run
+                            }     
+                        } else {
+                            set cmpres -1
+                            incr pass_run
+                        }
+                    } 
+                } else {
+                    # indicate a build-only test
+                    set buildres 1
+                    incr pass_run
+                }
+            } else {
+                incr err_build
+            }
+        Report_TestCase_Result $basename $buildres $runres $cmpres
+        return 0
+    }
+
+    proc TestMkCase {testcase simulator} {
+        global cc cxx fc cflags cxxflags fflags sim
+	global testoutput testhome logdir curdir subdir 
+	global C_CLASS::err_build C_CLASS::pass_build
+	global C_CLASS::err_run C_CLASS::pass_run
+	if { [string equal -nocase $testcase ""] } {
+	    return
+	}
+
+	# get testcase name and basename(without extension)
+	set casename [file tail $testcase]
+	set basename [file rootname $casename]
+
+	# dir where .exp file is in
+	set suit_dir [file normalize [file join $testhome $curdir] ]    	
+	# dir corresponds to suit_root in output/date dir
+	set suit_out_dir [file normalize [file join $testoutput $subdir] ]
+	# dir where the testcase is in.
+	set case_dir [file normalize [file dirname [file join $curdir $testcase] ] ]	
+	# for each test case ,we make a corresponding dir in output/date dir
+	set case_out_dir [file join $suit_out_dir [file dirname $testcase] ]
+
+	# dir where target is in
+	if { [info exists C_CLASS::target_dir]} {
+	    global C_CLASS::target_dir
+	} else {
+	    set target_dir $case_out_dir
+	}
+
+	# dir where run output is in.
+	if {[info exists C_CLASS::case_output_dir]} {
+	    set case_output_dir [file join $target_dir $C_CLASS::case_output_dir]
+	} else {
+	    set case_output_dir $case_out_dir
+	}
+
+	if { ![file isdirectory $case_out_dir] } {
+	    file mkdir $case_out_dir
+	}
+	if { ![file isdirectory $case_output_dir] } {
+	    file mkdir $case_output_dir
+	}
+
+	# target file of build
+	set target_file [file join $target_dir $basename]
+	# logfile name of compiling processs
+	set cmpl_log_file [file join $case_out_dir $casename.ci]
+	# logfile name of run process
+	set run_log_file [file join $case_out_dir $casename.run]
+        # logfile name of compare process
+        set compare_log_file [file join $case_out_dir $casename.cmp]
+	# correct file
+	set correct_file [file join $case_dir $basename.correct.log]
+	# logfile name of run output
+	set case_output_file [file join $case_output_dir $basename.log]
+
+	# normalize testcase name to be used in compiling command
+	set testcase [file normalize $testcase]
+
+	# general settings
+	if {[info exists C_CLASS::needexec]} {
+	    global C_CLASS::needexec
+	} else {
+	    set needexec 1
+	}
+	if {[info exists C_CLASS::needlink]} {
+	    global C_CLASS::needlink
+	} else {
+	    set needlink 1
+	}
+
+	# The three result variables for building, running and result comparing
+	set buildres 0
+	set runres 0
+	set cmpres 0
+	set cmd ""
+
+	if {[file exist [file join $case_dir $basename.mk] ]} {
+            set makearg "BIN=[file join $target_dir $basename]\
+                             BUILD_ROOT=$testhome -f [file join $case_dir $basename.mk] \
+                             CC=$cc \
+                             CFLAGS=$cflags \
+                             CXX=$cxx \
+                             CXXFLAGS=$cxxflags \
+                             FC=$fc \
+                             FFLAGS=$fflags \
+                             SRC_DIR=$case_dir \
+                             OUT_DIR=$target_dir \
+                             SIM=$simulator \
+                             BASENAME=$basename"
+	    set cmd "make -e $makearg build"
+            set timeout $::max_timeout 
+            spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
+            expect {
 	    do_cmd_succeed { set buildres 0}
 	    do_cmd_failed { set buildres -1}
 	    default { set buildres 2}
-	}
-	expect eof
-	# The expressions above and under have the same effect.
-	#exp_close
-	exp_wait
-	# run 
-	if { $buildres == 0 } {
-	    incr pass_build
-	    if { $needexec == 1 } {
-		#run it in simulator
-		set cmd "$simulator $target_file"
-		set timeout $::max_timeout
-		spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
-		expect {
-		    do_cmd_succeed { set runres 0 }
-		    do_cmd_failed { set runres -1 }
-		    default { set runres 2}
-		}
-		expect eof
-		#exp_close
-		exp_wait
-		#output file compare : may be different for different test file        
-		if { $runres } {
-		    incr err_run
-		} else {
-		    #If you want a special result verification method, please change here
-		    if { [file exists $case_output_file ] } {
-			set cmpres [ ReadOutputFile $case_output_file ]
-		    } elseif { [file exist $correct_file] } {
-			if {[file exist $target_file.out]} {
-			    set cmpres [ CompareResult "$target_file.out" $correct_file $basename ]
-			} else {
-			    set cmpres [ CompareResult $run_log_file $correct_file $basename ]
-			}
-			if { $cmpres == 0 } {
-			    incr pass_run
-			} else {
-			    incr err_run
-			}     
-		    } else {
-			set cmpres -1
-			incr pass_run
-		    }
-		}
-	    } else {
-		# indicate a build-only test
-		set buildres 1
-		incr pass_run
-	    }
-	} else {
-	    incr err_build
-	}
-	Report_TestCase_Result $basename $buildres $runres $cmpres
-	return 0
+            }
+            expect eof
+            # The expressions above and under have the same effect.
+            #exp_close
+            exp_wait
+            if { $buildres == 0 } {
+                incr pass_build
+                set cmd "make -e $makearg run"
+                spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
+                expect {
+                    do_cmd_succeed { set runres 0 }
+                    do_cmd_failed { set runres -1 }
+                    default { set runres 2}
+                }
+                expect eof
+                #exp_close
+                exp_wait
+                #output file compare : may be different for different test file        
+                if { $runres } {
+                    incr err_run
+                } else {
+                    set cmd "make -e $makearg compare"
+                    spawn [file join $testhome lib do_cmd.sh] "$cmd" "$compare_log_file"
+                    expect {
+                        do_cmd_succeed { set cmpres 0 }
+                        do_cmd_failed { set  cmpres 1 }
+                        default { set cmpres -1}
+                    }
+                    expect eof
+                    exp_wait
+                    if { $cmpres == 0 } {
+                        incr pass_run
+                    } elseif { $cmpres == 1 } {
+                        incr err_run
+                    } else {
+                    }
+                }     
+            } else {
+                incr err_build
+            }
+        }
+
+        Report_TestCase_Result $basename $buildres $runres $cmpres
+        return 0
     }
+    
 
     proc InitCounters {} {
 	global err_compile err_link err_build pass_build

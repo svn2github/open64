@@ -6,10 +6,13 @@
 # some global variables.
 #################################################################
 # Configuration we are going to use
-set conf open64-O2
+if {[info exists env(conf)]} {
+    set conf $env(conf)
+} else {
+    set conf open64-O2
+}
 
 # Today's date in YYYY-MM-DD format
-#set date [clock format [clock scan [system date]] -format "%Y-%m-%d"]
 set date [exec date +%F]
 
 # Home for the test framework
@@ -46,6 +49,9 @@ set confdir  $testhome/conf
 # the output for the test cases
 set testoutput $cur/output/$date
 
+# the output dir for testrun.log
+set outdir $cur
+
 # log file for putting compiler update/building
 set compiler_build_log $logdir/compiler-build.log
 set check_in_log       $logdir/checkin.log
@@ -75,7 +81,6 @@ set smoking_test_list ""
 # cases listed in pre_test_cases will be run orderly before others
 # musted be relative path
 set pre_test_list ""
-lappend pre_test_list "$testhome/build_tool/build_tool.exp"
 
 system mkdir -p $logdir
 system mkdir -p $testoutput

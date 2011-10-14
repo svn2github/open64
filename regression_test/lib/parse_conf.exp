@@ -20,7 +20,8 @@ proc parse_conf { conf } {
 	set bFileExists [file exists $conf];
 
 	if { $bFileExists == 0 } {
-		error "$conf file does not exist";
+		print "Error:$conf file does not exist";
+                exit
 	}
 
 	set fConf [open $conf RDONLY];
@@ -77,7 +78,7 @@ proc print_conf_vars {} {
     if { $fc != "" } { note "FC: $fc"; }
 
     regsub {[ \t]+} $cflags "" cflags; if { $cflags != "" } { note "CFLAGS: $cflags"; }
-    regsub {[ \t]+} $cxxflags "" cxxflags; if { $cxxflags != "" } { note "CXXFLAGS: $cxxflags"; }
+    regsub {[ \t]+} $cxxflags "" cxxflags;    if { $cxxflags != "" } { note "CXXFLAGS: $cxxflags"; }
     regsub {[ \t]+} $fflags "" fflags; if { $fflags != "" } { note "FFLAGS: $fflags"; }
     if { $sim != "" } { note "SIM: $fsim1"; }
     if { $comp_home != "" } { note "The Compiler's source code directory:	$comp_home"; }
