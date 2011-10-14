@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f 
+global logdir subdir testhome
+
+# Do not use "load_lib test_utils.exp".
+# Cause it is provided by DejaGnu, does not support overloading.
+uplevel #0 source $testhome/lib/test_utils.exp
+
+set curdir $testhome/$subdir
+set summary [open $logdir/open64.sfile.log w+]
+
+
+C_CLASS::ResetFlags
+C_CLASS::InitCounters
+C_CLASS::ReportTitle "Open64.net SingleFile Test" $summary
+
+cd $curdir
+C_CLASS::TestSingleSource "common/compile common/run $platform/compile $platform/run -iname *.c -o -iname *.C -o -iname *.cpp -o -iname *.f -o -iname *.f90"
+
+incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
+incr_count PASS $C_CLASS::pass_run
+incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
+C_CLASS::ReportSum "Open64.net SingleFile Test" $summary
+
+set summary [open $logdir/open64.mkfile.log w+]
+C_CLASS::ReportTitle "Open64.net MkFile     Test" $summary
+C_CLASS::TestMkSource "common/mkfile $platform/mkfile -iname *.mk"
+incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
+incr_count PASS $C_CLASS::pass_run
+incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
+C_CLASS::ReportSum "Open64.net MkFile     Test" $summary
+
+
+
+
+cd $testhome
