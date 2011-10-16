@@ -2149,7 +2149,8 @@ DCE::Required_stmt( const STMTREP *stmt ) const
 
   if (OPERATOR_is_scalar_store (opr) &&
       Enable_identity_removal() &&
-      stmt->Is_identity_assignment_removable())  // if COPYPROP assumes the stmt is deleted
+      stmt->Is_identity_assignment_removable() &&
+      !(stmt->Lhs()->Flags() & CF_DONT_PROP))  // if COPYPROP assumes the stmt is deleted
     return FALSE;
 
   // statements with zero-version chi nodes are required
@@ -3262,7 +3263,8 @@ DCE::Mark_statement_live( STMTREP *stmt ) const
 
   if (OPERATOR_is_scalar_store (opr) &&
       Enable_identity_removal() &&
-      stmt->Is_identity_assignment_removable()) {
+      stmt->Is_identity_assignment_removable() &&
+      !(stmt->Lhs()->Flags() & CF_DONT_PROP)) {
     // process the rhs expression, if any
     CODEREP *rhs = stmt->Rhs();
     if ( rhs != NULL ) {
