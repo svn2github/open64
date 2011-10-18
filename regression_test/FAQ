@@ -1,0 +1,106 @@
+Q1: Simply, How can I run this bugcase testsuite?
+A1: 1).Firstly, you checkout the testsuite:
+       svn co https://svn.open64.net/svnroot/open64/regression_test
+
+   2). Then, you install dejagnu(http://www.gnu.org/s/dejagnu/)
+
+   3). Set up the compiler(opencc/gcc) to be available in your PATH
+
+   4). Set up the dejagnu: export DEJAGNU=/path/to/regression_test/site.exp
+
+   5). Finally, better starting from a different directory, type: 
+       runtest open64.exp
+
+Q2: Can I run a single test case?
+A2: you can try:
+   runtest open64.exp="your case name"
+   eg: runtest open64.exp="bug838"
+
+Q3: What is the directory structure for the open64 bugcase testsuite?
+A3: |- open64
+      |- common (bug cases for all platforms)
+         |- compile: cases only need to be compiled (#c)
+         |- run: cases needs to be compiled and run (#r)
+         |- mkfile: cases need to checked by other methods than just only compile/run (#m)
+      |- x86_64 (bug cases only for x86_64)
+         |- compile: same as (#c)
+         |- run: same as (#r)
+         |- mkfile: same as (#m)
+      |- i386 
+         ...
+      |- ia64
+         ...
+
+  
+Q4: How can I add a bug case only for compile?
+A4: you add the case file casename.c(.cxx|.C|.f|.f90) to the compile directory. If the case is for all platforms, add it to the open64/common/compile direcotry. If it is just for *your target*, add it to the open64/your target/compile. Then, please add a //OBJ for(.c|.cxx|.C) file or #OBJ for (.f|.f90) file at the very first line. This is a directive to tell the test driver: this case only needs to be compiled.
+
+Q5: How can I add a bug case for execution?
+A5: similar to A4, you add a case to run directory. But this case must be runnable, i.e, has a main function in the case file. There should be no //OBJ directive in the head line of case file. The case is checked by three ways:
+    a) if there is a casename.correct.log, then test driver will check the run dump and compare it to the casename.correct.log. Only if the two have no differences, the bug case is considered passed.
+    b) if the running produces a casename.out file. The driver will scan the casename.out file, if it finds a line with "failed" matched, then the case is reported failed, otherwise success.
+    c) otherwise, the driver will check the return value of main. So, you are suggested return 0 for a successful run, otherwise exit(errno) to indicate the running is not you expeced.
+
+Q6: where are the output or log files for my test?
+A6: Suppose your test case is open64/x86_64/compile/bug787.c, you run at 10/17/2011, then the output are located at:
+    output/2011-10-17/open64/x86_64/compile/
+    the log file is located at: 
+    log/2011-10-17
+
+Q7: for a test case, what are the output?
+A7: Suppose your test case is bug787.c , the output may includes:
+    1.) the binary: bug787
+    2.) the compile output dump: bug787.ci
+    3.) the run dump: bug787.run
+
+Q8: Are there other directives in the source file to control the compiling or output?
+A8: Yes, standard directives include:
+   1). CMD: run CMD after the compile 
+   2). NOEXEC: no run, only compile and link
+   3). OBJ: only compile, no link and run
+   4). ASM: only generate assembly file
+   5). FLAGS: compiling flags for the compile. Note, multi-flags can only be added with multiple FLAGS lines, each line with a FLAGS directive.
+     for example:
+     //FLAGS: -O1
+    //FLAGS: -m64
+    //FLAGS: -fpic
+     means the compile flags "-O1 -m64 -fpic" are added.
+   6). PLATFORM: the bug case is only for run under PLATFORM.  
+
+Q9: A5 and A6 answered the question of testing single file cases for compile and run. If I have a case with multiple file compiling and linking, or I have other checks than simply compile and run, What can I do?
+A9:  You should then write a customized makefile named "casename.mk", put it to the mkfile directory. Note, this .mk file is just a makefile, should have 3 standard target: compile, run and compile. You put your generalized build/run/compile commands in the mk file. An example is shown below:
+
+bug838-1.mk
+out_log=$(OUT_DIR)/$(BASENAME).out.log
+OBJ=$(OUT_DIR)/$(BASENAME).o
+build:
+	$(CC) -O0 -c $(SRC_DIR)/$(BASENAME).c -o $(OBJ)
+
+run:$(OBJ)
+	$(shell readelf -s $(OBJ) | grep should_not_exist > $(out_log))
+
+compare:$(out_log)
+	diff $(SRC_DIR)/$(BASENAME).correct.log $(out_log)
+
+Q10: In your Q9 sample .mk file case, what are the pre-defined variables such as OUT_DIR BASENAME?
+A10: They are listed below:
+     BIN: the expected binary output
+     BUILD_ROOT: the mkfile is located in
+     CC:  the C compiler
+     CFLAGS: flags for the C compiler
+     CXX: the C plus plus compiler 
+     CXXFLAGS: flags for the C plus plus compiler
+     FC:  the Fortran compiler
+     FFLAGS: flags for the fortran compiler
+     SRC_DIR: the source directory of the test case.
+     OUT_DIR: the output directory for the test case.
+     SIM: the running is simulator 
+     BASENAME: the basename of the test case, without the ".mk".
+
+Q11: why you enclosed a (shell ) for your "run" command in Q9 sample?
+A11: some commands like "grep","diff",..., will return non zero to make, which makes the "make" consider it a fail run. Acturally, in the above case, we only want the command to run and save the result to $(out_log). So, we enclose the "shell" to mask the command result.
+
+Q12: How can select other compiler like gcc, or other flags to run the test cases?
+A12: Simply, "conf=gcc-O2 runtest open64.next", conf is a environment variable to choose the predefined configurations. The default configuration is opencc-O2, you can change to others defined in conf directory.
+
+
