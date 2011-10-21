@@ -1,1 +1,1 @@
-iffies_64 = jiffies;
+jiffies_64 = jiffies;
