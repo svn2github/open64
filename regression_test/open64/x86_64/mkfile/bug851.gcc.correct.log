@@ -1,0 +1,2 @@
+movl	$44, %edx
+movl	$0, %esi

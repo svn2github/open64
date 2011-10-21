@@ -1,0 +1,2 @@
+xorq %rsi,%rsi
+movq $44,%rdx
