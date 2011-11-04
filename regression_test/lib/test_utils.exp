@@ -165,7 +165,7 @@ namespace eval C_CLASS {
 	puts [format "%-40s%10s%10s%10s%15s" "  TESTNAME"  "ARCH" "BUILD"  "RUN" "COMPARE"]
 
 	puts $summary "<table width=\"600\" border=\"1\" >"
-	puts $summary "<tr><th colspan=\"4\" align=\"middle\">$title</th>"
+	puts $summary "<tr><th colspan=\"5\" align=\"middle\">$title</th>"
 	FormatTable "TESTNAME" "ARCH" "BUILD" " RUN " "COMPARE"
     }
 
@@ -188,7 +188,6 @@ namespace eval C_CLASS {
 	}
 	FormatTable "$title Summary" "----" "total:[expr $pass_build+$err_build]" "$err_build_html" "$err_run_html"
 	puts $summary "</table><br />"
-	close $summary
     } 
 
     #

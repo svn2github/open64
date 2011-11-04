@@ -20,6 +20,7 @@ incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
 incr_count PASS $C_CLASS::pass_run
 incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
 C_CLASS::ReportSum "Open64.net SingleFile Test" $summary
+close $summary
 
 set summary [open $logdir/open64.mkfile.log w+]
 C_CLASS::ReportTitle "Open64.net MkFile     Test" $summary
@@ -28,7 +29,7 @@ incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
 incr_count PASS $C_CLASS::pass_run
 incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
 C_CLASS::ReportSum "Open64.net MkFile     Test" $summary
-
+close $summary
 
 
 

@@ -1,0 +1,78 @@
+#!/usr/bin/expect -f
+
+global logdir subdir testhome date
+global cc cxx fc cflags cxxflags fflags sim comp_home sim_home lib_home platform
+
+# Do not use "load_lib test_utils.exp".
+# Cause it is provided by DejaGnu, does not support overloading.
+uplevel #0 source $testhome/lib/test_utils.exp
+
+
+
+set user [exec whoami]
+set host [exec hostname]
+set from "$user@$host"
+set to "yu.gang@hp.com"
+set subject "open64 regression site test result\[$cc\]"
+
+proc do_test_and_sendmail {to from subject} {
+    global summary
+
+    set sockid [open "| /usr/sbin/sendmail -t" w]
+    puts  $sockid "To: <$to>"
+    puts  $sockid "From: <$from>"
+    puts  $sockid "Subject: $subject"
+    puts  $sockid "Content-Type: text/html"
+    puts  $sockid "\n"
+    
+    set summary $sockid;
+    do_title
+    do_test 
+    
+    flush $sockid
+    close $sockid
+    return;
+}
+
+proc do_test {} {
+    global summary testhome subdir platform curdir
+    C_CLASS::ResetFlags
+    C_CLASS::InitCounters
+    C_CLASS::ReportTitle "Open64.net SingleFile Test" $summary
+    set curdir $testhome/$subdir
+    cd $curdir
+    C_CLASS::TestSingleSource "common/compile common/run $platform/compile $platform/run -iname *.c -o -iname *.C -o -iname *.cpp -o -iname *.f -o -iname *.f90"
+
+    incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
+    incr_count PASS $C_CLASS::pass_run
+    incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
+    C_CLASS::ReportSum "Open64.net SingleFile Test" $summary
+
+
+    C_CLASS::ReportTitle "Open64.net MkFile     Test" $summary
+    C_CLASS::TestMkSource "common/mkfile $platform/mkfile -iname *.mk"
+    incr_count FAIL [expr $C_CLASS::err_run + $C_CLASS::err_build]
+    incr_count PASS $C_CLASS::pass_run
+    incr_count TOTAL [expr $C_CLASS::pass_build + $C_CLASS::err_build]
+    C_CLASS::ReportSum "Open64.net MkFile     Test" $summary
+
+}
+
+proc do_title { } {
+    global platform cc cxx fc cflags cxxflags fflags sim
+    global summary
+    set date [exec date +%F]
+    puts $summary "Date: $date <br />"
+    puts $summary "Machine type: $platform <br />"
+    puts $summary "CC: $cc <br />"
+    puts $summary "CXX: $cxx <br /> "
+    puts $summary "FC: $fc <br />"
+    puts $summary "CFLAGS: $cflags <br />"
+    puts $summary "CXXFLAGS: $cxxflags <br />"
+    puts $summary "FFLAGS: $fflags <br />"
+    puts $summary "SIM:  $sim <br />"
+    puts $summary "<br />"
+}
+
+
+do_test_and_sendmail $to $from $subject
