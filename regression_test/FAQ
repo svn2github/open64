@@ -101,6 +101,7 @@ Q11: why you enclosed a (shell ) for your "run" command in Q9 sample?
 A11: some commands like "grep","diff",..., will return non zero to make, which makes the "make" consider it a fail run. Acturally, in the above case, we only want the command to run and save the result to $(out_log). So, we enclose the "shell" to mask the command result.
 
 Q12: How can select other compiler like gcc, or other flags to run the test cases?
-A12: Simply, "conf=gcc-O2 runtest open64.next", conf is a environment variable to choose the predefined configurations. The default configuration is opencc-O2, you can change to others defined in conf directory.
+A12: Simply, "conf=gcc-O2 runtest open64.exp", conf is a environment variable to choose the predefined configurations. The default configuration is opencc-O2, you can change to others defined in conf directory.
 
-
+Q13: I want to send the result to my email address, How can I?
+A13: you can run "runtest open64-mail.exp", don't forget to change the email address in the open64-mail.exp:)
