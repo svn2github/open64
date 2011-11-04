@@ -94,7 +94,7 @@ namespace eval C_CLASS {
 	}
     }
 
-    proc Report_TestCase_Result { case_base_name build_result run_result compare_result } {
+    proc Report_TestCase_Result { case_base_name arch build_result run_result compare_result } {
 	global C_CLASS::err_cmpr C_CLASS::pass_cmpr
 	set total_cmpr [expr $err_cmpr + $pass_cmpr ]
 	set build_result_str "PASS"
@@ -155,18 +155,18 @@ namespace eval C_CLASS {
 		set build_result_str_html "<font color=\"red\">FAIL</font>"
 	    }
 	}
-	puts [format "%-30s%10s%10s%15s" $case_base_name $build_result_str $run_result_str $compare_result_str]
-	FormatTable $case_base_name $build_result_str_html $run_result_str_html $compare_result_str_html
+	puts [format "%-40s%10s%10s%10s%15s" $case_base_name $arch $build_result_str $run_result_str $compare_result_str]
+	FormatTable $case_base_name $arch $build_result_str_html $run_result_str_html $compare_result_str_html
     }
 
     proc ReportTitle { title summary} {
 	puts ""
 	puts "=========================$title========================="
-	puts [format "%-30s%10s%10s%15s" "  TESTNAME"  "BUILD"  "RUN" "COMPARE"]
+	puts [format "%-40s%10s%10s%10s%15s" "  TESTNAME"  "ARCH" "BUILD"  "RUN" "COMPARE"]
 
 	puts $summary "<table width=\"600\" border=\"1\" >"
 	puts $summary "<tr><th colspan=\"4\" align=\"middle\">$title</th>"
-	FormatTable "TESTNAME" "BUILD" " RUN " "COMPARE"
+	FormatTable "TESTNAME" "ARCH" "BUILD" " RUN " "COMPARE"
     }
 
     proc ReportSum { title summary} {
@@ -186,7 +186,7 @@ namespace eval C_CLASS {
 	} else {
 	    set err_run_html "run error:$err_run"
 	}
-	FormatTable "$title Summary" "total:[expr $pass_build+$err_build]" "$err_build_html" "$err_run_html"
+	FormatTable "$title Summary" "----" "total:[expr $pass_build+$err_build]" "$err_build_html" "$err_run_html"
 	puts $summary "</table><br />"
 	close $summary
     } 
@@ -355,6 +355,8 @@ namespace eval C_CLASS {
 	if { [string equal -nocase $testcase ""] } {
 	    return
 	}
+
+        set arch [lindex [split $testcase "/"] 0]
 
 	# get testcase name and basename(without extension)
 	set casename [file tail $testcase]
@@ -556,7 +558,7 @@ namespace eval C_CLASS {
             } else {
                 incr err_build
             }
-        Report_TestCase_Result $basename $buildres $runres $cmpres
+        Report_TestCase_Result $basename $arch $buildres $runres $cmpres
         return 0
     }
 
@@ -572,6 +574,7 @@ namespace eval C_CLASS {
 	# get testcase name and basename(without extension)
 	set casename [file tail $testcase]
 	set basename [file rootname $casename]
+        set arch [lindex [split $testcase "/"] 0]
 
 	# dir where .exp file is in
 	set suit_dir [file normalize [file join $testhome $curdir] ]    	
@@ -698,7 +701,7 @@ namespace eval C_CLASS {
             }
         }
 
-        Report_TestCase_Result $basename $buildres $runres $cmpres
+        Report_TestCase_Result $basename $arch $buildres $runres $cmpres
         return 0
     }
     
@@ -729,545 +732,3 @@ namespace eval C_CLASS {
 }
 
 
-namespace eval TCL_CLASS {
-    variable total_pass 0 total_fail 0 err_run 0 pass_run 0 err_instr ""
-
-    proc ReadOutputFile {outputfile} {
-	global TCL_CLASS::total_pass TCL_CLASS::total_fail
-	global TCL_CLASS::pass_run TCL_CLASS::err_run TCL_CLASS::err_instr
-
-	if [catch {open $outputfile r} fileHandle] {
-	    puts stderr "Cannot open $outputfile: $fileHandle"
-	    return 0;
-	} else {
-	    while { [gets $fileHandle line] >= 0} {
-		if { [string match "*Test*" $line] } {
-		    if { [string match "*passed" $line] } {
-			incr pass_run;
-			incr total_pass;
-		    } elseif { [string match "*failed" $line] } {
-			incr err_run;
-			incr total_fail;
-			append err_instr $line "\n";
-		    } else { }
-		}
-	    }  
-	    close $fileHandle
-	    # print error instructions
-	    if { $err_run > 0} {
-		puts "     Run Error instruction :"
-		puts "$err_instr"
-		return 0;
-	    }
-	}
-	return 1;
-    }
-
-    proc CompareResult {outputfile logfile casename} {
-	global TCL_CLASS::total_pass TCL_CLASS::total_fail
-	global TCL_CLASS::pass_run TCL_CLASS::err_run 
-
-	if [isASCIIFile $logfile] {
-	    #user defination
-	    set filters "exec grep -v -e SimpLight"
-	    append filters " -e Machine"
-	    append filters " -e Warn "
-	    append filters " -e \"---\""
-	    append filters " -e syscall"
-	    append filters " -e PC"
-	    append filters " -e Loading"
-	    append filters " -e Clear"
-	    append filters " -e SP"
-	} else {
-	    set filters "exec cat"
-	}
-
-	set filter_correct_log $filters
-	append filter_correct_log " $logfile >& $outputfile.2"
-	append filters " $outputfile >& $outputfile.1"
-
-	#filter output of this run
-	set runres [catch  $filters res]
-	#filter correct log
-	set runres [catch $filter_correct_log res]
-	#compare
-	set runres [catch { exec diff $outputfile.1 $outputfile.2  } cmpr_res]
-	#in normal case, there should be no diff
-	if { $cmpr_res == "" } {
-	    incr pass_run
-	    incr total_pass
-	    return 0;
-	}
-	incr err_run;
-	incr total_fail;
-	return 1;
-    }
-
-    proc CompareResults {dump_ext correct_ext case_dir target_dir} {
-	set correct_files [lsort [exec find $case_dir -iname *.$correct_ext]]
-	foreach f $correct_files {
-	    set basef [file tail [file rootname $f]]
-	    CompareResult [file join $target_dir $basef.$dump_ext] $f $basef
-	}
-    }
-
-    proc ReportTitle { title summary} {
-	puts ""
-	puts "=========================$title========================="
-	puts [format "%-30s%10s%10s%10s" "  TESTNAME"  "TOTAL RUN"  "PASS" "FAIL"]
-	
-	puts $summary "<table width=\"600\" border=\"1\">"
-	puts $summary "<tr><th colspan=\"4\" align=\"middle\">$title</th>"
-	FormatTable "TESTNAME" "TOTAL RUN" " PASS" "FAIL"
-    }
-
-    proc ReportSum { title summary} {
-	global TCL_CLASS::total_pass TCL_CLASS::total_fail 
-	puts ""
-	puts "$title Summary:  total:[expr $total_pass + $total_fail]    pass:$total_pass    fail:$total_fail"
-	puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	puts ""
-
-	if {$total_fail != 0} {
-	    set total_fail_html "<font color=\"red\">fail:$total_fail</font>"
-	} else {
-	    set total_fail_html "fail:$total_fail"
-	}
-	FormatTable "$title Summary:" "total:[expr $total_pass + $total_fail]" "pass:$total_pass" "$total_fail_html" 
-	puts $summary "</table><br />"
-	close $summary
-    }
-
-    proc TestSingleSource { find_rule {pattern ""} { simulator $fsim1}} {
-	global curdir all_runtests
-	global TCL_CLASS::total_pass TCL_CLASS::total_fail
-	global TCL_CLASS::pass_run TCL_CLASS::err_run 
-	global TCL_CLASS::err_instr
-
-	set total_pass 0
-	set total_fail 0
-	set err_run 0
-	set pass_run 0
-	set err_instr ""
-
-	set test_limited 0
-	if [info exists all_runtests] {
-	    foreach x [array names all_runtests] {
-		if { $all_runtests($x) != ""} {
-		    #allow "," to be spearator in addition to space
-		    set testlists [split $all_runtests($x) ","]
-		    foreach testname $testlists {
-			if { $testname == ""} {
-			    continue
-			}
-			set test_found($testname) 1
-		    }
-		    set test_limited 1
-		}
-	    }
-	}
-	set files [eval "exec find $find_rule" ]
-	set files [split $files "\n"]
-	set files [lsort -dictionary $files]
-	foreach file $files {
-	    if { [file isfile $file] } {
-		set file_exp [file rootname $file]
-		if {$test_limited == 1} {
-		    if {![info exists test_found([file tail $file_exp])]} {
-			verbose "ignore testcase:$file" 2
-			continue
-		    }
-		}
-		append file_exp ".exp"
-		if { [file exists $file_exp] } {
-		    continue
-		}
-		set err_run 0
-		set pass_run 0
-		set err_instr ""
-		if { $pattern != ""} {
-		    if { [string match $pattern $file ]} {
-			TestSingleCase [lindex $file 0] $simulator
-		    } 
-		} else {
-		    TestSingleCase [lindex $file 0] $simulator
-		}
-		cd $curdir
-	    }
-	}
-    }
-
-    proc TestSingleCase {testcase simulator} {
-	global curdir logdir testhome subdir testoutput 
-	global TCL_CLASS::total_pass TCL_CLASS::total_fail
-	global TCL_CLASS::pass_run TCL_CLASS::err_run 
-	global TCL_CLASS::err_instr
-	if { [string equal -nocase $testcase ""] } {
-	    return
-	}
-
-	# get testcase name and basename(without extension)
-	set casename [file tail $testcase]
-	set basename [file rootname $casename]
-
-	# dir where .exp file is in
-	set suit_dir [file normalize [file join $testhome $curdir] ]    	
-	# dir corresponds to suit_root in output/date dir
-	set suit_out_dir [file normalize [file join $testoutput $subdir] ]
-	# dir where the testcase is in.
-	set case_dir [file normalize [file dirname [file join $curdir $testcase] ] ]	
-	# for each test case ,we make a corresponding dir in output/date dir
-	set case_out_dir [file normalize [file join $suit_out_dir [file dirname $testcase] ] ]
-
-	# dir where run output is in.
-	if {[info exists TCL_CLASS::case_output_dir]} {
-	    global TCL_CLASS::case_output_dir
-	} else {
-	    set case_output_dir $case_out_dir
-	}
-
-	# dir where target is in
-	if { [info exists TCL_CLASS::target_dir]} {
-	    if { $TCL_CLASS::target_dir == "case_dir"} {
-		set target_dir $case_dir
-	    } else {
-		global TCL_CLASS::target_dir
-	    }
-	} else {
-	    set target_dir $case_out_dir
-	}
-
-	if { ![file isdirectory $case_out_dir] } {
-	    file mkdir $case_out_dir
-	}
-	if { ![file isdirectory $case_output_dir] } {
-	    file mkdir $case_output_dir
-	}
-
-	# target file of build
-	set target_file [file join $target_dir $basename]
-	# logfile name of compiling processs
-	set cmpl_log_file [file join $case_out_dir $casename.ci]
-	# logfile name of run process
-	set run_log_file [file join $case_out_dir $casename.run]
-	# correct file
-	set correct_file [file join $case_dir $basename.correct.log]
-	# logfile name of run output
-	set case_output_file [file join $case_output_dir $basename.log]
-	
-	set dat_files [exec find $case_dir -iname *.dat]
-	foreach a $dat_files {
-	    catch { exec cp -f $a $target_dir }
-	}
-	set ref_files [exec find $case_dir -iname *.ref]
-
-	# normalize testcase name to be used in compiling command
-	set testcase [file normalize $testcase]
-
-	cd $target_dir
-
-	set cmd "$simulator $target_file"
-	set timeout  $::max_timeout
-	spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
-	expect {
-	    do_cmd_succeed { set runres 0}
-	    do_cmd_failed { set runres -1}
-	    default { set runres 1}
-	}
-	expect eof
-	#exp_close 
-	exp_wait
-	#output file compare : may be different for different test file        
-	if { $runres } {
-	    #program abort  abnormally
-	    incr err_run
-	    incr total_fail
-	    FormatTable $casename [expr $err_run +$pass_run] $pass_run $err_run
-	    puts [format "%-30s%10d%10d%10d%20s" $casename [expr $err_run + $pass_run] $pass_run $err_run "run aborted"]
-	} else {
-	    if { [file exist $correct_file ] } {
-		CompareResult $run_log_file $correct_file $basename 
-	    } elseif { $ref_files != "" } {
-		CompareResults "dmp" "ref" $case_dir $target_dir
-	    } elseif { [file exist $run_log_file] } {
-		ReadOutputFile $run_log_file 
-	    } else {
-		puts "Error:No correct log file for testcase $basename"
-		set cmpres -1
-	    }
-	    if {$err_run != 0} {
-		set err_run_html "<font color=\"red\">$err_run</font>"
-	    } else {
-		set err_run_html "<font color=\"red\">$err_run</font>"
-	    }
-	    FormatTable $casename [expr $err_run +$pass_run] $pass_run $err_run
-	    puts [format "%-30s%10d%10d%10d" $casename [expr $err_run + $pass_run] $pass_run $err_run]
-	}
-    }
-
-}
-
-namespace eval MAKE_CLASS {
-    variable total_pass 0 total_fail 0 pass_cmpl 0 fail_cmpl 0 pass_build 0
-    variable fail_build 0 pass_run   0 fail_run  0 pass_cmpr 0 fail_cmpr  0
-
-    proc ReportTitle { title summary} {
-	puts ""
-	puts "=========================$title========================="
-	puts [format "%-30s%8s%8s%8s%8s" "  TESTNAME"  "COMPILE"  "BUILD" "RUN" "COMPARE"]
-	
-	puts $summary "<table width=\"600\" border=\"1\">"
-	puts $summary "<tr><th colspan=\"5\" align=\"middle\">$title</th>"
-	FormatTable "TESTNAME" "COMPILE" "BUILD" "RUN" "COMPARE"
-    }
-
-    proc ReportSum { title summary} {
-	global MAKE_CLASS::total_pass MAKE_CLASS::total_fail MAKE_CLASS::fail_cmpl 
-	global MAKE_CLASS::fail_build MAKE_CLASS::fail_run   MAKE_CLASS::fail_cmpr
-	puts ""
-	puts "$title Sum: total:[expr $total_pass+$total_fail], FAIL: $total_fail (compile:$fail_cmpl build:$fail_build run:$fail_run compare:$fail_cmpr)"
-	puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-	puts ""
-
-	FormatTable "$title Sum: $total_fail of [expr $total_pass+$total_fail] failed" "fail:$fail_cmpl" "fail:$fail_build" "fail:$fail_run" "fail:$fail_cmpr" 
-	puts $summary "</table><br />"
-	close $summary
-    }
-    
-    proc Report_TestCase_Result { case_base_name cmpl_result build_result run_result cmpr_result } {
-	set cmpl_result_str "PASS"
-	set cmpl_result_str_html "PASS"
-	set build_result_str "----"
-	set build_result_str_html "----"
-	set run_result_str "----"
-	set run_result_str_html "----"
-	set cmpr_result_str "----"
-	set cmpr_result_str_html "----"
-	switch -exact -- $cmpl_result {
-	    0 {
-		switch -exact -- $build_result {
-		    0 {
-			set build_result_str "PASS"
-			set build_result_str_html "PASS"
-			switch -exact -- $run_result {
-			    0 { 
-				set run_result_str "PASS"
-				set run_result_str_html "PASS"
-				switch -exact -- $cmpr_result {
-				    0 {
-					set cmpr_result_str "PASS"
-					set cmpr_result_str_html "PASS"
-				    }
-				    default {
-					set cmpr_result_str "FAIL"
-					set cmpr_result_str_html "<font color=\"red\">FAIL</font>"
-				    }
-				}
-			    }
-			    default {
-				set run_result_str "FAIL"
-				set run_result_str_html "<font color=\"red\">FAIL</font>"
-			    }
-			}
-		    }
-		    default { 
-			set build_result_str "FAIL" 
-			set build_result_str_html "<font color=\"red\">FAIL</font>"
-		    }
-		}
-	    }
-	    default { 
-		set cmpl_result_str "FAIL"
-		set cmpl_result_str_html "<font color=\"red\">FAIL</font>"
-	    }
-	}
-	puts [format "%-30s%8s%8s%8s%8s" $case_base_name $cmpl_result_str $build_result_str $run_result_str $cmpr_result_str]
-	FormatTable $case_base_name $cmpl_result_str_html $build_result_str_html $run_result_str_html $cmpr_result_str_html
-    }
-
-    proc TestSingleSource {{testlistfile "testcase"} { simulator $fsim1}} {
-	global curdir all_runtests
-	global MAKE_CLASS::total_pass MAKE_CLASS::total_fail MAKE_CLASS::pass_cmpl 
-	global MAKE_CLASS::fail_cmpl  MAKE_CLASS::pass_build MAKE_CLASS::fail_build
-	global MAKE_CLASS::pass_run   MAKE_CLASS::fail_run   MAKE_CLASS::pass_cmpr 
-	global MAKE_CLASS::fail_cmpr
-
-	set total_pass 0
-	set total_fail 0
-	set pass_cmpl  0
-	set fail_cmpl  0
-	set pass_build 0
-	set fail_build 0
-	set pass_run   0
-	set fail_run   0
-	set pass_cmpr  0
-	set fail_cmpr  0
-
-	set test_limited 0
-	if [info exists all_runtests] {
-	    foreach x [array names all_runtests] {
-		if { $all_runtests($x) != ""} {
-		    #allow "," to be spearator in addition to space
-		    set testlists [split $all_runtests($x) ","]
-		    foreach testname $testlists {
-			if { $testname == ""} {
-			    continue
-			}
-			set test_found($testname) 1
-		    }
-		    set test_limited 1
-		}
-	    }
-	}
-	if { [file isfile $testlistfile] } {
-	    if [catch {open $testlistfile r} fileHandle] {
-		puts stderr "Cannot open $testlistfile: $fileHandle"
-		return -1;
-	    } else {
-		while { [gets $fileHandle line] >= 0 } {
-		    if { [string trim $line] != "" } {
-			lappend files $line.mk
-		    }
-		}
-		close $fileHandle
-	    }
-	}
-	foreach file $files {
-	    if { [file isfile $file] } {
-		set file_exp [file rootname $file]
-		if {$test_limited == 1} {
-		    if {![info exists test_found([file tail $file_exp])]} {
-			verbose "ignore testcase:$file" 2
-			continue
-		    }
-		}
-		append file_exp ".exp"
-		if { [file exists $file_exp] } {
-		    continue
-		}
-		TestSingleCase [lindex $file 0] $simulator
-		cd $curdir
-	    }
-	}
-    }
-
-    proc TestSingleCase {testcase simulator} {
-	global curdir logdir testhome subdir testoutput 
-	global MAKE_CLASS::total_pass MAKE_CLASS::total_fail MAKE_CLASS::pass_cmpl 
-	global MAKE_CLASS::fail_cmpl  MAKE_CLASS::pass_build MAKE_CLASS::fail_build
-	global MAKE_CLASS::pass_run   MAKE_CLASS::fail_run   MAKE_CLASS::pass_cmpr 
-	global MAKE_CLASS::fail_cmpr
-
-	if { [string equal -nocase $testcase ""] } {
-	    return
-	}
-
-	# get testcase name and basename(without extension)
-	set casename [file tail $testcase]
-	set basename [file rootname $casename]
-
-	# dir where .exp file is in
-	set suit_dir [file normalize [file join $testhome $curdir] ]    	
-	# dir corresponds to suit_root in output/date dir
-	set suit_out_dir [file normalize [file join $testoutput $subdir] ]
-	# dir where the testcase is in.
-	set case_dir [file normalize [file dirname [file join $curdir $testcase] ] ]	
-	# for each test case ,we make a corresponding dir in output/date dir
-	set case_out_dir [file normalize [file join $suit_out_dir [file dirname $testcase] ] ]
-
-	# dir where target is in
-	if { [info exists MAKE_CLASS::target_dir]} {
-	    if { $MAKE_CLASS::target_dir == "case_dir"} {
-		set target_dir $case_dir
-	    } else {
-		global MAKE_CLASS::target_dir
-	    }
-	} else {
-	    set target_dir $case_out_dir
-	}
-
-	if { ![file isdirectory $case_out_dir] } {
-	    file mkdir $case_out_dir
-	}
-
-	# logfile name of compiling processs
-	set cmpl_log_file [file join $case_out_dir $casename.ci]
-	# give testcase a full path name
-	set testcase [file normalize [file join $curdir $testcase]]
-
-	cd $target_dir
-	set cmplres  1
-	set buildres 1
-	set runres   1
-	set cmprres  1
-
-	set timeout  $::max_timeout
-	set cmd "make compile BUILD_ROOT=$testhome -f $testcase"
-	spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
-	expect {
-	    do_cmd_succeed { set cmplres 0}
-	    do_cmd_failed { set cmplres -1}
-	    default { set cmplres 1}
-	}
-	expect eof
-	#exp_close 
-	exp_wait
-	if { $cmplres == 0 } {
-	    incr pass_cmpl
-	    set cmd "make build BUILD_ROOT=$testhome -f $testcase"
-	    spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file" "add"
-	    expect {
-		do_cmd_succeed { set buildres 0}
-		do_cmd_failed { set buildres -1}
-		default { set buildres 1}
-	    }
-	    expect eof
-	    #exp_close 
-	    exp_wait
-	    if { $buildres == 0 } {
-		incr pass_build
-		set cmd "make run BUILD_ROOT=$testhome -f $testcase"
-		spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file" "add"
-		expect {
-		    do_cmd_succeed { set runres 0}
-		    do_cmd_failed { set runres -1}
-		    default { set runres 1}
-		}
-		expect eof
-		#exp_close 
-		exp_wait
-		if { $runres == 0 } {
-		    incr pass_run
-		    set cmd "make compare BUILD_ROOT=$testhome -f $testcase"
-		    spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file" "add"
-		    expect {
-			do_cmd_succeed { set cmprres 0}
-			do_cmd_failed { set cmprres -1}
-			default { set cmprres 1}
-		    }
-		    expect eof
-		    #exp_close 
-		    exp_wait
-		    if { $cmprres == 0 } {
-			incr pass_cmpr
-			incr total_pass
-		    } else {
-			incr fail_cmpr
-			incr total_fail
-		    }
-		} else {
-		    incr fail_run
-		    incr total_fail
-		}
-	    } else {
-		incr fail_build
-		incr total_fail
-	    }
-	} else {
-	    incr fail_cmpl
-	    incr total_fail
-	}
-	Report_TestCase_Result $basename $cmplres $buildres $runres $cmprres
-    }
-
-}
