@@ -61,9 +61,11 @@ proc do_test {} {
 proc do_title { } {
     global platform cc cxx fc cflags cxxflags fflags sim
     global summary
+    global tag
     set date [exec date +%F]
     puts $summary "Date: $date <br />"
     puts $summary "Machine type: $platform <br />"
+    puts $summary "TAG: $tag <br />"
     puts $summary "CC: $cc <br />"
     puts $summary "CXX: $cxx <br /> "
     puts $summary "FC: $fc <br />"

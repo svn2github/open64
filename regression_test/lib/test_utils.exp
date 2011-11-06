@@ -85,8 +85,7 @@ namespace eval C_CLASS {
 		    incr err_cmpr
 		    FormatTable "In bellow case" "compare fail:" "errno:$err_cmpr" $basef 
 		}
-	    } 
-	}
+	    }	}
 	if { $err_cmpr == 0 && $pass_cmpr >0 } {
 	    return 0
 	} else {
@@ -327,12 +326,16 @@ namespace eval C_CLASS {
 	    set flagarg "CFLAGS"
 	    set commentbeg "//"
 	    set flag $cflags
-	} elseif { [string match "*.cc" $case_name] || [string match "*.C" $case_name] || [string match "*.cpp" $case_name] || [string match "*.cxx" $case_name] } {
+	} elseif { [string match "*.cc" $case_name] || 
+                   [string match "*.C" $case_name] || 
+                   [string match "*.cpp" $case_name] || 
+                   [string match "*.cxx" $case_name] } {
 	    set ltype "CXX"
 	    set flagarg "CXXFLAGS"
 	    set commentbeg "//"
 	    set flag $cxxflags
-	} elseif { [string match "*.f" $case_name] || [string match "*.f90" $case_name]} {
+	} elseif { [string match "*.f" $case_name] || 
+                   [string match "*.f90" $case_name]} {
 	    set ltype "FC"
 	    set flagarg "FFLAGS"
 	    set commentbeg "!"
@@ -351,6 +354,8 @@ namespace eval C_CLASS {
 	global testoutput testhome logdir curdir subdir 
 	global C_CLASS::err_build C_CLASS::pass_build
 	global C_CLASS::err_run C_CLASS::pass_run
+        # tag is an enhanced feature
+        global tag
 	if { [string equal -nocase $testcase ""] } {
 	    return
 	}
@@ -424,139 +429,158 @@ namespace eval C_CLASS {
 	set cmd ""
         
 
-	    set casefile [open $testcase RDONLY]
-	    set commandlist [list]
-	    set flags "" 
-	    set gen_option ""
+        set casefile [open $testcase RDONLY]
+        set commandlist [list]
+        set flags "" 
+        set gen_option ""
 
-	    # Decide the variables according to the source type
-	    DecideSourceType $casename ltype flagarg commentbeg flags
+        # Decide the variables according to the source type
+        DecideSourceType $casename ltype flagarg commentbeg flags
 	
-	    while { [gets $casefile line] >=0 } {
-		if { [string first $commentbeg $line] == 0 } {
-		    set line [string range $line [string length $commentbeg] [expr [string length $line] - 1]]
-		    set line [string trim $line]
-		    switch -glob $line {
-			CMD:* {
-			    regsub {CMD:} $line {} newcmd; #trim the start //CMD: string
-			    if { $cmd == "" } {
-				set cmd $newcmd
-			    } else {
-				set cmd "$cmd && $newcmd"
-			    }
-			}
-			NOEXEC* {
-			    set needexec 0
-			}
-			OBJ* {
-			    set needlink 0
-			    set needexec 0
-			    set gen_option " -c"
-			    set target_file "$target_file.o"
-			}
-			ASM* {
-			    set needlink 0
-			    set needexec 0
-			    set gen_option " -S"
-			    set target_file "$target_file.s"
-			}
-			FLAGS:* {
-			    regsub {FLAGS:} $line {} line; #trim to start //FLAGS: string
-			    append flags " [string trim $line]"
-			}
-			PLATFORM:* {
-			    regsub {PLATFORM:} $line {} line;
-			    if { ![IsPlatformCompatible $line] } {
+        # the enhanced tags feature
+        set tags [list]
+        while { [gets $casefile line] >=0 } {
+            if { [string first $commentbeg $line] == 0 } {
+                set line [string range $line [string length $commentbeg] [expr [string length $line] - 1]]
+                set line [string trim $line]
+                switch -glob $line {
+                    CMD:* {
+                        regsub {CMD:} $line {} newcmd; #trim the start //CMD: string
+                        if { $cmd == "" } {
+                            set cmd $newcmd
+                        } else {
+                            set cmd "$cmd && $newcmd"
+                        }
+                    }
+                    NOEXEC* {
+                        set needexec 0
+                    }
+                    OBJ* {
+                        set needlink 0
+                        set needexec 0
+                        set gen_option " -c"
+                        set target_file "$target_file.o"
+                    }
+                    ASM* {
+                        set needlink 0
+                        set needexec 0
+                        set gen_option " -S"
+                        set target_file "$target_file.s"
+                    }
+                    FLAGS:* {
+                        regsub {FLAGS:} $line {} line; #trim to start //FLAGS: string
+                        append flags " [string trim $line]"
+                    }
+                    PLATFORM:* {
+                        regsub {PLATFORM:} $line {} line;
+                        if { ![IsPlatformCompatible $line] } {
 				close $casefile;
 				return;
-			    }
-			}
-		    }
-		} else {
-		    break
-		}
-	    }
-	    close $casefile
-
-	    if { $cmd == "" } {
-		if { [info exists build_command] } { 
-		    global build_command
-		    set cmd $build_command
-		} else {
-		    set cmd "\$($ltype) $gen_option \$($flagarg) \$(SOURCE) -o \$(TARGET)"
-		}
-	    }
-	    regsub "\\\$\\\(SOURCE\\\)" $cmd $testcase cmd
-	    regsub "\\\$\\\(TARGET\\\)" $cmd $target_file cmd
-	    regsub "\\\$\\\(SIM\\\)" $cmd $sim cmd
-	    regsub "\\\$\\\(CC\\\)" $cmd $cc cmd
-	    regsub "\\\$\\\(CXX\\\)" $cmd $cxx cmd
-	    regsub "\\\$\\\(FC\\\)" $cmd $fc cmd
-	    regsub "\\\$\\\(CFLAGS\\\)" $cmd $flags cmd
-	    regsub "\\\$\\\(CXXFLAGS\\\)" $cmd $flags cmd
-	    regsub "\\\$\\\(FFLAGS\\\)" $cmd $flags cmd
-
-            # elf file required be in the directory where invoke fsim
-            cd $target_dir 
-
-            set timeout $::max_timeout 
-            spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
-            expect {
-                do_cmd_succeed { set buildres 0}
-                do_cmd_failed { set buildres -1}
-                default { set buildres 2}
-            }
-            expect eof
-            # The expressions above and under have the same effect.
-            #exp_close
-            exp_wait
-            # run 
-            if { $buildres == 0 } {
-                incr pass_build
-                if { $needexec == 1 } {
-                #run it in simulator
-                    set cmd "$simulator $target_file"
-                    set timeout $::max_timeout
-                    spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
-                    expect {
-                        do_cmd_succeed { set runres 0 }
-                        do_cmd_failed { set runres -1 }
-                        default { set runres 2}
-                    }
-                    expect eof
-                    #exp_close
-                    exp_wait
-                    #output file compare : may be different for different test file        
-                    if { $runres } {
-                        incr err_run
-                    } else {
-                        #If you want a special result verification method, please change here
-                        if { [file exists $case_output_file ] } {
-                            set cmpres [ ReadOutputFile $case_output_file ]
-                        } elseif { [file exist $correct_file] } {
-                            if {[file exist $target_file.out]} {
-                                set cmpres [ CompareResult "$target_file.out" $correct_file $basename ]
-                            } else {
-                                set cmpres [ CompareResult $run_log_file $correct_file $basename ]
-                            }
-                            if { $cmpres == 0 } {
-                                incr pass_run
-                            } else {
-                                incr err_run
-                            }     
-                        } else {
-                            set cmpres -1
-                            incr pass_run
                         }
-                    } 
-                } else {
-                    # indicate a build-only test
-                    set buildres 1
-                    incr pass_run
+                    }
+                    TAG:* {
+                        regsub {TAG:} $line {} line; #trim to start //TAG: string
+                        append tags "[string trim $line]"
+                    }
                 }
             } else {
-                incr err_build
+                break
             }
+        }
+        close $casefile
+
+        if { $tag != "" } {
+            set found ""
+            foreach t $tags {
+                if { $t == $tag } {
+                    set found "1"
+                    break
+                }
+            }
+            if { $found == "" } {
+                return 0
+            }
+        }
+
+        if { $cmd == "" } {
+            if { [info exists build_command] } { 
+                global build_command
+                set cmd $build_command
+            } else {
+                set cmd "\$($ltype) $gen_option \$($flagarg) \$(SOURCE) -o \$(TARGET)"
+            }
+        }
+        regsub "\\\$\\\(SOURCE\\\)" $cmd $testcase cmd
+        regsub "\\\$\\\(TARGET\\\)" $cmd $target_file cmd
+        regsub "\\\$\\\(SIM\\\)" $cmd $sim cmd
+        regsub "\\\$\\\(CC\\\)" $cmd $cc cmd
+        regsub "\\\$\\\(CXX\\\)" $cmd $cxx cmd
+        regsub "\\\$\\\(FC\\\)" $cmd $fc cmd
+        regsub "\\\$\\\(CFLAGS\\\)" $cmd $flags cmd
+        regsub "\\\$\\\(CXXFLAGS\\\)" $cmd $flags cmd
+        regsub "\\\$\\\(FFLAGS\\\)" $cmd $flags cmd
+
+        # elf file required be in the directory where invoke fsim
+        cd $target_dir 
+
+        set timeout $::max_timeout 
+        spawn [file join $testhome lib do_cmd.sh] "$cmd" "$cmpl_log_file"
+        expect {
+            do_cmd_succeed { set buildres 0}
+            do_cmd_failed { set buildres -1}
+            default { set buildres 2}
+        }
+        expect eof
+        # The expressions above and under have the same effect.
+        #exp_close
+        exp_wait
+        # run 
+        if { $buildres == 0 } {
+            incr pass_build
+            if { $needexec == 1 } {
+                #run it in simulator
+                set cmd "$simulator $target_file"
+                set timeout $::max_timeout
+                spawn [file join $testhome lib do_cmd.sh] "$cmd" "$run_log_file"
+                expect {
+                    do_cmd_succeed { set runres 0 }
+                    do_cmd_failed { set runres -1 }
+                    default { set runres 2}
+                }
+                expect eof
+                #exp_close
+                exp_wait
+                #output file compare : may be different for different test file        
+                if { $runres } {
+                    incr err_run
+                } else {
+                    #If you want a special result verification method, please change here
+                    if { [file exists $case_output_file ] } {
+                        set cmpres [ ReadOutputFile $case_output_file ]
+                    } elseif { [file exist $correct_file] } {
+                        if {[file exist $target_file.out]} {
+                            set cmpres [ CompareResult "$target_file.out" $correct_file $basename ]
+                        } else {
+                            set cmpres [ CompareResult $run_log_file $correct_file $basename ]
+                        }
+                        if { $cmpres == 0 } {
+                            incr pass_run
+                        } else {
+                            incr err_run
+                        }     
+                    } else {
+                        set cmpres -1
+                        incr pass_run
+                    }
+                } 
+            } else {
+                # indicate a build-only test
+                set buildres 1
+                incr pass_run
+            }
+        } else {
+            incr err_build
+        }
         Report_TestCase_Result $basename $arch $buildres $runres $cmpres
         return 0
     }
@@ -566,6 +590,7 @@ namespace eval C_CLASS {
 	global testoutput testhome logdir curdir subdir 
 	global C_CLASS::err_build C_CLASS::pass_build
 	global C_CLASS::err_run C_CLASS::pass_run
+        global tag
 	if { [string equal -nocase $testcase ""] } {
 	    return
 	}
@@ -640,6 +665,29 @@ namespace eval C_CLASS {
 	set cmd ""
 
 	if {[file exist [file join $case_dir $basename.mk] ]} {
+            set casefile [open [file join $case_dir $basename.mk] RDONLY]
+            set tags [list]
+            while { [gets $casefile line] >=0 } {
+                if { [regexp "^##TAG:" $line] == 1 } {
+                    regsub {^##TAG:} $line {} line; #trim to start //TAG: string
+                    append tags "[string trim $line]"
+                }
+            }
+            close $casefile
+
+            if { $tag != "" } {
+                set found ""
+                foreach t $tags {
+                    if { $t == $tag } {
+                        set found "1"
+                        break
+                    }
+                }
+                if { $found == "" } {
+                    return 0
+                }
+            }
+
             set makearg "BIN=[file join $target_dir $basename]\
                              BUILD_ROOT=$testhome -f [file join $case_dir $basename.mk] \
                              CC=$cc \

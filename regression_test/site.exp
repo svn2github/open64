@@ -12,6 +12,13 @@ if {[info exists env(conf)]} {
     set conf open64-O2
 }
 
+# tag feature
+if {[info exists env(tag)]} {
+    set tag $env(tag)
+} else {
+    set tag ""
+}
+
 # Today's date in YYYY-MM-DD format
 set date [exec date +%F]
 

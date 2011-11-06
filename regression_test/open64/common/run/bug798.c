@@ -1,3 +1,4 @@
+//TAG: kernel
 //FLAGS: -O0
 int defined_fun()
 {
