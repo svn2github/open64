@@ -105,3 +105,27 @@ A12: Simply, "conf=gcc-O2 runtest open64.exp", conf is a environment variable to
 
 Q13: I want to send the result to my email address, How can I?
 A13: you can run "runtest open64-mail.exp", don't forget to change the email address in the open64-mail.exp:)
+
+Q14: I am only interested in part of the cases, instead of the total. How can I class the bug cases and test those interested?
+A14: You can use the "tag" feature. Examples below:
+bug798.c
+//TAG: kernel
+//FLAGS: -O0
+int defined_fun()
+{
+}
+
+int main()
+{
+...
+
+bug838-1.mk
+##TAG: kernel
+
+out_log=$(OUT_DIR)/$(BASENAME).out.log
+OBJ=$(OUT_DIR)/$(BASENAME).o
+
+pay attention to the format "//TAG: *" and "##TAG: *", then you start the test with something like:
+
+tag=kernel runtest open64.exp, you get what you want.
+
