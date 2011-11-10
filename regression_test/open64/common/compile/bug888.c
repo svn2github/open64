@@ -1,4 +1,5 @@
 //OBJ
+//TAG: csmith
 typedef int int32_t;
 typedef unsigned long int uint64_t;
 volatile int32_t g_3 = 1L;

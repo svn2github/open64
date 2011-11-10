@@ -1,4 +1,5 @@
 //OBJ
+//TAG:kernel
 
 static  test(void)
 {

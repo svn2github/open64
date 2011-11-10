@@ -1,4 +1,6 @@
 //OBJ
+//TAG: csmith
+
 typedef int int32_t; typedef unsigned char uint8_t; typedef unsigned short int
 uint16_t; typedef unsigned int uint32_t; typedef unsigned long int uint64_t;
 int32_t g_3[8][7][1] = { }; int32_t g_24 = (-5L); int32_t *g_27 =

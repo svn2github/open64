@@ -1,4 +1,6 @@
 //OBJ
+//TAG: kernel
+
 typedef unsigned char __u8;
 typedef unsigned int u32;
 struct cpuinfo_x86

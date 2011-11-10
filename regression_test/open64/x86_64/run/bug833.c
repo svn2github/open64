@@ -1,4 +1,5 @@
 //FLAGS: -O0
+//TAG: kernel
 struct in6_addr
 {
  union

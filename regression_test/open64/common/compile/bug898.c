@@ -1,4 +1,5 @@
 //OBJ
+//TAG: csmith
 typedef int int32_t;
 typedef long int int64_t;
 typedef unsigned char uint8_t;

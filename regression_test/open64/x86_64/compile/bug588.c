@@ -1,6 +1,7 @@
 //OBJ
 //FLAGS: -O0
 //FLAGS: -g
+//TAG: kernel
 #include <stdlib.h>
 
 typedef unsigned long int uintptr_t;

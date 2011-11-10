@@ -1,4 +1,5 @@
 //OBJ
+//TAG: kernel
 #define __get_user(x,ptr)                     \
   __get_user_nocheck((x),(ptr),sizeof(*(ptr)))
 

@@ -1,3 +1,4 @@
+##TAG: kernel
 build:
 	$(CC) -O0 -S $(SRC_DIR)/$(BASENAME).c -o $(OUT_DIR)/$(BASENAME).s
 

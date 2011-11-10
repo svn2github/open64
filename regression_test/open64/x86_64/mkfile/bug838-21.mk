@@ -1,3 +1,4 @@
+##TAG: kernel
 out_log=$(OUT_DIR)/$(BASENAME).out.log
 OBJ=$(OUT_DIR)/$(BASENAME).o
 build:

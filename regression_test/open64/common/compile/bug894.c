@@ -1,4 +1,5 @@
 //OBJ
+//TAG: csmith
 typedef short int int16_t;
 typedef int int32_t;
 typedef long int int64_t;

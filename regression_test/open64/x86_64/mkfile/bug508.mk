@@ -1,3 +1,4 @@
+##TAG: kernel
 ASM=$(OUT_DIR)/$(BASENAME).s
 out_log=$(OUT_DIR)/$(BASENAME).out.log
 build:

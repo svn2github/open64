@@ -1,7 +1,7 @@
 //OBJ
 //FLAGS: -O0
 //FLAGS: -g
-//
+//TAG: kernel
 # 1 "rngd_linux.c"
 # 1 "<built-in>"
 # 1 "<command-line>"

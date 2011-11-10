@@ -1,4 +1,5 @@
 //OBJ
+//TAG: csmith
 typedef signed char int8_t;
 typedef int int32_t;
 typedef unsigned char uint8_t;

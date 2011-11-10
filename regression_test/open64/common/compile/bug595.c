@@ -1,4 +1,5 @@
 //OBJ
+//TAG: kernel
 extern void doit(int);
 void
 quick_doit(int x)

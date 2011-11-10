@@ -1,4 +1,5 @@
 //OBJ
+//TAG:kernel
 static inline void cpuid_count(int op, int count, int *eax, int *ebx, int *ecx,
                                int *edx)
 {

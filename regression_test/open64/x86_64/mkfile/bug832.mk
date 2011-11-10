@@ -1,3 +1,4 @@
+##TAG: kernel
 build:
 	$(CC) -O0 -c $(SRC_DIR)/832-a.c -o $(OUT_DIR)/832-a.o
 	gcc -O0 -c $(SRC_DIR)/832-b.c -o $(OUT_DIR)/832-b.o
