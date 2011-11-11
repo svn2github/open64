@@ -31,7 +31,7 @@ static const struct ip6addrlbl_init_table
 const struct in6_addr *a=&(struct in6_addr){{{ 0xfc }}};
 int main()
 {
-  printf("%x\n",array_table[0].prefix);
+  printf("%x\n",*array_table[1].prefix);
   printf("%d\n",array_table[1].prefixlen);
   printf("%x\n",*a);
   return 0;
