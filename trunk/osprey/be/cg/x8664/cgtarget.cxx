@@ -1,4 +1,7 @@
 /*
+ * Copyright (C) 2011 Hewlett Packard, Company.  All Rights Reserved.
+ */
+/*
  * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
@@ -3673,6 +3676,59 @@ CGTARG_TN_For_Asm_Operand (const char* constraint,
       ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_mmx));
     else
       ret_tn = (pref_tn ? pref_tn : Build_RCLASS_TN(ISA_REGISTER_CLASS_float));
+  }
+  else if (*constraint == 'p') 
+  {
+    FmtAssert(load, (" there must be load expression for constraint p\n"));
+    if (load && WN_operator(load)==OPR_LDID && WN_class(load)==CLASS_PREG)
+    {
+      // immediate could have been put in preg by wopt
+      if (Preg_Is_Rematerializable(WN_load_offset(load), NULL)) {
+        load = Preg_Is_Rematerializable(WN_load_offset(load), NULL);
+      }
+      // shared load(lda) has been lifted to preg
+      else if (Preg_Lda(WN_load_offset(load))) {
+        load = Preg_Lda(WN_load_offset(load));
+      }
+      else {
+        load = NULL;
+      }
+    }
+    if (WN_operator(load) == OPR_INTCONST)
+    {
+      if (Is_Target_32bit() && (WN_const_val(load) > INT32_MAX || WN_const_val(load) < INT32_MIN)) {
+        char c[200];
+        sprintf(c,"%lld", WN_const_val(load));
+        ErrMsgSrcpos(EC_Ill_Int_Oflow, WN_Get_Linenum(asm_wn),
+                     INT32_MIN,c,INT32_MAX);
+      }
+      ret_tn = Gen_Literal_TN(WN_const_val(load), 
+                              MTYPE_bit_size(WN_rtype(load))/8);
+    }
+    else if ( WN_operator(load) == OPR_LDA && ST_sym_class(WN_st(load)) == CLASS_CONST) 
+    {
+      ST * base;
+      INT64 ofst;
+      // Allocate the string to the rodata section
+      Allocate_Object (WN_st(load));
+      Base_Symbol_And_Offset (WN_st(load), &base, &ofst);
+      ret_tn = Gen_Symbol_TN(base, ofst, 0);
+    }
+    else if ( WN_operator(load) == OPR_LDA && ST_sym_class(WN_st(load)) == CLASS_VAR)
+    {
+      ST * base;
+      INT64 ofst;
+      Base_Symbol_And_Offset_For_Addressing (WN_st(load), WN_lda_offset(load), &base, &ofst);
+      if (ofst == 0) { //no offset, using a symbol TN
+        ret_tn = Gen_Symbol_TN(base, ofst, 0);
+      } else { //has a offset, using a new TN to express the address
+        ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(WN_rtype(load)));
+      }
+    } 
+    else //other cases
+    { 
+      ret_tn = (pref_tn ? pref_tn : Build_TN_Of_Mtype(WN_rtype(load)));
+    }
   }
   else
   {
