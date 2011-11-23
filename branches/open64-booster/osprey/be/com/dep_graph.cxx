@@ -3435,6 +3435,28 @@ void SCALAR_STACK::Add_Scalar(WN *wn_call, SYMBOL* symbol, UINT snumber)
   _stack->Top_nth(0)._scalar_ref_stack->Push(sref);
 }
 
+void SCALAR_STACK::Remove_Scalar(WN *wn)
+{
+  Is_True((WN_operator(wn) == OPR_LDID) ||
+          (WN_operator(wn) == OPR_STID), 
+	  ("Non scalar passed to SCALAR_STACK::Remove_Scalar"));
+
+  SYMBOL symbol(wn);
+
+  for (INT i=0; i<_stack->Elements(); i++) {
+    if (symbol == _stack->Top_nth(i)._scalar) {
+      //remove all scalar_references to this symbol
+      for (INT j = 0; j < _stack->Top_nth(i)._scalar_ref_stack->Elements(); j++)
+	_stack->Top_nth(i)._scalar_ref_stack->DeleteTop(j);
+
+      //remove the SCALAR_NODE since its _scalar_ref_stack is now empty.
+      if (_stack->Top_nth(i)._scalar_ref_stack->Elements() == 0)
+	_stack->DeleteTop(i);
+      return;
+    }
+  }
+}
+
 void SCALAR_STACK::Print(FILE *fp)
 {
   for (INT i=0; i<_stack->Elements(); i++) {

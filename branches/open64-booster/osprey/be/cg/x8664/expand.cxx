@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2009-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -1834,71 +1834,96 @@ Expand_Abs (TN *dest, TN *src, TYPE_ID mtype, OPS *ops)
 void
 Expand_Shift (TN *result, TN *src1, TN *src2, TYPE_ID mtype, SHIFT_DIRECTION kind, OPS *ops)
 {
+  const TOP shift_top[ 6 /* mtypes */ ][ 3 /* kind */ ] = {
+    { TOP_shl32, TOP_sar32, TOP_shr32 },           /* 32bit int */
+    { TOP_shl64, TOP_sar64, TOP_shr64 },           /* 64bit int */
+    { TOP_UNDEFINED, TOP_UNDEFINED, TOP_UNDEFINED },  /* V16I1 */
+    { TOP_psllw, TOP_psraw, TOP_psrlw },              /* V16I2 */
+    { TOP_pslld, TOP_psrad, TOP_psrld },              /* V16I4 */
+    { TOP_psllq, TOP_UNDEFINED, TOP_psrlq },          /* V16I8 */
+  };
+  const TOP shift_imm_top[ 6 /* mtypes */ ][ 3 /* kind */ ] = {
+    { TOP_shli32, TOP_sari32, TOP_shri32 },           /* 32bit int */
+    { TOP_shli64, TOP_sari64, TOP_shri64 },           /* 64bit int */
+    { TOP_UNDEFINED, TOP_UNDEFINED, TOP_UNDEFINED },  /* V16I1 */
+    { TOP_psllwi, TOP_psrawi, TOP_psrlwi },           /* V16I2 */
+    { TOP_pslldi, TOP_psradi, TOP_psrldi },           /* V16I4 */
+    { TOP_psllqi, TOP_UNDEFINED, TOP_psrlqi },        /* V16I8 */
+  };
+
   WN *tree;
   TOP top;  
+  const BOOL is_vector = MTYPE_is_vector(mtype);
   const BOOL is_64bit = MTYPE_is_size_double(mtype);
 
-  if (TN_is_constant(src1))
+  INT kind_index = 0;
+  switch (kind) {
+  case shift_left:
+    kind_index = 0;
+    break;
+  case shift_aright:
+    kind_index = 1;
+    break;
+  case shift_lright:
+    kind_index = 2;
+    break;
+  default:
+    FmtAssert(FALSE, ("invalid shift kind"));
+  }
+
+  INT type_index = 0;
+  UINT8 shift_amt = 0;
+  switch (mtype) {
+  case MTYPE_V16I1:
+    type_index = 2;
+    shift_amt = 7;
+    break;
+  case MTYPE_V16I2:
+    type_index = 3;
+    shift_amt = 15;
+    break;
+  case MTYPE_V16I4:
+    type_index = 4;
+    shift_amt = 31;
+    break;
+  case MTYPE_V16I8:
+    type_index = 5;
+    shift_amt = 63;
+    break;
+  default:
+    FmtAssert(is_vector == FALSE, ("NYI: support vector type other than V16I*"));
+    type_index = is_64bit ? 1 : 0;
+    shift_amt = is_64bit ? 63 : 31;
+  }
+
+  if (TN_is_constant(src1)) {
+    FmtAssert(is_vector == FALSE, ("TODO: handle vector immediate"));
     src1 = Expand_Immediate_Into_Register(src1, is_64bit, ops);
+  }
   if (TN_has_value(src2)) {
     // In mips, only the low log2(wordsize) bits of the shift count are used. 
     const UINT64 val = TN_value(src2);
-    const UINT8  shift_amt = is_64bit ? 63 : 31;
     FmtAssert( val <= shift_amt, ("Shift amount > %d", shift_amt) );
-
-    switch (kind) {
-    case shift_left:
-      if( val == 1 ){
-	Expand_Add( result, src1, src1, mtype, ops );
-	return;
-      }
-
-      top = is_64bit ? TOP_shli64 : TOP_shli32;
-      break;
-    case shift_aright:
-      top = is_64bit ? TOP_sari64 : TOP_sari32;
-      break;
-    case shift_lright:
-      top = is_64bit ? TOP_shri64 : TOP_shri32;
-      break;
+    if (kind == shift_left && val == 1) {
+      Expand_Add( result, src1, src1, mtype, ops );
+      return;
     }
 
+    top = shift_imm_top[type_index][kind_index];
     src2 = Gen_Literal_TN( val & shift_amt, 4 );
 
   } else {
-    switch (kind) {
-    case shift_left:
-      top = is_64bit ? TOP_shl64 : TOP_shl32;
-      break;
-    case shift_aright:
-      top = is_64bit ? TOP_sar64 : TOP_sar32;
-      break;
-    case shift_lright:
-      top = is_64bit ? TOP_shr64 : TOP_shr32;
-      break;
-    }
+    top = shift_top[type_index][kind_index];
   }
 
+  FmtAssert(top != TOP_UNDEFINED, ("NYI: Expand Shift: mtype=%d, kind=%d", mtype, kind));
 
-  switch(mtype) {
-  case MTYPE_V16I1: 
-    if (kind == shift_left)
-      Build_OP(TOP_psllw, result, src1, src2, ops); break;
-  case MTYPE_V16I2: 
-    if (kind == shift_left)
-      Build_OP(TOP_psllw, result, src1, src2, ops); break;
-  case MTYPE_V16I4: 
-    if (kind == shift_left)
-      Build_OP(TOP_pslld, result, src1, src2, ops); break;
-  case MTYPE_V16I8: 
-    if (kind == shift_left)
-      Build_OP(TOP_psllq, result, src1, src2, ops); break;
-  default:
-    if( OP_NEED_PAIR( mtype ) )
-      Expand_Split_Shift( kind, result, src1, src2, ops );
-    else
-      Build_OP(top, result, src1, src2, ops);
+  if( OP_NEED_PAIR( mtype ) ) {
+    Is_True(is_vector == FALSE, ("vector types do not need pair"));
+    Expand_Split_Shift( kind, result, src1, src2, ops );
   }
+  else
+    Build_OP(top, result, src1, src2, ops);
 }
 
 void
@@ -7550,6 +7575,28 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     op1 = Gen_Literal_TN (3, 4);
     Build_OP( TOP_pextrw, result, op0, op1, ops );
     break;
+  case INTRN_PEXTRB:
+    Build_OP( TOP_extr128v8, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRW:
+    Build_OP( TOP_extr128v16, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRD:
+    Build_OP( TOP_extr128v32, result, op0, op1, ops);
+    break;
+  case INTRN_PEXTRQ:
+    Build_OP( TOP_extr128v64, result, op0, op1, ops);
+    break;
+  case INTRN_EXTRPS:
+    {
+      TN* res = Build_TN_Of_Mtype(MTYPE_I4);
+      Build_OP( TOP_fextr128v32, res, op0, op1, ops);
+      Build_OP(TOP_movg2x, result, res, ops);
+      break;
+    }
+  case INTRN_EXTRPD:
+    FmtAssert(FALSE, ("TODO: support fextr128v64"));
+    break;
   case INTRN_PINSRW0:
     Is_True (op2 == NULL, ("Imm operand should be null"));
     op2 = Gen_Literal_TN (0, 4);
@@ -7569,6 +7616,24 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Is_True (op2 == NULL, ("Imm operand should be null"));
     op2 = Gen_Literal_TN (3, 4);
     Build_OP( TOP_pinsrw, result, op1, op2, ops );
+    break;
+  case INTRN_PINSRB:
+    Build_OP( TOP_insr128v8, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRW:
+    Build_OP( TOP_insr128v16, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRD:
+    Build_OP( TOP_insr128v32, result, op0, op1, op2, ops);
+    break;
+  case INTRN_PINSRQ:
+    Build_OP( TOP_insr128v64, result, op0, op1, op2, ops);
+    break;
+  case INTRN_INSRPS:
+    Build_OP( TOP_finsr128v32, result, op0, op1, op2, ops);
+    break;
+  case INTRN_INSRPD:
+    FmtAssert(FALSE, ("TODO: support finsr128v64"));
     break;
   case INTRN_PMOVMSKB:
     Build_OP( TOP_pmovmskb, result, op0, ops );
@@ -8160,7 +8225,13 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       Build_OP( TOP_movx2g, tmp0, op0, ops );
       op0 = tmp0;
     }
-    Build_OP( TOP_cvtsi2ss, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsi2ss, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsi2ss, result, op0, ops );
+    }
     break;
   case INTRN_CVTSI642SS:
     if (TN_register_class(op0) != ISA_REGISTER_CLASS_integer) {
@@ -8168,7 +8239,13 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
       Build_OP( TOP_movx2g64, tmp0, op0, ops );
       op0 = tmp0;
     }
-    Build_OP( TOP_cvtsi2ssq, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsi2ssq, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsi2ssq, result, op0, ops );
+    }
     break;
   case INTRN_CVTSS2SI:
     Build_OP( TOP_cvtss2si, result, op0, ops );
@@ -8247,10 +8324,22 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP( TOP_cvtps2pd, result, op0, ops );
     break;
   case INTRN_CVTSD2SS:
-    Build_OP( TOP_cvtsd2ss, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtsd2ss, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtsd2ss, result, op0, ops );
+    }
     break;
   case INTRN_CVTSS2SD:
-    Build_OP( TOP_cvtss2sd, result, op0, ops );
+    if (Is_Target_Orochi() && Is_Target_AVX()) {
+      TN *xzero = Build_TN_Like(result);
+      Build_OP( TOP_xzero128v32, xzero, ops );
+      Build_OP( TOP_cvtss2sd, result, xzero, op0, ops );
+    } else {
+      Build_OP( TOP_cvtss2sd, result, op0, ops );
+    }
     break;
   case INTRN_LOADUPS:
     Build_OP( TOP_ldups, result, op0, Gen_Literal_TN (0,4), ops );
@@ -8554,10 +8643,10 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP(TOP_vfcmp128v32, result, op0, op1, op2, ops );
     break;
    case INTRN_CMPSD:
-    Build_OP(TOP_vfcmpsd, result, op0, op1, op2, ops );
+    Build_OP(TOP_vcmpsd, result, op0, op1, op2, ops );
     break;
    case INTRN_CMPSS:
-    Build_OP(TOP_vfcmpss, result, op0, op1, op2, ops );
+    Build_OP(TOP_vcmpss, result, op0, op1, op2, ops );
     break;
    case INTRN_CVTDQ2PD256:
     Build_OP(TOP_vcvtdq2pd, result, op0, ops );

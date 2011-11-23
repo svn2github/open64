@@ -3730,6 +3730,12 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     // SSSE3
     case INTRN_PALIGNR:
     // SSE4.1
+    case INTRN_PINSRB:
+    case INTRN_PINSRW:
+    case INTRN_PINSRD:
+    case INTRN_PINSRQ:
+    case INTRN_INSRPS:
+    case INTRN_INSRPD:
     case INTRN_BLENDPD:
     case INTRN_BLENDPS:
     case INTRN_DPPD:
@@ -3820,6 +3826,12 @@ Handle_Imm_Op (WN * expr, INT * kidno /* counted from 0 */)
     case INTRN_PSHUFW:
     case INTRN_PSHUFLW:
     case INTRN_PSHUFHW:
+    case INTRN_PEXTRB:
+    case INTRN_PEXTRW:
+    case INTRN_PEXTRD:
+    case INTRN_PEXTRQ:
+    case INTRN_EXTRPS:
+    case INTRN_EXTRPD:
     // AES
     case INTRN_AESKEYGENASSIST128:
     // XOP

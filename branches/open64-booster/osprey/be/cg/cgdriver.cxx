@@ -481,7 +481,7 @@ static OPTION_DESC Options_CG[] = {
   { OVK_BOOL,   OV_VISIBLE, TRUE, "strcmp_expand", "",
     0, 0, 0,    &CG_strcmp_expand, NULL },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "merge_counters_x86", "",
-    0, 0, 0,    &CG_merge_counters_x86, NULL },
+    0, 0, 0,    &CG_merge_counters_x86, &CG_merge_counters_x86_set },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "interior_ptrs", "",
     0, 0, 0,    &CG_interior_ptrs_x86, NULL },
   { OVK_BOOL,   OV_VISIBLE, TRUE, "noavx_clear", "",
@@ -2659,6 +2659,8 @@ CG_Init (void)
         // for unrolled loops.
         CG_merge_counters_x86 = TRUE;
         LOCS_PRE_Enable_Unroll_RegPressure_Sched = TRUE;
+      } else if (CG_opt_level == 3 && CG_merge_counters_x86_set == FALSE) {
+        CG_merge_counters_x86 = TRUE;
       }
     }
 #endif //TARG_X8664

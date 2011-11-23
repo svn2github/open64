@@ -2335,12 +2335,6 @@ int main()
                            TOP_vfblend128v64,
                            TOP_vfblend128v32,
                            TOP_vpclmulqdq,
-                           TOP_vcmppd,
-                           TOP_vcmpps,
-                           TOP_vfcmp128v64,
-                           TOP_vfcmp128v32,
-                           TOP_vfcmpsd,
-                           TOP_vfcmpss,
                            TOP_vfdp128v64,
                            TOP_vfdp128v32,
                            TOP_vfinsrf128,
@@ -2385,8 +2379,8 @@ int main()
                            TOP_vpclmulqdqx,
                            TOP_vfcmpx128v64,
                            TOP_vfcmpx128v32,
-                           TOP_vfcmpxsd,
-                           TOP_vfcmpxss,
+                           TOP_vcmpxsd,
+                           TOP_vcmpxss,
                            TOP_vfdpx128v64,
                            TOP_vfdpx128v32,
                            TOP_vfinsrxf128,
@@ -2434,8 +2428,8 @@ int main()
                            TOP_vpclmulqdqxx,
                            TOP_vfcmpxx128v64,
                            TOP_vfcmpxx128v32,
-                           TOP_vfcmpxxsd,
-                           TOP_vfcmpxxss,
+                           TOP_vcmpxxsd,
+                           TOP_vcmpxxss,
                            TOP_vfdpxx128v64,
                            TOP_vfdpxx128v32,
                            TOP_vfinsrxx128v32,
@@ -2485,8 +2479,8 @@ int main()
                            TOP_vpclmulqdqxxx,
                            TOP_vfcmpxxx128v64,
                            TOP_vfcmpxxx128v32,
-                           TOP_vfcmpxxxsd,
-                           TOP_vfcmpxxxss,
+                           TOP_vcmpxxxsd,
+                           TOP_vcmpxxxss,
                            TOP_vfdpxxx128v64,
                            TOP_vfdpxxx128v32,
                            TOP_vfinsrxxxf128,
@@ -5282,6 +5276,8 @@ int main()
   Operand(1, x87,  opnd2);
 
   Instruction_Group("fp compare",
+                    TOP_vcmpsd,
+                    TOP_vcmpss,
 		    TOP_cmpss,
 		    TOP_cmpsd,
 		    TOP_UNDEFINED);
@@ -5290,6 +5286,7 @@ int main()
   Operand(1, fp64,  opnd2);
   Operand(2, simm8, opnd3);
 
+  // pseudo assembler ops that encode to cmpss, cmpsd, vcmpss and vcmpsd
   Instruction_Group("fp compare I",
 		    TOP_cmpeqsd,
 		    TOP_cmpltsd,
@@ -5307,6 +5304,24 @@ int main()
 		    TOP_cmpnltss,
 		    TOP_cmpnless,
 		    TOP_cmpordss,
+		    TOP_cmpordss,
+		    TOP_vcmpeqsd,
+		    TOP_vcmpltsd,
+		    TOP_vcmplesd,
+		    TOP_vcmpunordsd,
+		    TOP_vcmpneqsd,
+		    TOP_vcmpnltsd,
+		    TOP_vcmpnlesd,
+		    TOP_vcmpordsd,
+		    TOP_vcmpeqss,
+		    TOP_vcmpltss,
+		    TOP_vcmpless,
+		    TOP_vcmpunordss,
+		    TOP_vcmpneqss,
+		    TOP_vcmpnltss,
+		    TOP_vcmpnless,
+		    TOP_vcmpordss,
+		    TOP_vcmpordss,
 		    TOP_UNDEFINED);
   Result(0, fp64);
   Operand(0, fp64,  opnd1);
@@ -5365,6 +5380,10 @@ int main()
   Instruction_Group("fp vector compare",
 		    TOP_cmpps,
 		    TOP_cmppd,
+                    TOP_vcmppd,
+                    TOP_vcmpps,
+                    TOP_vfcmp128v64,
+                    TOP_vfcmp128v32,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128,  opnd1);
@@ -5388,6 +5407,22 @@ int main()
 		    TOP_cmpnltps,
 		    TOP_cmpnleps,
 		    TOP_cmpordps,
+		    TOP_vcmpeqpd,
+		    TOP_vcmpltpd,
+		    TOP_vcmplepd,
+		    TOP_vcmpunordpd,
+		    TOP_vcmpneqpd,
+		    TOP_vcmpnltpd,
+		    TOP_vcmpnlepd,
+		    TOP_vcmpordpd,
+		    TOP_vcmpeqps,
+		    TOP_vcmpltps,
+		    TOP_vcmpleps,
+		    TOP_vcmpunordps,
+		    TOP_vcmpneqps,
+		    TOP_vcmpnltps,
+		    TOP_vcmpnleps,
+		    TOP_vcmpordps,
 		    TOP_UNDEFINED);
   Result(0, fp128);
   Operand(0, fp128,  opnd1);
