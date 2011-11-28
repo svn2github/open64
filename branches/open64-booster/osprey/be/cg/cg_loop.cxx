@@ -190,6 +190,10 @@
 #include "lra.h"
 #include "calls.h"
 
+#if defined(TARG_X8664)
+#include "config_lno.h"
+#endif
+
 #if defined(TARG_SL)
 #include "tag.h"
 #include "label_util.h"
@@ -6947,6 +6951,136 @@ Do_Loop_Perform_SWP_or_Unroll (BOOL perform_swp, CG_LOOP& cg_loop,
 }
 #endif
 
+#if defined(TARG_X8664)
+BOOL LOOP_Block_Merge( LOOP_DESCR* loop )
+{
+  BOOL is_merge_cand = FALSE;
+  BOOL fully_unrolled_segment_in_body = FALSE;
+
+  // Test if there is no internal flow excepting the back edge
+  // for the collection of loop blocks if more than one.
+  BB_SET *bbs = LOOP_DESCR_bbset(loop);
+  BB *head = LOOP_DESCR_loophead(loop);
+  if ( ( BB_SET_Size(bbs) > 1 ) && 
+       ( BB_innermost(head) == FALSE ) &&
+       ( LOOP_DESCR_Find_Unique_Tail(loop) != NULL ) &&
+       ( LOOP_DESCR_Has_Side_Entrance(loop) == FALSE ) ){
+    BOOL loop_is_canonical = FALSE;
+    BB *bb, *succ, *pred, *bb_head, *bb_tail;
+    BBLIST *lst;
+    INT num_bbs = BB_SET_Size(bbs);
+    MEM_POOL_Push(&MEM_local_nz_pool);
+    BB **orig_bbs = TYPE_MEM_POOL_ALLOC_N(BB *, &MEM_local_nz_pool, num_bbs);
+
+    if( sort_topologically(loop, orig_bbs) ){
+      bb_head = orig_bbs[0]; 
+      bb_tail = orig_bbs[num_bbs-1];
+      BOOL loop_body_linear = TRUE;
+      for (INT bbi = 1; bbi < (num_bbs - 1); bbi++) {
+        bb = orig_bbs[bbi];
+
+        // The only branch must be at bb_tail
+        if( BB_branch_op(bb) ){
+          loop_body_linear = FALSE;
+          break;
+        }
+
+        // We are looking for an unrolled loop body which is reachable by
+        // the loop head.  We know it is if loop_body_linear remains true.
+        if( ( BB_unrolled_fully(bb) ) && 
+            ( BB_length(bb) <= CG_LOOP_unrolled_size_max ) ){
+          fully_unrolled_segment_in_body = TRUE;
+        }
+      }
+      // Now check if the loop is in canonical form
+      if( loop_body_linear && 
+          ( bb_head == head ) && 
+          ( BB_succs_len(head) == 1 ) ){
+        // one of the successor blocks of bb_tail must be the head block
+        if( BB_branch_op(bb_tail) && fully_unrolled_segment_in_body ){
+          for( lst = BB_succs(bb_tail); lst != NULL; lst = BBLIST_next(lst) ){
+            if( succ = BBLIST_item(lst) ){
+              if( succ == bb_head ){
+                loop_is_canonical = TRUE;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // The sorted sub-graph of the loop must have only 1 branch
+    if( loop_is_canonical ){
+      BOOL has_call = FALSE;
+      for (INT bbi = 0; bbi < num_bbs; bbi++) {
+        bb = orig_bbs[bbi];
+        if( BB_call(bb) ){
+          has_call = TRUE;
+          break;
+        }
+      }
+      if( has_call == FALSE )
+        is_merge_cand = TRUE;
+    }
+
+    // We are going to merge a flowless loop with multiple blocks into
+    // a single block.  Scheduling, ebo and register allocation can
+    // take advantage of this.
+    if( is_merge_cand ){
+      INT num_merged = 0;
+      for (INT bbi = 1; bbi < num_bbs; bbi++) {
+        BBLIST *lst_next;
+        bb = orig_bbs[bbi];
+
+        // Add all of bb's ops to head
+        BB_Append_All(head, bb);
+
+        if( BB_SET_MemberP(LOOP_DESCR_bbset(loop), bb) ){
+          BB_MAP_Set(LOOP_DESCR_map, bb, loop);
+          LOOP_DESCR_Delete_BB(loop, bb);
+        }
+
+        for ( lst = BB_succs(bb); lst != NULL; lst = lst_next ) {
+          lst_next = BBLIST_next(lst);
+          if( succ = BBLIST_item(lst) ){
+            // preserve outgoing edges
+            if( bb == bb_tail ){
+              if( succ == head ) {
+                Link_Pred_Succ_with_Prob(head, head, 1.0);
+                BB_branch_wn(head) == BB_branch_wn(bb_tail);
+              } else {
+                Link_Pred_Succ_with_Prob(head, succ, 0.0);
+              }
+            }
+            Unlink_Pred_Succ(bb, succ);
+          }
+        }
+
+        for ( lst = BB_preds(bb); lst != NULL; lst = lst_next ) {
+          lst_next = BBLIST_next(lst);
+          if (pred = BBLIST_item(lst))
+            Unlink_Pred_Succ(pred, bb);
+        }
+
+        BB_Remove_All(bb);
+        Remove_BB(bb);
+        num_merged++;
+      }
+
+      // now mark it so we can optimize further
+      if( num_merged == (num_bbs -1) )
+        Set_BB_innermost(head);
+      else
+        is_merge_cand = FALSE;
+    }
+    // now clear the top sort allocation
+    MEM_POOL_Pop(&MEM_local_nz_pool);
+  }
+  return is_merge_cand;
+}
+#endif
+
 // Perform loop optimizations for one loop
 //
 #if defined(TARG_IA64) || defined(TARG_SL) || defined(TARG_MIPS)
@@ -6987,6 +7121,18 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
   if (CG_LOOP_unroll_level == 0)
     return FALSE;
 
+  BOOL trace_loop_opt = Get_Trace(TP_CGLOOP, 0x4);
+
+#ifdef TARG_X8664
+  if (LNO_Simd_Rm_Unity_Remainder && 
+      !LOOP_Block_Merge(loop) && 
+      trace_loop_opt) {
+    fprintf(TFile, "Merge Blocks failed on current loop\n");
+    BB_SET_Print(LOOP_DESCR_bbset(loop), TFile);
+    fprintf(TFile, "\n");
+  }
+#endif
+
   //    if (Is_Inner_Loop(loop)) {
   if (!BB_innermost(LOOP_DESCR_loophead(loop))) 
     return FALSE;
@@ -6994,8 +7140,6 @@ BOOL CG_LOOP_Optimize(LOOP_DESCR *loop, vector<SWP_FIXUP>& fixup,
   if (Skip_Loop_For_Reason(loop))
     return FALSE;
 
-  BOOL trace_loop_opt = Get_Trace(TP_CGLOOP, 0x4);
- 
   // Determine how to optimize the loop
   //
   LOOP_OPT_ACTION action = NO_LOOP_OPT;
@@ -8374,13 +8518,8 @@ void Report_Loop_Info(LOOP_DESCR *loop,
                       BOOL after_prescheduling,
                       MEM_POOL *pool)
 {
-  // This func is a debug trace utility
-  if (Get_Trace(TP_CGLOOP, 1) == FALSE)
-    return;
-
   BB *bb = LOOP_DESCR_loophead(loop);
-  if (BB_unrollings(bb) && 
-      (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1)) {
+  if (BB_SET_Size(LOOP_DESCR_bbset(loop)) == 1) {
     BOOL saved_state_sched_est;
     BOOL toggle_sched_est = false; 
 
@@ -8416,6 +8555,7 @@ void Report_Loop_Info(LOOP_DESCR *loop,
     TN *tn;
     BOOL first_time = TRUE;
     BOOL changed = TRUE;
+    BOOL trace_general = Get_Trace(TP_CGLOOP, 2);
 
 #ifdef TARG_X8664
     // now adjust the number of gpr regs as per the ABI
@@ -8437,6 +8577,14 @@ void Report_Loop_Info(LOOP_DESCR *loop,
                              &D_f,
                              ISA_REGISTER_CLASS_float) + 1;
 
+    // This routine fires after prescheduling, so we now have
+    // accurate register pressure components to fill in the currently
+    // boolean setting to the notion that the scheduler saw register pressure.
+    // So here we fill in the value for lra to use if needed.
+    if (BB_regpressure(bb,ISA_REGISTER_CLASS_float)) {
+      Set_BB_regpressure(bb, D_f, ISA_REGISTER_CLASS_float);
+    }
+
     // compute the number of gpr Regs Predicted
     conflict_map_i = Calculate_All_Conflicts(bb, regs_in_use, 
                                              ISA_REGISTER_CLASS_integer);
@@ -8447,19 +8595,27 @@ void Report_Loop_Info(LOOP_DESCR *loop,
                              &D_i,
                              ISA_REGISTER_CLASS_integer) + 1;
 
-    // Now print the details of this loop
-    printf("unrolled loop(%d):size = %d,  ntimes=%d\n", 
-           BB_id(bb), BB_length(bb), BB_unrollings(bb));
-    printf("%s bb = %d, init_II = %d\n", usage_str, BB_id(bb), init_II);
-    printf("R_f = %d, D_f = %d, N_f = %d, avg_degree_f = %d\n",
-             R_f, D_f, N_f, avg_conflicts_f);
-    printf("R_i = %d, D_i = %d, N_i = %d, avg_degree_i = %d\n",
-           R_i, D_i, N_i, avg_conflicts_i);
+    // Now do the same for int regs
+    if (BB_regpressure(bb,ISA_REGISTER_CLASS_integer)) {
+      Set_BB_regpressure(bb, D_i, ISA_REGISTER_CLASS_integer);
+    }
+
+    if (trace_general) {
+      // Now print the details of this loop
+      fprintf(TFile, "unrolled loop(%d):size = %d,  ntimes=%d\n", 
+              BB_id(bb), BB_length(bb), BB_unrollings(bb));
+      fprintf(TFile, "%s bb = %d, init_II = %d\n", 
+              usage_str, BB_id(bb), init_II);
+      fprintf(TFile, "R_f = %d, D_f = %d, N_f = %d, avg_degree_f = %d\n",
+              R_f, D_f, N_f, avg_conflicts_f);
+      fprintf(TFile, "R_i = %d, D_i = %d, N_i = %d, avg_degree_i = %d\n",
+              R_i, D_i, N_i, avg_conflicts_i);
+    }
 
     TN_MAP_Delete(conflict_map_f);
     TN_MAP_Delete(conflict_map_i);
     MEM_POOL_Pop(pool);
-  }
+  } 
 }
 
 void Examine_Loop_Info(char *usage_str, BOOL after_presched)

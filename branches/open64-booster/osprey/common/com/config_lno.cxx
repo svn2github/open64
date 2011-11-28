@@ -179,11 +179,11 @@ static LNO_FLAGS Default_LNO = {
 #ifdef TARG_X8664
   0,		/* Fission */
   TRUE,		/* Serial_distribute */
-  0,		/* Iter_threshold */
+  1,		/* Iter_threshold */
 #else
   1,		/* Fission */
   FALSE,	/* Serial_distribute */
-  0,		/* Iter_threshold */
+  1,		/* Iter_threshold */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -271,6 +271,7 @@ static LNO_FLAGS Default_LNO = {
   TRUE,         /* Simd_Reduction */
   TRUE,         /* Simd_Avoid_Fusion */
   FALSE,        /* Simd_Rm_Unity_Remainder */  
+  TRUE,         /* Simd_Vect_If */
   TRUE,         /* Run_hoistif */
   TRUE,		/* Ignore_Feedback */
   TRUE,         /* Run_unswitch */
@@ -401,11 +402,11 @@ LNO_FLAGS Initial_LNO = {
 #ifdef TARG_X8664
   0,		/* Fission */
   TRUE,		/* Serial_distribute */
-  0,		/* Iter_threshold */
+  1,		/* Iter_threshold */
 #else
   1,		/* Fission */
   FALSE,	/* Serial_distribute */
-  0,		/* Iter_threshold */
+  1,		/* Iter_threshold */
 #endif
   0,		/* Fission_inner_register_limit */
   TRUE,		/* Forward_substitution */
@@ -492,7 +493,8 @@ LNO_FLAGS Initial_LNO = {
   FALSE,	/* Simd_Verbose */
   TRUE,         /* Simd_Reduction */
   TRUE,         /* Simd_Avoid_Fusion */
-  FALSE,         /* Simd_Rm_Unity_Remainder*/
+  FALSE,        /* Simd_Rm_Unity_Remainder*/
+  TRUE,         /* Simd_Vect_If */
   TRUE,         /* Run_hoistif */
   TRUE,	 	/* Ignore_Feedback */
   TRUE,         /* Run_unswitch */
@@ -879,6 +881,7 @@ static OPTION_DESC Options_LNO[] = {
   LNOPT_BOOL ( "simd_reduction",	"simd_red",	Simd_Reduction ),
   LNOPT_BOOL ( "simd_avoid_fusion",	NULL,	Simd_Avoid_Fusion ),
   LNOPT_BOOL ( "simd_rm_unity_remainder", NULL,	Simd_Rm_Unity_Remainder),
+  LNOPT_BOOL ( "simd_vect_if",	        NULL,	Simd_Vect_If ),
   LNOPT_BOOL ( "hoistif",		NULL,	Run_hoistif ),
   LNOPT_BOOL ( "ignore_feedback",	NULL,	Ignore_Feedback ),
   LNOPT_BOOL ( "unswitch",		NULL,	Run_unswitch ),
@@ -1223,6 +1226,13 @@ LNO_Configure ( void )
       Mhd_Options.L[i].TLB_Dirty_Miss_Penalty =
 			Mhd_Options.L[i].TLB_Miss_Penalty;
     }
+  }
+
+  /* Value of 1 for LNO_Iter_threshold is interpreted as default in which case 
+     the flag is set based on target. Otherwise use user-specified value.
+   */
+  if(LNO_Iter_threshold == 1) {
+    LNO_Iter_threshold = (Is_Target_SSE41())? 8 : 0;
   }
 }
 

@@ -1983,3 +1983,23 @@ extern void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
   }
 }
 
+/***********************************************************************
+ *
+ * This routine collects all the indirect loads in a whirl tree. 
+ *
+ ***********************************************************************/
+void 
+WN_collect_iloads(std::list<WN*>* wn_list, WN* wn)
+{ 
+  if (!wn_list || !wn) return;
+
+  if (WN_operator(wn) == OPR_ILOAD)
+    wn_list->push_back(wn);
+
+  for (int i = 0; i < WN_kid_count(wn); i++)
+  { 
+    WN *kid = WN_kid(wn, i);
+    WN_collect_iloads(wn_list, kid);
+  } 
+} 
+

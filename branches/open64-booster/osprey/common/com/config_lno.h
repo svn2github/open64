@@ -323,6 +323,7 @@ typedef struct lno_flags {
   BOOL 	  Simd_Reduction;
   BOOL 	  Simd_Avoid_Fusion;
   BOOL    Simd_Rm_Unity_Remainder;
+  BOOL    Simd_Vect_If;
   BOOL    Run_hoistif;
   BOOL    Ignore_Feedback;
   BOOL    Run_unswitch;
@@ -575,6 +576,7 @@ extern LNO_FLAGS Initial_LNO;
 #define LNO_Simd_Reduction		Current_LNO->Simd_Reduction
 #define LNO_Simd_Avoid_Fusion		Current_LNO->Simd_Avoid_Fusion
 #define LNO_Simd_Rm_Unity_Remainder	Current_LNO->Simd_Rm_Unity_Remainder
+#define LNO_Simd_Vect_If                Current_LNO->Simd_Vect_If
 #define LNO_Run_hoistif                 Current_LNO->Run_hoistif
 #define LNO_Ignore_Feedback             Current_LNO->Ignore_Feedback
 #define LNO_Run_Unswitch                Current_LNO->Run_unswitch

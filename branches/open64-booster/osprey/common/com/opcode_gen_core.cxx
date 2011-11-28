@@ -3270,9 +3270,13 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
         break;
 
       case OPR_SELECT:
-        // [RTYPE] : b,f,i,p,z [DESC] : V,B
+        // [RTYPE] : b,f,i,p,z,V16 [DESC] : V,B,V16
         valid = Is_MTYPE_b_f_i_p_z [rtype] && 
 		(desc == MTYPE_V || desc == MTYPE_B);
+#ifdef TARG_X8664
+	// add more valid vector types later.
+	valid = valid || (rtype == MTYPE_V16I1 && desc == MTYPE_V16I1);
+#endif
         break;
 
       case OPR_TAS:
@@ -3631,7 +3635,7 @@ OPCODE_name (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       break;
 
     case OPR_SELECT:
-      // [RTYPE] : b,f,i,p,z [DESC] : V,b
+      // [RTYPE] : b,f,i,p,z,V16 [DESC] : V,b,V16
       sprintf (buffer, "OPC_%s%s%s", MTYPE_name(rtype), 
        desc == MTYPE_V ? "" : MTYPE_name(desc), &OPERATOR_info [opr]._name [4]);
       break;

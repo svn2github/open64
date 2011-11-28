@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -213,6 +213,8 @@ extern BOOL OPT_Enable_BUILD_WHIRL_SSA; // enable build WSSA driect from WHIRL
 extern UINT32 AA_force_tag_alias_before_dim1;
 extern UINT32 AA_force_tag_alias_before_dim2;
 
+extern BOOL OPT_Enable_EH_CFG_OPT;
+extern BOOL OPT_Enable_EH_CFG_OPT_Set;
 #endif
 #ifdef __cplusplus
 }

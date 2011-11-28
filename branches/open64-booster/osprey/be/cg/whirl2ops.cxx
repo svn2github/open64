@@ -3166,8 +3166,17 @@ Handle_SELECT(WN *select, TN *result, OPCODE opcode)
   WN	*compare;
   VARIANT variant;
 
+  if (opcode == OPC_V16I1V16I1SELECT) {
+    TN* op1 = Expand_Expr(WN_kid0(select), select, NULL);
+    TN* op2 = Expand_Expr(WN_kid1(select), select, NULL);
+    TN* op3 = Expand_Expr(WN_kid2(select), select, NULL);
 
-
+    if (result == NULL) 
+      result = Allocate_Result_TN (select, NULL);
+  
+    Expand_Select(result, op1, op2, op3, MTYPE_V16I1, FALSE, &New_OPs); //FALSE passed as dummy arg
+    return result;
+  }
 
  /*
   *  Expand the true/false before the condition
@@ -4723,6 +4732,61 @@ Handle_Fma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0)
 }
 
 static TN* 
+Handle_Fnma_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0) 
+{
+  
+  WN* add_wn = (mul_kid0) ? WN_kid1(expr) : WN_kid0(expr); 
+  TN* opnd0; 
+  TN* opnd1; 
+  TN* opnd2;
+  TOP opcode; 
+  TYPE_ID rtype = OPCODE_rtype(WN_opcode(expr));
+  BOOL is_vector = MTYPE_is_vector(rtype);
+
+  // now match a scalar or vector fma4 
+  switch (WN_opcode(mul_wn)) {
+  case OPC_F4MPY:
+    opcode = TOP_vfnmaddss;
+    break;
+  case OPC_F8MPY:
+    opcode = TOP_vfnmaddsd;
+    break;
+  case OPC_V16F4MPY:
+  case OPC_V16C4MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfnmaddps;
+    break;
+  case OPC_V16F8MPY:
+  case OPC_V16C8MPY:
+    FmtAssert(is_vector, ("unexpected fma vector form"));
+    opcode = TOP_vfnmaddpd;
+    break;
+  default:
+    FmtAssert(FALSE, ("unexpected fma form"));
+    break;
+  }
+
+  opnd2 = Expand_Expr(add_wn, expr,  NULL); 
+  opnd1 = Expand_Expr(WN_kid1(mul_wn), mul_wn, NULL);
+  opnd0 = Expand_Expr(WN_kid0(mul_wn), mul_wn, NULL);
+
+  if(result == NULL) 
+    result = Allocate_Result_TN(expr, NULL); 
+
+  // Position tn's from loads on operand 1's position if possible.
+  if (OPCODE_is_load(WN_opcode(WN_kid0(mul_wn))))
+    Build_OP(opcode,  result,  opnd1,  opnd0, opnd2, &New_OPs); 
+  else
+    Build_OP(opcode,  result,  opnd0,  opnd1, opnd2, &New_OPs); 
+
+  // TODO: add operand size check for 256-bit
+  if (PU_has_avx128 == FALSE)
+    PU_has_avx128 = TRUE;
+  
+  return result; 
+}
+
+static TN* 
 Handle_Fms_Operation(WN* expr, TN* result, WN *mul_wn, BOOL mul_kid0) 
 {
   WN* sub_wn = (mul_kid0) ? WN_kid1(expr) : WN_kid0(expr); 
@@ -5393,7 +5457,11 @@ Expand_Expr (WN *expr, WN *parent, TN *result)
           if (MTYPE_is_float(rtype) || MTYPE_is_vector(rtype)) {
             if (WN_operator(expr) == OPR_ADD) {
               return Handle_Fma_Operation(expr, result, mul_wn, FALSE);
-            } 
+            } else if ((WN_operator(expr) == OPR_SUB) && 
+                       (WN_opcode(expr) != OPC_V16C4SUB) &&
+                       (WN_opcode(expr) != OPC_V16C8SUB)) {
+              return Handle_Fnma_Operation(expr, result, mul_wn, FALSE);
+            }
           }
         }
       }

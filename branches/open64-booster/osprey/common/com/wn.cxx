@@ -3753,3 +3753,27 @@ WN_find_loop_by_index(WN * wn, ST * index, WN_MAP parent_map)
 
   return NULL;
 }
+
+BOOL
+WN_is_assign(WN * wn)
+{
+  WN *wn_first = WN_first(wn);
+  WN *wn_last  = WN_last(wn);
+  return ((wn_first && (wn_first == wn_last) && OPERATOR_is_store(WN_operator(wn_first)))
+    || WN_operator(wn) == OPR_SELECT);
+}
+
+BOOL
+WN_is_assign_return(WN * wn)
+{
+  WN *wn_first = WN_first(wn);
+  WN *wn_last  = WN_last(wn);
+
+  if (wn_last) {
+    WN *wn_last_prev = WN_prev(WN_last(wn));
+    return ((WN_operator(wn_last) == OPR_RETURN) 
+      && (wn_first == wn_last_prev) && OPERATOR_is_store(WN_operator(wn_first)));    
+  } else {
+    return FALSE;
+  }  
+}

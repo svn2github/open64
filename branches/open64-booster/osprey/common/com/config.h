@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -583,6 +583,7 @@ extern BOOL OPT_keep_extsyms;
 extern BOOL OPT_unroll_times_overridden;
 extern INT32 OPT_unroll_size;
 extern BOOL OPT_unroll_size_overridden;
+extern BOOL OPT_Lower_Splitsinglecand;
 extern BOOL OPT_Lower_Speculate;
 extern BOOL OPT_Lower_Treeheight;
 extern BOOL OPT_Inline_Divide;

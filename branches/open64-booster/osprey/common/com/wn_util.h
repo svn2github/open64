@@ -481,6 +481,7 @@ inline BOOL WN_is_black_box(const WN *wn)
 /* Needed for the STL vector class used below
  */
 #include "vector"
+#include "list"
 #include "mempool_allocator.h"
 
 typedef mempool_allocator<WN*> VEC_POOL_ALLOCATOR;
@@ -493,6 +494,8 @@ extern "C" void Add_Pragma_To_MP_Regions (WN_VECTOR *wnv,
                                           ST *st, WN_OFFSET ofst,
                                           WN_MAP parent_map,
                                           BOOL make_compiler_generated);
+
+extern void WN_collect_iloads(std::list<WN*>*, WN*);
 
 #endif /* __cplusplus */
 

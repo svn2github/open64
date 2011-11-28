@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -228,6 +228,8 @@ BOOL OPT_Reorg_Common = FALSE;	/* Do common block reorganization (split)? */
 BOOL OPT_Reorg_Common_Set = FALSE;	/* ... option seen? */
 BOOL OPT_Unroll_Analysis = TRUE;	/* Enable unroll limitations? */
 BOOL OPT_Unroll_Analysis_Set = FALSE;	/* ... option seen? */
+BOOL OPT_Lower_Splitsinglecand = TRUE;
+BOOL OPT_Lower_Splitsinglecand_Set = FALSE;
 #if defined(TARG_NVISA)
 BOOL OPT_Lower_Speculate = TRUE;	/* speculate CAND/CIOR */
 #else
@@ -346,6 +348,11 @@ BOOL OPT_Enable_BUILD_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 // triage is find the first error alias tag pair.
 UINT32 AA_force_tag_alias_before_dim1 = 0;
 UINT32 AA_force_tag_alias_before_dim2 = UINT32_MAX;
+
+// enable control flow optimization for the program with EH regions
+// by default it is only enabled in mainopt
+BOOL  OPT_Enable_EH_CFG_OPT = FALSE;
+BOOL  OPT_Enable_EH_CFG_OPT_Set = FALSE;
 
 /***** Obsolete options *****/
 static BOOL Fprop_Limit_Set = FALSE;
@@ -715,6 +722,10 @@ static OPTION_DESC Options_OPT[] = {
     0, 0, 0,    &OPT_Space,	NULL,
     "Bias optimizations to minimize code space" },
 
+  { OVK_BOOL,	OV_INTERNAL,	TRUE, "split_single_cand",		"",
+    0, 0, 0,	&OPT_Lower_Splitsinglecand, &OPT_Lower_Splitsinglecand_Set,
+    "Allow splitting of single CAND for enabling if_conversion" },
+
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "speculate",		"",
     0, 0, 0,	&OPT_Lower_Speculate, &OPT_Lower_Speculate_Set,
     "Allow speculation for CAND/COR operators" },
@@ -912,6 +923,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_UINT32,  OV_INTERNAL,	TRUE, "aa_force_alias_dim2",		"",
     0, 0, UINT32_MAX,	&AA_force_tag_alias_before_dim2, NULL,
     "Triage option for alias analyzer" },
+
+  { OVK_BOOL,   OV_INTERNAL,     TRUE, "eh_cfg_opt",        "",
+    0, 0, 0,    &OPT_Enable_EH_CFG_OPT, &OPT_Enable_EH_CFG_OPT_Set, 
+    "Enable CFO for EH regions"},
 
   /* Obsolete options: */
 

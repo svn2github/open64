@@ -118,6 +118,7 @@
 
 #ifdef KEY
 static BOOL large_asm_clobber_set[ISA_REGISTER_CLASS_MAX+1];
+#define AVX_FP_REG_FACTOR 2.5
 #endif
 #ifdef TARG_IA64
 #define FIRST_INPUT_REG (32+REGISTER_MIN)
@@ -978,6 +979,41 @@ Query_Conflicts_Improved(TN_MAP orig_map,
   *num_ranges_mitigated = num_ranges_moved_below_pr_pressure; 
  
   return (num_improved > num_degraded);
+}
+
+
+INT 
+Find_Degree_For_TN(TN *tn, INT *regs_in_use)
+{
+  LIVE_RANGE *lr = LR_For_TN(tn);
+  return Find_Max_Degree_For_LR(regs_in_use, lr);
+}
+
+
+OP *
+Find_UseOp_For_TN(TN *tn)
+{
+  // only use with sdsu live ranges
+  LIVE_RANGE *lr = LR_For_TN(tn);
+  INT opnum = LR_last_use(lr);
+  OP *cur_op = OP_VECTOR_element (Insts_Vector, opnum);
+  return cur_op;
+}
+
+
+bool 
+Is_TN_Sdsu(TN *tn)
+{
+  bool has_sdsu = false;
+  LIVE_RANGE *lr = LR_For_TN(tn);
+  if ((LR_def_cnt(lr) == 1) && (LR_upward_exposed_use(lr) == 0)) {
+    if (LR_use_cnt(lr) == 1) {
+      // globals are not simple live ranges
+      has_sdsu = (TN_is_global_reg(tn)) ? has_sdsu : true;
+    }
+  }
+  
+  return has_sdsu;
 }
 
 
@@ -2257,6 +2293,24 @@ Usable_Registers (TN* tn, LIVE_RANGE* lr)
 }
 
 
+static BOOL check_uses_destructive_dest(TN *tn, BB *bb)
+{
+  BOOL uses_destructive_dest = FALSE;
+
+#ifdef TARG_X8664
+  if( BB_regpressure(bb,TN_register_class(tn)) &&
+      (TN_register_class(tn) == ISA_REGISTER_CLASS_float) ){
+    INT num_pr = REGISTER_CLASS_register_count(ISA_REGISTER_CLASS_float);
+    INT num_measured = BB_regpressure(bb,ISA_REGISTER_CLASS_float);
+    if (num_measured > (AVX_FP_REG_FACTOR * num_pr))
+      uses_destructive_dest = TRUE;
+  }
+#endif
+
+  return uses_destructive_dest;
+}
+
+
 static BOOL
 Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
 {
@@ -2621,8 +2675,14 @@ Assign_Registers_For_OP (OP *op, INT opnum, TN **spill_tn, BB *bb)
       continue;
     }
 
-    if( opndnum == 0       &&
-        (OP_sse5( op ) == FALSE) &&
+    if ( Is_Target_Orochi() && OP_sse5( op ) ) {
+      // now the test
+      if ( check_uses_destructive_dest(tn, bb) &&
+           opndnum == 0 &&
+           result_reg <= REGISTER_MAX ){
+        prefer_reg = result_reg;
+      }
+    } else if( opndnum == 0       &&
 	OP_x86_style( op ) &&
 	result_reg <= REGISTER_MAX ){
       prefer_reg = result_reg;
@@ -4218,9 +4278,15 @@ Spill_Live_Range (
       Set_TN_spill(new_tn, spill_loc);
       local_spills++;global_spills++;
 
+      BOOL uses_destructive_dest = FALSE;
+      if( Is_Target_Orochi() && OP_sse5( op ) ){
+        uses_destructive_dest = check_uses_destructive_dest(prev_tn, bb);
+      }
+
       if ((OP_same_res(op)
 #ifdef TARG_X8664
            || OP_x86_style(op)		// bug 4721
+           || uses_destructive_dest
 #endif
 	  )
           && TN_Pair_In_OP(op, spill_tn, prev_tn)) {
@@ -5492,15 +5558,30 @@ Adjust_X86_Style_For_BB (BB* bb, BOOL* redundant_code, MEM_POOL* pool)
   FOR_ALL_BB_OPs( bb, op ){
     opnum++;
 
-    if( !OP_x86_style( op ) )
-      continue;
-
-    if ( OP_sse5(op) )
-      continue;
-
     TN* result = OP_result( op, 0 );
     TN* opnd0 = OP_opnd( op, 0 );
     TN* opnd1 = OP_opnd( op, 1 );
+
+    if( Is_Target_Orochi() && OP_sse5( op ) ){
+      if( check_uses_destructive_dest(result, bb) == FALSE )
+        continue;
+
+      bool same_class = FALSE;
+      for( int opnd = 1; opnd < OP_opnds(op); opnd++ ){
+        TN* tn = OP_opnd( op, opnd );
+        if( TN_is_register(tn) == FALSE ) continue;
+        if( TN_register_class(result) == TN_register_class(tn) ){
+          same_class = TRUE;
+          break;
+        }
+      }
+      if ( same_class == FALSE )
+        continue;
+
+    } else {
+      if( !OP_x86_style( op ) )
+        continue;
+    }
 
     if( TNs_Are_Equivalent( result, opnd0 ) )
       continue;
@@ -5877,7 +5958,14 @@ Preallocate_Single_Register_Subclasses (BB* bb)
 	 Maintain the "result==OP_opnd(op,0)" property for x86-style operations
 	 after register preallocation.
       */
-      if( OP_x86_style( op ) &&
+      if( Is_Target_Orochi() && OP_sse5( op ) ) {
+        if( check_uses_destructive_dest(old_tn, bb) && 
+            new_result_tn != NULL ){
+	  Exp_COPY( new_result_tn, old_tn, &pre_ops );
+	  OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
+	  Set_OP_opnd( op, 0, new_result_tn );
+        }
+      } else if( OP_x86_style( op ) &&
 	  new_result_tn != NULL ){
 	Exp_COPY( new_result_tn, old_tn, &pre_ops );
 	OP_srcpos(OPS_last(&pre_ops)) = OP_srcpos(op);
