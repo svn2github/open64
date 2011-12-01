@@ -1,4 +1,4 @@
-//OBJ
+//ASM
 //TAG: kernel
 
 struct timespec {

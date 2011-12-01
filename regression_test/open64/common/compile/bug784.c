@@ -1,4 +1,4 @@
-//OBJ
+//ASM
 struct timespec {
   long tv_nsec;
 };
