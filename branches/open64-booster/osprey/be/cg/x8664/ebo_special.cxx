@@ -10983,6 +10983,41 @@ EBO_Fold_Load_Duplicate( OP* op, TN** opnd_tn, EBO_TN_INFO** actual_tninfo )
       return FALSE;
     if (index_loc >= 0 && !Pred_Opnd_Avail(op, loaded_tn_info, index_loc))
       return FALSE;
+    // for this bb, obtain the dependence graph so that we can
+    // walk this op's expression tree to check dependencies.
+    // Make sure that load operand is not overwritten
+    // by a store operation before op using this dependency graph.
+
+    CG_DEP_Compute_Graph ( op->bb,
+                         NO_ASSIGNED_REG_DEPS,
+                         NON_CYCLIC,
+                         NO_MEMREAD_ARCS,
+                         INCLUDE_MEMIN_ARCS,
+                         NO_CONTROL_ARCS,
+                         NULL);
+
+
+    const INT hash_value = EBO_hash_op( load, NULL );
+    EBO_OP_INFO* opinfo = EBO_opinfo_table[hash_value];
+
+    while( opinfo != NULL ) {
+      OP* next_op = opinfo->in_op;
+      if( next_op == load ) break;
+      if( next_op && OP_store( next_op ) ) {
+        ARC_LIST  *arcs;
+        for (arcs = OP_succs(load); arcs != NULL; arcs = ARC_LIST_rest(arcs)) {
+           ARC *arc = ARC_LIST_first(arcs);
+           if (ARC_kind(arc) != CG_DEP_MEMANTI) continue;
+           OP *succ_op = ARC_succ(arc);
+           if ((succ_op == next_op)  && OP_Precedes(next_op, op))  {
+              CG_DEP_Delete_Graph (op->bb);
+              return FALSE;
+            }
+         }
+      }
+      opinfo = opinfo->same;
+    }
+    CG_DEP_Delete_Graph (op->bb);
 
     TOP topcode;
     if (base && offset && index && scale) {

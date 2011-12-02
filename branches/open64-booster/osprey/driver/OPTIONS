@@ -2081,6 +2081,8 @@ I-u%s		;		Cc	ld	"-u %s"
 	""
 -malign-functions=%d	warn_ignored(option_name); 	ALL	NONE	self
 	""
+-mregparm=%d   ;       Cc      cfe,be  	"-mregparm=%d  -TENV:mregparm=%d"
+	"Control the number registers used to pass integer arguments"
 %%% x86 extensions
 -mmmx	toggle(&mmx,TRUE);		ALL	ALL	""
 	"Enable MMX extensions"

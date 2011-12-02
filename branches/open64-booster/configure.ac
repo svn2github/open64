@@ -459,6 +459,12 @@ if test "${BUILD_TARGET}" = "X8664" || test "${BUILD_TARGET}" = "IA32"; then
     osprey/targdir_lib/libacml_mv/Makefile
   ])
 fi
+if test "${BUILD_TARGET}" = "IA64" ; then
+  LIBLIST="$LIBLIST init"
+  AC_CONFIG_FILES([
+    osprey/targdir_lib/init/Makefile:osprey/targdir_lib/init/Makefile.in
+  ])
+fi   
 
 if test $BUILD_MULTILIB = "YES"; then
   AC_CONFIG_FILES([

@@ -8856,8 +8856,8 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     Build_OP(TOP_vmovaps, result, op0, ops );
     break;
    case INTRN_I2POPCNT:
-    if ( Is_Target_SSE42() || Is_Target_SSE4a() ) {
-      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+    if ( Is_Target_SSE42() || Is_Target_Barcelona()) {
+      // popcnt available since Barcelona and Nehalem
       Build_OP(TOP_popcnt16, result, op0, ops);
     }
     else {
@@ -8865,8 +8865,8 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     }
     break;
    case INTRN_I4POPCNT:
-    if ( Is_Target_SSE42() || Is_Target_SSE4a() ) {
-      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+    if ( Is_Target_SSE42() || Is_Target_Barcelona()) {
+      // popcnt available since Barcelona and Nehalem
       Build_OP(TOP_popcnt32, result, op0, ops);
     }
     else {
@@ -8875,8 +8875,8 @@ Exp_Intrinsic_Op (INTRINSIC id, TN *result, TN *op0, TN *op1, TN *op2, TN *op3, 
     break;
    case INTRN_I8POPCNT:
     if ( Is_Target_64bit() && 
-         ( Is_Target_SSE42() || Is_Target_SSE4a() ) ) {
-      // SSE4.2(Intel) and SSE4a(AMD) supports popcnt
+         ( Is_Target_SSE42() || Is_Target_Barcelona()) ) {
+      // popcnt available since Barcelona and Nehalem
       Build_OP(TOP_popcnt64, result, op0, ops);
     }
     else {
