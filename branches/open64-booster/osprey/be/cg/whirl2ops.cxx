@@ -1421,6 +1421,10 @@ TN_To_Assigned_PREG (TN *tn)
   else {
     i += Int_Preg_Min_Offset;
   }
+#elif defined(TARG_IA64)
+  else if (TN_register_class(tn) == ISA_REGISTER_CLASS_branch) {
+    i += Branch_Preg_Min_Offset;
+  }
 #endif  
   return i;
 }
