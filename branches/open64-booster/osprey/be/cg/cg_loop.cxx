@@ -8581,9 +8581,11 @@ void Report_Loop_Info(LOOP_DESCR *loop,
     // accurate register pressure components to fill in the currently
     // boolean setting to the notion that the scheduler saw register pressure.
     // So here we fill in the value for lra to use if needed.
+#ifdef TARG_X8664
     if (BB_regpressure(bb,ISA_REGISTER_CLASS_float)) {
       Set_BB_regpressure(bb, D_f, ISA_REGISTER_CLASS_float);
     }
+#endif
 
     // compute the number of gpr Regs Predicted
     conflict_map_i = Calculate_All_Conflicts(bb, regs_in_use, 
@@ -8596,9 +8598,11 @@ void Report_Loop_Info(LOOP_DESCR *loop,
                              ISA_REGISTER_CLASS_integer) + 1;
 
     // Now do the same for int regs
+#ifdef TARG_X8664
     if (BB_regpressure(bb,ISA_REGISTER_CLASS_integer)) {
       Set_BB_regpressure(bb, D_i, ISA_REGISTER_CLASS_integer);
     }
+#endif
 
     if (trace_general) {
       // Now print the details of this loop

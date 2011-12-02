@@ -2805,7 +2805,11 @@ check_existence_of_phases (void)
 	    /* check if be phase exists, to warn about wrong toolroot */
 	case P_ipl:
 	    if (!file_exists (concat_strings (get_phase_dir(phase_order[i]),
+#ifndef SHARED_BUILD
+					      "/ipl"EXE)))
+#else
 					      "/ipl"DSO)))
+#endif
 		give_warning = TRUE;
 
 	    /* fall through */

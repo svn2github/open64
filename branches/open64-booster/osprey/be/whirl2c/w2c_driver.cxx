@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -82,6 +86,7 @@ static char *rcs_id = "$Source: /proj/osprey/CVS/open64/osprey1.0/be/whirl2c/w2c
 #include "wn2c.h"
 #include "w2c_driver.h"
 
+#include "../whirl2c/init.cxx"      /* force include of W2C_Initializer */
 
 /* Avoid errors due to uses of "int" in stdio.h macros.
  */

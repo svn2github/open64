@@ -4645,10 +4645,14 @@ BOOL Is_Copy_Instruction(OP *op)
        (OP_code(op) == TOP_movapd) ||(OP_code(op) == TOP_movss)||
        (OP_code(op) == TOP_movsd) ||(OP_code(op) == TOP_movdq)||
        (OP_code(op) == TOP_mov64) ||(OP_code(op) == TOP_mov32)||
-       (OP_code(op) == TOP_vmovaps) ||(OP_code(op) == TOP_vmovsd)||
+       (OP_code(op) == TOP_vmovaps) ||(OP_code(op) == TOP_vmovss)||
        (OP_code(op) == TOP_vmovsd)  || (OP_code(op) == TOP_vmovapd))&&
        (CGTARG_Copy_Operand(op)>=0)){
 
+         if( ( (OP_code(op) == TOP_vmovss) || (OP_code(op) == TOP_vmovsd) ||
+               (OP_code(op) == TOP_movss)  || (OP_code(op) == TOP_movsd) ) && 
+             ( OP_opnd(op,0) == OP_opnd(op,1) ) )
+           return TRUE;
          if(Is_Target_Orochi() && OP_opnds(op)<=1) 
            return TRUE;
          if(!Is_Target_Orochi()) 

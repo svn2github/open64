@@ -1252,6 +1252,10 @@ extern void BB_Transfer_Entryinfo(BB* from, BB* to);
 extern void BB_Transfer_Callinfo(BB* from, BB* to);
 extern void BB_Transfer_Asminfo (BB *from, BB *to);
 
+/* Print just the Procedure name from the BB text */
+#pragma mips_frequency_hint NEVER Get_Procedure_Name
+extern char *Get_Procedure_Name ( void );
+
 /* Print the given BB or BBLIST: */
 extern void Print_BB_Header ( BB *bp,
 			      BOOL flow_info_only, BOOL print_tn_info );

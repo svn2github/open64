@@ -1,4 +1,8 @@
 /*
+ * Copyright (C) 2011 Advanced Micro Devices, Inc.  All Rights Reserved.
+ */
+
+/*
 
   Copyright (C) 2000, 2001 Silicon Graphics, Inc.  All Rights Reserved.
 
@@ -457,7 +461,7 @@ class  ARRAY_DIRECTED_GRAPH16 :
   MEM_POOL *_pool;
 public:
 
-#ifndef LNO
+#if defined(SHARED_BUILD) && !defined(LNO)
   void Print(FILE *fp);
 #else
   void Print(FILE *fp, INT dummy=0);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -196,7 +196,6 @@ extern WN* Get_Only_Loop_Inside(const WN* wn, BOOL regions_ok);
 #endif
 
 
-#ifndef LNO
 ARRAY_DIRECTED_GRAPH16 *Current_Dep_Graph = NULL;
 
 void *C_Dep_Graph(void)
@@ -286,8 +285,6 @@ VINDEX16 LNOGetVertex(WN *wn)
   return 0;
 }
 
-#endif /* LNO */
-
 // remove all the edges and vertices from the graph
 void ARRAY_DIRECTED_GRAPH16::Erase_Graph()
 {
@@ -341,7 +338,7 @@ void ARRAY_DIRECTED_GRAPH16::PruneMapsUsingParity(void)
   }
 }
 
-#ifndef LNO
+#if defined(SHARED_BUILD) && !defined(LNO)
 void ARRAY_DIRECTED_GRAPH16::Print(FILE *fp)
 #else
 void ARRAY_DIRECTED_GRAPH16::Print(FILE *fp, INT)
@@ -436,8 +433,6 @@ void ARRAY_DIRECTED_GRAPH16::Print(FILE *fp, INT)
   }
 
 }
-
-#ifndef LNO
 
 extern "C" void
 Depgraph_Write (void *depgraph, Output_File *fl, WN_MAP off_map)
@@ -577,7 +572,6 @@ Depgraph_Read (char *cur_addr, char *end_addr, char *wn_base)
 
   return (void *)g;
 }
-#endif /* LNO */
 
 // All the remaining code is LNO specific and will not be linked in
 // by other phases

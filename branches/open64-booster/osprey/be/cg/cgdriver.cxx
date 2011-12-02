@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010 Advanced Micro Devices, Inc.  All Rights Reserved.
+ * Copyright (C) 2008-2011 Advanced Micro Devices, Inc.  All Rights Reserved.
  */
 
 /*
@@ -85,9 +85,7 @@
 #include "erglob.h"
 #include "erlib.h"
 #include "errors.h"
-#if !defined(TARG_NVISA)
-#include "erauxdesc.h"
-#endif
+#include "../cg/init.cxx"           /* force include of Cg_Initializer */
 #include "ercg.h"
 #include "file_util.h"
 #include "glob.h"
@@ -2566,11 +2564,6 @@ CG_Process_Command_Line (INT cg_argc, char **cg_argv, INT be_argc, char **be_arg
 	FmtAssert (!DEBUG_Ir_Version_Check,
 		   ("WHIRL revision mismatch between be.so (%s) and cg.so (%s)",
 		    Whirl_Revision, WHIRL_REVISION));
-
-#if !defined(TARG_NVISA) // also set by bedriver, so redundant?
-    Set_Error_Descriptor (EP_BE, EDESC_BE);
-    Set_Error_Descriptor (EP_CG, EDESC_CG);
-#endif
 
 #ifdef KEY
     be_command_line_args = be_argv;

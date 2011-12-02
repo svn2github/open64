@@ -1227,12 +1227,5 @@ LNO_Configure ( void )
 			Mhd_Options.L[i].TLB_Miss_Penalty;
     }
   }
-
-  /* Value of 1 for LNO_Iter_threshold is interpreted as default in which case 
-     the flag is set based on target. Otherwise use user-specified value.
-   */
-  if(LNO_Iter_threshold == 1) {
-    LNO_Iter_threshold = (Is_Target_SSE41())? 8 : 0;
-  }
 }
 

@@ -3795,7 +3795,6 @@ static void Init_OP_Name()
   OP_Name[TOP_ldupsx] = "movups";
   OP_Name[TOP_ldupsxx] = "movups";
   OP_Name[TOP_ldups_n32] = "movups";
-  OP_Name[TOP_movss] = "movaps";
   OP_Name[TOP_movdq] = "movdqa";
   OP_Name[TOP_movg2x] = "movd";
   OP_Name[TOP_movg2x64] = "movd";
@@ -3879,7 +3878,6 @@ static void Init_OP_Name()
     OP_Name[TOP_ldsd_n32] = "movlpd";
     OP_Name[TOP_stsdx]  = "movsd";
     OP_Name[TOP_stsdxx] = "movsd";
-    OP_Name[TOP_movsd] = "movsd"; 
     OP_Name[TOP_ldsdx]  = "movlpd";
     OP_Name[TOP_ldsdxx] = "movlpd";
     OP_Name[TOP_stsd] = "movsd";
@@ -3898,15 +3896,7 @@ static void Init_OP_Name()
     OP_Name[TOP_storelpd] = "movsd";
     // Convert movapd reg reg moves with movaps
     OP_Name[TOP_movapd]  = "movaps";
-    if (Is_Target_Barcelona() ||
-	Is_Target_EM64T()     || // em64t
-        Is_Target_Wolfdale()  ||
-	Is_Target_Core()) {	 // use movapd for woodcrest for bug 11548
-      OP_Name[TOP_movsd] = "movaps"; 
-    } else if (Is_Target_Orochi()) {
-      OP_Name[TOP_movsd] = "movaps";  
-      OP_Name[TOP_vmovsd] = "vmovsd";  
-      OP_Name[TOP_vmovss] = "vmovss";  
+    if (Is_Target_Orochi()) {
       OP_Name[TOP_vldsd] = "vmovsd";
       OP_Name[TOP_vldsd_n32] = "vmovsd";
       OP_Name[TOP_vstsdx]  = "vmovsd";
