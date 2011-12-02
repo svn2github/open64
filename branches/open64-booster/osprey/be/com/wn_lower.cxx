@@ -15358,10 +15358,9 @@ static WN *lower_entry(WN *tree, LOWER_ACTIONS actions)
       }
       WN_Delete(tree);
       tree = n_tree;
-#ifdef KEY
-      // Update pu_info (bug 6071)
       Set_PU_Info_tree_ptr (Current_PU_Info, tree);
-#endif
+      if (Cur_PU_Feedback)
+        Cur_PU_Feedback->Reset_Root_WN(tree);
     }
   }
 

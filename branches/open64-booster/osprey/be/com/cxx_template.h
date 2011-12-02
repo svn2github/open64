@@ -227,7 +227,7 @@ public:
   {
     if (idx < _lastidx) {
        for (int iter = idx; iter < _lastidx; iter++) {
-          _array[idx] = _array[idx+1];
+          _array[iter] = _array[iter+1];
        }
        Decidx();
     }
