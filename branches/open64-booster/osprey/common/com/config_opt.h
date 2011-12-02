@@ -215,6 +215,8 @@ extern UINT32 AA_force_tag_alias_before_dim2;
 
 extern BOOL OPT_Enable_EH_CFG_OPT;
 extern BOOL OPT_Enable_EH_CFG_OPT_Set;
+
+extern UINT32 OPT_Struct_Array_Copy; 
 #endif
 #ifdef __cplusplus
 }

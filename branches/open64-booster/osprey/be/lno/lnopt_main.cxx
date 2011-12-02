@@ -1342,6 +1342,8 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
       goto return_point;
     } 
 
+    SAC sac(func_nd); 
+    sac.Perform_Structure_Split_Opt();
 
     // mark do loops
     // doesn't affect access vectors

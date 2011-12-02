@@ -1486,6 +1486,11 @@ Configure_Source ( char	*filename )
   Goto_Skip_List = Build_Skiplist ( Goto_Skip );
 #endif
 
+#ifdef BACK_END
+  /* Are we skipping any field for struct split? */
+  Initial_LNO.Sac_Skip_List = Build_Skiplist ( Initial_LNO.Sac_Skip );
+#endif
+
 #if defined(TARG_SL)
   /* Are we skipping any branches for DDB? */
   DDB_Skip_List = Build_Skiplist ( DDB_Skip );

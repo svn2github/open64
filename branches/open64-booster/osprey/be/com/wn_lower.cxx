@@ -3113,6 +3113,7 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
   INT32	        i;
   BOOL          is_non_contig=FALSE;
   WN_ESIZE      element_size;
+  WN  *elm_size = NULL;
 
   Is_True((WN_operator_is(tree,OPR_ARRAY)),
 	  ("expected ARRAY node, not %s", OPCODE_name(WN_opcode(tree))));
@@ -3126,8 +3127,22 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
      element_size = -element_size;
   }
   if (element_size == 0) {
-    // This is an array of empty struct
-    element_size = 1;
+    // find out the array element size through ARB table
+    TY_IDX aty = TY_pointed( WN_ty( WN_kid0(tree) ));
+    int i;
+    for( i=0; i < n-1; i++ )
+      aty = TY_etype(aty);
+    Is_True((TY_kind(aty) == KIND_ARRAY), ("type of aty should be KIND_ARRAY"));
+    ARB_HANDLE arb = TY_arb(aty);
+    if( ! ARB_const_stride(arb)) {
+      elm_size = WN_Ldid(MTYPE_U8, 0,ARB_stride_var(arb), ST_type(ARB_stride_var(arb)));
+    }
+    else {
+      // This is an array of empty struct
+      elm_size = WN_Intconst(rtype, 1);
+    }
+  }else {
+    elm_size = WN_Intconst(rtype, element_size);
   }
   
 #if defined(TARG_X8664) || defined(TARG_LOONGSON)
@@ -3224,9 +3239,13 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
    *  result <- base + result * elm_size
    */
   {
-    WN  *elm_size;
 
-    elm_size = WN_Intconst(rtype, element_size);
+#if defined(TARG_X8664) || defined(TARG_LOONGSON)
+    WN* elm_size1;
+    if ( do_reassociate ) {
+       elm_size1 = WN_COPY_Tree_With_Map(elm_size); 
+    }
+#endif 
     result = WN_Add(rtype,
 		    WN_array_base(tree),
 		    WN_Mpy(rtype, result, elm_size));
@@ -3235,7 +3254,6 @@ static WN *lower_linearize_array_addr(WN *block, WN *tree,
       /*
        *  result <- result +  index[n-1] * elm_size
        */
-      WN* elm_size1 = WN_Intconst(rtype, element_size);
       WN* inv_wn = WN_Coerce(rtype, WN_array_index( tree, n-1 ));    
       result = WN_Add(rtype,
 		      result,

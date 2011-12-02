@@ -338,6 +338,7 @@ BOOL Early_Goto_Conversion_Set = FALSE;
 
 BOOL OPT_Enable_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
 BOOL OPT_Enable_BUILD_WHIRL_SSA = FALSE;  // SSA on WHIRL, disabled by default
+UINT32 OPT_Struct_Array_Copy = 1; 
 
 // alias analyzer triage value
 // all alias tag value less than AA_force_tag_alias_before_dim1 is 
@@ -927,6 +928,10 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,   OV_INTERNAL,     TRUE, "eh_cfg_opt",        "",
     0, 0, 0,    &OPT_Enable_EH_CFG_OPT, &OPT_Enable_EH_CFG_OPT_Set, 
     "Enable CFO for EH regions"},
+
+  { OVK_UINT32,	OV_VISIBLE,	FALSE, "struct_array_copy",	"",
+    1, 0, UINT32_MAX,	&OPT_Struct_Array_Copy, NULL,
+    "Set the struct split level" },
 
   /* Obsolete options: */
 
