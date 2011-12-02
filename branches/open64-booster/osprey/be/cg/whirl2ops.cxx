@@ -5552,6 +5552,32 @@ Add_Label (LABEL_IDX label)
   return bb;
 }
 
+/* Add a label to a forced new basic block 
+ * This routine returns the bb that the label is attached to.
+ */
+
+BB *
+Add_Label_With_Forced_New_BB (LABEL_IDX label)
+{
+  BB *old_Cur_BB = Cur_BB;
+  BB *bb = Start_New_Basic_Block ();
+  if (bb == old_Cur_BB) {// does not gen a new BB
+    bb = Gen_And_Append_BB( bb );
+    total_bb_insts = 0;
+    Last_Processed_OP = NULL;
+    Last_Mem_OP = NULL;
+    Cur_BB = bb;
+    dedicated_seen = FALSE;
+  }
+
+  BB_Add_Annotation (bb, ANNOT_LABEL, (void *)(INTPTR)label);
+  FmtAssert (Get_Label_BB(label) == NULL,
+	("Add_Label: Label %s defined more than once", LABEL_name(label)));
+  Set_Label_BB (label,bb);
+  return bb;
+}
+
+
 static void
 Link_BBs (BB *bb, LABEL_IDX label)
 {
@@ -5686,6 +5712,7 @@ BOOL Has_External_Branch_Target( BB *bb )
   case OPC_TRUEBR:
   case OPC_FALSEBR:
   case OPC_GOTO:
+  case OPC_ZDLBR:
     return label_is_external( &j, branch_wn, bb );
 #ifdef KEY
   case OPC_GOTO_OUTER_BLOCK:
@@ -5729,6 +5756,7 @@ BOOL Has_External_Fallthru( BB *bb )
 
   if ( ( branch_wn == NULL )
        || ( WN_opcode( branch_wn ) == OPC_TRUEBR ||
+            WN_opcode( branch_wn ) == OPC_ZDLBR  ||
 	    WN_opcode( branch_wn ) == OPC_FALSEBR ) ) {
     return ( BB_next( bb ) == NULL );
   }
@@ -5930,8 +5958,7 @@ static void Build_CFG(void)
 	  CGRIN_exit_i( cgrin, num ) = bb;
 	  label = Get_WN_Label( branch_wn );
 	  CGRIN_exit_label_i( cgrin, num ) = label;
-	  new_label = REGION_Exit_Whirl_Labels(
-		      CGRIN_exit_glue_i(cgrin, num), bb, label, rid);
+	  new_label = REGION_Exit_Whirl_Labels(CGRIN_exit_glue_i(cgrin, num), bb, label, rid);
 	  /* write this new label into an exit block that will
 	     eventually become the exit block for a new inner region */
 	  Is_True(new_label != (LABEL_IDX) 0,
@@ -5940,6 +5967,30 @@ static void Build_CFG(void)
 	  WN_INSERT_BlockLast(CGRIN_nested_exit(cgrin),new_exit);
 	}
 	break;
+
+      case OPC_ZDLBR:
+        if(BB_next(bb)) 
+          Link_Pred_Succ ( bb, BB_next( bb ) );	   	
+	if ( ! label_is_external( &num, branch_wn, bb ) ) { /*internal label*/
+	  Link_BBs(bb, Get_WN_Label(branch_wn));
+	} else if ( rid ) {
+	  WN *new_exit;
+	  LABEL_IDX new_label;
+	  CGRIN *cgrin = RID_Find_Cginfo(bb);
+	  Is_True(cgrin != NULL,("Build_CFG, null cginfo"));
+	  CGRIN_exit_i( cgrin, num ) = bb;
+	  label = Get_WN_Label( branch_wn );
+	  CGRIN_exit_label_i( cgrin, num ) = label;
+	  new_label = REGION_Exit_Whirl_Labels(CGRIN_exit_glue_i(cgrin, num), bb, label, rid);
+	  /* write this new label into an exit block that will
+	     eventually become the exit block for a new inner region */
+	  Is_True(new_label != (LABEL_IDX) 0,
+		  ("Build_CFG, new region exit label is NULL"));
+	  new_exit = WN_CreateRegionExit(new_label);
+	  WN_INSERT_BlockLast(CGRIN_nested_exit(cgrin),new_exit);
+	}
+	break;
+
 #ifdef TARG_SL   //fork_joint
       case OPC_SL2_FORK_MAJOR:
       case OPC_SL2_FORK_MINOR:	  	
@@ -6496,6 +6547,15 @@ Convert_Branch (WN *branch)
     target_tn =  Gen_Label_TN (Get_WN_Label (branch), 0);
     Exp_OP1 (OPC_GOTO, NULL, target_tn, &New_OPs);
     break;
+
+#ifdef ZDL_TARG
+  case OPC_ZDLBR:
+    target_tn = Gen_Label_TN (Get_WN_Label (branch), 0);
+    /* Target specific Expansion of OPR_ZDLBR */
+    extern void Target_Specific_ZDLBR_Expansion(TN* target_tn);
+    Target_Specific_ZDLBR_Expansion(target_tn);
+    break;
+#endif
 
 #ifdef TARG_SL //fork_joint
   case OPC_SL2_FORK_MAJOR:
@@ -7200,6 +7260,7 @@ static void Expand_Statement (WN *stmt)
   case OPC_SL2_FORK_MAJOR:
   case OPC_SL2_FORK_MINOR:
 #endif   	
+  case OPC_ZDLBR:
     Convert_Branch (stmt);
     break;
   case OPC_RETURN:
@@ -7287,7 +7348,14 @@ static void Expand_Statement (WN *stmt)
     	/* start of a new basic block */
 #ifdef KEY
 	BOOL is_non_local_label;
-    	bb = Add_Label(Get_WN_Label (stmt, &is_non_local_label));
+
+        if (info)
+          bb = Add_Label_With_Forced_New_BB(Get_WN_Label (stmt, &is_non_local_label));
+        else if (BB_length(Cur_BB) == 0 &&  ANNOT_Get (BB_annotations(Cur_BB), ANNOT_LOOPINFO))
+          bb = Add_Label_With_Forced_New_BB(Get_WN_Label (stmt, &is_non_local_label));
+        else
+          bb = Add_Label(Get_WN_Label (stmt, &is_non_local_label));
+
 	if (is_non_local_label)
 	  Set_BB_has_non_local_label(bb);
 #else
@@ -7705,6 +7773,7 @@ Convert_WHIRL_To_OPs (WN *tree)
 
   initialize_region_stack(tree);
   Cur_BB = NULL;
+  OPS_Init(&New_OPs);
   current_srcpos = 0;
 
   switch ( WN_opcode( tree ) ) {

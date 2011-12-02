@@ -975,6 +975,12 @@ char *Library_Name = NULL;      /* -TENV:io_library=xxx */
 BOOL Omit_UE_DESTROY_FRAME = FALSE;  /* tmp close Epilogue overflow error */
 
 INT  target_io_library;
+
+/* generate zdl when do do-loop lowering */
+BOOL OPT_Lower_ZDL = FALSE;
+BOOL OPT_Lower_ZDL_Set = FALSE;
+
+
 #if defined (TARG_SL)
 BOOL Sl2_Inibuf=FALSE;
 char* Sl2_Ibuf_Name=NULL;

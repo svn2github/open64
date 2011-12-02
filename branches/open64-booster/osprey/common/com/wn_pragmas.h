@@ -209,6 +209,7 @@ typedef enum {
   WN_PRAGMA_NUMTHREADS,
   WN_PRAGMA_NOWAIT,
   WN_PRAGMA_PAGE_PLACE,
+  WN_PRAGMA_NO_ZDL,
 #if defined(TARG_SL)
  WN_PRAGMA_SL2_MAJOR_PSECTION_BEGIN,  // begin of major section 
  WN_PRAGMA_SL2_MINOR_PSECTION_BEGIN,  // begin of minor section 

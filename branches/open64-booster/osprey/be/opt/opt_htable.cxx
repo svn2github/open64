@@ -5243,6 +5243,7 @@ STMTREP::Print_node(FILE *fp) const
   case OPR_LABEL:
   case OPR_GOTO:
   case OPR_REGION_EXIT:
+  case OPR_ZDLBR:
     fprintf(fp, ">");	// mark line visually as htable dump
     fprintf(fp, "%s %d", OPERATOR_name(_opr), Label_number());
     break;

@@ -324,6 +324,7 @@ static BOOL traceSplitSymOff     = FALSE;
 static BOOL traceWoptFinishedOpt = FALSE;
 static BOOL traceMload           = FALSE;
 static BOOL traceMemlib          = FALSE;
+static BOOL traceZDL             = FALSE;
 
 // static BOOL traceUplevel = FALSE;
 
@@ -8946,8 +8947,31 @@ copy_aggregate_loop_const(WN *block, TY_IDX srcAlign, TY_IDX dstAlign,
 				srcPreg, dstPreg, origLoad, origStore,
 				copy_alignment, actions );
 
-    doLoop = WN_CreateDO( WN_CreateIdname(n, intPreg),
-			  start, test, incr, body, NULL );
+    if ( OPT_Lower_ZDL ) {
+      WN *infoblock = WN_CreateBlock();
+      WN *do_loop_info = WN_CreateLoopInfo(WN_CreateIdname(n, intPreg),
+                                           WN_CreateIntconst(OPC_I4INTCONST, nMoves),
+                                           0,
+                                           loop_nest_depth+1,
+                                           WN_LOOP_INNERMOST);
+      do_loop_info = lower_expr(infoblock, do_loop_info, actions);
+      WN_Set_Loop_Nz_Trip(do_loop_info);
+      WN_DELETE_Tree(infoblock);
+      doLoop = WN_CreateDO ( WN_CreateIdname(n, intPreg), 
+                             start, NULL, incr, body, do_loop_info);
+      traceZDL = Get_Trace(TP_LOWER, 0x400);
+      if (traceZDL)
+        fprintf(TFile,"lower zdl, PU:%s:%s, trip_count:%lld\n", 
+                Src_File_Name,
+                ST_name(Get_Current_PU_ST()), 
+                nMoves
+                );
+    }
+    else {
+      doLoop = WN_CreateDO ( WN_CreateIdname(n, intPreg),
+                            start, test, incr, body, NULL );
+    }
+ 
     WN_Set_Linenum(doLoop, current_srcpos);  // Bug 1268
     WN_INSERT_BlockLast(block, doLoop);
     if ( Cur_PU_Feedback && (origStore != NULL) )
@@ -14635,7 +14659,10 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
       WN_DELETE_Tree(WN_index(tree));
     }
 
-    WN_INSERT_BlockLast(body, lower_stmt(block, WN_start(tree), actions));
+    if (WN_end(tree)) {
+      WN_INSERT_BlockLast(body, lower_stmt(block, WN_start(tree), actions));
+    } 
+
 
     WN *cont_lbl;
     if (nz_trip == FALSE)
@@ -14663,10 +14690,21 @@ static WN *lower_do_loop(WN *block, WN *tree, LOWER_ACTIONS actions)
     WN_INSERT_BlockLast(body, lower_block(WN_do_body(tree), actions));
 
     setCurrentState(WN_step(tree), actions);
-    WN_INSERT_BlockLast(body, lower_stmt(block, WN_step(tree), actions));
-    WN *back_branch_block = lower_truebr(WN_label_number(top_lbl),
-					 WN_end(tree), &wn_back_branch,
-					 actions);
+    if (WN_end(tree)) {
+      WN_INSERT_BlockLast(body, lower_stmt(block, WN_step(tree), actions));
+    }
+    WN* back_branch_block;
+    if (WN_end(tree)) {
+      back_branch_block = lower_truebr(WN_label_number(top_lbl),
+                                           WN_end(tree), &wn_back_branch,
+                                           actions);
+    }
+    else {
+      INT64 line_number = WN_Get_Linenum(WN_last(WN_do_body(tree)));
+      back_branch_block =  WN_CreateZDLBr(top_lbl_idx);
+      wn_back_branch = back_branch_block;
+      WN_Set_Linenum(back_branch_block, line_number);
+    }
     WN_INSERT_BlockLast(body, back_branch_block);
 
     if (nz_trip == FALSE) {

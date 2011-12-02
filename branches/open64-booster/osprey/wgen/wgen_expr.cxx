@@ -360,6 +360,7 @@ struct operator_from_tree_t {
  GS_VEC_NEW_EXPR,		OPERATOR_UNKNOWN,
  GS_TEMPLATE_TEMPLATE_PARM,	OPERATOR_UNKNOWN,
  GS_FREQ_HINT_STMT,		OPERATOR_UNKNOWN,
+ GS_ZDL_STMT,                   OPERATOR_UNKNOWN,
 };
 
 #ifdef FE_GNU_4_2_0
@@ -10538,6 +10539,7 @@ WGEN_Expand_Expr (gs_t exp,
 #endif
 
     case GS_FREQ_HINT_STMT:
+    case GS_ZDL_STMT:
       WGEN_Expand_Pragma(exp);
       break;
       

@@ -803,7 +803,7 @@ CG_Generate_Code(
     // after it. In this scenario, don't emit .org. Also emit a
     // proper .align based on the alignment of the symbol instead of
     // .align 0.
-    if (LANG_Enable_Global_Asm)
+    if (LANG_Enable_Global_Asm || FILE_INFO_has_global_asm(File_info))
       CG_file_scope_asm_seen = TRUE;
 #endif
     return rwn;

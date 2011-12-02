@@ -785,6 +785,11 @@ static OPTION_DESC Options_OPT[] = {
   { OVK_BOOL,	OV_INTERNAL,	TRUE, "wn_simplify",		"wn_simp",
     0, 0, 0,	&Enable_WN_Simp, &Enable_WN_Simp_Set,
     "Enable simplifier" },
+
+  { OVK_BOOL,	OV_VISIBLE,	TRUE, "lower_zdl",	"lower_zdl",
+    0, 0, 0,	&OPT_Lower_ZDL,  &OPT_Lower_ZDL_Set,
+    "Enable_Lower_ZDL" },
+
 #ifdef KEY
   { OVK_INT32,  OV_INTERNAL,    TRUE, "simp_limit",             "",
     INT32_MAX, 0, INT32_MAX,    &Enable_WN_Simp_Expr_Limit, NULL },

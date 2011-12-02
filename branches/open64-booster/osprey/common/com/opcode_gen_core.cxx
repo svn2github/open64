@@ -1082,6 +1082,16 @@ struct OPERATOR_info_struct OPERATOR_info[OPERATOR_LAST+1] = {
    OPERATOR_MAPCAT_OEXP /* mapcat */,
    OPERATOR_PROPERTY_expression},
 #endif /* TARG_X8664 */
+  {"OPR_ZDLBR",
+   0 /* nkids */,
+   OPERATOR_MAPCAT_OSTMT /* mapcat */,
+   OPERATOR_PROPERTY_stmt                 |
+   OPERATOR_PROPERTY_non_scf              |
+   OPERATOR_PROPERTY_leaf                 |
+   OPERATOR_PROPERTY_endsbb               |
+   OPERATOR_PROPERTY_next_prev            |
+   OPERATOR_PROPERTY_label
+  },
 };
 
 static BOOL
@@ -2932,6 +2942,7 @@ Is_Valid_Opcode_Parts (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
       case OPR_ASM_STMT:
       case OPR_ASM_INPUT:
       case OPR_GOTO_OUTER_BLOCK:
+      case OPR_ZDLBR:
         // [RTYPE] : V [DESC] : V
         valid = rtype == MTYPE_V && desc == MTYPE_V;
         break;
@@ -3431,6 +3442,7 @@ OPCODE_name (OPERATOR opr, TYPE_ID rtype, TYPE_ID desc)
     case OPR_ASM_STMT:
     case OPR_ASM_INPUT:
     case OPR_GOTO_OUTER_BLOCK:
+    case OPR_ZDLBR:
       // [RTYPE] : V [DESC] : V
       sprintf (buffer, "OPC_%s", &OPERATOR_info [opr]._name [4]);
       break;

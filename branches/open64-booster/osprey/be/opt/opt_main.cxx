@@ -1992,6 +1992,11 @@ Pre_Optimizer(INT32 phase, WN *wn_tree, DU_MANAGER *du_mgr,
       	comp_unit->Collect_statistics();
       }
 
+      if (WOPT_Enable_ZDL) {
+        SET_OPT_PHASE("ZDL transformation");
+        comp_unit->Do_zdl(&rvi);
+      }
+
       SET_OPT_PHASE("MainOpt emitter");
 
       if ( comp_unit->Cfg()->Feedback() )
