@@ -186,7 +186,6 @@ endif
 BE_LNO_DIR		= $(BE_DIR)/lno
 BE_WHIRL2C_DIR		= $(BE_DIR)/whirl2c
 BE_WHIRL2F_DIR		= $(BE_DIR)/whirl2f
-BE_PURPLE2_DIR		= $(BE_DIR)/purple2
 BE_PROMPF_ANL_DIR       = $(BE_DIR)/prompf_anl
 BE_VHO_DIR		= $(BE_DIR)/vho
 IPL_DIR			= $(BUILD_TOT)/ipa/local
@@ -236,7 +235,6 @@ HEADER_DIRS = \
   $(BE_REGION_DIR)	\
   $(BE_WHIRL2C_DIR)	\
   $(BE_WHIRL2F_DIR)	\
-  $(BE_PURPLE2_DIR)	\
   $(BE_PROMPF_ANL_DIR)	\
   $(BE_VHO_DIR)		\
   $(IPL_DIR)	 	\
@@ -829,7 +827,7 @@ wn_fio.o: wn_fio.cxx
         $(CXXF) -OPT:alias=no_typed -c $<
 endif
 
-LDIRT += be wopt.so be.so cg.so lno.so whirl2c.so whirl2f.so purple.so prompf_anl.so
+LDIRT += be wopt.so be.so cg.so lno.so whirl2c.so whirl2f.so prompf_anl.so
 LDIRT += ipl.so inline.so
 
 

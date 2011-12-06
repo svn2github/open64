@@ -652,8 +652,7 @@ endif
 
 # Always skip obsolete backend components.
 BUILD_SKIP_PROMPF = TRUE
-BUILD_SKIP_PURPLE = TRUE
-STD_COMPILE_OPTS += -DBUILD_SKIP_PURPLE -DBUILD_SKIP_PROMPF
+STD_COMPILE_OPTS += -DBUILD_SKIP_PROMPF
 
 include ${BUILD_TOT}/../defs.mk
 
