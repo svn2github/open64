@@ -1,3 +1,4 @@
+//OBJ
 struct go7007 {
   int sensor_framerate;
   int fps_scale;
