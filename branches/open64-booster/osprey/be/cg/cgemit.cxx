@@ -996,6 +996,7 @@ static void Print_Dynsym (FILE *pfile, ST *st)
     }
   }
   else {
+#if !defined(TARG_PPC32)
     const char *eclass_label = NULL;
     switch (ST_export(st)) {
       case EXPORT_INTERNAL:
@@ -1015,6 +1016,7 @@ static void Print_Dynsym (FILE *pfile, ST *st)
       EMT_Write_Qualified_Name(pfile, st);
       putc ('\n', pfile);
     }
+#endif
   }
 }
 
@@ -2528,14 +2530,12 @@ Perform_Sanity_Checks_For_OP (OP *op, BOOL check_def)
       }
     }
 
-    if (CGTARG_Is_Right_Shift_Op (op)) {
-      if (TN_register(OP_opnd(op,0+predicated)) == REGISTER_zero) {
-        DevWarn ("Redundant shift instruction in %sBB:%d (PC=0x%x)",
-	         BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
-	         BB_id(OP_bb(op)), PC);
-        if (TFile != stdout) {	/* only print to .t file */
-          Print_OP_No_SrcLine (op);
-	}
+    if (CGTARG_Is_Shift_Redundant (op)) {
+      DevWarn ("Redundant shift instruction in %sBB:%d (PC=0x%x)",
+	       BB_rotating_kernel(OP_bb(op)) ? "SWPd " : "",
+	       BB_id(OP_bb(op)), PC);
+      if (TFile != stdout) {	/* only print to .t file */
+         Print_OP_No_SrcLine (op);
       }
     }
   }

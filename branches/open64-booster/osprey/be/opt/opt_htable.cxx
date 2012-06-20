@@ -2271,7 +2271,11 @@ CODEMAP::Canon_cvt(WN       *wn,
 #endif
   if ((Get_mtype_class(OPCODE_rtype(op)) & 
        Get_mtype_class(OPCODE_desc(op))) != 0 &&
-      MTYPE_size_min(OPCODE_rtype(op)) == MTYPE_size_min(OPCODE_desc(op))) 
+      MTYPE_size_min(OPCODE_rtype(op)) == MTYPE_size_min(OPCODE_desc(op)) &&
+      // bug912 open64.net. Do not delete U4I4CVT if his kid is a constant
+      (!(OPCODE_rtype(op) == MTYPE_U4 && 
+         OPCODE_desc(op) == MTYPE_I4 &&
+         ccr->Tree() == NULL))) 
     return propagated;
 
   if ( WOPT_Enable_Cvt_Folding && 
@@ -4176,7 +4180,8 @@ STMTREP::Enter_lhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop)
 	      opt_stab->Aux_stab_entry(vaux)->Byte_size() * 8 ==
 	            MTYPE_size_min(_desc) &&
 	      (opr == OPR_ISTORE && 
-	       (opt_stab->Aux_stab_entry(vaux)->Bit_size() == 0 ||
+               // bug362 open64.net, Bit_size == 0 is essential for istorefolds
+	       (opt_stab->Aux_stab_entry(vaux)->Bit_size() == 0 && 
 		opt_stab->Aux_stab_entry(vaux)->Field_id() == WN_field_id(Wn())) ||
 	       opr == OPR_ISTBITS &&
 	       opt_stab->Aux_stab_entry(vaux)->Bit_ofst() == WN_bit_offset(Wn()) &&
