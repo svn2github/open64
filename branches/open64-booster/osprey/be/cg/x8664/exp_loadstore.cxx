@@ -1267,8 +1267,8 @@ Exp_Ldst (
 	                        STB_section(base_sym) /* bug 10097 */)) ){
 	  FmtAssert(!ST_is_thread_local(base_sym),
 		    ("Exp_Ldst: thread-local storage NYI under PIC"));
-	  TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
-	  Build_OP( TOP_ld32, tmp, Ebx_TN(),
+          TN* tmp = base_ofst == 0 ? tn : Build_TN_Like(tn);
+          Build_OP( TOP_ld32, tmp, Ebx_TN(),
 		    Gen_Symbol_TN( base_sym, 0, TN_RELOC_IA32_GOT ),
 		    &newops );
 	  // got address should not alias
