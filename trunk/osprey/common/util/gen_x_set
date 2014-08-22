@@ -111,7 +111,7 @@
 ### ====================================================================
 ### ====================================================================
 
-require "getopts.pl";
+use Getopt::Std;
 
 # Look for the templates in the same directory as this script resides.
 #
@@ -119,7 +119,7 @@ $utildir = $0;
 $utildir =~ s=/[^/]*$==;
 $utildir = '.' if ( $utildir eq $0 );
 
-&Getopts("fs");
+getopts("fs");
 
 # Macro or functional interface?
 #
